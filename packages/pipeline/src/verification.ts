@@ -1,4 +1,10 @@
-import type { ModelReference, ModelRoute, Severity, StoredVerificationState } from "@melian-agent/core";
+import type {
+	FindingEvidence,
+	ModelReference,
+	ModelRoute,
+	Severity,
+	StoredVerificationState,
+} from "@melian-agent/core";
 import { Revision } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
@@ -35,7 +41,12 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
+	// The dismissed findings the verifier judges each claim against for sameness; absent when none qualifies, so a
+	// candidate without them keeps the attach key it had before Melian asked.
+	dismissed?: DismissedPredecessor[];
 };
+// A root dismissal a candidate may restate, as the verifier sees it: its claim, never its dismissal's reason.
+export type DismissedPredecessor = { id: string; failureScenario?: string; evidence?: FindingEvidence };
 export type VerificationInput = {
 	root: ConversationId;
 	revision: ReviewState;
@@ -92,6 +103,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						source,
 						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
 					}));
+					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
@@ -113,6 +125,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								const severity = sightingIn(findings, at, id, source)?.properties.severity;
 								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
 							}),
+							...dismissed.map(({ label, id }) => `Dismissed ${label} finding ${id}`),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
@@ -123,6 +136,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						role: "verifier",
 						model: `${candidate.route[0]!.provider}/${candidate.route[0]!.modelId}`,
 						claims,
+						...(dismissed.length === 0 ? {} : { dismissed }),
 						review: task.input.root,
 						revision: task.input.revision,
 						tools: ["read_file", "search", "list_files"],
@@ -152,6 +166,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 									.map(
 										(claim, index) =>
 											`Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
+									)
+									.concat(
+										(candidate.dismissed ?? []).map(
+											({ id: _, ...claim }, index) =>
+												`Dismissed d${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
+										),
 									)
 									.join("\n\n")
 							: "Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";

@@ -1,0 +1,109 @@
+{
+  "root": 1,
+  "version": 10,
+  "findings": {
+    "revisions": [
+      "base..accepted"
+    ],
+    "items": {
+      "0bc010719ccffe09": {
+        "lifecycle": {
+          "status": "dismissed",
+          "firstSeenRevision": "base..accepted",
+          "lastSeenRevision": "base..accepted",
+          "history": [],
+          "dismissedTrigger": {
+            "hash": "86be9637fa199c67bd73ca58e1f9e6a4a6dd6d70a8946fa1e03706f413655738",
+            "proof": []
+          },
+          "proof": [],
+          "dismissedBy": "Maintainer <maintainer@melian.invalid>",
+          "dismissedReason": "Cold runs never read it.",
+          "dismissedAt": "2026-11-08T00:00:00Z"
+        },
+        "sightings": {
+          "base..accepted": {
+            "lens.correctness@1@careful": {
+              "ruleId": "fail-open",
+              "level": "warning",
+              "message": {
+                "text": "A cached kill is reused for a cold run."
+              },
+              "partialFingerprints": {
+                "melian/v1": "0bc010719ccffe09"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/review.ts"
+                    },
+                    "region": {
+                      "startLine": 3,
+                      "endLine": 4,
+                      "snippet": {
+                        "text": "if (cached) {\n\treturn cached;"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "0bc010719ccffe09",
+                "path": "src/review.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "failureScenario": "A cold run reads a cached kill and reports the mutant killed.",
+                "evidence": [
+                  {
+                    "file": "src/review.ts",
+                    "startLine": 3,
+                    "role": "cause",
+                    "revision": "head",
+                    "snippet": "if (cached) {"
+                  }
+                ],
+                "trigger": {
+                  "file": "src/review.ts",
+                  "index": 0,
+                  "snippet": "if (cached) {\n\treturn cached;"
+                },
+                "severity": "P2",
+                "explanation": {
+                  "what": "Cached kill",
+                  "whyHere": "Reused cache",
+                  "whatToDo": "Rerun"
+                },
+                "source": {
+                  "check": "lens.correctness",
+                  "version": "1@careful"
+                }
+              }
+            }
+          }
+        },
+        "verifications": {
+          "base..accepted": {
+            "lens.correctness@1@careful": {
+              "4190289e598badf0": {
+                "verdict": "confirmed",
+                "reason": "The cache is read before the cold flag.",
+                "answers": {
+                  "code": "yes",
+                  "guard": "no",
+                  "base": "no"
+                },
+                "executor": "llm",
+                "model": "faux/judge",
+                "version": "4190289e598badf0"
+              }
+            }
+          }
+        }
+      }
+    },
+    "versions": {
+      "base..accepted": 3
+    }
+  }
+}

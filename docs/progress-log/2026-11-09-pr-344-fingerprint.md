@@ -1,0 +1,9 @@
+A fix pass on [pull request #344](https://github.com/melian-agent/melian/pull/344), for the combined Actions round's P1 block `75e0b5699cefab03`, `identity-missing-input`. The maintainer ruled on 2026-11-09, on pull request #344: put the proposal's root in the fingerprint, strip nothing else, and prove a round that only adds a proposal publishes.
+
+`Verdict.fingerprint()` stripped `likelyDismissedAs`. Publication keys a head's posted verdict by that fingerprint, so a later round of the same head that only added a proposal read as already posted, and no review followed. Commit 0747ecf2 stops stripping it; `dismissal`, `pastDismissals`, `decidedBy` and `guardrail` stay out. [Issue #334](https://github.com/melian-agent/melian/issues/334) now covers only whether an inheritance changes the fingerprint.
+
+Two tests failed at 8686cef7 for that reason and pass after the fix. In core, verdicts that differ only by a proposal's root hash apart, and a changed dismissal still hashes alike; it replaces the test that pinned the old behaviour. In the pipeline, a second publication of the same head after a proposal-only round posts a round-two review under the new fingerprint, and the ledger's stamp names it. The ledger carried the likely-match line before the fix too, because it renders the current verdict on every publish. The finding's inline comment does not gain the line, since planning never reposts an open finding.
+
+No fixture or reopen test pinned a fingerprint of a verdict with a proposal; the proposal shape has not shipped.
+
+Commit 637793b0's inventory covers aafa199b...0747ecf2: 827 mutants, none omitted, none new or moved, since the fix only deletes lines. Markdown changed, so all 676 test-backed claims were rerun at 0747ecf2 against their named tests alone, and all were killed.

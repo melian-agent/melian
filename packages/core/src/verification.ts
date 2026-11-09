@@ -12,6 +12,16 @@ const reason = Type.String({ minLength: 1, maxLength: 2000, pattern: "\\S" });
 /** The JSON Schema of the verifier's `code`, `guard`, and `base` answers. */
 export const verificationAnswersSchema = Type.Object({ code: answer, guard: answer, base: answer }, strict);
 
+/**
+ * The JSON Schema of the verifier's sameness answers: for each dismissed finding it was shown, by ID, whether the claim
+ * is the same defect.
+ */
+export const verificationMatchesSchema = Type.Record(
+	Type.String({ pattern: "^[0-9a-f]{16}$" }),
+	Type.Union([Type.Literal("same"), Type.Literal("different")]),
+	strict,
+);
+
 /** The JSON Schema of a {@link StoredLowering}: the lens's severity, the one the verifier lowered it to, and why. */
 export const loweringSchema = Type.Object({ from: severitySchema, to: severitySchema, reason }, strict);
 
@@ -28,6 +38,7 @@ export const verificationSchema = Type.Object(
 		answers: Type.Optional(verificationAnswersSchema),
 		evidence: Type.Optional(Type.Array(evidenceLocationSchema, { minItems: 1 })),
 		lowered: Type.Optional(loweringSchema),
+		matches: Type.Optional(verificationMatchesSchema),
 		executor: Type.Literal("llm"),
 		model: Type.String({ pattern: "^[^/\\s]+/[^\\s]+$" }),
 		version: Type.String({ minLength: 1 }),
@@ -103,9 +114,14 @@ export class VerificationRecord {
 	/**
 	 * The record after `report` arrives. The stronger verdict wins whole. On equal verdicts the record keeps the higher
 	 * severity, with the reason and evidence of the report that gave it, so a later equal report never weakens a stored
-	 * one, in either order.
+	 * one, in either order. Sameness answers are the latest report's, since each one answers every dismissed finding.
 	 */
 	after(report: Verification): Verification {
+		const kept = this.#stronger(report);
+		return report.matches === undefined ? kept : { ...kept, matches: report.matches };
+	}
+
+	#stronger(report: Verification): Verification {
 		const { stored } = this;
 		if (stored === undefined) return report;
 		if (verdictStrength[stored.verdict] !== verdictStrength[report.verdict])
