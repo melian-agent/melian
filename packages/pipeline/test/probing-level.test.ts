@@ -43,6 +43,7 @@ import { recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns } from "../src/probing.ts";
 import { createReviewRegistry } from "../src/review.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
@@ -1421,6 +1422,37 @@ describe("a level that probes", () => {
 		);
 		expect((await run).verdict.counted()).toHaveLength(1);
 		expect(judged[0]).toBe("faux-1");
+	});
+
+	it("attaches a repeat review to a verification stored before reruns joined its key, for a level without probes", async () => {
+		const fake = createFakeModels();
+		let judged = 0;
+		const judge: ScriptedReply = (messages) => {
+			judged++;
+			return scriptVerifier(messages);
+		};
+		const { probe: _, ...plain } = finding("p0");
+		const scripts = {
+			planner: [],
+			prober: [],
+			others: [
+				{ match: "Melian adversarial verifier", replies: [judge, judge] },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const first = await review(scripts, { fake, lens: (lens) => lens });
+		expect((await first.run).verdict.counted()).toHaveLength(1);
+		expect(judged).toBe(2);
+		// The key as the build before reruns joined it wrote it: the same fields, in the same order, without reruns.
+		const root = await harness!.harness.root(backgroundContext);
+		await root.commit(async (tx) => {
+			const entry = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(first.changeset.revision)]!;
+			const { reruns: __, ...older } = JSON.parse(entry.verification!.input) as Record<string, unknown>;
+			entry.verification = { ...entry.verification!, input: JSON.stringify(older) };
+		}, backgroundContext);
+		const again = await review(scripts, { fake, lens: (lens) => lens });
+		expect((await again.run).verdict.counted()).toHaveLength(1);
+		expect(judged).toBe(2);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
