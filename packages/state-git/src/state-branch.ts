@@ -432,6 +432,14 @@ export class StateBranch {
 		return this.#options.transferMs ?? defaultTransferMs;
 	}
 
+	// Whether `tip`'s history holds `commit`.
+	async #contains(tip: string, commit: string): Promise<boolean> {
+		const result = await git(this.#options.repoRoot, ["merge-base", "--is-ancestor", commit, tip], {
+			env: untranslated,
+		});
+		return result.code === 0;
+	}
+
 	// A fetch or push, which reaches the remote, under its deadline.
 	#transfer(args: readonly string[]) {
 		return git(this.#options.repoRoot, args, { env: untranslated, deadlineMs: this.#transferMs });
@@ -639,9 +647,10 @@ export class StateBranch {
 		];
 		const result = await this.#transfer(args);
 		if (result.timedOut === true) {
-			// The transport git started can finish the push after git was stopped, so the branch says whether it landed.
+			// The transport git started can finish the push after git was stopped, so the branch says whether it landed:
+			// its tip is the commit, or a later run's push built on it.
 			const now = await this.#fetch().catch(() => undefined);
-			if (now === commit) return undefined;
+			if (now !== undefined && (await this.#contains(now, commit))) return undefined;
 			throw new StateBranchError(
 				"pushFailed",
 				`git push of melian/state ran past its deadline of ${this.#transferMs} ms`,

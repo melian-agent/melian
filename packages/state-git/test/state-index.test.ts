@@ -91,6 +91,26 @@ describe("StateIndex", () => {
 			"its key is not a commitment",
 		],
 		["changesets of null", indexOf(null), "its changesets are not an object"],
+		[
+			"a key this build does not know at its root",
+			JSON.stringify({ version: 1, changesets: {}, epoch: 2 }),
+			'it holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a changeset's record",
+			indexOf({ a: { lease: stored, written: 1, epoch: 2 } }),
+			'the record of a holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a lease",
+			indexOf({ a: { lease: { ...stored, epoch: 2 } } }),
+			'the lease of a holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a lease's holder",
+			indexOf({ a: { lease: { ...stored, holder: { ...stored.holder, host: "h" } } } }),
+			'the holder of a\'s lease holds the key "host", which this build of Melian does not know',
+		],
 		["a record of null", indexOf({ a: null }), "the record of a is not an object"],
 		[
 			"a key with a commitment at its end",
