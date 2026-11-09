@@ -1332,7 +1332,7 @@ function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 function probesWith(probe: NonNullable<LensRun["probe"]>): string {
 	const { writer, trustWriters, timeout, read } = probe.environment;
 	const trust = writer.trusted ? `by ${writer.by}` : "untrusted";
-	return `probes ${trust}${trustWriters ? "" : " untrusted writers"} ${timeout ?? probeLimits.timeout.default}ms reading ${read.join(", ")} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
+	return `probes ${trust}${trustWriters ? "" : " untrusted writers"} ${timeout ?? probeLimits.timeout.default}ms reading ${JSON.stringify(read)} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
 }
 
 function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
