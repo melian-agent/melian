@@ -162,6 +162,23 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the wanted route.");
 		expect(doc?.walkthroughRoutes?.[revision]).toBe("faux/scripted@");
 	});
+	it("keeps a walkthrough stored without a route between its reads and its commit, and asks no model", async () => {
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const before = models.provider.state.callCount;
+		const doc = await summarize({
+			unlockModels: async () => {
+				await root.commit(async (tx) => {
+					(await tx.doc(VerdictDocument, root.id)).walkthroughs = {
+						[revision]: { summary: "Stored before routes.", files: [] },
+					};
+				}, context);
+			},
+		});
+		expect(models.provider.state.callCount).toBe(before);
+		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Stored before routes.");
+		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
+	});
 	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
 		const revision = Revision.key(changeset.revision);
 		scriptConversations(models, [
