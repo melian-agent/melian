@@ -50,6 +50,9 @@ export type VerificationCandidate = {
 	// The dismissed findings the verifier judges each claim against for sameness; absent when none qualifies, so a
 	// candidate without them keeps the attach key it had before Melian asked.
 	dismissed?: DismissedPredecessor[];
+	// The identity of each dismissal in `dismissed` when the candidate formed, by root ID. Left out of the candidate's
+	// identity, so a wave outcome a final step reuses links only the dismissals that wave's verifier was shown.
+	dismissals?: Record<string, string>;
 };
 // A root dismissal a candidate may restate, as the verifier sees it: its claim, never its dismissal's reason.
 export type DismissedPredecessor = { id: string; failureScenario?: string; evidence?: FindingEvidence };
@@ -371,7 +374,7 @@ export async function startVerification(
 }
 
 /** What identifies a candidate's verification: the candidate less its claims' stored verdicts and speaker. */
-export function candidateIdentity(candidate: VerificationCandidate) {
+export function candidateIdentity({ dismissals: _, ...candidate }: VerificationCandidate) {
 	return {
 		...candidate,
 		state: {

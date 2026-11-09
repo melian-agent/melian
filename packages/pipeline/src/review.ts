@@ -1970,7 +1970,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		let decisionsAtBase: string | undefined;
 		let designAtBase: VerificationCandidate["designAtBase"];
 		const predecessors = await Predecessors.open(harness, root, reviewed, state, context);
-		const restating: Restating[] = [];
+		const restating = new Map<string, Restating>();
 		for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 			if (defect.speaker.properties.status === "dismissed") continue;
 			const candidateState = VerificationState.from(defect.speaker).toJSON();
@@ -2041,7 +2041,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				}
 			}
 			const restatement = await predecessors.of(defect);
-			if (restatement !== undefined) restating.push(restatement.restating);
+			if (restatement !== undefined) restating.set(defect.speaker.id, restatement.restating);
 			candidates.push({
 				...(designClaim ? { decisionsAtBase, designAtBase } : {}),
 				key: defect.speaker.id,
@@ -2054,7 +2054,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					coReported: !defect.lensOnly(),
 					silent: defect.silentAt(configFor),
 				},
-				...(restatement === undefined ? {} : { dismissed: restatement.dismissed }),
+				...(restatement === undefined
+					? {}
+					: {
+							dismissed: restatement.dismissed,
+							dismissals: Object.fromEntries(
+								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
+							),
+						}),
 			});
 		}
 		return { storedFindings, policies, candidates, restating };
@@ -2065,6 +2072,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// Verifies each lens's claims as its lens ends, while slower lenses run. A defect a later lens joins is a new
 	// candidate, which the next wave verifies again with every sighting; the final step reuses each wave outcome whose
 	// candidate it still holds. Any failure here leaves the work to the final step.
+	const startedWaves: number[] = [];
 	const verifyAsLensesEnd = async (task: number, done: Promise<unknown>) => {
 		if (request.plan?.refusal("verifier") !== undefined) return;
 		const record = await harness.getTask(task as TaskId, context);
@@ -2110,14 +2118,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					const { producers } = account(manifest, settledEnded, { records: [], skippable: [] }, options);
 					const { candidates } = await candidatesFor(producers, ended, runs.lenses);
 					// startWave keeps only the candidates no wave already stands for.
-					if (candidates.length > 0 && candidates.every((candidate) => candidate.route.length > 0))
-						await startWave(
-							harness,
-							{ root, revision: runs.revision, version: verifierVersion, candidates },
-							task,
-							context,
-							unlockModels,
-						);
+					const started =
+						candidates.length > 0 && candidates.every((candidate) => candidate.route.length > 0)
+							? await startWave(
+									harness,
+									{ root, revision: runs.revision, version: verifierVersion, candidates },
+									task,
+									context,
+									unlockModels,
+								)
+							: undefined;
+					if (started !== undefined) startedWaves.push(started);
 				}
 				await changed;
 			}
@@ -2150,13 +2161,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				verifyAsLensesEnd,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
-	// Every wave settles before the next step starts, so no step of the host's overlaps a wave's verifier.
+	// Every wave this review started settles before the next step starts, so no step of the host's overlaps its
+	// verifier. Another run's wave is waited for only when the final step reuses it.
+	for (const wave of startedWaves) await harness.waitForTask(wave as TaskId, context);
 	const waves = VerificationWaves.of(
 		await harness.snapshot(VerificationWavesDocument, root, context),
 		reviewed,
 		lensTask,
 	);
-	for (const wave of waves.tasks()) await harness.waitForTask(wave as TaskId, context);
 	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);
 	const stored = new Map(ran.lenses.map((run) => [run.key, run]));
 	const settling = lenses.map((lens) => settle(stored.get(lens.key) ?? lens, lensResult, rule));
@@ -2277,6 +2289,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
+	// Another review's final task retired a wave this one started, so that review decides its claims, as it would had it
+	// replaced this review's final task.
+	const indexNow = await harness.snapshot(ReviewIndex, root, context);
+	const wavesNow = await harness.snapshot(VerificationWavesDocument, root, context);
+	const overtaken =
+		indexNow?.reviews[reviewed]?.verification !== undefined &&
+		startedWaves.some((wave) => !VerificationWaves.owns(indexNow, wavesNow, reviewed, wave));
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -2301,6 +2320,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				reason: refusal ?? "the verifier has no model with credentials",
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
+		} else if (overtaken) {
+			verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
 		} else {
 			const reused: Record<string, VerificationResult[string]> = {};
 			for (const candidate of candidates) {
@@ -2309,7 +2330,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					candidate.state.claims.map(claimKey),
 					verifierVersion,
 				);
-				const record = wave === undefined ? undefined : await harness.getTask(wave as TaskId, context);
+				// A wave another run started, a crashed one's included, is waited for only where it would be reused.
+				const record = wave === undefined ? undefined : await harness.waitForTask(wave as TaskId, context);
 				const outcome =
 					record?.state.status === "terminal" && record.state.outcome.status === "completed"
 						? (record.state.outcome.result as VerificationResult)[candidate.key]
@@ -2318,6 +2340,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				// A rerun asks again for what a wave left unanswered, as it would of a final task.
 				if (options.rerun === true && (outcome.status !== "done" || verifierRefuses(outcome.model))) continue;
 				reused[candidate.key] = outcome;
+				const shown = (record!.input as unknown as VerificationInput).candidates.find(
+					(each) => each.key === candidate.key,
+				)?.dismissals;
+				const fresh = restating.get(candidate.key);
+				// This review's wave judged the dismissals it was shown, and one replaced since is not the one it judged. An
+				// earlier review's wave is reused as an attached final task is, under the dismissals this review read.
+				if (fresh !== undefined && startedWaves.includes(wave!))
+					restating.set(candidate.key, {
+						...fresh,
+						dismissed: fresh.dismissed.map(({ id }) => ({ id, dismissal: shown?.[id] ?? "" })),
+					});
 			}
 			const verificationInput: VerificationInput = {
 				root,
@@ -2399,12 +2432,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
 		const selection = selectionOf(lenses, escalateAt);
 		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
-		if (verifying !== undefined && entry?.verification?.task !== verifying) return;
+		if (overtaken || (verifying !== undefined && entry?.verification?.task !== verifying)) return;
 		await recordInheritances(
 			tx,
 			root,
 			reviewed,
-			verificationCheck?.status === "ran" ? restating : [],
+			verificationCheck?.status === "ran" ? [...restating.values()] : [],
 			verifierVersion,
 		);
 	}, context);
