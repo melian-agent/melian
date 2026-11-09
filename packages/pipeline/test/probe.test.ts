@@ -583,6 +583,28 @@ describe("Probe.open with a head's allowlist", () => {
 		await probe.close();
 	});
 
+	it("links no install, and leaves no node_modules, when probe.read leaves it out", async () => {
+		const { sandbox } = passthrough();
+		mkdirSync(join(checkout, "node_modules", "dep"), { recursive: true });
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead([])));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		expect(existsSync(join(probe.policy.read[0]!, "node_modules"))).toBe(false);
+		await probe.close();
+	});
+
+	it("refuses an allowed copy holding a link out of the tree, which only the second walk sees", async () => {
+		const { sandbox } = passthrough();
+		const outside = join(scratch, "outside");
+		mkdirSync(outside);
+		symlinkSync(outside, join(checkout, "generated", "out"));
+		const error = await refusal({ script: "" }, options(sandbox, atHead(["generated"])));
+		expect(error).toMatchObject({
+			code: "invalidProbe",
+			message: "the head's link generated/out leads outside its tree or into its node_modules",
+		});
+		expect(readdirSync(outside)).toEqual([]);
+	});
+
 	it("opens a head whose links stay inside its tree", async () => {
 		const { sandbox } = passthrough();
 		headWithLinks((at) => {
