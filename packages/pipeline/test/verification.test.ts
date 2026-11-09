@@ -2643,6 +2643,21 @@ describe("verification ownership and budgets", () => {
 			await harness.waitForTask(first, context);
 		}
 	});
+	it("starts a final verification for a revision the index holds no entry for", async () => {
+		const stored = await input();
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision];
+		}, context);
+		const created = await startVerification(harness, stored, selection, false, context);
+		expect(created).toBeDefined();
+		expect((await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]).toEqual({
+			lenses: selection,
+			verification: { task: created, input: expect.any(String) },
+		});
+	});
 	it("starts fresh when a candidate's claim changes, though its key and its count of claims do not", async () => {
 		const stored = await input();
 		const revision = Revision.key(changeset.revision);
