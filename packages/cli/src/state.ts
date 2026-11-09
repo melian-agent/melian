@@ -1,6 +1,4 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { loadSecrets, stateKeyProvider, userFiles, visibleText } from "@melian-agent/core";
 import {
@@ -47,15 +45,9 @@ async function locate(
 	return { kind: "state", directory: join(dirname(path), "state") };
 }
 
-// This clone's name on the state branch, made once, so a crashed run's lease is this clone's to take over.
-async function holder(directory: string): Promise<string> {
-	const path = join(directory, "holder");
-	const existing = await readFile(path, "utf8").catch(() => undefined);
-	if (existing?.trim()) return existing.trim();
-	await mkdir(directory, { recursive: true });
-	await writeFile(path, `${randomUUID()}\n`, { flag: "wx" }).catch(() => {});
-	return (await readFile(path, "utf8")).trim();
-}
+// The state branch names a clone by this label and the ID it mints in the copies directory. index.json is not sealed,
+// so the label says nothing about the host.
+const holder = "melian";
 
 // The writers' key from the secrets files, as 64 hex digits or 32 bytes in base64; undefined when none names one.
 async function stateKey(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Uint8Array | undefined> {
@@ -227,7 +219,7 @@ export class ChangesetStore {
 			repoRoot,
 			remote: "origin",
 			directory: location.directory,
-			holder: await holder(location.directory),
+			holder,
 			key: await stateKey(repoRoot, io.env),
 			validate,
 		});
@@ -329,7 +321,7 @@ export class ChangesetStore {
 			repoRoot,
 			remote: "origin",
 			directory,
-			holder: await holder(directory),
+			holder,
 			key: await stateKey(repoRoot, io.env),
 			validate,
 		});
