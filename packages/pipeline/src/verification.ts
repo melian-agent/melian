@@ -307,6 +307,22 @@ export async function startVerification(
 			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
 				return previous.task as TaskId<VerificationResult>;
 		}
+		// Another review's final task may have retired a wave this input reuses; its claims then hold no verdict.
+		const standing = VerificationWaves.of(
+			await tx.doc(VerificationWavesDocument, input.root),
+			Revision.key(input.revision),
+			known?.task,
+		);
+		for (const candidate of input.candidates)
+			if (
+				input.reused?.[candidate.key] !== undefined &&
+				standing.standing(
+					JSON.stringify(candidateIdentity(candidate)),
+					candidate.state.claims.map(claimKey),
+					input.version,
+				) === undefined
+			)
+				return undefined;
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
 		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it, and a
 		// wave that has not finished, which another review's watcher may have started, loses its authority to write.

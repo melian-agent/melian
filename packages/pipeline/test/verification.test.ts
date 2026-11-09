@@ -47,8 +47,9 @@ import { LensDocument, lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
-import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
+import { candidateIdentity, startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -2791,7 +2792,25 @@ describe("verification ownership and budgets", () => {
 		};
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
-		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const indexed = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const selection = indexed.lenses;
+		// A finished wave stands for the reused candidate, as one would that verified it.
+		await root.commit(async (tx) => {
+			const reused = next.candidates[0]!;
+			(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision] = {
+				lensTask: indexed.task!,
+				ended: {},
+				waves: [
+					{
+						task: indexed.verification!.task,
+						version: "reuse",
+						candidates: [
+							{ key: JSON.stringify(candidateIdentity(reused)), claims: reused.state.claims.map(claimKey) },
+						],
+					},
+				],
+			};
+		}, context);
 		const id = (await startVerification(harness, next, selection, false, context))!;
 		const finished = harness.waitForTask(id, context);
 		try {

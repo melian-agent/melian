@@ -726,6 +726,32 @@ describe("verification as each lens ends", () => {
 		expect(asked).toHaveLength(1);
 	});
 
+	it("starts no final verification that reuses a wave another review's final verification retired", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		expect(Object.keys(final.reused ?? {})).toHaveLength(1);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+		}, context);
+		// Another review formed the same claim's candidate differently, so its final task clears the claim and retires the wave.
+		const other = {
+			...final,
+			reused: undefined,
+			candidates: final.candidates.map((candidate) => ({
+				...candidate,
+				budget: { ...candidate.budget, tools: candidate.budget.tools + 1 },
+			})),
+		};
+		expect(await startVerification(harness, other, entry.lenses, false, context)).toBeDefined();
+		expect(await startVerification(harness, final, entry.lenses, false, context)).toBeUndefined();
+	});
+
 	it("leaves a wave still pending when the final verification starts no authority to verify", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);
@@ -741,7 +767,7 @@ describe("verification as each lens ends", () => {
 		// Another review's watcher started this wave just before the final verification; it has not run yet.
 		const late = await startWave(harness, { ...final, version: "late" }, entry.task!, context);
 		expect(late).toBeDefined();
-		await startVerification(harness, final, entry.lenses, false, context);
+		await startVerification(harness, { ...final, reused: undefined }, entry.lenses, false, context);
 		expect((await harness.waitForTask(late!, context)).state.outcome).toEqual({ status: "completed", result: {} });
 	});
 
