@@ -11,6 +11,7 @@ import {
 	type ClaimProbe,
 	claimKey,
 	headTreeLimits,
+	type ProbingEnvironment,
 	probeFailed,
 	proberInstructions,
 	probingLimits,
@@ -40,7 +41,11 @@ afterEach(() => {
 });
 
 const nonce = "0123456789abcdef01234567";
-const reviewer = { writer: { trusted: true, by: "reviewer" }, trustWriters: true } as const;
+const reviewer: ProbingEnvironment = {
+	writer: { trusted: true, by: "reviewer" },
+	trustWriters: true,
+	read: ["node_modules"],
+};
 // What a probe left in this test's temporary directory, which nothing else writes.
 const left = () => readdirSync(tmpdir()).length;
 
@@ -252,7 +257,7 @@ describe("runHeadProbe", () => {
 			await runHeadProbe(
 				{ script: "process.exit(0);\n" },
 				{ repoRoot: repo, head },
-				{ writer: { trusted: false, detail: "a fork's head" }, trustWriters: true },
+				{ writer: { trusted: false, detail: "a fork's head" }, trustWriters: true, read: ["node_modules"] },
 				unconfinedSandbox(),
 			),
 		).toEqual({ refused: "the head's code may not run here: a fork's head" });

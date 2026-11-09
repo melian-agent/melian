@@ -1330,9 +1330,9 @@ function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 
 // A probing run's prober route and what its probes run under, so a review with another prober or writer runs again.
 function probesWith(probe: NonNullable<LensRun["probe"]>): string {
-	const { writer, trustWriters, timeout } = probe.environment;
+	const { writer, trustWriters, timeout, read } = probe.environment;
 	const trust = writer.trusted ? `by ${writer.by}` : "untrusted";
-	return `probes ${trust}${trustWriters ? "" : " untrusted writers"} ${timeout ?? probeLimits.timeout.default}ms with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
+	return `probes ${trust}${trustWriters ? "" : " untrusted writers"} ${timeout ?? probeLimits.timeout.default}ms reading ${read.join(", ")} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
 }
 
 function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {

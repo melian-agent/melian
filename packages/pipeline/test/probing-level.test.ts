@@ -1547,6 +1547,16 @@ describe("a level that probes", () => {
 		);
 	});
 
+	it("runs a probing lens again when the base policy's probe.read changes, so its probes read what policy allows now", async () => {
+		const fake = createFakeModels();
+		const scripts = { planner: plan, prober: probing(failing) };
+		const first = await review(scripts, { fake, config: { probe: { read: ["node_modules"] } } });
+		await first.run;
+		const again = await review(scripts, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } });
+		await again.run;
+		expect(again.requests[planner]).toHaveLength(2);
+	});
+
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
 		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
 		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();

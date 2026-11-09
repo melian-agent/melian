@@ -360,6 +360,7 @@ export async function review(
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
+				writer,
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
