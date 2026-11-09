@@ -59,7 +59,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
-import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
+import { checksExtensionFor, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -606,6 +606,8 @@ export function createReviewRegistry(): Registry {
 export interface ReviewHarnessOptions {
 	readonly retry?: boolean;
 	readonly checkout?: string;
+	/** The host's environment, whose GitHub token the checks download pinned tools with. Without it, they send none. */
+	readonly environment?: NodeJS.ProcessEnv;
 	/** The decider triage asks, installed as `decisionExtension`; without it, every lens runs at its default level. */
 	readonly decider?: Decider;
 }
@@ -642,7 +644,7 @@ export class ReviewHarness {
 		const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
 		const registry = createReviewRegistry();
 		const { checkout, decider } = options;
-		if (checkout !== undefined) registry.install(checksExtension);
+		if (checkout !== undefined) registry.install(checksExtensionFor(options.environment ?? {}));
 		if (decider !== undefined) registry.install(decisionExtension(decider));
 		const env = checkout === undefined ? {} : { env: () => createNodeExecutionEnv(checkout) };
 		const recorder = new ConversationUsageRecorder(storage);

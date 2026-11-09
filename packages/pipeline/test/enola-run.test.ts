@@ -38,6 +38,7 @@ async function fixture(cached = true, timeout = 30) {
 	const tools = await ToolProvisioning.open(repo, {
 		root: join(repo, "cache"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: async () => new Response(bytes),
 		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: fields }, misses: [] })),
 	});
