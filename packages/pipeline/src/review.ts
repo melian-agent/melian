@@ -35,6 +35,7 @@ import {
 	type ReviewPlan,
 	Revision,
 	resolveModelForTier,
+	resolveModelRoute,
 	type ScrutinyLevel,
 	type Severity,
 	Standards,
@@ -847,11 +848,11 @@ export class ChangePrompt {
 // credentials for, in routing order, or why there are none.
 type TierRoute = { readonly route: ModelReference[] } | { readonly unrouted: string };
 
-async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModels): Promise<TierRoute> {
+async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRoute> {
 	const models = modelsOf(review);
-	let route: ReturnType<typeof resolveModelForTier>;
+	let route: ReturnType<typeof resolveModelRoute>;
 	try {
-		route = resolveModelForTier(tier, config.models);
+		route = resolveModelRoute(level.route, level.tier, level.at, level.noun);
 	} catch (error) {
 		if (error instanceof ModelRoutingError) return { unrouted: error.message };
 		throw error;
@@ -864,6 +865,72 @@ async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModel
 	if (available.length > 0) return { route: available };
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	return { unrouted: `none of ${tried} is known with credentials` };
+}
+
+// The route one level of a lens runs on, keyed so that levels sharing a route resolve it once: the lens's own route
+// where it names one, as the plan resolved it for that level, or else its tier's. `on` names it in a message, and
+// `refused` says the plan refuses the level there.
+class LevelRoute {
+	readonly key: string;
+	readonly on: string;
+	readonly tier: string;
+	readonly at: string;
+	readonly noun: string;
+	readonly route: ModelRoute | undefined;
+	readonly refused: boolean;
+
+	private constructor(fields: Omit<LevelRoute, never>) {
+		this.key = fields.key;
+		this.on = fields.on;
+		this.tier = fields.tier;
+		this.at = fields.at;
+		this.noun = fields.noun;
+		this.route = fields.route;
+		this.refused = fields.refused;
+	}
+
+	static of(lens: Lens, level: ScrutinyLevel, config: MelianConfig, plan: ReviewPlan | undefined): LevelRoute {
+		const at = `lenses.${lens.name}.route`;
+		const planned = plan?.lensRoute(lens.name, lens.scope, level);
+		if (plan !== undefined && planned !== undefined) {
+			const [first, ...rest] =
+				planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
+			return new LevelRoute({
+				key: `${at} ${lens.scope} ${level}`,
+				on: at,
+				tier: at,
+				at,
+				noun: at,
+				route: {
+					...(planned.thinking === undefined ? {} : { thinking: planned.thinking }),
+					...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
+				},
+				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
+			});
+		}
+		const own = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined;
+		if (plan === undefined && own !== undefined) {
+			return new LevelRoute({
+				key: `${at} ${lens.scope}`,
+				on: at,
+				tier: at,
+				at,
+				noun: at,
+				route: own,
+				refused: false,
+			});
+		}
+		const { tier } = lens.level(level);
+		return new LevelRoute({
+			key: tier,
+			on: tier,
+			tier,
+			at: `models.${tier}`,
+			noun: `the ${tier} tier`,
+			route: config.models[tier],
+			refused: plan?.refusal(tier) !== undefined,
+		});
+	}
 }
 
 // Why a lens that reads functions got none in its prompt: it reads them with read_file, as its instructions say.
@@ -1671,33 +1738,51 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	spans.step("bands");
 	const bands = await bandsOf(covering, options);
 	spans.step("routes");
-	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
-	const routes = new Map(
-		await Promise.all([...tiers].map(async (tier) => [tier, await routeOf(tier, config, models)] as const)),
-	);
-	// A tier the plan refuses has no route, yet triage may still choose it: the lens then records the plan's refusal, as
-	// it would at that level, rather than quietly run at another.
 	const { plan } = request;
-	const routed = (tier: LensTier) => "route" in routes.get(tier)! || plan?.refusal(tier) !== undefined;
-	// A lens runs only at a level its band holds whose tier reaches a model; with none, the review fails before any lens
+	const levelRoutes = new Map(
+		covering.flatMap(({ lens }) =>
+			lens
+				.declaredLevels()
+				.map(
+					(level) => [`${lens.name}@${lens.version}@${level}`, LevelRoute.of(lens, level, config, plan)] as const,
+				),
+		),
+	);
+	const routeKeys = new Map([...levelRoutes.values()].map((level) => [level.key, level]));
+	const resolved = new Map(
+		await Promise.all(
+			[...routeKeys.values()].map(async (level) => [level.key, await routeOf(level, models)] as const),
+		),
+	);
+	const routeAt = (lens: Lens, level: ScrutinyLevel) => levelRoutes.get(`${lens.name}@${lens.version}@${level}`)!;
+	const routeFor = (lens: Lens, level: ScrutinyLevel) => resolved.get(routeAt(lens, level).key)!;
+	// A route the plan refuses has none, yet triage may still choose it: the lens then records the plan's refusal, as
+	// it would at that level, rather than quietly run at another.
+	const routed = (lens: Lens) => (_: LensTier, level: ScrutinyLevel) =>
+		"route" in routeFor(lens, level) || routeAt(lens, level).refused;
+	// A lens runs only at a level its band holds whose route reaches a model; with none, the review fails before any lens
 	// runs, rather than run it below its floor.
-	const unrouted = (tier: LensTier) => {
-		const route = routes.get(tier);
-		return route !== undefined && "unrouted" in route ? route.unrouted : undefined;
+	const unrouted = (lens: Lens) => (_: LensTier, level: ScrutinyLevel) => {
+		const route = routeFor(lens, level);
+		return "unrouted" in route ? route.unrouted : undefined;
 	};
 	// Levels the band holds that triage could not offer, by lens, noted on its record so coverage never shrinks unseen.
 	const unrunnable = new Map<Lens, string[]>();
 	const runnable = new Map(
 		covering.map(({ lens }) => {
 			const band = bands.get(lens)!;
-			const levels = lens.runnableLevels(band, routed);
-			if (levels.length === 0) throw noLevel(lens.name, band, lens.unrunnable(band, unrouted));
+			const levels = lens.runnableLevels(band, routed(lens));
+			if (levels.length === 0) throw noLevel(lens.name, band, lens.unrunnable(band, unrouted(lens)));
 			// The level the lens runs at without a decision must run, as it had to before triage, so a missing model
 			// fails the review rather than quietly moving the lens to a lighter level.
 			const fallback = band.bound(defaultScrutinyLevel, band.holds(lens.declaredLevels()));
 			if (fallback !== "skip" && !levels.includes(fallback)) {
 				const { tier } = lens.level(fallback);
-				throw noLevel(lens.name, band, `its default level, ${fallback}, runs on ${tier}, and ${unrouted(tier)}`);
+				throw noLevel(
+					lens.name,
+					band,
+					`its default level, ${fallback}, runs on ${routeAt(lens, fallback).on}, and ${unrouted(lens)(tier, fallback)}`,
+				);
 			}
 			// Without a decider the lens runs at its default level, so a level it could not have chosen changes nothing.
 			const dropped =
@@ -1708,7 +1793,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lens,
 				dropped.map((level) => {
 					const { tier } = lens.level(level);
-					return `triage could not choose ${level}, since ${level} runs on ${tier}, and ${unrouted(tier)}`;
+					return `triage could not choose ${level}, since ${level} runs on ${routeAt(lens, level).on}, and ${unrouted(lens)(tier, level)}`;
 				}),
 			);
 			return [lens, levels] as const;
@@ -1853,10 +1938,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				name: lens.name,
 				version: lens.version,
 				level,
-				...(config.models[settings.tier]?.thinking === undefined
+				...(routeAt(lens, level).route?.thinking === undefined
 					? {}
-					: { thinking: config.models[settings.tier]!.thinking! }),
-				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
+					: { thinking: routeAt(lens, level).route!.thinking! }),
+				route: [...(routeFor(lens, level) as { route: ModelReference[] }).route],
 				verify: settings.verify,
 				instructions:
 					ruled.renderInstructions(
@@ -1909,7 +1994,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			continue;
 		}
 		const next = lens.escalation(level, bands.get(lens)!);
-		const nextTier = next === undefined ? undefined : lens.level(next).tier;
 		// The plan judges the escalation's next level as it judged the first: a level it refuses caps the escalation.
 		const nextRefusal = next === undefined ? undefined : plan?.judge(lens.name, next, undefined, lens.scope).refusal;
 		const escalation =
@@ -1917,8 +2001,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? {}
 				: nextRefusal !== undefined
 					? { cap: `since the plan refuses ${next}: ${nextRefusal}` }
-					: nextTier !== undefined && !("route" in routes.get(nextTier)!)
-						? { cap: `since ${next} runs on ${nextTier}, which reaches no model with credentials` }
+					: !("route" in routeFor(lens, next))
+						? {
+								cap: `since ${next} runs on ${routeAt(lens, next).on}, which reaches no model with credentials`,
+							}
 						: { next: await runAt(next) };
 		lenses.push({ ...first, escalation });
 	}

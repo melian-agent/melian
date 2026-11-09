@@ -91,6 +91,11 @@ const user = (body: string) =>
 		"}",
 	);
 
+// Melian's own lenses as the fake model's routes run them: the test routes every tier, so no lens keeps its own route.
+function unrouted(lenses: MelianConfig["lenses"]): MelianConfig["lenses"] {
+	return Object.fromEntries(Object.entries(lenses).map(([name, { route: _, ...settings }]) => [name, settings]));
+}
+
 let repo: string;
 let fake: FakeModels;
 let harness: Harness;
@@ -2093,7 +2098,7 @@ describe("reviewChangeset", () => {
 			);
 
 			await reviewed({
-				config: { ...melian, models: config.models },
+				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },
 				lenses: await Lens.load(
 					repo,
 					base,
@@ -3361,7 +3366,7 @@ describe("adjudication", () => {
 			);
 
 			const { verdict } = await reviewed({
-				config: { ...melian, models: config.models },
+				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },
 				checks: [
 					{ name: "static.enola", status: "ran" },
 					{ name: "static.mutation", status: "ran" },

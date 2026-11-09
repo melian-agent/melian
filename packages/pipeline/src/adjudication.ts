@@ -156,7 +156,8 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 13,
+	version: 14,
+	// Version 14 lets a provenance's plan hold lens routes; a version 13 plan has none and reads unchanged.
 	// Version 13 lets a check record carry caveats; a version 12 verdict has none and reads unchanged.
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
@@ -228,7 +229,8 @@ export const AdjudicationTask = defineTask<
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
 	// so its task decides by snippet, as it did. Version 6 lets a check record carry caveats; an older one has none.
-	version: 6,
+	// Version 7 lets the provenance's plan hold lens routes; a version 6 input has none and reads unchanged.
+	version: 7,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
 		input:

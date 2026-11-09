@@ -1229,8 +1229,30 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 
 		const doctor = melian(repo, ["doctor"]);
 
+		const inverted =
+			"warn  levels      correctness: careful runs on light, below quick's medium; deep allows 400,000 tokens, fewer than careful's 500,000; set the level's own tier or budget";
+		expect(doctor.stdout).toContain(inverted);
+		// A lens melian.yaml configures without a route still compares its tiers.
+		writeFileSync(join(repo, "melian.yaml"), 'lenses:\n  correctness:\n    paths: ["**"]\n');
+		expect(melian(repo, ["doctor"]).stdout).toContain(inverted);
+	});
+
+	it("compares only budgets between the levels of a lens that names its own route", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		mkdirSync(join(repo, ".melian/lenses/correctness"), { recursive: true });
+		writeFileSync(
+			join(repo, ".melian/lenses/correctness/LENS.md"),
+			"---\nname: correctness\nextends: correctness\ntier: light\nbudget: { tokens: 500k }\n---\n",
+		);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"lenses:\n  correctness:\n    route: { model: anthropic/claude-haiku-4-5 }\n",
+		);
+
+		const doctor = melian(repo, ["doctor"]);
+
 		expect(doctor.stdout).toContain(
-			"warn  levels      correctness: careful runs on light, below quick's medium; deep allows 400,000 tokens, fewer than careful's 500,000; set the level's own tier or budget",
+			"warn  levels      correctness: deep allows 400,000 tokens, fewer than careful's 500,000; set the level's own tier or budget",
 		);
 	});
 
