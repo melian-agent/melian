@@ -262,12 +262,16 @@ describe("what the branch holds", () => {
 		expect(clone.has(changeset)).toBe(false);
 	});
 
-	it.each(["doc-01.jsonl", "task-x.jsonl", "main.jsonl.reclaim", "main.json"])(
+	it.each(["doc-01.jsonl", "task-01.jsonl", "task-x.jsonl", "main.jsonl.reclaim", "main.json"])(
 		"refuses %s, which is not a name Pi's storage writes",
 		async (name) => {
 			await (await remote.clone().branch().checkout(changeset)).push();
 			replaceChangeset(remote, { [name]: "" });
-			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+			// Refused for its name, before any key could fail to open it.
+			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+				code: "invalidBranch",
+				message: `the state branch holds ${JSON.stringify(name)} in ${changeset}, which Melian never writes`,
+			});
 		},
 	);
 
@@ -578,15 +582,24 @@ describe("what the mutation inventory found untested", () => {
 		async (name) => {
 			await (await remote.clone().branch().checkout(changeset)).push();
 			replaceChangeset(remote, { [name]: "" });
-			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+				code: "invalidBranch",
+				message: `the state branch holds ${JSON.stringify(name)} in ${changeset}, which Melian never writes`,
+			});
 		},
 	);
 
-	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl"])("refuses to push a copy holding %s", async (name) => {
-		const checkout = await remote.clone().branch().checkout(changeset);
-		writeFileSync(join(checkout.directory, name), "");
-		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
-	});
+	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl", "doc-01.jsonl", "task-01.jsonl"])(
+		"refuses to push a copy holding %s",
+		async (name) => {
+			const checkout = await remote.clone().branch().checkout(changeset);
+			writeFileSync(join(checkout.directory, name), "");
+			await expect(checkout.push()).rejects.toMatchObject({
+				code: "invalidCopy",
+				message: `this clone's copy of ${changeset} holds ${JSON.stringify(name)}, which Pi's storage never writes, so Melian will not push part of it`,
+			});
+		},
+	);
 
 	it.each(["Pull-0123456789abcdef", "pull-0123/x", "pull-0123456789abcdef!", "-pull", "x".repeat(65)])(
 		"refuses the changeset name %j before any git command",
