@@ -1397,6 +1397,30 @@ describe("a level that probes", () => {
 		expect(judged[0]).toBe("claude-judge");
 	});
 
+	it("judges a prober's finding on the prober's route when no verifier route is named", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }] });
+		const provider = fake.ref("plan").provider;
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: probing(failing),
+				others: [{ match: "Melian adversarial verifier", replies: [judge, judge] }],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: { models: { heavy: { model: `${provider}/plan` }, light: { model: `${provider}/probe` } } },
+			},
+		);
+		expect((await run).verdict.counted()).toHaveLength(1);
+		expect(judged[0]).toBe("probe");
+	});
+
 	it("chooses the verifier against the prober's family for a finding whose prober failed after reporting it", async () => {
 		const fake = createFakeModels({
 			models: [

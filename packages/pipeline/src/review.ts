@@ -2532,7 +2532,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			) {
 				const resolved = resolveModelForTier("verifier", config.models);
 				route = [resolved.model, ...resolved.fallbacks];
-			} else route = [...run.route];
+			} else route = [...(run.probe?.route ?? run.route)];
 		}
 		const available: ModelReference[] = [];
 		const collection = modelsOf(models);
