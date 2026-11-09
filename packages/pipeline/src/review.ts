@@ -1261,8 +1261,7 @@ async function rerunProbes(
 	await (await harness.root(context)).commit(async (tx) => {
 		const document = await tx.doc(ProbeReruns, root);
 		const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
-		const { [at]: _, ...others } = document.runs;
-		document.runs = kept.length === 0 ? others : { ...others, [at]: Object.fromEntries(kept) };
+		document.runs = { ...document.runs, [at]: Object.fromEntries(kept) };
 	}, context);
 }
 

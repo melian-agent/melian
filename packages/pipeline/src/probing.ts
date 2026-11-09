@@ -132,11 +132,7 @@ export async function runHeadProbe(
 	try {
 		const commit = await boundedHead(revision.repoRoot, revision.head, limits);
 		const probe = await Probe.open(input, {
-			head: {
-				checkout: revision.repoRoot,
-				commit,
-				...(environment.read === undefined ? {} : { read: environment.read }),
-			},
+			head: { checkout: revision.repoRoot, commit, read: environment.read },
 			writer: environment.writer,
 			trustWriters: environment.trustWriters,
 			timeout: environment.timeout ?? probeLimits.timeout.default,
