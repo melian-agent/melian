@@ -391,6 +391,84 @@ describe("a dismissal carrying to a restatement", () => {
 		).toBeUndefined();
 	});
 
+	// The round on 14f2d16 (lens.durability): a call that crashed after its wave judged the root, and before its final
+	// step, leaves a retry nothing in memory to say which dismissal that wave was shown.
+	it("links nothing when the root's dismissal is replaced after a wave judged it and a retry reuses that wave", async () => {
+		const root = await dismissedRoot();
+		const first = await revision();
+		pushElsewhere("other");
+		const replaced = { ...dismissal, reason: "Only staff reach this path." };
+		let judged!: () => void;
+		const waveJudged = new Promise<void>((resolve) => {
+			judged = resolve;
+		});
+		const verify = (messages: Messages) => {
+			if (messages.some((message) => message.role === "toolResult")) judged();
+			const prompt = systemPromptOf(messages);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
+				),
+			);
+		};
+		const asked = scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					async () => {
+						await Promise.race([waveJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		let crashed = false;
+		const gated = new Proxy(harness, {
+			get(target, property) {
+				const value = Reflect.get(target, property, target);
+				if (property !== "waitForTask") return typeof value === "function" ? value.bind(target) : value;
+				return async (...args: Parameters<Harness["waitForTask"]>) => {
+					const outcome = await target.waitForTask(...args);
+					const entry = (await target.snapshot(ReviewIndex, owner, context))?.reviews[at];
+					const lensTask =
+						entry?.task === undefined ? undefined : await target.getTask(entry.task as never, context);
+					// The wave has judged the root, the lenses have ended and no final step has started: the call dies here,
+					// however it waits, since the wave watcher swallows its own failures.
+					if (
+						outcome.kind === "melian.verification" &&
+						entry?.verification === undefined &&
+						lensTask?.state.status === "terminal"
+					) {
+						if (!crashed)
+							await recordDismissal({
+								harness: target,
+								revision: first,
+								id: root,
+								dismissal: replaced,
+								repoRoot: repo,
+							});
+						crashed = true;
+						throw new Error("the process died");
+					}
+					return outcome;
+				};
+			},
+		});
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const options = { changeset, config, lenses, standards: [], models: fake.review, checks: [...deterministicRan] };
+		await expect(reviewChangeset({ ...options, harness: gated })).rejects.toThrow("the process died");
+		const retry = await reviewChangeset({ ...options, harness });
+		expect(asked[verifierMarker]).toHaveLength(2);
+		expect(retry.verdict.attention().map((each) => each.id)).toEqual([retry.findings[0]!.id]);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
+	});
+
 	it("clears the links when a later round on the head has no verifier with credentials", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");

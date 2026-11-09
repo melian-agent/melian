@@ -2316,6 +2316,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 		} else {
 			const reused: Record<string, VerificationResult[string]> = {};
+			// The dismissals each reused wave was shown, by candidate.
+			const shownTo = new Map<string, Record<string, string>>();
 			for (const candidate of candidates) {
 				const wave = waves.standing(
 					JSON.stringify(candidateIdentity(candidate)),
@@ -2335,14 +2337,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const shown = (record!.input as unknown as VerificationInput).candidates.find(
 					(each) => each.key === candidate.key,
 				)?.dismissals;
-				const fresh = restating.get(candidate.key);
-				// This review's wave judged the dismissals it was shown, and one replaced since is not the one it judged. An
-				// earlier review's wave is reused as an attached final task is, under the dismissals this review read.
-				if (fresh !== undefined && startedWaves.includes(wave!))
-					restating.set(candidate.key, {
-						...fresh,
-						dismissed: fresh.dismissed.map(({ id }) => ({ id, dismissal: shown?.[id] ?? "" })),
-					});
+				shownTo.set(candidate.key, shown ?? {});
 			}
 			const verificationInput: VerificationInput = {
 				root,
@@ -2357,6 +2352,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					(await harness.getTask(wave as TaskId, context))!.input as unknown as VerificationInput
 				).candidates)
 					own.add(JSON.stringify(candidateIdentity(candidate)));
+			const attached = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification?.task;
 			spans.end();
 			verifying = await startVerification(
 				harness,
@@ -2369,6 +2365,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				own,
 			);
 			verifierSuperseded = verifying === undefined;
+			// A final task this call starts stands on its reused waves' judgements, made under the dismissals each wave was
+			// shown, whichever process started it; one replaced since is not the one judged. A final task this call attaches
+			// to is re-derived under the dismissals this call read, as every round's is.
+			if (verifying !== undefined && verifying !== attached)
+				for (const [key, shown] of shownTo) {
+					const fresh = restating.get(key);
+					if (fresh !== undefined)
+						restating.set(key, {
+							...fresh,
+							dismissed: fresh.dismissed.map(({ id }) => ({ id, dismissal: shown[id] ?? "" })),
+						});
+				}
 			if (verifying === undefined)
 				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
 			else {
