@@ -12,7 +12,7 @@ The rule still earns its place. On #294 it found 115 claims that no longer held.
 
 ## The rule
 
-- A rerun-all trigger counts only when the pull request's own diff against `main`, `git diff --name-only origin/main...HEAD`, holds that file.
+- A rerun-all trigger counts only when the pull request's own diff against its own base, `git diff --name-only origin/<base>...HEAD`, holds that file. A stacked pull request's base is its parent's branch, so its parent's changes are never its own.
 - A file that changed only by merging `main` triggers nothing by itself. Vitest's `--changed <claim head>` still selects every test a merged module affects, so a kill that `main`'s change broke is still rerun.
 - The selected rerun runs once, at the final head after the last merge of `main`, just before the last round. Fix passes prove their own commits' mutants, as the targeted-rerun decision already allows.
 - `melian mutants verify` ([issue #240](https://github.com/melian-agent/melian/issues/240)) replaces the hand reruns once the critical paths close.
