@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import * as fsp from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -107,4 +108,25 @@ it("leaves alone a lease another run took before the restore failed", async () =
 	).changesets[changeset]!.lease;
 	expect(lease.generation).toBe(3);
 	expect(lease.expiresAt).toBe(new Date(start + 8 * hour).toISOString());
+});
+
+it("gives two first checkouts of a copies directory the one clone ID, though the first is slow to write it", async () => {
+	const actual = await vi.importActual<typeof fsp>("node:fs/promises");
+	let held = false;
+	vi.mocked(fsp.writeFile).mockImplementation(async (path, data, options) => {
+		// The first writer of the ID creates its file, then pauses before the ID is in it, as a slow disk lets another
+		// reader in between.
+		if (!held && String(path).includes("holder")) {
+			held = true;
+			await actual.writeFile(path, "", options);
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			return actual.writeFile(path, data);
+		}
+		return actual.writeFile(path, data, options);
+	});
+	const clone = remote.clone();
+	const ids = ["pull-0000000000000001", "pull-0000000000000002"];
+	const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
+	expect(checkouts.map((checkout) => checkout.changeset)).toEqual(ids);
+	expect(readFileSync(join(clone.directory, "holder"), "utf8").trim()).toMatch(/^[0-9a-f-]{36}$/);
 });

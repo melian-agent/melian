@@ -1250,4 +1250,26 @@ describe("the mutation inventory at f6872a26", () => {
 		});
 		expect(remote.tip()).toBeUndefined();
 	});
+
+	it.each(["checkout", "push"] as const)(
+		"refuses at %s a main log of the branch's length but other bytes, though the storage opens it",
+		async (at) => {
+			// The storage accepts any bytes here, so only the main log's comparison with the branch's decides.
+			const clone = remote.clone({ validate: async () => {} });
+			const first = await clone.branch().checkout(changeset);
+			writeFileSync(join(first.directory, "main.jsonl"), "melian\n");
+			await first.push();
+			first.close();
+			if (at === "push") {
+				const second = await clone.branch().checkout(changeset);
+				writeFileSync(join(second.directory, "main.jsonl"), "change\n");
+				await expect(second.push()).rejects.toMatchObject({ code: "invalidCopy" });
+				return;
+			}
+			writeFileSync(join(first.directory, "main.jsonl"), "change\n");
+			const second = await clone.branch().checkout(changeset);
+			expect(second.setAside).toEqual(expect.stringContaining(".set-aside-"));
+			expect(readFileSync(join(second.directory, "main.jsonl"), "utf8")).toBe("melian\n");
+		},
+	);
 });

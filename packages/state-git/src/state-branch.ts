@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, link, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -441,7 +441,8 @@ export class StateBranch {
 		return (this.#options.now ?? Date.now)();
 	}
 
-	// Reads the copies directory's ID, minting it, owner-only, when the directory has none.
+	// Reads the copies directory's ID, minting it, owner-only, when the directory has none. The ID is written whole to a
+	// file of its own and linked into place, which fails when another run linked first, so no run reads it half-written.
 	async #identify(): Promise<void> {
 		const path = join(this.#options.directory, "holder");
 		const read = () =>
@@ -449,8 +450,14 @@ export class StateBranch {
 				(text) => text.trim(),
 				() => "",
 			);
-		if ((await read()) === "")
-			await writeFile(path, `${randomUUID()}\n`, { flag: "wx", mode: 0o600 }).catch(() => {});
+		if ((await read()) === "") {
+			const minted = `${path}.${randomUUID()}`;
+			await writeFile(minted, `${randomUUID()}\n`, { flag: "wx", mode: 0o600 });
+			await link(minted, path).catch((error: NodeJS.ErrnoException) => {
+				if (error.code !== "EEXIST") throw error;
+			});
+			await rm(minted, { force: true });
+		}
 		const id = await read();
 		if (!/^[0-9a-f-]{36}$/.test(id))
 			throw new StateBranchError("invalidHolder", `this clone's copies directory holds no clone ID at ${path}`);
