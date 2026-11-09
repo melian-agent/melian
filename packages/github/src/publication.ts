@@ -165,6 +165,8 @@ export interface CommentContext {
 	readonly secret: string;
 	/** Show each mark's emoji beside its word, as `publish.emoji: on` asks. On by default. */
 	readonly emoji?: boolean;
+	/** The pull request the comment posts on, which its `melian dismiss` commands name. */
+	readonly pullRequest?: number;
 }
 
 /**
@@ -204,6 +206,7 @@ export class ReviewComment {
 		const { finding, placement } = this;
 		const { revision, links } = context;
 		const { path, id } = finding.properties;
+		const target = context.pullRequest === undefined ? undefined : `#${context.pullRequest}`;
 		const [start, end] = finding.lines();
 		const link = `[${code(path)} ${lineSpan(start, end)}](${blobUrl(links, revision, path, start, end)})`;
 		const where =
@@ -239,7 +242,7 @@ export class ReviewComment {
 							...(verification === undefined ? [] : [this.#verifier(verification, rendering)]),
 							...notes.map(inline),
 						]),
-				...finding.likelyDismissalNotes().map(inline),
+				...finding.likelyDismissalNotes(target, code),
 			].map((line) => `  ${line}`);
 			return [
 				marker(revision, "finding", id, context.secret),
@@ -267,7 +270,9 @@ export class ReviewComment {
 			"",
 			...judged,
 			...moved.flatMap((line) => [line, ""]),
-			...[...finding.trustFloorNotes(), ...finding.likelyDismissalNotes()].flatMap((line) => [inline(line), ""]),
+			...[...finding.trustFloorNotes().map(inline), ...finding.likelyDismissalNotes(target, code)].flatMap(
+				(line) => [line, ""],
+			),
 			...this.#text(context),
 			"",
 			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
@@ -471,6 +476,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			links,
 			secret,
 			emoji: options.emoji,
+			pullRequest: draft.pullRequest,
 		});
 	// A finding that asks for action stays open; an advisory asks for none, so it folds under its count.
 	const open = inBody.filter(({ finding }) => finding.properties.resolution !== "advisory").map(render);

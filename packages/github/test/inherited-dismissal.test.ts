@@ -304,13 +304,17 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 		...created.toJSON(),
 		properties: { ...created.properties, likelyDismissedAs: { id: root } },
 	});
-	const note = `Likely the same as dismissed finding ${root}. To accept the match, run melian dismiss <range|#pr> ${proposed.id} --reason <text>.`;
+	const note = (target: string) =>
+		`Likely the same as dismissed finding ${root}. To accept the match, dismiss only on the user's instruction: melian dismiss ${target} ${proposed.id} --reason '<reason>'`;
+	// GitHub's form of the note for pull request 7: the command in a code span, which GitHub never links.
+	const posted = (id: string) =>
+		`Likely the same as dismissed finding ${root}. To accept the match, dismiss only on the user's instruction: \`melian dismiss '#7' ${id} --reason '<reason>'\``;
 
 	it("names the root and the command that accepts it in the terminal", () => {
-		expect(proposed.render(new Rendering({ ids: true }))).toBe(
+		expect(proposed.render(new Rendering({ ids: true, target: "main...HEAD" }))).toBe(
 			[
 				"  P2 | Needs acknowledgement | Tests | Not verified | New in this change",
-				`    ${note}`,
+				`    ${note("'main...HEAD'")}`,
 				"  The manager may be absent.",
 				"    Why here: The change drops the check.",
 				"    What to do: Check it.",
@@ -320,14 +324,15 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 	});
 
 	it("names them in the inline comment", () => {
-		expect(ReviewComment.from(proposed).render({ revision: head, base, links, secret, emoji: false })).toBe(
+		const context = { revision: head, base, links, secret, emoji: false, pullRequest: 7 };
+		expect(ReviewComment.from(proposed).render(context)).toBe(
 			[
 				marker(head, "finding", proposed.id, secret),
 				`[\`src/floor.ts\` line 3](https://github.com/melian-agent/example/blob/${head}/src/floor.ts#L3)`,
 				"",
 				"P2 | Needs acknowledgement | Tests | Not verified | New in this change",
 				"",
-				`Likely the same as dismissed finding ${root}. To accept the match, run melian dismiss &lt;range\\|\\#pr&gt; ${proposed.id} --reason &lt;text&gt;.`,
+				posted(proposed.id),
 				"",
 				"**The manager may be absent.**",
 				"",
@@ -345,11 +350,12 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 			...proposed.toJSON(),
 			properties: { ...proposed.properties, severity: "P3", resolution: "advisory" },
 		});
-		expect(ReviewComment.from(advisory).render({ revision: head, base, links, secret, emoji: false })).toBe(
+		const context = { revision: head, base, links, secret, emoji: false, pullRequest: 7 };
+		expect(ReviewComment.from(advisory).render(context)).toBe(
 			[
 				marker(head, "finding", advisory.id, secret),
 				`- P3 | Advisory | Tests | Not verified | New in this change: [\`src/floor.ts:3\`](https://github.com/melian-agent/example/blob/${head}/src/floor.ts#L3) \`null-dereference\`: The manager may be absent. | Finding \`${advisory.id}\``,
-				`  Likely the same as dismissed finding ${root}. To accept the match, run melian dismiss &lt;range\\|\\#pr&gt; ${advisory.id} --reason &lt;text&gt;.`,
+				`  ${posted(advisory.id)}`,
 			].join("\n"),
 		);
 	});
@@ -364,13 +370,15 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 			{ pullRequest: 7, secret, walkthrough: { enabled: false, collapsed: true, diagrams: false } },
 		).render(links);
 		expect(text.split("\n").filter((line) => line.startsWith(`- ${proposed.id}:`))).toEqual([
-			`- ${proposed.id}: \`src/floor.ts\`:3 — \`null-dereference\` (acknowledge): The manager may be absent. Likely the same as dismissed finding ${root}. To accept the match, run melian dismiss &lt;range\\|\\#pr&gt; ${proposed.id} --reason &lt;text&gt;.`,
+			`- ${proposed.id}: \`src/floor.ts\`:3 — \`null-dereference\` (acknowledge): The manager may be absent. ${posted(proposed.id)}`,
 		]);
 	});
 
 	it("shows nothing of the kind for a finding with no likely root", () => {
 		expect(created.render(new Rendering({ ids: true }))).not.toContain("Likely the same");
 		expect(created.likelyDismissalNotes()).toEqual([]);
-		expect(proposed.likelyDismissalNotes()).toEqual([note]);
+		expect(proposed.likelyDismissalNotes()).toEqual([note("'<range or #N>'")]);
+		// A quote in the target ends the shell's quoting only to add a quoted quote.
+		expect(proposed.likelyDismissalNotes("it's")).toEqual([note("'it'\\''s'")]);
 	});
 });

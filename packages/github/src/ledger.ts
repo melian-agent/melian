@@ -285,7 +285,8 @@ export class Ledger {
 				: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
 		return [
 			`${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`,
-			...[...finding.trustFloorNotes(), ...finding.likelyDismissalNotes()].map(prose),
+			...finding.trustFloorNotes().map(prose),
+			...finding.likelyDismissalNotes(`#${this.draft.pullRequest}`, code),
 		].join(" ");
 	}
 

@@ -1206,7 +1206,9 @@ export class Finding {
 		return [
 			`  ${[rendering.paint(severityColor[severity], first!), ...rest].join(" | ")}`,
 			...reports,
-			...[...this.trustFloorNotes(), ...this.likelyDismissalNotes()].map((line) => `    ${prose(line, "      ")}`),
+			...[...this.trustFloorNotes(), ...this.likelyDismissalNotes(rendering.target)].map(
+				(line) => `    ${prose(line, "      ")}`,
+			),
 			...(decidedBy === undefined || !rendering.decided
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
@@ -1713,14 +1715,17 @@ export class Finding {
 	}
 
 	/**
-	 * Plain text naming the dismissed finding this one likely restates, and the command that accepts the match, for
-	 * hosts to escape in their own format; none when it has no likely root.
+	 * Plain text naming the dismissed finding this one likely restates, and the command that accepts the match, which
+	 * `quote` formats for a host; none when it has no likely root. The command names `target`, the range or `#N` the
+	 * review covered, quoted for a shell, or a quoted placeholder when the host does not know it. Every other word is
+	 * fixed text or a hexadecimal ID, so a host need not escape the note.
 	 */
-	likelyDismissalNotes(): string[] {
+	likelyDismissalNotes(target = "<range or #N>", quote = (command: string) => command): string[] {
 		const { likelyDismissedAs, id } = this.properties;
 		if (likelyDismissedAs === undefined) return [];
+		const command = `melian dismiss '${target.replaceAll("'", "'\\''")}' ${id} --reason '<reason>'`;
 		return [
-			`Likely the same as dismissed finding ${likelyDismissedAs.id}. To accept the match, run melian dismiss <range|#pr> ${id} --reason <text>.`,
+			`Likely the same as dismissed finding ${likelyDismissedAs.id}. To accept the match, dismiss only on the user's instruction: ${quote(command)}`,
 		];
 	}
 

@@ -19,6 +19,8 @@ export interface TerminalRenderOptions {
 	readonly historical?: boolean;
 	/** Print each mark's emoji beside its word. Off by default, which prints the words alone. */
 	readonly emoji?: boolean;
+	/** The range or `#N` the review covered, which each `melian dismiss` command it prints names. */
+	readonly target?: string;
 	/**
 	 * The emoji each repository lens declares: by `lens.<name>@<version>` for one variant of a lens, and by
 	 * `lens.<name>` for every variant, when they declare one emoji between them.
@@ -177,6 +179,8 @@ export class Rendering {
 	readonly historical: boolean;
 	/** Print each mark's emoji beside its word. */
 	readonly emoji: boolean;
+	/** The range or `#N` each `melian dismiss` command names. */
+	readonly target: string | undefined;
 	readonly #color: boolean;
 	readonly #lensEmojis: Readonly<Record<string, string>>;
 
@@ -188,6 +192,7 @@ export class Rendering {
 		this.decided = options.decided === true;
 		this.historical = options.historical === true;
 		this.emoji = options.emoji === true;
+		this.target = options.target;
 		this.#lensEmojis = options.lensEmojis ?? {};
 	}
 
