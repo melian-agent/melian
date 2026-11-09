@@ -35,6 +35,7 @@ import {
 	scriptedMismatches,
 	selectGoldens,
 } from "@melian-agent/evals";
+import { Probe } from "@melian-agent/pipeline";
 import * as testing from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
@@ -1182,5 +1183,34 @@ describe("scripting a prober", () => {
 			"trust-boundary/proberx",
 		);
 		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/prober": [] })).not.toThrow();
+	});
+});
+
+describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
+	it("probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === undefined ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const scripted = await runGolden(golden, { kind: "scripted" });
+		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
+		expect(availability.mock.calls.every(([sandbox]) => sandbox !== undefined)).toBe(true);
+		availability.mockClear();
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			},
+		]);
+		const ref = fake.ref();
+		await runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([undefined]);
 	});
 });
