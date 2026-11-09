@@ -771,6 +771,36 @@ describe("verification as each lens ends", () => {
 		expect((await harness.waitForTask(late!, context)).state.outcome).toEqual({ status: "completed", result: {} });
 	});
 
+	it("unlocks no provider for a wave it does not start", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		const unlocked: (readonly string[])[] = [];
+		const unlock = async (providers: readonly string[]) => {
+			unlocked.push(providers);
+		};
+		// The final verification owns the revision.
+		expect(await startWave(harness, { ...final, reused: undefined }, entry.task!, context, unlock)).toBeUndefined();
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+		}, context);
+		// A wave already stands for the only candidate.
+		expect(await startWave(harness, { ...final, reused: undefined }, entry.task!, context, unlock)).toBeUndefined();
+		expect(unlocked).toEqual([]);
+		// A fresh candidate starts a wave, and only then is its route unlocked.
+		expect(
+			await startWave(harness, { ...final, reused: undefined, version: "fresh" }, entry.task!, context, unlock),
+		).toBeDefined();
+		expect(unlocked).toEqual([
+			final.candidates.flatMap((candidate) => candidate.route.map(({ provider }) => provider)),
+		]);
+	});
+
 	it("starts no wave beside a running one, even for a candidate no wave holds", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);
