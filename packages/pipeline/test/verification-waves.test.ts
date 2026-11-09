@@ -26,10 +26,9 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
-import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, startWave, type VerificationInput } from "../src/verification.ts";
-import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { verifierMarker } from "../src/verification-instructions.ts";
 import { VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
@@ -717,6 +716,33 @@ describe("verification as each lens ends", () => {
 		await Promise.all([review(), review()]);
 		expect(await waveTasks()).toHaveLength(1);
 		expect(asked).toHaveLength(1);
+	});
+
+	it("starts no wave when another wave verified its candidates between its read and its commit", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		// No final verification, and no wave standing for the candidate, so both calls read it fresh.
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+			(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves = [];
+		}, context);
+		const input = { ...final, reused: undefined };
+		let inner: TaskId<unknown> | undefined;
+		// The unlock runs between the read and the commit: another call starts its wave there, and it finishes.
+		const outer = await startWave(harness, input, entry.task!, context, async () => {
+			if (inner !== undefined) return;
+			inner = await startWave(harness, input, entry.task!, context);
+			await harness.waitForTask(inner!, context);
+		});
+		expect(inner).toBeDefined();
+		expect(outer).toBeUndefined();
+		expect(await waveTasks()).toEqual([inner]);
 	});
 
 	// Codex's adversarial review at e023f60: an earlier wave a later wave of the same review re-verified no longer stands,
