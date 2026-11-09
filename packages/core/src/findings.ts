@@ -1190,7 +1190,8 @@ export class Finding {
 			const { emoji } = rendering.check(other.check, other.ruleId);
 			const check = `${rendering.emoji && emoji !== undefined ? `${emoji} ` : ""}${visibleText(other.check)}`;
 			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${check}`;
-			return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
+			const dismissed = `Also reported, dismissed${describeInheritance(other.dismissal ?? {})}`;
+			return `    ${other.dismissed ? dismissed : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
 		});
 		const { region } = this.locations[0]!.physicalLocation;
 		const lines =
