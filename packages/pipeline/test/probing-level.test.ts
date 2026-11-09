@@ -169,6 +169,7 @@ async function review(
 		decider?: ReviewOptions["decider"];
 		plan?: (config: MelianConfig, lenses: readonly Lens[], fake: FakeModels) => Promise<ReviewOptions["plan"]>;
 		unlockModels?: ReviewOptions["unlockModels"];
+		rerun?: boolean;
 	} = {},
 ) {
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -218,6 +219,7 @@ async function review(
 		...(options.decider === undefined ? {} : { decider: options.decider }),
 		...(plan === undefined ? {} : { plan }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
+		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
 	return { run, requests, sandbox, heads, changeset };
 }
@@ -1493,6 +1495,20 @@ describe("a level that probes", () => {
 		);
 		await run;
 		expect(lastResults(requests[prober]![1]!)).toContain("BUILT");
+	});
+
+	it("keeps only the reruns the revision's current claims rest on, however often a failed prober is run again", async () => {
+		const fake = createFakeModels();
+		const reported = () => probing(failing).slice(0, 2);
+		const first = await review({ planner: plan, prober: reported() }, { fake });
+		expect((await failure(first.run)).code).toBe("lensFailed");
+		const again = await review({ planner: plan, prober: reported() }, { fake, rerun: true });
+		expect((await failure(again.run)).code).toBe("lensFailed");
+		const root = (await harness!.harness.root(backgroundContext)).id;
+		const runs = (await harness!.harness.snapshot(ProbeReruns, root, backgroundContext))!.runs[
+			Revision.key(again.changeset.revision)
+		]!;
+		expect(Object.keys(runs)).toHaveLength(1);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {

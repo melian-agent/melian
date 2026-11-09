@@ -1236,11 +1236,13 @@ async function rerunProbes(
 	context: Context,
 ): Promise<void> {
 	const at = Revision.key(revision);
+	const current = new Set<string>();
 	for (const candidate of candidates) {
 		for (const claim of candidate.state.claims) {
 			const probe = candidate.probes?.[claimKey(claim)];
 			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
+			current.add(key);
 			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
 			if (stored !== undefined && "result" in stored) continue;
 			const run = await runHeadProbe(
@@ -1255,6 +1257,13 @@ async function rerunProbes(
 			}, context);
 		}
 	}
+	// A run again of a failed lens names new probes, so the revision keeps only the runs its current claims rest on.
+	await (await harness.root(context)).commit(async (tx) => {
+		const document = await tx.doc(ProbeReruns, root);
+		const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
+		const { [at]: _, ...others } = document.runs;
+		document.runs = kept.length === 0 ? others : { ...others, [at]: Object.fromEntries(kept) };
+	}, context);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
