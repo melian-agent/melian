@@ -42,6 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns } from "../src/probing.ts";
+import { createReviewRegistry } from "../src/review.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
@@ -1395,6 +1396,11 @@ describe("a level that probes", () => {
 		);
 		expect((await run).verdict.counted()).toHaveLength(1);
 		expect(judged[0]).toBe("claude-judge");
+	});
+
+	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
+		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
+		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();
 	});
 
 	it("judges a prober's finding on the prober's route when no verifier route is named", async () => {
