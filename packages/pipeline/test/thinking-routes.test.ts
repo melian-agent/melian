@@ -1,12 +1,20 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, type Decider, defaultConfig, Lens, type MelianConfig, Revision } from "@melian-agent/core";
+import {
+	Changeset,
+	type Decider,
+	defaultConfig,
+	Lens,
+	type MelianConfig,
+	ReviewPlan,
+	Revision,
+} from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import { expect, it } from "vitest";
 import { decisionExtension } from "../src/decisions.ts";
 import { type ConversationId, backgroundContext as context, createMemoryStorage, openHarness } from "../src/harness.ts";
-import { RouteTextModel } from "../src/models.ts";
+import { planInputs, RouteTextModel } from "../src/models.ts";
 import { createReviewRegistry, openReviewHarness, reviewChangeset } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
@@ -484,6 +492,91 @@ it("includes the escalation tier's thinking in lens attachment", async () => {
 			"low",
 			"medium",
 			"medium",
+		]);
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
+});
+
+it("escalates a routed lens from quick to careful on its own route and thinking, not its tiers'", async () => {
+	const repo = crashRepository();
+	const fake = createFakeModels({ models: [{ id: "quick" }, { id: "careful" }, { id: "routed" }] });
+	const lensRequests: { model: string; reasoning: unknown; level: string }[] = [];
+	fake.provider.setResponses(
+		Array.from({ length: 10 }, () => (request, options, _state, model) => {
+			const prompt = systemPromptOf(request.messages);
+			if (prompt.includes("Melian adversarial verifier")) return scriptVerifier(request.messages);
+			// Only the escalated run's first input carries the quick run's finding.
+			const level = JSON.stringify(request.messages.find((message) => message.role === "user")).includes(
+				"null-dereference",
+			)
+				? "careful"
+				: "quick";
+			lensRequests.push({ model: model.id, reasoning: options?.reasoning, level });
+			return lensRequests.length === 1
+				? fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" })
+				: fauxAssistantMessage("Done.");
+		}),
+	);
+	const decider: Decider = {
+		name: "quick",
+		calibrated: true,
+		decide: async () => ({ answers: [{ question: "correctness", distribution: { quick: 1 } }] }),
+	};
+	const opened = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false, decider });
+	try {
+		const template = (await Lens.builtins()).find((lens) => lens.name === "correctness")!;
+		const lens = Lens.from({
+			...template.toJSON(),
+			levels: {
+				quick: { ...template.levels.careful, tier: "medium", verify: false },
+				careful: { ...template.levels.careful, verify: false },
+			},
+		});
+		const route = { model: "faux/routed", thinking: "high" as const };
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			lenses: { correctness: { route } },
+			models: {
+				verifier: { model: "faux/careful" },
+				medium: { model: "faux/quick", thinking: "minimal" },
+				heavy: { model: "faux/careful", thinking: "low" },
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: config.models,
+				overridden: {},
+				lensTiers: {},
+				retiered: {},
+				lensRoutes: { correctness: route },
+				lensRouteThinking: { correctness: "melian.yaml" },
+			},
+			catalog,
+			credentials,
+			lenses: [lens],
+			checks: ["lens.correctness"],
+		});
+		const review = await reviewChangeset({
+			harness: opened,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			decider,
+			lenses: [lens],
+			standards: [],
+			models: fake.review,
+			checks: [],
+			config,
+			plan,
+		});
+		expect(review.verdict.ran?.find(({ name }) => name === "lens.correctness")?.level).toBe("careful");
+		expect(lensRequests).toEqual([
+			{ model: "routed", reasoning: "high", level: "quick" },
+			{ model: "routed", reasoning: "high", level: "quick" },
+			{ model: "routed", reasoning: "high", level: "careful" },
 		]);
 	} finally {
 		await opened.close();

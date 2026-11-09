@@ -259,7 +259,10 @@ export type ClaimProbe = {
 };
 
 /** A claim's key among a candidate's probes: its finding ID and its producer. */
-export function claimKey(claim: { readonly id: string; readonly source: { check: string; version?: string } }): string {
+export function probeClaimKey(claim: {
+	readonly id: string;
+	readonly source: { check: string; version?: string };
+}): string {
 	return JSON.stringify([claim.id, claim.source.check, claim.source.version ?? ""]);
 }
 
@@ -327,7 +330,7 @@ export function rerunKey(
 	claim: { readonly id: string; readonly source: { check: string; version?: string } },
 	probe: ClaimProbe,
 ): string {
-	return JSON.stringify([claimKey(claim), probe.id]);
+	return JSON.stringify([probeClaimKey(claim), probe.id]);
 }
 
 /**

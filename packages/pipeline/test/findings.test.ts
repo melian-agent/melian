@@ -45,6 +45,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import {
+	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
 	replaceCheckFindings,
@@ -164,6 +165,35 @@ describe("the findings document", () => {
 			expect(findings[0]!.properties.verification).toBeUndefined();
 		},
 	);
+	it("clears only the claims it names, drops a revision left with no verdicts, and counts a write only when one cleared", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = Finding.create({ ...input, rule: "no-function" });
+		const verification: Verification = {
+			verdict: "confirmed",
+			reason: "Traced the code.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		};
+		await root.commit(async (tx) => {
+			for (const finding of [evalFinding, other]) {
+				await upsertFinding(tx, root.id, finding, "rev1");
+				await upsertVerification(tx, root.id, "rev1", finding.id, input.source, verification);
+			}
+		}, context);
+		const before = await findingsVersion(harness, root.id, "rev1", context);
+		await root.commit((tx) => clearVerifications(tx, root.id, "rev1", (claim) => claim === "nothing"), context);
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(before);
+		const named = `${evalFinding.id} ${input.source.check}@${input.source.version}`;
+		await root.commit((tx) => clearVerifications(tx, root.id, "rev1", (claim) => claim === named), context);
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(before + 1);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		expect(state.items[evalFinding.id]!.verifications).toEqual({});
+		expect(state.items[other.id]!.verifications).toEqual({ rev1: { "lens.security@1": { "1": verification } } });
+		await root.commit((tx) => clearVerifications(tx, root.id, "rev1"), context);
+		expect((await harness.snapshot(FindingsDocument, root.id, context))!.items[other.id]!.verifications).toEqual({});
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(before + 2);
+	});
 	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"replays an identical %s verification without changing the findings version",
 		async (verdict) => {

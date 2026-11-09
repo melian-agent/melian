@@ -9,9 +9,9 @@ import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
-	claimKey,
 	headTreeLimits,
 	type ProbingEnvironment,
+	probeClaimKey,
 	probeFailed,
 	proberInstructions,
 	probingLimits,
@@ -314,8 +314,10 @@ describe("the plan as a prober and a verifier read it", () => {
 	});
 
 	it("keys a claim by its finding and its producer, an absent version as empty", () => {
-		expect(claimKey({ id: "a", source: { check: "lens.x", version: "v@deep" } })).toBe('["a","lens.x","v@deep"]');
-		expect(claimKey({ id: "a", source: { check: "lens.x" } })).toBe('["a","lens.x",""]');
+		expect(probeClaimKey({ id: "a", source: { check: "lens.x", version: "v@deep" } })).toBe(
+			'["a","lens.x","v@deep"]',
+		);
+		expect(probeClaimKey({ id: "a", source: { check: "lens.x" } })).toBe('["a","lens.x",""]');
 	});
 
 	it("gives the verifier the plan, the probe, and each run's outcome", () => {
@@ -526,7 +528,7 @@ describe("the evidence a verifier reads, exactly", () => {
 
 	it("keys a rerun by its claim and its probe", () => {
 		const claim = { id: "a", source: { check: "lens.x", version: "v" } };
-		expect(rerunKey(claim, { id: "p9" } as ClaimProbe)).toBe(JSON.stringify([claimKey(claim), "p9"]));
+		expect(rerunKey(claim, { id: "p9" } as ClaimProbe)).toBe(JSON.stringify([probeClaimKey(claim), "p9"]));
 	});
 
 	it("lists no block when the one finding is too long to fit", () => {

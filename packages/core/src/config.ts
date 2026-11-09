@@ -196,6 +196,7 @@ export const melianYamlSchema = Type.Object(
 						tier: Type.Optional(lensTierSchema),
 						paths: Type.Optional(Type.Array(name)),
 						level: Type.Optional(levelBand),
+						route: Type.Optional(modelRoute),
 					},
 					strict,
 				),
@@ -355,6 +356,8 @@ export interface LensSettings {
 	readonly tier?: LensTier;
 	readonly paths?: readonly string[];
 	readonly level?: LevelBandSettings;
+	/** The lens's own model route, which every level runs on in place of its tier. */
+	readonly route?: ModelRoute;
 }
 
 /**
@@ -566,6 +569,12 @@ export interface RouteLineage {
 	readonly lensTiers: Readonly<Record<string, LensTier>>;
 	/** Each lens a preference file moved to another tier, by name, to the nearest such file. */
 	readonly retiered: Readonly<Record<string, string>>;
+	/** Each lens route the committed files set, by lens name. Absent when they set none. */
+	readonly lensRoutes?: Readonly<Record<string, ModelRoute>>;
+	/** Each lens whose route's model or fallbacks a preference file set, to the nearest such file. */
+	readonly lensRouteBy?: Readonly<Record<string, string>>;
+	/** The nearest file that set each lens route's thinking level. */
+	readonly lensRouteThinking?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -811,6 +820,18 @@ function checkNested(site: Site, layer: MelianYaml): void {
 			{ key: `models.${tier}.${key}` },
 		);
 	}
+	for (const [lens, settings] of Object.entries(layer.lenses ?? {})) {
+		const { route } = settings;
+		if (route === undefined) continue;
+		const set = Object.keys(route)[0];
+		const key = `lenses.${lens}.route${set === undefined ? "" : `.${set}`}`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}" is a lens route, which only the root melian.yaml sets: the review plan reads routes from the root alone`,
+			{ key },
+		);
+	}
 }
 
 // A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
@@ -832,6 +853,16 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 			site,
 			`"models.${tier}.${key}" is policy, which only a committed melian.yaml sets; a preference file may set model and fallbacks`,
 			{ key: `models.${tier}.${key}` },
+		);
+	}
+	for (const [lens, settings] of Object.entries(layer.lenses ?? {})) {
+		const key = routePolicyKeys.find((each) => settings.route?.[each] !== undefined);
+		if (key === undefined) continue;
+		throw configError(
+			"invalidValue",
+			site,
+			`"lenses.${lens}.route.${key}" is policy, which only a committed melian.yaml sets; a preference file may set model, thinking and fallbacks`,
+			{ key: `lenses.${lens}.route.${key}` },
 		);
 	}
 }
@@ -1021,18 +1052,54 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 	}
 }
 
+// A tier's route or a lens's, by the key it is written under, and where a file writes it.
+type RouteSite = {
+	readonly key: string;
+	readonly route: ModelRoute | undefined;
+	readonly of: (layer: MelianYaml) => ModelRoute | undefined;
+};
+
+function routeSites(config: Pick<MelianConfig, "models" | "lenses">): RouteSite[] {
+	return [
+		...modelTiers.map((tier) => ({
+			key: `models.${tier}`,
+			route: config.models[tier],
+			of: (layer: MelianYaml) => layer.models?.[tier],
+		})),
+		...Object.entries(config.lenses).map(([lens, settings]) => ({
+			key: `lenses.${lens}.route`,
+			route: settings.route,
+			of: (layer: MelianYaml) => layer.lenses?.[lens]?.route,
+		})),
+	];
+}
+
 // `model` is optional so a preference file can restate only `fallbacks`, but a merged route with fallbacks and neither a
 // model nor an accept would drop them without a word.
-function checkFallbacks(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
-	for (const tier of modelTiers) {
-		const route = models[tier];
+function checkFallbacks(sites: readonly RouteSite[], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const { key: at, route, of } of sites) {
 		if (route?.fallbacks === undefined || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
-		const site = layers.find(({ layer }) => layer.models?.[tier]?.fallbacks !== undefined)!.site;
-		const key = `models.${tier}.model`;
+		const site = layers.find(({ layer }) => of(layer)?.fallbacks !== undefined)!.site;
+		const key = `${at}.model`;
 		throw configError(
 			"invalidValue",
 			site,
-			`"models.${tier}.fallbacks" has no model to follow; set "${key}", or accept, which a committed melian.yaml sets`,
+			`"${at}.fallbacks" has no model to follow; set "${key}", or accept, which a committed melian.yaml sets`,
+			{ key },
+		);
+	}
+}
+
+// A lens route exists only where it names a model or an accept; one that names neither would run the lens on nothing.
+function checkLensRoutes(lenses: MelianConfig["lenses"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const [lens, { route }] of Object.entries(lenses)) {
+		if (route === undefined || route.model !== undefined || route.accept !== undefined) continue;
+		const site = layers.find(({ layer }) => layer.lenses?.[lens]?.route !== undefined)!.site;
+		const key = `lenses.${lens}.route.model`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"lenses.${lens}.route" names no model and no accept; set "${key}", or accept, which a committed melian.yaml sets`,
 			{ key },
 		);
 	}
@@ -1040,28 +1107,27 @@ function checkFallbacks(models: MelianConfig["models"], layers: readonly { site:
 
 // A route that refuses every model outside accept, and accepts none, would fail every check on its tier whatever the
 // maintainer holds, so it is a mistake in the file rather than a policy.
-function checkRefusals(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
-	for (const tier of modelTiers) {
-		const route = models[tier];
+function checkRefusals(sites: readonly RouteSite[], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const { key: at, route, of } of sites) {
 		// An empty accept would accept nothing, and the plan would read it as no accept at all, so a route that refuses
 		// overrides would refuse none of them.
 		if (route?.accept !== undefined && route.accept.length === 0) {
-			const site = layers.find(({ layer }) => layer.models?.[tier]?.accept !== undefined)!.site;
-			const key = `models.${tier}.accept`;
+			const site = layers.find(({ layer }) => of(layer)?.accept !== undefined)!.site;
+			const key = `${at}.accept`;
 			throw configError(
 				"invalidValue",
 				site,
-				`"${key}" lists no model; list the models that satisfy the tier, or leave it out to accept the route's own model and fallbacks`,
+				`"${key}" lists no model; list the models that satisfy the route, or leave it out to accept the route's own model and fallbacks`,
 				{ key },
 			);
 		}
 		if (route?.acceptOverridden !== false || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
-		const site = layers.find(({ layer }) => layer.models?.[tier]?.acceptOverridden !== undefined)!.site;
-		const key = `models.${tier}.acceptOverridden`;
+		const site = layers.find(({ layer }) => of(layer)?.acceptOverridden !== undefined)!.site;
+		const key = `${at}.acceptOverridden`;
 		throw configError(
 			"invalidValue",
 			site,
-			`"${key}" is false, but models.${tier} names no model and no accept, so no model could run; set models.${tier}.model or models.${tier}.accept`,
+			`"${key}" is false, but ${at} names no model and no accept, so no model could run; set ${at}.model or ${at}.accept`,
 			{ key },
 		);
 	}
@@ -1205,8 +1271,14 @@ async function loadLayers(
 			(merged, { layer }) => merge(merged, { models: layer.models ?? {}, lenses: layer.lenses ?? {} }),
 			merge({}, { models: {}, lenses: {} }),
 		);
-	checkRefusals(committed.models as MelianConfig["models"], layers.slice(preferences));
-	checkFallbacks(config.models, layers);
+	const committedLenses = committed.lenses as MelianConfig["lenses"];
+	checkRefusals(
+		routeSites({ models: committed.models as MelianConfig["models"], lenses: committedLenses }),
+		layers.slice(preferences),
+	);
+	checkLensRoutes(committedLenses, layers.slice(preferences));
+	checkLensRoutes(config.lenses, layers);
+	checkFallbacks(routeSites(config), layers);
 	const lensTiers: Record<string, LensTier> = {};
 	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
 		if (settings.tier !== undefined) lensTiers[name] = settings.tier;
@@ -1229,12 +1301,30 @@ async function loadLayers(
 			);
 		if (nearest !== undefined) overridden[tier] = nearest.site.file;
 	}
+	const lensRoutes: Record<string, ModelRoute> = {};
+	for (const [name, settings] of Object.entries(committedLenses)) {
+		if (settings.route !== undefined) lensRoutes[name] = settings.route;
+	}
+	const lensRouteBy: Record<string, string> = {};
+	const lensRouteThinking: Record<string, string> = {};
+	for (const name of Object.keys(config.lenses)) {
+		const route = (layer: MelianYaml) => layer.lenses?.[name]?.route;
+		const nearest = layers
+			.slice(0, preferences)
+			.find(({ layer }) => route(layer)?.model !== undefined || route(layer)?.fallbacks !== undefined);
+		if (nearest !== undefined) lensRouteBy[name] = nearest.site.file;
+		const setter = layers.find(({ layer }) => route(layer)?.thinking !== undefined);
+		if (setter !== undefined) lensRouteThinking[name] = setter.site.file;
+	}
 	const routes = {
 		committed: committed.models as MelianConfig["models"],
 		overridden,
 		lensTiers,
 		retiered,
 		...(Object.keys(thinking).length === 0 ? {} : { thinking }),
+		...(Object.keys(lensRoutes).length === 0 ? {} : { lensRoutes }),
+		...(Object.keys(lensRouteBy).length === 0 ? {} : { lensRouteBy }),
+		...(Object.keys(lensRouteThinking).length === 0 ? {} : { lensRouteThinking }),
 	};
 	return { config, sources: layers.map(({ site }) => site.file), routes, layers, resolutionLayers };
 }
