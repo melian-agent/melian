@@ -630,11 +630,15 @@ export class StateBranch {
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
 		const result = await this.#transfer(args);
-		if (result.timedOut === true)
+		if (result.timedOut === true) {
+			// The transport git started can finish the push after git was stopped, so the branch says whether it landed.
+			const now = await this.#fetch().catch(() => undefined);
+			if (now === commit) return undefined;
 			throw new StateBranchError(
 				"pushFailed",
 				`git push of melian/state ran past its deadline of ${this.#transferMs} ms`,
 			);
+		}
 		if (result.code === 0) return undefined;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
 		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's

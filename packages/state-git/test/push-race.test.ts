@@ -18,6 +18,11 @@ const environments: {
 }[] = [];
 // Answers the next push as git does when it ran past its deadline.
 let stalled = false;
+// Lands the next push, then answers as git does when it ran past its deadline: the transport finished after git stopped.
+let landedLate = false;
+// Fails the next fetch, as an unreachable remote does.
+let unreachable = false;
+let unreachableAfter = false;
 let interloper: (() => Promise<void>) | undefined;
 // Answers the next push with the remote's lock error, worded as a newer git words it, as when another push created the
 // branch at the same moment.
@@ -33,8 +38,23 @@ vi.mock("@melian-agent/core", async (original) => {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
 			environments.push({ command: args[0]!, env: options?.env, deadlineMs: options?.deadlineMs });
+			if (args[0] === "fetch" && unreachable) {
+				unreachable = false;
+				return {
+					code: 128,
+					stdout: "",
+					stdoutBytes: Buffer.from(""),
+					stderr: "fatal: unable to access 'remote'\n",
+				};
+			}
+			if (args[0] === "push" && landedLate) {
+				landedLate = false;
+				await actual.git(cwd, args, options);
+				return { code: -1, stdout: "", stdoutBytes: Buffer.from(""), stderr: "", timedOut: true };
+			}
 			if (args[0] === "push" && stalled) {
 				stalled = false;
+				unreachable = unreachableAfter;
 				return { code: -1, stdout: "", stdoutBytes: Buffer.from(""), stderr: "", timedOut: true };
 			}
 			if (args[0] === "hash-object" && unwritable) {
@@ -100,6 +120,9 @@ afterEach(() => {
 	denied = false;
 	unwritable = false;
 	stalled = false;
+	landedLate = false;
+	unreachable = false;
+	unreachableAfter = false;
 	interloper = undefined;
 	remote.close();
 });
@@ -241,6 +264,23 @@ it("gives every fetch and push a deadline of two minutes by default", async () =
 
 it("names a push that ran past its deadline", async () => {
 	stalled = true;
+	await expect(remote.clone().branch({ transferMs: 900 }).checkout(changeset)).rejects.toMatchObject({
+		code: "pushFailed",
+		message: "git push of melian/state ran past its deadline of 900 ms",
+	});
+});
+
+it("counts a push its deadline stopped as landed when the branch's tip is the commit it sent", async () => {
+	const checkout = await remote.clone().branch().checkout(changeset);
+	await note(await storageOf(checkout), "mine");
+	landedLate = true;
+	expect(await checkout.push()).toEqual({ kind: "pushed", commit: remote.tip() });
+	expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual(["mine"]);
+});
+
+it("names a push its deadline stopped when the branch cannot be read again to see whether it landed", async () => {
+	stalled = true;
+	unreachableAfter = true;
 	await expect(remote.clone().branch({ transferMs: 900 }).checkout(changeset)).rejects.toMatchObject({
 		code: "pushFailed",
 		message: "git push of melian/state ran past its deadline of 900 ms",
