@@ -470,15 +470,27 @@ describe("verification as each lens ends", () => {
 			judged = resolve;
 		});
 		const asked: string[][] = [];
-		// Contracts reports at once, then holds its end until correctness's claim is judged alone.
+		let reported!: () => void;
+		const contractsReported = new Promise<void>((resolve) => {
+			reported = resolve;
+		});
+		// Contracts reports at once, then holds its end until correctness's claim is judged alone. Its second request
+		// comes after its report has committed, and correctness ends only then, so the wave could see the report.
 		const hold: ScriptedReply = async () => {
+			reported();
 			await Promise.race([firstJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
 			return fauxAssistantMessage("Done.");
 		};
 		scriptConversations(fake, [
 			{
 				match: lens("correctness").instructions,
-				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+				replies: [
+					report("null-dereference"),
+					async () => {
+						await contractsReported;
+						return fauxAssistantMessage("Done.");
+					},
+				],
 			},
 			{ match: lens("contracts").instructions, replies: [report("broken-caller"), hold] },
 			verifier(
