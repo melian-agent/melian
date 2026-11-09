@@ -44,6 +44,13 @@ describe("verification waves", () => {
 		expect(VerificationWaves.owns(undefined, waves, "r", 11)).toBe(false);
 	});
 
+	it("owns nothing for a verifier that names no task, even where the index names no verification", () => {
+		const waves = state(7, [{ task: 11, candidates: [] }]);
+		expect(VerificationWaves.owns(index(7), waves, "r", undefined)).toBe(false);
+		expect(VerificationWaves.owns({ reviews: {} } as unknown as ReviewIndexState, waves, "r", undefined)).toBe(false);
+		expect(VerificationWaves.owns(undefined, undefined, "r", undefined)).toBe(false);
+	});
+
 	it("stops owning a wave once a later wave verifies any of its claims", () => {
 		const overlapping = state(7, [
 			{

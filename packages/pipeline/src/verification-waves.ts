@@ -60,6 +60,8 @@ export class VerificationWaves {
 		revision: string,
 		task: number | undefined,
 	): boolean {
+		// A verifier an older Melian created names no task, and an index with no verification would match it.
+		if (task === undefined) return false;
 		const entry = index?.reviews[revision];
 		if (entry?.verification?.task === task) return true;
 		const waves = VerificationWaves.of(state, revision, entry?.task).#entry?.waves ?? [];
