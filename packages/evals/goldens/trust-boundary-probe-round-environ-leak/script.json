@@ -11,15 +11,21 @@
                 "reason": "A head's biome.json can extend /proc/<pid>/environ, so static.biome fails with an error that quotes the round job's environment, logins included. The comment is public, so nothing a static tool printed may reach it.",
                 "passing": "The comment names static.biome and its status, and the planted login appears nowhere in it.",
                 "failing": "The comment quotes the planted login from static.biome's error."
+              },
+              {
+                "target": ".github/workflows/melian-round.yml, the round step that writes Melian's output and the upload of the run artefact",
+                "reason": "Melian's raw verdict and standard error carry each check's error, which a head's biome.json can make quote the round job's environment. The run artefact is public to anyone who can read the run, so only a public copy of the verdict may go in it.",
+                "passing": "The round step writes Melian's output outside the directory the artefact uploads.",
+                "failing": "The round step writes Melian's raw verdict into the directory the artefact uploads."
               }
             ]
           },
-          "expectToolResult": "recorded a plan of 1 attack"
+          "expectToolResult": "recorded a plan of 2 attacks"
         }
       ]
     },
     {
-      "text": "Planned 1 attack."
+      "text": "Planned 2 attacks."
     }
   ],
   "trust-boundary/prober": [
@@ -46,14 +52,53 @@
             "severity": "P1",
             "explanation": {
               "what": "The round comment prints each check that did not run with its error, and a static tool's error quotes whatever file the head pointed its configuration at.",
-              "why": "The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in the error, and the comment and the uploaded artefact carry it out of the job.",
-              "fix": "Render a check that did not run by name and status alone, and upload only a public copy of the verdict that drops every check reason and error and every static finding's text."
+              "why": "The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in the error, and the round comment carries it out of the job.",
+              "fix": "Render a check that did not run by name and status alone, from a public copy of the verdict that drops every check's reason and error."
             },
-            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.",
+            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, so anyone who can read the pull request reads the login.",
             "evidence": [
               {
                 "file": "scripts/round.mjs",
                 "line": 109,
+                "role": "cause"
+              }
+            ],
+            "probe": "{{probe}}"
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "run_probe",
+          "arguments": {
+            "attack": 2,
+            "script": "// Attack 2: the round job writes Melian's own output, whose check errors can quote the logins, into the directory it\n// uploads as the run artefact, which anyone who can read the run downloads.\nimport { readFileSync } from \"node:fs\";\n\nconst workflow = readFileSync(\".github/workflows/melian-round.yml\", \"utf8\");\nconst review = /melian\\.js review \"#\\$NUMBER\"[^\\n]*> \"\\$(\\w+)\\/verdict\\.json\"/.exec(workflow);\nconst before = review === null ? \"\" : workflow.slice(0, review.index);\nconst assigned = review === null ? [] : [...before.matchAll(new RegExp(`\\\\b${review[1]}=\"\\\\$RUNNER_TEMP/(\\\\w+)\"`, \"g\"))];\nconst written = assigned.at(-1)?.[1];\nconst uploaded = /path: \\$\\{\\{ runner\\.temp \\}\\}\\/(\\w+)/.exec(workflow)?.[1];\nconsole.log(`Melian's verdict goes to ${written ?? \"no directory found\"}; the artefact uploads ${uploaded ?? \"nothing\"}`);\nprocess.exit(written !== undefined && written === uploaded ? 1 : 0);\n"
+          }
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": ".github/workflows/melian-round.yml",
+            "line": 219,
+            "rule": "secret-exposure",
+            "severity": "P1",
+            "explanation": {
+              "what": "The round step writes Melian's raw verdict and standard error into the directory the job uploads as the run artefact.",
+              "why": "The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in a check's error, and the raw verdict carries it into an artefact anyone who can read the run downloads.",
+              "fix": "Write Melian's output outside the uploaded directory, and upload only a public copy of the verdict that drops every check's reason and error and every static finding's text."
+            },
+            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}. static.biome fails, and its error, quoting MELIAN_CODEX_ACCESS_TOKEN, goes into the raw verdict, which the round step writes to $RUNNER_TEMP/public and the job uploads as the run artefact.",
+            "evidence": [
+              {
+                "file": ".github/workflows/melian-round.yml",
+                "line": 219,
                 "role": "cause"
               },
               {
@@ -69,7 +114,7 @@
       ]
     },
     {
-      "text": "Reported 1 finding."
+      "text": "Reported 2 findings."
     }
   ]
 }

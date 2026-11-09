@@ -3,18 +3,35 @@
   "url": "https://github.com/melian-agent/melian/pull/275",
   "comments": [
     {
-      "comment": "A head's biome.json that extends /proc/<pid>/environ makes static.biome fail with an error quoting the round job's logins, and the round comment and its artefact print that error.",
+      "comment": "A head's biome.json that extends /proc/<pid>/environ makes static.biome fail with an error quoting the round job's logins, and the round comment prints that error.",
       "severity": "High",
       "category": "security",
       "file": "scripts/round.mjs",
       "rule": "secret-exposure",
       "source": "lens.trust-boundary",
       "cause": "introduced",
-      "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.",
+      "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, so anyone who can read the pull request reads the login.",
       "evidence": [
         {
           "file": "scripts/round.mjs",
           "line": 109,
+          "role": "cause"
+        }
+      ]
+    },
+    {
+      "comment": "The round step writes Melian's raw verdict, whose check errors a head can make quote the round job's logins, into the directory the job uploads as the run artefact.",
+      "severity": "High",
+      "category": "security",
+      "file": ".github/workflows/melian-round.yml",
+      "rule": "secret-exposure",
+      "source": "lens.trust-boundary",
+      "cause": "introduced",
+      "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}. static.biome fails, and its error, quoting MELIAN_CODEX_ACCESS_TOKEN, goes into the raw verdict, which the round step writes to $RUNNER_TEMP/public and the job uploads as the run artefact.",
+      "evidence": [
+        {
+          "file": ".github/workflows/melian-round.yml",
+          "line": 219,
           "role": "cause"
         },
         {
