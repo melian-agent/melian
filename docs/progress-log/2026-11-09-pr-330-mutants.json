@@ -3122,14 +3122,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
-   "column": 7,
-   "endLine": 408,
-   "endColumn": 64,
+   "line": 410,
+   "column": 4,
+   "endLine": 410,
+   "endColumn": 51,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > resumes an indexed pending task even when the old start counter reached the limit",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3137,10 +3137,329 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
+   "line": 410,
+   "column": 4,
+   "endLine": 410,
+   "endColumn": 51,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 410,
+   "column": 4,
+   "endLine": 410,
+   "endColumn": 51,
+   "mutatorName": "EqualityOperator",
+   "replacement": "document.walkthroughs?.[revision] !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 410,
+   "column": 4,
+   "endLine": 410,
+   "endColumn": 37,
+   "mutatorName": "OptionalChaining",
+   "replacement": "document.walkthroughs[revision]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 412,
+   "column": 8,
+   "endLine": 412,
+   "endColumn": 52,
+   "mutatorName": "LogicalOperator",
+   "replacement": "document.walkthroughRoutes?.[revision] && \"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 412,
+   "column": 8,
+   "endLine": 412,
+   "endColumn": 46,
+   "mutatorName": "OptionalChaining",
+   "replacement": "document.walkthroughRoutes[revision]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > keeps a walkthrough stored without a route between its reads and its commit, and asks no model",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 412,
+   "column": 50,
+   "endLine": 412,
+   "endColumn": 52,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > keeps a walkthrough stored without a route between its reads and its commit, and asks no model",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 19,
+   "endLine": 413,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 19,
+   "endLine": 413,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 19,
+   "endLine": 413,
+   "endColumn": 88,
+   "mutatorName": "LogicalOperator",
+   "replacement": "rerun && stored !== undefined && stored !== \"\" && stored !== wanted",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 87,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 87,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stored !== undefined && stored !== \"\" || stored !== wanted",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 66,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 66,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stored !== undefined || stored !== \"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 29,
+   "endLine": 413,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stored === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 53,
+   "endLine": 413,
+   "endColumn": 66,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > keeps a walkthrough stored without a route between its reads and its commit, and asks no model",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 53,
+   "endLine": 413,
+   "endColumn": 66,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stored === \"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 64,
+   "endLine": 413,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > keeps a walkthrough stored without a route between its reads and its commit, and asks no model",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 70,
+   "endLine": 413,
+   "endColumn": 87,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > resumes an indexed pending task even when the old start counter reached the limit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 413,
+   "column": 70,
+   "endLine": 413,
+   "endColumn": 87,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stored === wanted",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 414,
    "column": 7,
-   "endLine": 408,
-   "endColumn": 64,
+   "endLine": 414,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
+   "survivorClasses": [],
+   "result": {
+    "namedTest": "killed"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/summarize.ts",
+   "line": 414,
+   "column": 7,
+   "endLine": 414,
+   "endColumn": 39,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
@@ -3152,14 +3471,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
+   "line": 414,
    "column": 7,
-   "endLine": 408,
-   "endColumn": 64,
+   "endLine": 414,
+   "endColumn": 39,
    "mutatorName": "LogicalOperator",
-   "replacement": "!rerun || document.walkthroughs?.[revision] !== undefined",
+   "replacement": "!refresh || stored !== undefined",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3167,14 +3486,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
+   "line": 414,
    "column": 7,
-   "endLine": 408,
-   "endColumn": 13,
+   "endLine": 414,
+   "endColumn": 15,
    "mutatorName": "BooleanLiteral",
-   "replacement": "rerun",
+   "replacement": "refresh",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > resumes an indexed pending task even when the old start counter reached the limit",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > writes its own walkthrough when another route's lands between its reads and its commit",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3182,14 +3501,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
-   "column": 17,
-   "endLine": 408,
-   "endColumn": 64,
+   "line": 414,
+   "column": 19,
+   "endLine": 414,
+   "endColumn": 39,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3197,14 +3516,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
-   "column": 17,
-   "endLine": 408,
-   "endColumn": 64,
+   "line": 414,
+   "column": 19,
+   "endLine": 414,
+   "endColumn": 39,
    "mutatorName": "EqualityOperator",
-   "replacement": "document.walkthroughs?.[revision] === undefined",
+   "replacement": "stored === undefined",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3212,24 +3531,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 408,
-   "column": 17,
-   "endLine": 408,
-   "endColumn": 50,
-   "mutatorName": "OptionalChaining",
-   "replacement": "document.walkthroughs[revision]",
-   "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
-   "survivorClasses": [],
-   "result": {
-    "namedTest": "killed"
-   }
-  },
-  {
-   "file": "packages/pipeline/src/summarize.ts",
-   "line": 409,
+   "line": 415,
    "column": 20,
-   "endLine": 409,
+   "endLine": 415,
    "endColumn": 39,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3242,9 +3546,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 409,
+   "line": 415,
    "column": 20,
-   "endLine": 409,
+   "endLine": 415,
    "endColumn": 39,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
@@ -3254,9 +3558,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 409,
+   "line": 415,
    "column": 20,
-   "endLine": 409,
+   "endLine": 415,
    "endColumn": 39,
    "mutatorName": "EqualityOperator",
    "replacement": "known !== undefined",
@@ -3269,9 +3573,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 413,
+   "endLine": 419,
    "endColumn": 65,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3284,9 +3588,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 413,
+   "endLine": 419,
    "endColumn": 65,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
@@ -3299,9 +3603,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 413,
+   "endLine": 419,
    "endColumn": 65,
    "mutatorName": "LogicalOperator",
    "replacement": "previous !== undefined && !previous.abortRequested || routeOf(previous.input as unknown as SummaryInput) === wanted",
@@ -3314,9 +3618,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 412,
+   "endLine": 418,
    "endColumn": 28,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3329,9 +3633,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 412,
+   "endLine": 418,
    "endColumn": 28,
    "mutatorName": "LogicalOperator",
    "replacement": "previous !== undefined || !previous.abortRequested",
@@ -3344,9 +3648,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 411,
+   "endLine": 417,
    "endColumn": 26,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3359,9 +3663,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 411,
+   "line": 417,
    "column": 4,
-   "endLine": 411,
+   "endLine": 417,
    "endColumn": 26,
    "mutatorName": "EqualityOperator",
    "replacement": "previous === undefined",
@@ -3374,9 +3678,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 412,
+   "line": 418,
    "column": 4,
-   "endLine": 412,
+   "endLine": 418,
    "endColumn": 28,
    "mutatorName": "BooleanLiteral",
    "replacement": "previous.abortRequested",
@@ -3389,9 +3693,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 413,
+   "line": 419,
    "column": 4,
-   "endLine": 413,
+   "endLine": 419,
    "endColumn": 65,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3403,9 +3707,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 413,
+   "line": 419,
    "column": 4,
-   "endLine": 413,
+   "endLine": 419,
    "endColumn": 65,
    "mutatorName": "EqualityOperator",
    "replacement": "routeOf(previous.input as unknown as SummaryInput) !== wanted",
@@ -3418,9 +3722,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 7,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 86,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3433,9 +3737,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 7,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 86,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
@@ -3448,9 +3752,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 7,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 86,
    "mutatorName": "LogicalOperator",
    "replacement": "onRoute || (await attachable(tx, known, [...undecided, \"failed\", \"completed\"]))",
@@ -3463,9 +3767,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 47,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 84,
    "mutatorName": "ArrayDeclaration",
    "replacement": "[]",
@@ -3478,9 +3782,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 62,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 70,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -3495,9 +3799,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 414,
+   "line": 420,
    "column": 72,
-   "endLine": 414,
+   "endLine": 420,
    "endColumn": 83,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -3512,9 +3816,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3527,9 +3831,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
@@ -3542,9 +3846,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "LogicalOperator",
    "replacement": "previous?.state.status === \"terminal\" || previous.state.outcome.status !== \"aborted\"",
@@ -3557,9 +3861,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 44,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3572,9 +3876,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 44,
    "mutatorName": "EqualityOperator",
    "replacement": "previous?.state.status !== \"terminal\"",
@@ -3587,9 +3891,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 7,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 22,
    "mutatorName": "OptionalChaining",
    "replacement": "previous.state",
@@ -3602,9 +3906,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 34,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 44,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -3619,9 +3923,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 48,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
@@ -3634,9 +3938,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 48,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "EqualityOperator",
    "replacement": "previous.state.outcome.status === \"aborted\"",
@@ -3649,9 +3953,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 426,
+   "line": 432,
    "column": 82,
-   "endLine": 426,
+   "endLine": 432,
    "endColumn": 91,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -3666,14 +3970,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
+   "line": 434,
    "column": 7,
-   "endLine": 428,
-   "endColumn": 90,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3681,10 +3985,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
+   "line": 434,
    "column": 7,
-   "endLine": 428,
-   "endColumn": 90,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
@@ -3696,14 +4000,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
+   "line": 434,
    "column": 7,
-   "endLine": 428,
-   "endColumn": 90,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "LogicalOperator",
-   "replacement": "!rerun || (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts",
+   "replacement": "!refresh || (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3711,12 +4015,12 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
+   "line": 434,
    "column": 7,
-   "endLine": 428,
-   "endColumn": 13,
+   "endLine": 434,
+   "endColumn": 15,
    "mutatorName": "BooleanLiteral",
-   "replacement": "rerun",
+   "replacement": "refresh",
    "claim": "killed",
    "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > stores fixed notes for provider errors and no tool call, then stops after two attempts",
    "survivorClasses": [],
@@ -3726,14 +4030,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
-   "column": 17,
-   "endLine": 428,
-   "endColumn": 90,
+   "line": 434,
+   "column": 19,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3741,10 +4045,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
-   "column": 17,
-   "endLine": 428,
-   "endColumn": 90,
+   "line": 434,
+   "column": 19,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "EqualityOperator",
    "replacement": "(document.walkthroughAttempts?.[revision] ?? 0) > maxWalkthroughAttempts",
    "claim": "killed",
@@ -3756,14 +4060,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
-   "column": 17,
-   "endLine": 428,
-   "endColumn": 90,
+   "line": 434,
+   "column": 19,
+   "endLine": 434,
+   "endColumn": 92,
    "mutatorName": "EqualityOperator",
    "replacement": "(document.walkthroughAttempts?.[revision] ?? 0) < maxWalkthroughAttempts",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3771,10 +4075,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
-   "column": 18,
-   "endLine": 428,
-   "endColumn": 63,
+   "line": 434,
+   "column": 20,
+   "endLine": 434,
+   "endColumn": 65,
    "mutatorName": "LogicalOperator",
    "replacement": "document.walkthroughAttempts?.[revision] && 0",
    "claim": "killed",
@@ -3786,14 +4090,14 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 428,
-   "column": 18,
-   "endLine": 428,
-   "endColumn": 58,
+   "line": 434,
+   "column": 20,
+   "endLine": 434,
+   "endColumn": 60,
    "mutatorName": "OptionalChaining",
    "replacement": "document.walkthroughAttempts[revision]",
    "claim": "killed",
-   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > applies thinking to a light route supplied through accept alone",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > removes a walkthrough and its route when a rerun ends in a note because no light model is configured",
    "survivorClasses": [],
    "result": {
     "namedTest": "killed"
@@ -3801,10 +4105,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 429,
+   "line": 435,
    "column": 7,
-   "endLine": 429,
-   "endColumn": 12,
+   "endLine": 435,
+   "endColumn": 14,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
@@ -3816,10 +4120,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 429,
+   "line": 435,
    "column": 7,
-   "endLine": 429,
-   "endColumn": 12,
+   "endLine": 435,
+   "endColumn": 14,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
@@ -3831,10 +4135,10 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 429,
-   "column": 45,
-   "endLine": 429,
-   "endColumn": 95,
+   "line": 435,
+   "column": 47,
+   "endLine": 435,
+   "endColumn": 97,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
    "claim": "killed",
@@ -3846,9 +4150,9 @@
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
-   "line": 460,
+   "line": 466,
    "column": 4,
-   "endLine": 460,
+   "endLine": 466,
    "endColumn": 26,
    "mutatorName": "CallExpression",
    "replacement": ";",
@@ -3860,7 +4164,7 @@
    }
   }
  ],
- "total": 256,
+ "total": 276,
  "omitted": 0,
  "unmutated": []
 }
