@@ -226,31 +226,24 @@ describe("verification as each lens ends", () => {
 		expect(entry?.ended).toEqual({});
 	});
 
+	// The round on 7ba4d66 (lens.tests): with no candidates the test passed without the lens task's check.
 	it("starts no wave for a lens task the index does not name", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
 		const root = await harness.root(context);
-		const created = await startWave(
-			harness,
-			{
-				root: root.id,
-				version: verifierVersion,
-				revision: {
-					repoRoot: repo,
-					nonce: "a".repeat(24),
-					base: changeset.revision.base,
-					head: changeset.revision.head,
-					files: reviewFiles(changeset.revision.files),
-				},
-				candidates: [],
-			},
-			424_242,
-			context,
-		);
-		expect(created).toBeUndefined();
-		expect(
-			(await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[
-				Revision.key(changeset.revision)
-			],
-		).toBeUndefined();
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		// With no final verification named, the lens task is all that refuses: no wave of another lens task holds these.
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+		}, context);
+		const before = await waveTasks();
+		expect(final.candidates).toHaveLength(1);
+		expect(await startWave(harness, { ...final, reused: undefined }, 424_242, context)).toBeUndefined();
+		expect(await waveTasks()).toEqual(before);
 	});
 
 	// Correctness reports and ends at once; contracts waits for the first verification, so a wave verifies
