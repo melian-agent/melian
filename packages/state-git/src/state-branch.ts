@@ -19,6 +19,8 @@ const backoffMs = 50;
 const backoffCapMs = 1000;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
 const defaultTransferMs = 2 * 60 * 1000;
+// A lease names its clone in at most 200 characters, the label and a 36-character ID with a space between.
+const holderLimit = 200 - 37;
 const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
@@ -56,7 +58,11 @@ export interface StateBranchOptions {
 	readonly remote: string;
 	/** The directory holding this clone's copy of each changeset's storage. */
 	readonly directory: string;
-	/** This clone's identity, so a run in the same clone may take over a lease a crashed run left. */
+	/**
+	 * A label for this clone, which a lease it holds shows other runs. The clone's identity is an ID the branch mints in
+	 * `directory`, where the copy lock lives, so a run there may take over a lease a crashed run left, and no other
+	 * copies directory can, whatever its label.
+	 */
 	readonly holder: string;
 	/** The writers' 32-byte key, which every file on the branch is encrypted under. */
 	readonly key: Uint8Array;
@@ -215,10 +221,12 @@ export class StateBranch {
 	readonly #options: StateBranchOptions;
 	readonly #run = randomUUID();
 	readonly #seal: Seal;
+	// The label and the copies directory's ID, once the first operation has read or minted it.
+	#clone: string | undefined;
 
 	constructor(options: StateBranchOptions) {
-		if (options.holder.length === 0 || options.holder.length > 200)
-			throw new StateBranchError("invalidHolder", "a state branch holder must be 1 to 200 characters");
+		if (options.holder.length === 0 || options.holder.length > holderLimit)
+			throw new StateBranchError("invalidHolder", `a state branch holder must be 1 to ${holderLimit} characters`);
 		this.#options = options;
 		this.#seal = new Seal(options.key);
 	}
@@ -238,6 +246,7 @@ export class StateBranch {
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
 		const lock = await CopyLock.take(this.#options.directory, changeset);
 		try {
+			await this.#identify();
 			return await this.#checkout(changeset, lock);
 		} catch (error) {
 			lock.release();
@@ -250,8 +259,7 @@ export class StateBranch {
 		let taken: Lease | undefined;
 		const { stored } = await this.#withRetry(async (index, onBranch) => {
 			const held = index.lease(changeset);
-			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
-				throw new LeaseHeld(changeset, held);
+			if (held?.live(this.#now()) && held.holder.clone !== this.#holder.clone) throw new LeaseHeld(changeset, held);
 			// A copy this build cannot read is refused before the lease goes over it.
 			const tree = onBranch(changeset);
 			if (tree !== undefined) await this.#open(changeset, tree);
@@ -433,8 +441,25 @@ export class StateBranch {
 		return (this.#options.now ?? Date.now)();
 	}
 
+	// Reads the copies directory's ID, minting it, owner-only, when the directory has none.
+	async #identify(): Promise<void> {
+		const path = join(this.#options.directory, "holder");
+		const read = () =>
+			readFile(path, "utf8").then(
+				(text) => text.trim(),
+				() => "",
+			);
+		if ((await read()) === "")
+			await writeFile(path, `${randomUUID()}\n`, { flag: "wx", mode: 0o600 }).catch(() => {});
+		const id = await read();
+		if (!/^[0-9a-f-]{36}$/.test(id))
+			throw new StateBranchError("invalidHolder", `this clone's copies directory holds no clone ID at ${path}`);
+		this.#clone = `${this.#options.holder} ${id}`;
+	}
+
+	// Only an operation that has identified the copies directory reaches the branch, so every caller has the ID.
 	get #holder(): LeaseHolder {
-		return { clone: this.#options.holder, run: this.#run };
+		return { clone: this.#clone!, run: this.#run };
 	}
 
 	async #git(args: readonly string[], input?: string | Uint8Array): Promise<string> {

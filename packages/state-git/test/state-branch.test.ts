@@ -74,7 +74,7 @@ describe("a changeset on the state branch", () => {
 			changesets: {
 				[changeset]: {
 					lease: {
-						holder: { clone: "clone-2", run: expect.any(String) },
+						holder: { clone: expect.stringMatching(/^clone-2 [0-9a-f-]{36}$/), run: expect.any(String) },
 						takenAt: expect.any(String),
 						expiresAt: expect.any(String),
 						incarnation: expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -137,7 +137,7 @@ describe("the lease", () => {
 			);
 		expect(refusal).toBeInstanceOf(LeaseHeld);
 		expect((refusal as LeaseHeld).message).toMatch(
-			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1, until 2026-11-07T02:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
+			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1 [0-9a-f-]{36}, until 2026-11-07T02:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
 		);
 		expect(remote.tip()).toBe(tip);
 		expect(late.has(changeset)).toBe(false);
@@ -156,7 +156,7 @@ describe("the lease", () => {
 			changesets: {
 				[changeset]: {
 					lease: {
-						holder: { clone: "clone-2" },
+						holder: { clone: expect.stringMatching(/^clone-2 [0-9a-f-]{36}$/) },
 						takenAt: "2026-11-07T02:00:00.000Z",
 						expiresAt: "2026-11-07T04:00:00.000Z",
 						generation: 2,
@@ -172,7 +172,14 @@ describe("the lease", () => {
 		const rerun = clone.branch();
 		await rerun.checkout(changeset);
 		expect(remote.index()).toMatchObject({
-			changesets: { [changeset]: { lease: { holder: { clone: "clone-1", run: rerun.run }, generation: 2 } } },
+			changesets: {
+				[changeset]: {
+					lease: {
+						holder: { clone: expect.stringMatching(/^clone-1 [0-9a-f-]{36}$/), run: rerun.run },
+						generation: 2,
+					},
+				},
+			},
 		});
 	});
 
@@ -543,24 +550,24 @@ describe("Codex's review of edc438b", () => {
 
 	it.each([
 		["empty", ""],
-		["201 characters long", "x".repeat(201)],
+		["164 characters long", "x".repeat(164)],
 	])("refuses a holder that is %s before any git command", (_name, holder) => {
 		expect(() => remote.clone({ holder }).branch()).toThrow(
 			expect.objectContaining({
 				code: "invalidHolder",
-				message: "a state branch holder must be 1 to 200 characters",
+				message: "a state branch holder must be 1 to 163 characters",
 			}),
 		);
 		expect(remote.tip()).toBeUndefined();
 	});
 
-	it("takes a holder of exactly 200 characters", async () => {
+	it("takes a holder of exactly 163 characters", async () => {
 		await remote
-			.clone({ holder: "x".repeat(200) })
+			.clone({ holder: "x".repeat(163) })
 			.branch()
 			.checkout(changeset);
 		expect(remote.index()).toMatchObject({
-			changesets: { [changeset]: { lease: { holder: { clone: "x".repeat(200) } } } },
+			changesets: { [changeset]: { lease: { holder: { clone: expect.stringMatching(/^x{163} [0-9a-f-]{36}$/) } } } },
 		});
 	});
 });
@@ -994,7 +1001,12 @@ describe("the review of record at 853b4a2d", () => {
 		writeFileSync(`${directory}.synced`, "4b825dc642cb6eb9a060e54bf8d69288fbee4904\n");
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
 		expect(remote.tip()).toBeUndefined();
-		expect(readdirSync(clone.directory).sort()).toEqual([`${changeset}`, `${changeset}.lock`, `${changeset}.synced`]);
+		expect(readdirSync(clone.directory).sort()).toEqual([
+			"holder",
+			`${changeset}`,
+			`${changeset}.lock`,
+			`${changeset}.synced`,
+		]);
 	});
 
 	it.each([1, 2, 3])("lets six writers on six changesets of six clones all store, round %i", async () => {
@@ -1191,5 +1203,38 @@ describe("the mutation inventory at f6872a26", () => {
 		await note(await storageOf(checkout), "stored");
 		await checkout.push();
 		expect(existsSync(marker) ? readFileSync(marker, "utf8") : "").toBe("");
+	});
+
+	it("refuses a live lease to a branch of another copies directory, though its label is the same", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await expect(
+			clone.branch({ directory: join(clone.repoRoot, ".git", "melian", "elsewhere") }).checkout(changeset),
+		).rejects.toBeInstanceOf(LeaseHeld);
+		first.close();
+	});
+
+	it("keeps one identity for a copies directory across branches, so a crashed run's lease is taken over", async () => {
+		const clone = remote.clone();
+		await clone.branch().checkout(changeset);
+		const identity = readFileSync(join(clone.directory, "holder"), "utf8").trim();
+		expect(identity).toMatch(/^[0-9a-f-]{36}$/);
+		expect(statSync(join(clone.directory, "holder")).mode & 0o777).toBe(0o600);
+		expect(
+			(remote.index() as { changesets: Record<string, { lease: { holder: { clone: string } } }> }).changesets[
+				changeset
+			]!.lease.holder.clone,
+		).toBe(`${clone.holder} ${identity}`);
+	});
+
+	it("refuses a copies directory whose clone ID was damaged, rather than mint another", async () => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		writeFileSync(join(clone.directory, "holder"), "not an id\n");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidHolder",
+			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, "holder")}`,
+		});
+		expect(remote.tip()).toBeUndefined();
 	});
 });
