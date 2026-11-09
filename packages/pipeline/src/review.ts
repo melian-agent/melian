@@ -2206,7 +2206,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					...(thinking === undefined ? {} : { thinking }),
 					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
 					// Only a level whose probes may run reaches here, so the host has said whose head this is.
-					environment: { writer: options.writer!, trustWriters: config.trust.writers, timeout },
+					environment: {
+						writer: options.writer!,
+						trustWriters: config.trust.writers,
+						timeout,
+						read: [...config.probe.read],
+					},
 				},
 				context: (boundary: string) => [
 					`## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.\n${quoteUntrusted("listing", atBase, boundary)}`,

@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -1478,6 +1478,21 @@ describe("a level that probes", () => {
 			"a prober runs at most 2 probes; answer the attacks left with skip_attack",
 		);
 		expect(probes).toBe(48);
+	});
+
+	it("lets a probe read what the base policy's probe.read allows beyond the head's tree", async () => {
+		writeFileSync(join(repo, "generated.txt"), "BUILT\n");
+		const reading =
+			'import { readFileSync } from "node:fs";\nconsole.log(readFileSync("generated.txt", "utf8").trim());\n';
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [call("run_probe", { attack: 1, script: reading }), fauxAssistantMessage("Reported 0 findings.")],
+			},
+			{ config: { probe: { read: ["node_modules", "generated.txt"] } } },
+		);
+		await run;
+		expect(lastResults(requests[prober]![1]!)).toContain("BUILT");
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {

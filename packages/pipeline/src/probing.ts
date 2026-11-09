@@ -75,7 +75,8 @@ export const probingLimits = {
 } as const;
 
 /** What a probe may run under, as the review's host decided it: whose head this is, and the base policy's word. */
-export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; timeout?: number };
+// `read` is the base policy's `probe.read`; absent from an environment an older Melian stored, which read the install alone.
+export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; timeout?: number; read?: string[] };
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
@@ -131,7 +132,11 @@ export async function runHeadProbe(
 	try {
 		const commit = await boundedHead(revision.repoRoot, revision.head, limits);
 		const probe = await Probe.open(input, {
-			head: { checkout: revision.repoRoot, commit },
+			head: {
+				checkout: revision.repoRoot,
+				commit,
+				...(environment.read === undefined ? {} : { read: environment.read }),
+			},
 			writer: environment.writer,
 			trustWriters: environment.trustWriters,
 			timeout: environment.timeout ?? probeLimits.timeout.default,
