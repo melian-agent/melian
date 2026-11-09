@@ -858,11 +858,12 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			for (const level of lens.declaredLevels()) expect(lens.level(level)).not.toHaveProperty("probe");
 	});
 
-	it("refuses an unknown probe field, a prober outside the tiers, and a timeout below a millisecond", async () => {
+	it("refuses an unknown probe field, a prober outside the tiers, and a timeout below a millisecond or past ten minutes", async () => {
 		for (const [probe, field] of [
 			["{ count: 3 }", "levels.deep.probe.count"],
 			["{ prober: verifier }", "levels.deep.probe.prober"],
 			["{ timeout: 0 }", "levels.deep.probe.timeout"],
+			["{ timeout: 600001 }", "levels.deep.probe.timeout"],
 		] as const) {
 			writeFiles(repo, {
 				".melian/lenses/security/LENS.md": lensFile([...security, "levels:", `  deep: { probe: ${probe} }`]),
@@ -873,6 +874,18 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 				level: "deep",
 			});
 		}
+	});
+
+	it("takes a probe timeout of ten minutes, the longest a probe may run", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"levels:",
+				"  deep: { probe: { timeout: 600000 } }",
+			]),
+		});
+		const lens = (await load(["src/index.ts"])).find((each) => each.name === "security");
+		expect(lens!.level("deep").probe).toEqual({ timeout: 600_000 });
 	});
 
 	it("names the lens and the level for a level with no tier anywhere", async () => {
