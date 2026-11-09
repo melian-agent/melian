@@ -1800,6 +1800,25 @@ describe("escalation", () => {
 		expect(lensRecord(reviewed)!.reason).not.toContain("careful restated");
 	});
 
+	it("counts a quick finding restated when any one of the escalated run's findings restates it", async () => {
+		writeFiles(repo, { "src/other.ts": `${gitIn(repo, "show", "feature:src/user.ts")}\n` });
+		gitIn(repo, "add", "src/other.ts");
+		gitIn(repo, "commit", "-qm", "add another user file");
+		const decider = choosing("quick");
+		await open(decider);
+		const spanning = call("report_finding", { ...crashFinding, line: 6, endLine: 7 });
+		const other = call("report_finding", {
+			...crashFinding,
+			file: "src/other.ts",
+			evidence: [{ file: "src/other.ts", line: 7, role: "cause" }],
+		});
+		scriptConversations(fake, [{ match: correctness, replies: [spanning, done, severe, other, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(lensRecord(reviewed)!.reason).toContain("careful restated 1 finding quick carried");
+	});
+
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {
 		const decider = choosing("quick");
 		await open(decider);

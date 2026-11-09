@@ -38,10 +38,10 @@ import {
 	textOf,
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { ProbeReruns } from "../src/probing.ts";
+import { ProbeReruns, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -1453,6 +1453,31 @@ describe("a level that probes", () => {
 		const again = await review(scripts, { fake, lens: (lens) => lens });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(judged).toBe(2);
+	});
+
+	it("runs as many probes as a prober may, and refuses one past them whatever its budget", async () => {
+		const limits = probingLimits as { probes: number };
+		const probes = limits.probes;
+		limits.probes = 2;
+		onTestFinished(() => {
+			limits.probes = probes;
+		});
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				call("run_probe", { attack: 1, script: passing }),
+				call("run_probe", { attack: 1, script: passing }),
+				call("skip_attack", { attack: 1, reason: "r" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		expect(lastResults(requests[prober]![2]!)).toMatch(/^probe p[0-9]+ passed/);
+		expect(lastResults(requests[prober]![3]!)).toContain(
+			"a prober runs at most 2 probes; answer the attacks left with skip_attack",
+		);
+		expect(probes).toBe(48);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {

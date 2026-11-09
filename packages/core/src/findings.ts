@@ -16,6 +16,7 @@ import { isLensFile, melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import {
 	describeDecision,
+	describeInheritance,
 	evidenceLines,
 	messageContinuation,
 	plural,
@@ -88,7 +89,10 @@ export const findingExplanationSchema = Type.Object({ what: text, whyHere: text,
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
 /** The JSON Schema of a {@link FindingDismissal}. */
-export const findingDismissalSchema = Type.Object({ by: text, reason: text, at: text }, strict);
+export const findingDismissalSchema = Type.Object(
+	{ by: text, reason: text, at: text, inheritedFrom: Type.Optional(idSchema) },
+	strict,
+);
 
 /** The JSON Schema of an {@link AlsoReportedAs}. */
 export const alsoReportedAsSchema = Type.Object(
@@ -221,6 +225,7 @@ export const findingPropertiesSchema = Type.Object(
 		status: findingStatusSchema,
 		dismissal: Type.Optional(findingDismissalSchema),
 		pastDismissals: Type.Optional(Type.Array(pastDismissalSchema)),
+		likelyDismissedAs: Type.Optional(Type.Object({ id: idSchema }, strict)),
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
@@ -1192,7 +1197,8 @@ export class Finding {
 			const { emoji } = rendering.check(other.check, other.ruleId);
 			const check = `${rendering.emoji && emoji !== undefined ? `${emoji} ` : ""}${visibleText(other.check)}`;
 			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${check}`;
-			return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
+			const dismissed = `Also reported, dismissed${describeInheritance(other.dismissal ?? {})}`;
+			return `    ${other.dismissed ? dismissed : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
 		});
 		const { region } = this.locations[0]!.physicalLocation;
 		const lines =
@@ -1207,7 +1213,9 @@ export class Finding {
 		return [
 			`  ${[rendering.paint(severityColor[severity], first!), ...rest].join(" | ")}`,
 			...reports,
-			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
+			...[...this.trustFloorNotes(), ...this.likelyDismissalNotes(rendering.target)].map(
+				(line) => `    ${prose(line, "      ")}`,
+			),
 			...(decidedBy === undefined || !rendering.decided
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
@@ -1243,8 +1251,15 @@ export class Finding {
 		const { dismissal, pastDismissals = [] } = this.properties;
 		const said = ({ by, at, reason }: { by: string; at: string; reason: string }) =>
 			`by ${visibleText(by)} at ${visibleText(at)}: ${prose(reason, "      ")}`;
+		const mark = rendering.show(outcomeMarks.dismissed);
 		return [
-			...(dismissal === undefined ? [] : [`    ${rendering.show(outcomeMarks.dismissed)} ${said(dismissal)}`]),
+			...(dismissal === undefined
+				? []
+				: dismissal.inheritedFrom === undefined
+					? [`    ${mark} ${said(dismissal)}`]
+					: [
+							`    ${mark}${describeInheritance(dismissal)}, at ${visibleText(dismissal.at)}: ${prose(dismissal.reason, "      ")}`,
+						]),
 			...pastDismissals.map((past) => {
 				const ended =
 					past.replacedAt === undefined
@@ -1704,6 +1719,21 @@ export class Finding {
 			const sighting = this.#claim(claim, this);
 			return claim.verification === undefined ? sighting : sighting.verifiedAs(claim.verification);
 		});
+	}
+
+	/**
+	 * Plain text naming the dismissed finding this one likely restates, and the command that accepts the match, which
+	 * `quote` formats for a host; none when it has no likely root. The command names `target`, the range or `#N` the
+	 * review covered, quoted for a shell, or a quoted placeholder when the host does not know it. Every other word is
+	 * fixed text or a hexadecimal ID, so a host need not escape the note.
+	 */
+	likelyDismissalNotes(target = "<range or #N>", quote = (command: string) => command): string[] {
+		const { likelyDismissedAs, id } = this.properties;
+		if (likelyDismissedAs === undefined) return [];
+		const command = `melian dismiss '${target.replaceAll("'", "'\\''")}' ${id} --reason '<reason>'`;
+		return [
+			`Likely the same as dismissed finding ${likelyDismissedAs.id}. To accept the match, dismiss only on the user's instruction: ${quote(command)}`,
+		];
 	}
 
 	/** Plain text explanations of the protected judgements, for hosts to escape in their own format. */

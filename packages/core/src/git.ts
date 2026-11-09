@@ -42,6 +42,10 @@ function gitEnvironment(): NodeJS.ProcessEnv {
 	return env;
 }
 
+/**
+ * Runs git in `cwd`, without the repository variables a hook sets, and resolves with its exit code and output. Git is
+ * stopped once its output reaches `options.maxBytes`, and the result says so. Rejects only when git cannot start.
+ */
 export function git(cwd: string, args: readonly string[], options: GitOptions = {}): Promise<GitResult> {
 	return new Promise((resolve, reject) => {
 		// Melian only reads; optional locks would contend with an editor or a concurrent git.

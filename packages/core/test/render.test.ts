@@ -416,6 +416,49 @@ describe("Verdict.render", () => {
 		expect(text).toContain(`    Rule no-eval | Line 12 | Finding ${speaker.properties.id} | Status new\n`);
 	});
 
+	it("names the root of an inherited dismissed report beside a live one", () => {
+		const live = Finding.create(evalInput);
+		const inherited = Finding.create({
+			...evalInput,
+			rule: "unsafe-call",
+			severity: "P3",
+			source: { check: "static.biome" },
+			status: "dismissed",
+		});
+		const dismissal = { by: "melian", reason: "Same defect.", at: "2026-11-08T00:00:00Z", inheritedFrom: "root-a" };
+		const verdict = new Adjudication({
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+			findings: [live, Finding.from({ ...inherited.toJSON(), properties: { ...inherited.properties, dismissal } })],
+		}).adjudicate();
+
+		expect(verdict.render(new Rendering({ emoji: false }))).toBe(
+			[
+				"Verdict: findings, blocking",
+				"",
+				"melian/review: failure (1 finding, 1 blocking, 0 unresolved acknowledgements).",
+				"",
+				"Block: 1 finding",
+				"",
+				"src/run.ts",
+				"",
+				"  P1 | Blocks merge | security | Not verified | New in this change",
+				"    Also reported, dismissed, inherited from root-a: P3 unsafe-call from static.biome",
+				"  eval runs request input",
+				"    What: The handler passes the request body to eval.",
+				"    Why here: This change routes the body into run() without parsing it.",
+				"    What to do: Parse the body with JSON.parse and validate it.",
+				"    Rule no-eval | Line 12 | Status new",
+				"",
+				"1 dismissed finding not shown.",
+				"",
+				"1 finding in 1 file.",
+				"",
+			].join("\n"),
+		);
+	});
+
 	it("escapes control characters in a check's name, reason, and error", () => {
 		const hostile = new Adjudication({
 			findings: [],

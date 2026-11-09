@@ -101,6 +101,8 @@ Run details are stored by the review round ID. Publication reads the snapshot of
 
 A finding is a SARIF result with Melian extension properties; this section sets out its schema, out-of-diff findings, and cross-revision diffing.
 
+A dismissal attaches to one finding ID. It carries to a later restatement of the same defect under a new ID only when the verifier judges each claim the same, git maps the region unchanged, and the restatement is no more severe. A trust-floor restatement proposes the match instead. [The decision](decisions/2026-11-08-dismissal-carries-to-restatement.md) sets out the rule.
+
 Details: [docs/design/findings.md](design/findings.md). How a finding reads, its emojis and its English are set by [the findings guideline](guidelines/findings.md), which step 35 builds.
 
 ## Lenses
@@ -326,7 +328,7 @@ Publishing from the CLI sets a commit status, context `melian/review`, because a
 A block or unresolved acknowledgement maps to `failure`, including a new or carried pre-existing opt-in.
 The description counts blocks and acknowledgements apart, over `verdict.counted()`.
 An advisory member lifted only under “Pre-existing, important” does not count.
-A complete review with neither passes; an empty counted set with dismissals reads `0 findings, N dismissed`.
+A complete review with neither passes; an empty counted set with dismissals reads `0 findings, N dismissed`, and `0 findings, N dismissed, M inherited` when M inherited a root's dismissal.
 `not-reviewed` maps to `error` with what did not run.
 With `trust.writers: false` in the committed root base policy, publication sets the existing trusted-host `error`.
 It still posts the review and ledger and exits 0.
@@ -459,7 +461,7 @@ Built in milestone 2 by [issue #288](https://github.com/melian-agent/melian/issu
 
 Problem: probes run, but no lens could ask for one, so the reviews of record kept finding by running what rounds missed by reading.
 
-Solution: a lens level's `probe` makes it run as two conversations. The planner, on the level's tier, reads the change, the decisions at base and the findings of the change's last earlier revision, and records a numbered attack plan, each attack with its reason and what a passing and a failing probe would print. The prober, on `probe.prober`'s tier or the level's, receives that plan alone and answers every attack with a probe through `run_probe`, or a skip with its reason. A finding names a probe that failed. The review runs each claim's probe again before its verifier starts, and the verifier receives the plan, the probe and both runs, and cannot confirm a claim whose probe did not fail again. No count bounds the probes: the level's token and tool budgets and each probe's time limit do, and telemetry shows all three. No shipped level probes yet: by the maintainer's ruling of 2026-11-07, the built-in `trust-boundary` lens's `deep` level turns probing on once the live measurement picks the planner and prober routes, and until then a level that probes is one a repository or an eval's own lens declares. Where a probe may not run, for a fork's head, under `trust.writers: false` or on a host where the sandbox cannot run, the level runs as it would without `probe`, and its record says why. [The decision](decisions/2026-11-07-trust-boundary-level-that-probes.md) records the rulings and what it gives up.
+Solution: a lens level's `probe` makes it run as two conversations. The planner, on the level's tier, reads the change, the decisions at base and the findings of the change's last earlier revision, and records a numbered attack plan, each attack with its reason and what a passing and a failing probe would print. The prober, on `probe.prober`'s tier or the level's, receives that plan alone and answers every attack with a probe through `run_probe`, or a skip with its reason. A finding names a probe that failed. The review runs each claim's probe again before its verifier starts, and the verifier receives the plan, the probe and both runs, and cannot confirm a claim whose probe did not fail again. The level's token and tool budgets and each probe's time limit bound the probes, below fixed limits no level can lift: 48 probes a run, and 64 MiB of git's listing of the head, as [the fixed-limits decision](decisions/2026-11-09-probing-fixed-limits.md) records. Telemetry shows the budgets, the probes and their time. No shipped level probes yet: by the maintainer's ruling of 2026-11-07, the built-in `trust-boundary` lens's `deep` level turns probing on once the live measurement picks the planner and prober routes, and until then a level that probes is one a repository or an eval's own lens declares. Where a probe may not run, for a fork's head, under `trust.writers: false` or on a host where the sandbox cannot run, the level runs as it would without `probe`, and its record says why. [The decision](decisions/2026-11-07-trust-boundary-level-that-probes.md) records the rulings and what it gives up.
 
 ## Interaction model
 

@@ -1,4 +1,4 @@
-import { gitOutput, visibleText } from "@melian-agent/core";
+import { git, gitOutput, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
 import {
@@ -60,6 +60,8 @@ export const ProbingDocument = defineDoc<ProbingState>({
  */
 export const probingLimits = {
 	attacks: 24,
+	// Two probes for each attack a plan may hold, whatever the level's budgets say, since a level need set none.
+	probes: 48,
 	target: 300,
 	reason: 1000,
 	outcome: 600,
@@ -85,18 +87,26 @@ export type ProbeRun =
 	| { readonly result: StoredProbeResult; readonly milliseconds: number }
 	| { readonly refused: string };
 
-/** The most files and bytes a head may hold for a probe to run in it. */
-export const headTreeLimits = { entries: 100_000, bytes: 1024 * 1024 * 1024 } as const;
+/**
+ * The most files and bytes a head may hold for a probe to run in it, and the most of git's listing of them Melian reads
+ * to count them.
+ */
+export const headTreeLimits = { entries: 100_000, bytes: 1024 * 1024 * 1024, listing: 64 * 1024 * 1024 } as const;
 
 // The head's full commit hash, which Probe writes as the probe's tree. Refuses a head past `limits` first, from git's own
 // listing of each blob and its size, so a head cannot make the probe write an unbounded tree.
 async function boundedHead(
 	repoRoot: string,
 	head: string,
-	limits: { readonly entries: number; readonly bytes: number },
+	limits: { readonly entries: number; readonly bytes: number; readonly listing: number },
 ): Promise<string> {
 	const commit = (await gitOutput(repoRoot, ["rev-parse", "--verify", "--end-of-options", `${head}^{commit}`])).trim();
-	const blobs = (await gitOutput(repoRoot, ["ls-tree", "-r", "-l", "-z", "--full-tree", commit]))
+	const listed = await git(repoRoot, ["ls-tree", "-r", "-l", "-z", "--full-tree", commit], {
+		maxBytes: limits.listing,
+	});
+	if (listed.truncated === true) throw new Error(`git's listing of the head passes ${limits.listing} bytes`);
+	if (listed.code !== 0) throw new Error(`git ls-tree failed: ${listed.stderr.trim()}`);
+	const blobs = listed.stdout
 		.split("\0")
 		.map((line) => line.slice(0, line.indexOf("\t")).split(/ +/))
 		.filter(([, type]) => type === "blob");
@@ -116,7 +126,7 @@ export async function runHeadProbe(
 	revision: { readonly repoRoot: string; readonly head: string },
 	environment: ProbingEnvironment,
 	sandbox?: ProbeSandbox,
-	limits: { readonly entries: number; readonly bytes: number } = headTreeLimits,
+	limits: { readonly entries: number; readonly bytes: number; readonly listing: number } = headTreeLimits,
 ): Promise<ProbeRun> {
 	try {
 		const commit = await boundedHead(revision.repoRoot, revision.head, limits);

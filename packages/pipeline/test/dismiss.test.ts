@@ -625,6 +625,29 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
+	it.each([
+		{ name: "the defect whole, by the speaker's ID", only: false },
+		{ name: "a member alone", only: true },
+	])("records the severity the verdict showed for each report, dismissing $name", async ({ only }) => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding(true);
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		const member = shown!.properties.alsoReportedAs![0]!;
+		expect([shown!.properties.severity, member.severity]).toEqual(["P1", "P2"]);
+		const id = only ? member.id : shown!.properties.id;
+
+		await recordDismissal({ harness, revision: await revision(), id, dismissal, only, repoRoot: repo });
+
+		const root = (await harness.root(context)).id;
+		const severities = Object.entries((await harness.snapshot(FindingsDocument, root, context))!.items)
+			.filter(([, record]) => record.lifecycle.status === "dismissed")
+			.map(([each, record]) => [each, record.lifecycle.dismissedSeverity]);
+		expect(Object.fromEntries(severities)).toEqual({
+			[member.id]: "P2",
+			...(only ? {} : { [shown!.properties.id]: "P1" }),
+		});
+	});
+
 	// Step 27: a member's thread can stay open after a later push merges it, so its ID must not reach the speaker.
 	it("dismisses a merged report alone when its own ID names it, leaving the finding it merged into live", async () => {
 		const harness = await reviewHarness(createMemoryStorage());

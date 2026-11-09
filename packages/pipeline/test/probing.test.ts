@@ -57,7 +57,7 @@ describe("a head's bound", () => {
 	it("runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either", async () => {
 		commit(repo, { a: "12345", b: "678" });
 		const head = gitIn(repo, "rev-parse", "HEAD");
-		const run = (limits: { entries: number; bytes: number }) =>
+		const run = (limits: { entries: number; bytes: number; listing: number }) =>
 			runHeadProbe(
 				{ script: "process.exit(0);\n" },
 				{ repoRoot: repo, head },
@@ -65,10 +65,16 @@ describe("a head's bound", () => {
 				unconfinedSandbox(),
 				limits,
 			);
-		expect(await run({ entries: 2, bytes: 8 })).toMatchObject({ result: { exitCode: 0 } });
-		expect(await run({ entries: 1, bytes: 8 })).toEqual({ refused: "the head holds more than 1 files" });
-		expect(await run({ entries: 2, bytes: 7 })).toEqual({ refused: "the head holds more than 7 bytes" });
-		expect(headTreeLimits).toEqual({ entries: 100_000, bytes: 1024 * 1024 * 1024 });
+		// git's listing of the head, which the probe reads no further than its limit.
+		const listing = execFileSync("git", ["-C", repo, "ls-tree", "-r", "-l", "-z", "--full-tree", head]).length;
+		const listed = { entries: 2, bytes: 8, listing };
+		expect(await run(listed)).toMatchObject({ result: { exitCode: 0 } });
+		expect(await run({ ...listed, entries: 1 })).toEqual({ refused: "the head holds more than 1 files" });
+		expect(await run({ ...listed, bytes: 7 })).toEqual({ refused: "the head holds more than 7 bytes" });
+		expect(await run({ ...listed, listing: listing - 1 })).toEqual({
+			refused: `git's listing of the head passes ${listing - 1} bytes`,
+		});
+		expect(headTreeLimits).toEqual({ entries: 100_000, bytes: 1024 * 1024 * 1024, listing: 64 * 1024 * 1024 });
 	});
 
 	it("counts a head's blobs only, not its trees or submodules", async () => {
@@ -80,7 +86,7 @@ describe("a head's bound", () => {
 			{ repoRoot: repo, head: "HEAD" },
 			reviewer,
 			unconfinedSandbox(),
-			{ entries: 1, bytes: 4 },
+			{ entries: 1, bytes: 4, listing: headTreeLimits.listing },
 		);
 		expect(run).toMatchObject({ result: { exitCode: 0 } });
 	});
@@ -95,6 +101,23 @@ describe("a head's bound", () => {
 		);
 		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
+	});
+
+	it("refuses a head whose tree git cannot list, saying what git said", async () => {
+		const missing = `tree ${"2".repeat(40)}\nauthor a <a@example.com> 0 +0000\ncommitter a <a@example.com> 0 +0000\n\nm\n`;
+		const head = execFileSync("git", ["hash-object", "-t", "commit", "-w", "--literally", "--stdin"], {
+			cwd: repo,
+			input: missing,
+		})
+			.toString()
+			.trim();
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head },
+			reviewer,
+			unconfinedSandbox(),
+		);
+		expect(run).toEqual({ refused: expect.stringMatching(/^git ls-tree failed: fatal: .*\S$/) });
 	});
 
 	it("refuses a crafted tree naming a blob git does not hold, and leaves nothing", async () => {

@@ -74,7 +74,7 @@ it("reopens main's version-6 publish input as version 7, unchanged and with no r
 	}
 });
 
-it("reopens main's version-9 published document twice as version 10, unchanged and with no run", async () => {
+it("reopens main's version-9 published document twice as the current version, unchanged and with no run", async () => {
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-published-run-")));
 	const file = join(directory, "state.sqlite");
 	copyFileSync(new URL("./fixtures/quiet-output-main/previous.sqlite", import.meta.url), file);
@@ -117,7 +117,7 @@ it("reopens main's version-9 published document twice as version 10, unchanged a
 					"current",
 					context,
 				);
-				expect((await storage.document(document!.id, "current", context))!.version).toBe(10);
+				expect((await storage.document(document!.id, "current", context))!.version).toBe(11);
 			} finally {
 				await opened.close(context);
 			}
