@@ -1,0 +1,383 @@
+{
+ "total": 25,
+ "omitted": 0,
+ "base": "1bf0be76",
+ "head": "f108d55d",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000 at 84d91a38",
+ "note": "Fix pass 8 of pull request #296: the mutants of the fixed probing limits, each run against its named test alone; the failed listing's two needed the test f108d55d added.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1342,
+   "column": 10,
+   "endLine": 1342,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1342,
+   "column": 10,
+   "endLine": 1342,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1342,
+   "column": 10,
+   "endLine": 1342,
+   "endColumn": 72,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Object.keys(state.probes ?? {}).length > probingLimits.probes",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1342,
+   "column": 10,
+   "endLine": 1342,
+   "endColumn": 72,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Object.keys(state.probes ?? {}).length < probingLimits.probes",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1342,
+   "column": 22,
+   "endLine": 1342,
+   "endColumn": 40,
+   "mutatorName": "LogicalOperator",
+   "replacement": "state.probes && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1343,
+   "column": 7,
+   "endLine": 1345,
+   "endColumn": 9,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1344,
+   "column": 8,
+   "endLine": 1344,
+   "endColumn": 104,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 36,
+   "endLine": 104,
+   "endColumn": 88,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 37,
+   "endLine": 104,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 48,
+   "endLine": 104,
+   "endColumn": 52,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 54,
+   "endLine": 104,
+   "endColumn": 58,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 60,
+   "endLine": 104,
+   "endColumn": 64,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 66,
+   "endLine": 104,
+   "endColumn": 79,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 104,
+   "column": 90,
+   "endLine": 106,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 5,
+   "endLine": 107,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 5,
+   "endLine": 107,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 5,
+   "endLine": 107,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "listed.truncated !== true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 26,
+   "endLine": 107,
+   "endColumn": 30,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 32,
+   "endLine": 107,
+   "endColumn": 108,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 107,
+   "column": 48,
+   "endLine": 107,
+   "endColumn": 106,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 108,
+   "column": 5,
+   "endLine": 108,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 108,
+   "column": 5,
+   "endLine": 108,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a head whose tree git cannot list, saying what git said",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 108,
+   "column": 5,
+   "endLine": 108,
+   "endColumn": 22,
+   "mutatorName": "EqualityOperator",
+   "replacement": "listed.code === 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 108,
+   "column": 40,
+   "endLine": 108,
+   "endColumn": 85,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 108,
+   "column": 63,
+   "endLine": 108,
+   "endColumn": 83,
+   "mutatorName": "MethodExpression",
+   "replacement": "listed.stderr",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a head whose tree git cannot list, saying what git said",
+   "survivorClasses": [],
+   "run": {
+    "head": "f108d55d",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 17,
+  "ignored": 8
+ }
+}
