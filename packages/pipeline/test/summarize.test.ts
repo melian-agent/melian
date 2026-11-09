@@ -115,6 +115,25 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 		expect(doc?.walkthroughAttempts?.[revision]).toBeUndefined();
 	});
+	it.each([
+		["no light model is configured", { config: { ...defaultConfig, models: {} } }],
+		[
+			"the light model's credential fails to unlock",
+			{
+				unlockModels: async () => {
+					throw new Error("credential failed");
+				},
+			},
+		],
+	])("removes a walkthrough and its route when a rerun ends in a note because %s", async (_name, overrides) => {
+		const revision = Revision.key(changeset.revision);
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		expect((await summarize())?.walkthroughRoutes?.[revision]).toBeDefined();
+		const doc = await summarize({ rerun: true, ...overrides });
+		expect(doc?.walkthroughNotes?.[revision]).toBeDefined();
+		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+	});
 	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
 		const revision = Revision.key(changeset.revision);
 		scriptConversations(models, [
