@@ -444,7 +444,8 @@ export class StateBranch {
 	// Reads the copies directory's ID, minting it, owner-only, when the directory has none. The ID is written whole to a
 	// file of its own and linked into place, which fails when another run linked first, so no run reads it half-written.
 	async #identify(): Promise<void> {
-		const path = join(this.#options.directory, "holder");
+		// A dotted name, which no changeset's can be, so no checkout replaces it.
+		const path = join(this.#options.directory, ".clone-id");
 		const read = () =>
 			readFile(path, "utf8").then(
 				(text) => text.trim(),

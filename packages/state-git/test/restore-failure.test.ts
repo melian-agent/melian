@@ -116,7 +116,7 @@ it("gives two first checkouts of a copies directory the one clone ID, though the
 	vi.mocked(fsp.writeFile).mockImplementation(async (path, data, options) => {
 		// The first writer of the ID creates its file, then pauses before the ID is in it, as a slow disk lets another
 		// reader in between.
-		if (!held && String(path).includes("holder")) {
+		if (!held && String(path).includes(".clone-id")) {
 			held = true;
 			await actual.writeFile(path, "", options);
 			await new Promise((resolve) => setTimeout(resolve, 300));
@@ -128,5 +128,5 @@ it("gives two first checkouts of a copies directory the one clone ID, though the
 	const ids = ["pull-0000000000000001", "pull-0000000000000002"];
 	const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
 	expect(checkouts.map((checkout) => checkout.changeset)).toEqual(ids);
-	expect(readFileSync(join(clone.directory, "holder"), "utf8").trim()).toMatch(/^[0-9a-f-]{36}$/);
+	expect(readFileSync(join(clone.directory, ".clone-id"), "utf8").trim()).toMatch(/^[0-9a-f-]{36}$/);
 });

@@ -1015,7 +1015,7 @@ describe("the review of record at 853b4a2d", () => {
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
 		expect(remote.tip()).toBeUndefined();
 		expect(readdirSync(clone.directory).sort()).toEqual([
-			"holder",
+			".clone-id",
 			`${changeset}`,
 			`${changeset}.lock`,
 			`${changeset}.synced`,
@@ -1230,9 +1230,9 @@ describe("the mutation inventory at f6872a26", () => {
 	it("keeps one identity for a copies directory across branches, so a crashed run's lease is taken over", async () => {
 		const clone = remote.clone();
 		await clone.branch().checkout(changeset);
-		const identity = readFileSync(join(clone.directory, "holder"), "utf8").trim();
+		const identity = readFileSync(join(clone.directory, ".clone-id"), "utf8").trim();
 		expect(identity).toMatch(/^[0-9a-f-]{36}$/);
-		expect(statSync(join(clone.directory, "holder")).mode & 0o777).toBe(0o600);
+		expect(statSync(join(clone.directory, ".clone-id")).mode & 0o777).toBe(0o600);
 		expect(
 			(remote.index() as { changesets: Record<string, { lease: { holder: { clone: string } } }> }).changesets[
 				changeset
@@ -1243,10 +1243,10 @@ describe("the mutation inventory at f6872a26", () => {
 	it("refuses a copies directory whose clone ID was damaged, rather than mint another", async () => {
 		const clone = remote.clone();
 		mkdirSync(clone.directory, { recursive: true });
-		writeFileSync(join(clone.directory, "holder"), "not an id\n");
+		writeFileSync(join(clone.directory, ".clone-id"), "not an id\n");
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
 			code: "invalidHolder",
-			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, "holder")}`,
+			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, ".clone-id")}`,
 		});
 		expect(remote.tip()).toBeUndefined();
 	});
@@ -1272,4 +1272,13 @@ describe("the mutation inventory at f6872a26", () => {
 			expect(readFileSync(join(second.directory, "main.jsonl"), "utf8")).toBe("melian\n");
 		},
 	);
+
+	it("keeps its clone ID beside a changeset whose name is any the branch accepts", async () => {
+		const clone = remote.clone();
+		const named = await clone.branch().checkout("holder");
+		named.close();
+		const checkout = await clone.branch().checkout(changeset);
+		expect(checkout.changeset).toBe(changeset);
+		checkout.close();
+	});
 });
