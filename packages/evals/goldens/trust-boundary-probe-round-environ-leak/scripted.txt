@@ -6,11 +6,11 @@ scripts/round.mjs
     Why here: The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in the error, and the comment and the uploaded artefact carry it out of the job.
     Failure scenario: A head adds a biome.json of {"extends": ["/proc/<pid>/environ"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict, round.txt and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.
     Evidence:
-      cause: scripts/round.mjs:107
+      cause: scripts/round.mjs:108
             ...(error === undefined ? [] : [oneLine(`    Error: ${error}`)]),
       context: .github/workflows/melian-round.yml:197
                   path: ${{ runner.temp }}/round
     What to do: Render a check that did not run by name and status alone, and upload only a public copy of the verdict that drops every check reason and error and every static finding's text.
-    Rule secret-exposure | Line 107 | Status new
+    Rule secret-exposure | Line 108 | Status new
 
 1 finding in 1 file.

@@ -41,7 +41,7 @@
           "name": "report_finding",
           "arguments": {
             "file": "scripts/round.mjs",
-            "line": 107,
+            "line": 108,
             "rule": "secret-exposure",
             "severity": "P1",
             "explanation": {
@@ -53,7 +53,7 @@
             "evidence": [
               {
                 "file": "scripts/round.mjs",
-                "line": 107,
+                "line": 108,
                 "role": "cause"
               },
               {
