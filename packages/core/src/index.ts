@@ -313,6 +313,7 @@ export {
 export {
 	describeBudgetEnd,
 	describeDecision,
+	describeInheritance,
 	describeLineage,
 	Rendering,
 	type TerminalRenderOptions,
@@ -439,6 +440,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
 	type MutationReportInput,
 	type MutationSkipCause,
@@ -505,6 +507,7 @@ export {
 	VerificationState,
 	verificationAnswersSchema,
 	verificationBudget,
+	verificationMatchesSchema,
 	verificationQuestionSet,
 	verificationQuestions,
 	verificationSchema,

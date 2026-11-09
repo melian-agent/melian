@@ -133,7 +133,7 @@ async function dirtyPaths(repoRoot: string): Promise<string[]> {
 }
 
 // Pinned so that hunk boundaries do not depend on each user's diff configuration.
-const diffFlags = [
+export const diffFlags = [
 	"--no-color",
 	"--no-ext-diff",
 	"--no-textconv",

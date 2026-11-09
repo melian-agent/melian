@@ -98,7 +98,7 @@ A refused current round still prints the dismissals of earlier rounds it posted,
 That includes carried dismissals and each merged report, even on a repeat publish with no new review.
 Terminal control characters are escaped. Skills relay this output.
 Blocks and unresolved acknowledgements fail melian/review; an acknowledgement-only review still exits 3, and a successful publish exits 0.
-An all-dismissed success says “0 findings, N dismissed”. Writer trust off retains its trusted-host error.
+An all-dismissed success says “0 findings, N dismissed”, adding “, M inherited” when M inherited a root's dismissal. An attested inherited dismissal reads `<id> <rule> in <path>, inherited from <root>: at <time>: <reason>`, with no dismisser. Writer trust off retains its trusted-host error.
 GitHub itself requires push access to write a status; no extra permission read gates an attested success.
 A policy notice reopens after any change to its file's blob. Use the same pull-request changeset for dismissal and publication.
 

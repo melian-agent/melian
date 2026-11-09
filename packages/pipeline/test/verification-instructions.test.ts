@@ -55,6 +55,26 @@ describe("the production verifier version", () => {
 		}
 	});
 
+	it("asks for sameness, never merit, against every dismissed finding it lists", () => {
+		for (const sentence of [
+			"Judge sameness, never merit: whether the dismissal was right is not your question, and neither finding's wording is evidence that they match.",
+			"Pass matches with same or different for every dismissed finding's ID on every report.",
+			"Answer different unless the code you read shows one defect.",
+		]) {
+			expect(verifierInstructions).toContain(sentence);
+			expect(computeVerifierVersion(verifierInstructions.replace(sentence, ""))).not.toBe(verifierVersion);
+		}
+		const report = {
+			claim: "c1",
+			answers: { code: "yes", guard: "no", base: "no" },
+			verdict: "confirmed",
+			reason: "Traced.",
+		};
+		expect(Value.Check(reportVerdictSchema, { ...report, matches: { "0123456789abcdef": "same" } })).toBe(true);
+		expect(Value.Check(reportVerdictSchema, { ...report, matches: { "0123456789abcdef": "alike" } })).toBe(false);
+		expect(Value.Check(reportVerdictSchema, report)).toBe(true);
+	});
+
 	it("changes when the report schema changes", () => {
 		const schema = {
 			...reportVerdictSchema,

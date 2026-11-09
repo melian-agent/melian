@@ -170,6 +170,8 @@ export type LensPolicy = {
 		fence?: { coReported: boolean; silent: Severity[] };
 		probe?: { reproduced: boolean };
 	}[];
+	// The dismissed findings a verifier judges every claim against for sameness, each by its label and ID.
+	dismissed?: { label: string; id: string }[];
 	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
 	// name the lens's version alone.
 	level?: ScrutinyLevel;
@@ -859,7 +861,8 @@ export const lensListedTools = {
 	graph_callees: graphCallees,
 } as const;
 
-function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
+// The hunk an introduced finding on `startLine` to `endLine` of `file` names as its trigger.
+export function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
 	return file?.hunks.find(
 		(hunk) => hunk.newLines > 0 && startLine < hunk.newStart + hunk.newLines && endLine >= hunk.newStart,
 	);
@@ -1088,7 +1091,7 @@ export const reportVerdict = defineTool({
 		const error = [...Value.Errors(reportVerdictSchema, args)][0];
 		if (error !== undefined)
 			throw new Error(
-				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }: ${error.instancePath} ${error.message}`,
+				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }, and matches { <dismissed finding ID>: same or different } for each dismissed finding listed. It takes an optional lower { severity, reason }: ${error.instancePath} ${error.message}`,
 			);
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
@@ -1108,6 +1111,21 @@ export const reportVerdict = defineTool({
 			if (args.verdict === "confirmed" && claim.probe !== undefined && !claim.probe.reproduced)
 				throw new Error(
 					"this claim's probe did not fail when Melian ran it again, so the claim cannot be confirmed: refute it, or answer plausible when code you read shows the defect another way",
+				);
+			// Pi hands prepareArguments no conversation, so this checks the listed dismissed findings, before any write.
+			const listed = (lens.dismissed ?? []).map(({ id }) => id);
+			const answered = Object.keys(args.matches ?? {});
+			const missing = listed.filter((id) => !answered.includes(id));
+			const unlisted = answered.filter((id) => !listed.includes(id));
+			if (missing.length > 0 || unlisted.length > 0)
+				throw new Error(
+					`matches must answer same or different for each dismissed finding listed, ${
+						listed.length === 0
+							? "none here"
+							: (lens.dismissed ?? []).map(({ label, id }) => `${label} ${id}`).join(", ")
+					}, and no other${missing.length > 0 ? `; missing ${missing.join(", ")}` : ""}${
+						unlisted.length > 0 ? `; not listed ${unlisted.join(", ")}` : ""
+					}`,
 				);
 			const review = lens.revision;
 			const revision = Revision.from({
@@ -1152,6 +1170,7 @@ export const reportVerdict = defineTool({
 					answers: { ...args.answers },
 					...(evidence.length === 0 ? {} : { evidence }),
 					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
+					...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
 					executor: "llm",
 					model: lens.model!,
 					version: lens.version,

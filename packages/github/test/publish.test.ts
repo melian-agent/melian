@@ -15,7 +15,9 @@ import {
 	recordDismissal,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { PublishedDocument } from "../../pipeline/src/publish.ts";
+import { RoundsDocument } from "../../pipeline/src/rounds.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -547,6 +549,53 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		]);
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
 		expect(state.comments.filter((comment) => comment.in_reply_to_id === Number(thread))).toHaveLength(2);
+	});
+
+	it("names each closed dismissal's own root in the ledger after the finding inherits from another, then from none", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const owner = await harness!.root(context);
+		const manager = (await readFindings(harness!, owner.id, Revision.key(changeset.revision), context)).find(
+			(finding) => finding.ruleId === "null-dereference",
+		)!;
+		const id = manager.properties.id;
+		const dismiss = async (reason: string, at: string, inheritedFrom?: string) => {
+			await recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id,
+				dismissal: { by: "Tal", reason, at },
+				repoRoot: repo,
+			});
+			// Only a review links a restatement to its root, so the stored verdict stands in for one that did.
+			if (inheritedFrom !== undefined)
+				await owner.commit(async (tx) => {
+					const revision = Revision.key(changeset.revision);
+					const rounds = await tx.doc(RoundsDocument, owner.id);
+					for (const stored of [
+						(await tx.doc(VerdictDocument, owner.id)).verdicts[revision]!,
+						rounds.items[rounds.current[revision]!]!.verdict!,
+					]) {
+						const finding = stored.dismissed.find((each) => each.properties.id === id)!;
+						finding.properties.dismissal = { by: "melian", reason, at, inheritedFrom };
+					}
+				}, context);
+			await publish(github, changeset);
+		};
+		const [a, b] = ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"];
+		await dismiss("Root A says so.", "2026-10-04T00:00:00.000Z", a);
+		await dismiss("Root B says so.", "2026-10-04T01:00:00.000Z", b);
+		const closed = () => state.ledgers[0]!.body.split("\n").filter((line) => line.startsWith(`- ${id}: Dismissed`));
+		expect(closed()).toEqual([
+			`- ${id}: Dismissed, inherited from \`${a}\`: Root A says so.`,
+			`- ${id}: Dismissed, inherited from \`${b}\`: Root B says so.`,
+		]);
+		await dismiss("A person says so.", "2026-10-04T02:00:00.000Z");
+		expect(closed()).toEqual([
+			`- ${id}: Dismissed, inherited from \`${a}\`: Root A says so.`,
+			`- ${id}: Dismissed, inherited from \`${b}\`: Root B says so.`,
+			`- ${id}: Dismissed: A person says so.`,
+		]);
 	});
 
 	it("keeps each merged report's own dismissal, answering only the thread whose report was dismissed since", async () => {
