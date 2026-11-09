@@ -270,8 +270,15 @@ export async function startVerification(
 		},
 	}));
 	// A rerun the sandbox refused runs again on a repeat review, so a verification attaches only to the reruns it read.
+	// A review with none keeps the key it had before reruns joined it, so its stored verifications still attach.
 	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))?.runs[Revision.key(input.revision)] ?? {};
-	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates, reruns });
+	const key = JSON.stringify({
+		root: input.root,
+		revision,
+		version: input.version,
+		candidates,
+		...(Object.keys(reruns).length === 0 ? {} : { reruns }),
+	});
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(input.revision)]
