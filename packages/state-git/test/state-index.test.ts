@@ -107,6 +107,16 @@ describe("StateIndex", () => {
 			'the lease of a holds the key "epoch", which this build of Melian does not know',
 		],
 		[
+			"a lease whose holder is a string",
+			indexOf({ a: { lease: { ...stored, holder: "clone-1" } } }),
+			"the lease of a: a lease's holder does not name a clone and a run",
+		],
+		[
+			"a lease whose holder is null",
+			indexOf({ a: { lease: { ...stored, holder: null } } }),
+			"the lease of a: a lease's holder does not name a clone and a run",
+		],
+		[
 			"a key this build does not know in a lease's holder",
 			indexOf({ a: { lease: { ...stored, holder: { ...stored.holder, host: "h" } } } }),
 			'the holder of a\'s lease holds the key "host", which this build of Melian does not know',
