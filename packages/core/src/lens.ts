@@ -73,9 +73,10 @@ const budgetSchema = Type.Object(
 );
 
 // A level that probes: a planner on the level's tier writes an attack plan, and a prober on `prober`, the level's tier
-// when absent, answers each attack with probes, each held to `timeout` milliseconds.
+// when absent, answers each attack with probes, each held to `timeout` milliseconds. The pipeline's `Probe` refuses a
+// longer limit than ten minutes, so a level that asks for one is refused here rather than at every probe.
 const probeSchema = Type.Object(
-	{ prober: Type.Optional(lensTierSchema), timeout: Type.Optional(Type.Integer({ minimum: 1 })) },
+	{ prober: Type.Optional(lensTierSchema), timeout: Type.Optional(Type.Integer({ minimum: 1, maximum: 600_000 })) },
 	strict,
 );
 

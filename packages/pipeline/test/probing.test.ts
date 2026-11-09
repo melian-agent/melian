@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Probe } from "../src/probe.ts";
+import { Probe, probeLimits } from "../src/probe.ts";
 import {
 	type Attack,
 	answerPrompt,
@@ -113,6 +113,13 @@ describe("a head's bound", () => {
 		);
 		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
+	});
+});
+
+describe("a level's probe timeout", () => {
+	it("is bounded as the probe that runs it is", () => {
+		// Core's lens schema holds the same ten minutes, since core cannot import the pipeline.
+		expect(probeLimits.timeout.max).toBe(600_000);
 	});
 });
 
