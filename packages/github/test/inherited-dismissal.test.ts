@@ -8,8 +8,16 @@ import {
 	Rendering,
 	type Verdict,
 } from "@melian-agent/core";
-import { Ledger, marker, ReviewComment, renderResolvedReply, renderReviewBody } from "@melian-agent/github";
+import {
+	createGitHubProvider,
+	Ledger,
+	marker,
+	ReviewComment,
+	renderResolvedReply,
+	renderReviewBody,
+} from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
+import { fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
 
 // Issue #342: an inherited dismissal reads as inherited from its root wherever a dismissal shows, and never as the
 // work of the root's dismisser; a person's own dismissal reads as before.
@@ -358,6 +366,55 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 				`  ${posted(advisory.id)}`,
 			].join("\n"),
 		);
+	});
+
+	it("names the pull request in the comment and the review body that a publication posts", async () => {
+		const elsewhere = Finding.from({
+			...proposed.toJSON(),
+			properties: { ...proposed.properties, id: "fedcba9876543210", path: "src/elsewhere.ts" },
+		});
+		const decided = new Adjudication({
+			findings: [proposed, elsewhere],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const state = fakeState(
+			"melian-agent",
+			"example",
+			{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: head } },
+			{ "src/floor.ts": [[3, 3]] },
+		);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		const [inline, body] = [proposed, elsewhere].map((finding) =>
+			decided.findings.acknowledge.find((each) => each.id === finding.id),
+		);
+		await provider.postReview({
+			pullRequest: 7,
+			revision: head,
+			base,
+			fingerprint: decided.fingerprint(),
+			round: 1,
+			verdict: decided,
+			findings: [
+				{ finding: inline!, placement: { kind: "lines", startLine: 3, line: 3 } },
+				{ finding: body!, placement: { kind: "body" } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		});
+		expect(
+			state.comments.map((comment) => comment.body.split("\n").filter((line) => line.startsWith("Likely"))),
+		).toEqual([[posted(inline!.id)]]);
+		expect(state.reviews[0]!.body.split("\n").filter((line) => line.startsWith("Likely"))).toEqual([
+			posted(body!.id),
+		]);
 	});
 
 	it("names them in the ledger's line for the finding", () => {
