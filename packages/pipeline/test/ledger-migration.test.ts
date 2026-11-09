@@ -138,7 +138,7 @@ describe("ledger document migration", () => {
 		const round = (await harness.snapshot(PublishedDocument, root.id, context))!.ledgerRounds!.at(-1)!;
 		expect(round).toHaveProperty("details.lenses.0.standards", ["AGENTS.md"]);
 		await expect(harness.snapshot(oldVerdicts, root.id, context)).rejects.toThrow(/newer version 14 than 5/);
-		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 10 than 5/);
+		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 11 than 5/);
 	});
 
 	it.each([1, 2, 3, 4, 5])(

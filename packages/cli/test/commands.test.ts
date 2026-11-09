@@ -38,6 +38,49 @@ it("renders no attestation without dismissals and names absent legacy metadata",
 	);
 });
 
+it("attests an inherited dismissal as inherited from its root, and a person's under their name", () => {
+	const dismissed = (file: string, dismissal: { by: string; reason: string; at: string; inheritedFrom?: string }) => {
+		const created = Finding.create({
+			rule: "unsafe",
+			file,
+			startLine: 1,
+			snippet: "unsafe()",
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P2",
+			status: "dismissed",
+			source: { check: "lens.correctness", version: "1" },
+			message: "Unsafe",
+			explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+		});
+		return Finding.from({ ...created.toJSON(), properties: { ...created.properties, dismissal } });
+	};
+	const human = dismissed("src/a.ts", { by: "Tal <tal@melian.invalid>", reason: "Checked.", at: "2026-11-01" });
+	const inherited = dismissed("src/b.ts", {
+		by: "melian",
+		reason: "Loaded.",
+		at: "2026-11-02",
+		inheritedFrom: "0123456789abcdef",
+	});
+	const verdict = new Adjudication({
+		findings: [human, inherited],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	expect(
+		new PublicationAttestations([{ revision: "base..head", round: 1, dismissals: verdict.dismissals() }]).render(),
+	).toBe(
+		[
+			"Attested dismissals:",
+			"  Revision base..head, round 1",
+			`  ${human.id} unsafe in src/a.ts: by Tal <tal@melian.invalid> at 2026-11-01: Checked.`,
+			`  ${inherited.id} unsafe in src/b.ts, inherited from 0123456789abcdef: at 2026-11-02: Loaded.`,
+			"",
+		].join("\n"),
+	);
+});
+
 describe("git author errors", () => {
 	it("names dismissal by default when git has no author", async () => {
 		const git = vi.spyOn(repository, "git").mockRejectedValue(new Error("identity unavailable"));

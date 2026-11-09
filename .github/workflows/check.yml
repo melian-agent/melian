@@ -30,6 +30,17 @@ jobs:
       # Node 22 bundles npm 10, which silently ignores min-release-age in .npmrc.
       - if: matrix.node == 22
         run: npm install -g npm@11.19.0
+      # Probes run under sandbox-runtime, which needs bubblewrap, socat and ripgrep on Linux, and user namespaces that
+      # Ubuntu 24.04's AppArmor can restrict. MELIAN_PROBE_SANDBOX=1 below makes the probe suites fail, not skip, if any
+      # of it is missing.
+      - name: Let probes run under bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          # Runner images differ: an image without the restriction has no such setting.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - run: npm ci --ignore-scripts
       # The triage gate compares questions.json with main's, at origin/main. A push run already has origin/main at the
       # pushed commit, so the gate has nothing to compare; fetching would be refused as a non-fast-forward once main
@@ -39,6 +50,7 @@ jobs:
       - run: npm run check -- --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          MELIAN_PROBE_SANDBOX: "1"
       # The macOS job runs only the tests this report shows Linux skipped.
       - if: matrix.node == 24 && !cancelled()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -77,8 +89,8 @@ jobs:
         run: git diff --exit-code
 
   # Linux skips the tests that need sandbox-exec, a BSD ps or launchd. This job runs only the files that hold a test the
-  # Node 24 Linux job skipped, and fails unless every such test passed here; Biome, tsc, the audit and every other test
-  # ran on Linux already. A test that passes on Linux and fails only on macOS is not run here, which is why AGENTS.md
+  # Node 24 Linux job skipped, and the probe suites, which run under seatbelt here and bubblewrap there. It fails unless
+  # every such test passed here; Biome, tsc, the audit and every other test ran on Linux already. A test that passes on Linux and fails only on macOS is not run here, which is why AGENTS.md
   # keeps the host rerun until this job is required.
   check-macos:
     name: check (macos, 24)
@@ -110,8 +122,10 @@ jobs:
           jq -e -r '
             [.testResults[] | .name as $name | select(any(.assertionResults[]; .status != "passed"))
               | $name | sub("^.*?/(?<p>(packages|scripts)/)"; "\(.p)")]
-            + ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts"]
-            | unique | if length > 2 then .[] else error("the Linux report shows no skipped test") end
+            + ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
+                "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
+                "packages/pipeline/test/probe-keychain.test.ts"]
+            | unique | if length > 5 then .[] else error("the Linux report shows no skipped test") end
           ' "$RUNNER_TEMP/linux/vitest.json" > "$RUNNER_TEMP/files.txt"
           cat "$RUNNER_TEMP/files.txt"
       - name: Run those files
@@ -119,6 +133,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MELIAN_SANDBOX_NETWORK: "1"
+          MELIAN_PROBE_SANDBOX: "1"
       # Every test Linux skipped must pass here, except the allowlist, and each named suite must be present and pass
       # whole, so a new platform-gated test cannot skip unseen.
       - name: Fail if a test Linux skipped did not pass here
@@ -129,7 +144,9 @@ jobs:
             ($linux[0] | tests | map(select(.status != "passed")) | map(.id)) as $skipped
             | ($mac[0] | tests) as $tests
             | ($tests | map({key: .id, value: .status}) | from_entries) as $status
-            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts"] as $suites
+            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
+                "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
+                "packages/pipeline/test/probe-keychain.test.ts"] as $suites
             # Only root can give a file to another user, and neither runner is root.
             | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
             | [$suites[] as $suite | [$tests[] | select(.file == $suite)]
