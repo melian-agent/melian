@@ -85,12 +85,13 @@ export interface ClosedFinding extends PublishedFinding {
 }
 
 /**
- * A dismissal's version: the first 16 hex digits of a SHA-256 over its reason, dismisser, and time. A reply giving a
- * dismissal names it, so a dismissal whose reason changed is answered again rather than taken as answered.
+ * A dismissal's version: the first 16 hex digits of a SHA-256 over its reason, dismisser, time, and, for an inherited
+ * one, its root. A reply giving a dismissal names it, so a dismissal whose reason or root changed is answered again
+ * rather than taken as answered.
  */
-export function dismissalVersion({ by, reason, at }: FindingDismissal): string {
+export function dismissalVersion({ by, reason, at, inheritedFrom }: FindingDismissal): string {
 	return createHash("sha256")
-		.update(JSON.stringify([reason, by, at]))
+		.update(JSON.stringify(inheritedFrom === undefined ? [reason, by, at] : [reason, by, at, inheritedFrom]))
 		.digest("hex")
 		.slice(0, 16);
 }

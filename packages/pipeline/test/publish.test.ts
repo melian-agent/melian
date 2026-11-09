@@ -535,6 +535,57 @@ describe("publication planning recovery", () => {
 		},
 	);
 
+	it("answers again when a restatement moves to another root with the same dismisser, reason and time", async () => {
+		const fromA = { by: "melian", reason: "Same defect.", at: "2026-10-17T00:00:00Z", inheritedFrom: "root-a" };
+		const fromB = { ...fromA, inheritedFrom: "root-b" };
+		const verdict = new Adjudication({
+			findings: [
+				Finding.from({
+					...finding.toJSON(),
+					properties: { ...finding.properties, status: "dismissed", dismissal: fromB },
+				}),
+			],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const head = state.pull.head.sha;
+		const keyA = replyKey(finding.id, "1002", dismissalVersion(fromA));
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			(await tx.doc(PublisherDocument, root.id)).secret = "11".repeat(32);
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [head];
+			doc.revisions[head] = {
+				reviews: ["1"],
+				rounds: 1,
+				verdict: verdict.fingerprint(),
+				verdictRevision: revision,
+				open: {},
+				resolved: {
+					[keyA]: {
+						id: finding.id,
+						ruleId: finding.ruleId,
+						path: "src/a.ts",
+						line: 1,
+						revision: head,
+						thread: "1002",
+						dismissal: fromA,
+					},
+				},
+				replies: { [keyA]: "1003" },
+			};
+		}, context);
+		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("1004");
+		await publish();
+		expect(reply).toHaveBeenCalledExactlyOnceWith(
+			7,
+			expect.objectContaining({ thread: "1002", dismissal: fromB }),
+			head,
+			expect.any(String),
+		);
+	});
+
 	it("replaces the unanswered earlier reason of each of two findings whose reasons changed", async () => {
 		const reasonA = { by: "Maintainer", reason: "Reason A", at: "2026-10-17T00:00:00Z" };
 		const reasonB = { ...reasonA, reason: "Reason B", at: "2026-10-18T00:00:00Z" };
