@@ -2723,6 +2723,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	}, context);
 	spans.step("adjudication.prepare");
+	const lensRan = (key: string) => {
+		const outcome = lensResult?.[key];
+		return outcome?.status === "done" ? outcome : undefined;
+	};
 	const marked =
 		request.plan?.mark(
 			accounted.records(),
@@ -2733,13 +2737,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		) ?? accounted.records();
 	// A prober on its level's own tier answers to the policy the plan judges that level by, as its planner does, so a
 	// preference that moved the lens cannot carry the prober onto a model the committed tier refuses.
-	const proberRefusals = new Map<string, string>();
+	const proberRefusals = new Map<string, string | undefined>();
 	for (const { run } of settled) {
-		const outcome = lensResult?.[run.key];
-		const model = outcome?.status === "done" ? outcome.probing?.model : undefined;
+		const model = lensRan(run.key)?.probing?.model;
 		if (run.probe?.onLevelTier !== true || model === undefined) continue;
-		const refusal = request.plan?.judge(run.name, run.level, model, run.coverage.scope).refusal;
-		if (refusal !== undefined) proberRefusals.set(`lens.${run.name} ${run.level}`, refusal);
+		proberRefusals.set(
+			`lens.${run.name} ${run.level}`,
+			request.plan?.judge(run.name, run.level, model, run.coverage.scope).refusal,
+		);
 	}
 	const checks = marked.map((check) => {
 		const reason = proberRefusals.get(`${check.name} ${check.level}`);
@@ -2747,10 +2752,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? check
 			: { ...check, status: "failed" as const, reason };
 	});
-	const lensRan = (key: string) => {
-		const outcome = lensResult?.[key];
-		return outcome?.status === "done" ? outcome : undefined;
-	};
 	const lineageOf = (name: string, level: ScrutinyLevel) =>
 		checks.find((check) => check.name === `lens.${name}` && check.level === level)?.lineage;
 	const input = adjudicationInput({
