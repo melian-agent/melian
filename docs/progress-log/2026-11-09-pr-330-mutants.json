@@ -3609,11 +3609,14 @@
    "endColumn": 65,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
-   "claim": "equivalent",
-   "evidence": "the line above marks a live task on another route aborted before this commit, and the abortRequested check refuses it; attachable refuses every finished task, so within one process the route comparison decides nothing it does not; it stays for a second process",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > creates its own task when another call indexes a task on another route between its reads and its commit",
    "survivorClasses": [
     "compound-condition"
-   ]
+   ],
+   "result": {
+    "namedTest": "killed"
+   }
   },
   {
    "file": "packages/pipeline/src/summarize.ts",
