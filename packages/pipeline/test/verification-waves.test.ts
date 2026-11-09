@@ -27,9 +27,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { startVerification, startWave, type VerificationInput } from "../src/verification.ts";
+import { candidateIdentity, startVerification, startWave, type VerificationInput } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
-import { VerificationWavesDocument } from "../src/verification-waves.ts";
+import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -755,6 +755,58 @@ describe("verification as each lens ends", () => {
 		expect(inner).toBeDefined();
 		expect(outer).toBeUndefined();
 		expect(await waveTasks()).toEqual([inner]);
+	});
+
+	it("leaves out of its wave a candidate it read as standing, though that wave retired before its commit", async () => {
+		const asked: string[][] = [];
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: lens("contracts").instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", caller), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			verifier(
+				asked,
+				() => undefined,
+				() => "confirmed",
+			),
+		]);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		expect(final.candidates).toHaveLength(2);
+		const [fresh, held] = final.candidates;
+		const heldKey = JSON.stringify(candidateIdentity(held!));
+		// Only a wave of the held candidate stands, so the read finds the other fresh and unlocks its route alone. The
+		// final task stands in for that wave's task: it has finished, as a standing wave has.
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+			(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves = [
+				{
+					task: entry.verification!.task,
+					version: final.version,
+					candidates: [{ key: heldKey, claims: held!.state.claims.map(claimKey) }],
+				},
+			];
+		}, context);
+		// Between the read and the commit, the held candidate's wave retires, so the commit reads both as fresh.
+		const outer = await startWave(harness, { ...final, reused: undefined }, entry.task!, context, async () => {
+			await root.commit(async (tx) => {
+				(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves = [];
+			}, context);
+		});
+		expect(outer).toBeDefined();
+		const wave = (await harness.getTask(outer!, context))!.input as unknown as VerificationInput;
+		expect(wave.candidates.map((candidate) => candidate.key)).toEqual([fresh!.key]);
 	});
 
 	// Codex's adversarial review at e023f60: an earlier wave a later wave of the same review re-verified no longer stands,
