@@ -58,7 +58,8 @@ export class CallerContext {
 		if (files.length === 0) return CallerContext.unavailable("No changed files selected by lenses");
 		try {
 			const { tools, readiness } = await spans.time("callers.provision", async () => {
-				const tools = input.tools ?? (await ToolProvisioning.open(input.repoRoot));
+				const tools =
+					input.tools ?? (await ToolProvisioning.open(input.repoRoot, { env: input.environment ?? {} }));
 				return { tools, readiness: await tools.cache.readiness(tools.tool("enola"), tools.platform) };
 			});
 			if (readiness !== "verified") return CallerContext.unavailable(`Enola executable ${readiness}`);

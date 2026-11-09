@@ -1,6 +1,18 @@
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import { randomBytes, randomUUID } from "node:crypto";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	truncateSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc, openJsonlStorage } from "@melian-agent/pipeline";
@@ -69,7 +81,7 @@ describe("a changeset on the state branch", () => {
 			changesets: {
 				[changeset]: {
 					lease: {
-						holder: { clone: "clone-2", run: expect.any(String) },
+						holder: { clone: expect.stringMatching(/^clone-2 [0-9a-f-]{36}$/), run: expect.any(String) },
 						takenAt: expect.any(String),
 						expiresAt: expect.any(String),
 						incarnation: expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -132,7 +144,7 @@ describe("the lease", () => {
 			);
 		expect(refusal).toBeInstanceOf(LeaseHeld);
 		expect((refusal as LeaseHeld).message).toMatch(
-			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1, until 2026-11-07T02:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
+			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1 [0-9a-f-]{36}, until 2026-11-07T02:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
 		);
 		expect(remote.tip()).toBe(tip);
 		expect(late.has(changeset)).toBe(false);
@@ -151,7 +163,7 @@ describe("the lease", () => {
 			changesets: {
 				[changeset]: {
 					lease: {
-						holder: { clone: "clone-2" },
+						holder: { clone: expect.stringMatching(/^clone-2 [0-9a-f-]{36}$/) },
 						takenAt: "2026-11-07T02:00:00.000Z",
 						expiresAt: "2026-11-07T04:00:00.000Z",
 						generation: 2,
@@ -167,7 +179,14 @@ describe("the lease", () => {
 		const rerun = clone.branch();
 		await rerun.checkout(changeset);
 		expect(remote.index()).toMatchObject({
-			changesets: { [changeset]: { lease: { holder: { clone: "clone-1", run: rerun.run }, generation: 2 } } },
+			changesets: {
+				[changeset]: {
+					lease: {
+						holder: { clone: expect.stringMatching(/^clone-1 [0-9a-f-]{36}$/), run: rerun.run },
+						generation: 2,
+					},
+				},
+			},
 		});
 	});
 
@@ -251,12 +270,16 @@ describe("what the branch holds", () => {
 		expect(clone.has(changeset)).toBe(false);
 	});
 
-	it.each(["doc-01.jsonl", "task-x.jsonl", "main.jsonl.reclaim", "main.json"])(
+	it.each(["doc-01.jsonl", "task-01.jsonl", "task-x.jsonl", "main.jsonl.reclaim", "main.json"])(
 		"refuses %s, which is not a name Pi's storage writes",
 		async (name) => {
 			await (await remote.clone().branch().checkout(changeset)).push();
 			replaceChangeset(remote, { [name]: "" });
-			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+			// Refused for its name, before any key could fail to open it.
+			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+				code: "invalidBranch",
+				message: `the state branch holds ${JSON.stringify(name)} in ${changeset}, which Melian never writes`,
+			});
 		},
 	);
 
@@ -300,7 +323,7 @@ describe("what the branch holds", () => {
 	it("names a fetch that fails", async () => {
 		const clone = remote.clone();
 		const checkout = await clone.branch({ remote: join(remote.root, "absent.git") }).checkout(changeset);
-		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: /);
+		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: \S[\s\S]*\S$/);
 	});
 });
 
@@ -367,6 +390,16 @@ describe("Codex's review of d449ec6", () => {
 			(index: string, changesets: string) =>
 				`100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n100644 blob ${index}\tledger.json\n`,
 		],
+		[
+			"the changesets tree under another name",
+			(index: string, changesets: string) =>
+				`040000 tree ${changesets}\tarchive\n100644 blob ${index}\tindex.json\n`,
+		],
+		[
+			"another blob in place of index.json",
+			(index: string, changesets: string) =>
+				`040000 tree ${changesets}\tchangesets\n100644 blob ${index}\tledger.json\n`,
+		],
 	])("refuses a branch with %s, and pushes nothing", async (_name, root) => {
 		await (await remote.clone().branch().checkout(changeset)).push();
 		const bare = remote.bare;
@@ -375,7 +408,12 @@ describe("Codex's review of d449ec6", () => {
 		const tree = gitWith(bare, root(index, changesets), "mktree");
 		const commit = gitIn(bare, "commit-tree", tree, "-p", remote.tip()!, "-m", "malformed");
 		gitIn(bare, "update-ref", "refs/heads/melian/state", commit);
-		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		// git's own listing of the root, as "<type> <name>".
+		const listing = gitIn(bare, "ls-tree", "--format=%(objecttype) %(path)", commit).split("\n");
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `the state branch's root holds ${JSON.stringify(listing)}, where this build reads only the blob index.json and the tree changesets`,
+		});
 		expect(remote.tip()).toBe(commit);
 	});
 
@@ -410,7 +448,10 @@ describe("Codex's review of d449ec6", () => {
 		await note(await storageOf(checkout), "kept");
 		const tip = remote.tip();
 		plant(checkout.directory);
-		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
+		await expect(checkout.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: expect.stringMatching(new RegExp(`^this clone's copy of ${changeset} holds "`)),
+		});
 		expect(remote.tip()).toBe(tip);
 	});
 });
@@ -446,17 +487,20 @@ describe("Codex's review of a7e009f", () => {
 		expect(stranger.has(changeset)).toBe(false);
 	});
 
-	it("refuses a file moved to another changeset or name on the branch", async () => {
+	it.each([
+		["another changeset", "pull-fedcba9876543210", "main.jsonl"],
+		["another name", changeset, "doc-1.jsonl"],
+	])("refuses an intact sealed file moved to %s on the branch", async (_name, id, name) => {
 		const checkout = await remote.clone().branch().checkout(changeset);
 		await note(await storageOf(checkout), "marker secret 0123");
 		await checkout.push();
+		// The sealed bytes exactly as stored, so only their place on the branch differs.
 		const main = gitIn(remote.bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}/main.jsonl`);
-		const moved = execFileSync("git", ["cat-file", "blob", main], { cwd: remote.bare, encoding: "latin1" });
-		replaceChangeset(remote, { "main.jsonl": moved }, "pull-fedcba9876543210");
-		await expect(remote.clone().branch().checkout("pull-fedcba9876543210")).rejects.toMatchObject({
+		const moved = execFileSync("git", ["cat-file", "blob", main], { cwd: remote.bare });
+		replaceChangeset(remote, { [name]: moved, ...(name === "main.jsonl" ? {} : { "main.jsonl": moved }) }, id);
+		await expect(remote.clone().branch().checkout(id)).rejects.toMatchObject({
 			code: "invalidBranch",
-			message:
-				"this clone's state key cannot read main.jsonl in pull-fedcba9876543210; the branch was written under another key, or the file was moved",
+			message: `this clone's state key cannot read ${name} in ${id}; the branch was written under another key, or the file was moved`,
 		});
 	});
 
@@ -511,24 +555,24 @@ describe("Codex's review of edc438b", () => {
 
 	it.each([
 		["empty", ""],
-		["201 characters long", "x".repeat(201)],
+		["164 characters long", "x".repeat(164)],
 	])("refuses a holder that is %s before any git command", (_name, holder) => {
 		expect(() => remote.clone({ holder }).branch()).toThrow(
 			expect.objectContaining({
 				code: "invalidHolder",
-				message: "a state branch holder must be 1 to 200 characters",
+				message: "a state branch holder must be 1 to 163 characters",
 			}),
 		);
 		expect(remote.tip()).toBeUndefined();
 	});
 
-	it("takes a holder of exactly 200 characters", async () => {
+	it("takes a holder of exactly 163 characters", async () => {
 		await remote
-			.clone({ holder: "x".repeat(200) })
+			.clone({ holder: "x".repeat(163) })
 			.branch()
 			.checkout(changeset);
 		expect(remote.index()).toMatchObject({
-			changesets: { [changeset]: { lease: { holder: { clone: "x".repeat(200) } } } },
+			changesets: { [changeset]: { lease: { holder: { clone: expect.stringMatching(/^x{163} [0-9a-f-]{36}$/) } } } },
 		});
 	});
 });
@@ -615,15 +659,24 @@ describe("what the mutation inventory found untested", () => {
 		async (name) => {
 			await (await remote.clone().branch().checkout(changeset)).push();
 			replaceChangeset(remote, { [name]: "" });
-			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+				code: "invalidBranch",
+				message: `the state branch holds ${JSON.stringify(name)} in ${changeset}, which Melian never writes`,
+			});
 		},
 	);
 
-	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl"])("refuses to push a copy holding %s", async (name) => {
-		const checkout = await remote.clone().branch().checkout(changeset);
-		writeFileSync(join(checkout.directory, name), "");
-		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
-	});
+	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl", "doc-01.jsonl", "task-01.jsonl"])(
+		"refuses to push a copy holding %s",
+		async (name) => {
+			const checkout = await remote.clone().branch().checkout(changeset);
+			writeFileSync(join(checkout.directory, name), "");
+			await expect(checkout.push()).rejects.toMatchObject({
+				code: "invalidCopy",
+				message: `this clone's copy of ${changeset} holds ${JSON.stringify(name)}, which Pi's storage never writes, so Melian will not push part of it`,
+			});
+		},
+	);
 
 	it.each(["Pull-0123456789abcdef", "pull-0123/x", "pull-0123456789abcdef!", "-pull", "x".repeat(65)])(
 		"refuses the changeset name %j before any git command",
@@ -699,9 +752,12 @@ describe("what the mutation inventory found untested", () => {
 	});
 
 	it("refuses an executable storage file on the branch", async () => {
-		await (await remote.clone().branch().checkout(changeset)).push();
+		// A file this clone's key sealed, so only its mode is wrong.
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
 		const bare = remote.bare;
-		const blob = gitWith(bare, "", "hash-object", "-w", "--stdin");
+		const blob = gitIn(bare, "rev-parse", `${remote.stored()}:main.jsonl`);
 		const own = gitWith(bare, `100755 blob ${blob}\tmain.jsonl\n`, "mktree");
 		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
 		const changesets = gitWith(bare, `040000 tree ${own}\t${changeset}\n`, "mktree");
@@ -712,7 +768,10 @@ describe("what the mutation inventory found untested", () => {
 			"refs/heads/melian/state",
 			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "m"),
 		);
-		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `the state branch holds "main.jsonl" in ${changeset}, which Melian never writes`,
+		});
 	});
 
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
@@ -820,6 +879,28 @@ describe("a reservation of a changeset the branch does not hold", () => {
 		await reservation.release();
 		expect(Date.parse(index().changesets[changeset]!.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
 		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+	});
+
+	it("names its clone by the label and the copies directory's ID, as a checkout does", async () => {
+		const clone = remote.clone();
+		const reservation = await clone.branch().reserve(changeset);
+		const identity = readFileSync(join(clone.directory, ".clone-id"), "utf8").trim();
+		expect(identity).toMatch(/^[0-9a-f-]{36}$/);
+		expect(
+			(remote.index() as { changesets: Record<string, { lease: { holder: { clone: string } } }> }).changesets[
+				changeset
+			]!.lease.holder.clone,
+		).toBe(`${clone.holder} ${identity}`);
+		await reservation.release();
+	});
+
+	it("refuses a live lease of another copies directory, though its label is the same", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().reserve(changeset);
+		await expect(
+			clone.branch({ directory: join(clone.repoRoot, ".git", "melian", "elsewhere") }).reserve(changeset),
+		).rejects.toBeInstanceOf(LeaseHeld);
+		await first.release();
 	});
 
 	it("refuses a changeset the branch holds", async () => {
@@ -1231,7 +1312,12 @@ describe("the review of record at 853b4a2d", () => {
 		writeFileSync(`${directory}.synced`, "4b825dc642cb6eb9a060e54bf8d69288fbee4904\n");
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
 		expect(remote.tip()).toBeUndefined();
-		expect(readdirSync(clone.directory).sort()).toEqual([`${changeset}`, `${changeset}.lock`, `${changeset}.synced`]);
+		expect(readdirSync(clone.directory).sort()).toEqual([
+			".clone-id",
+			`${changeset}`,
+			`${changeset}.lock`,
+			`${changeset}.synced`,
+		]);
 	});
 
 	it.each([1, 2, 3])("lets six writers on six changesets of six clones all store, round %i", async () => {
@@ -1250,5 +1336,255 @@ describe("the review of record at 853b4a2d", () => {
 		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets").split("\n")).toEqual(
 			ids,
 		);
+	});
+});
+
+describe("the mutation inventory at f6872a26", () => {
+	// A sealed file the branch holds, as this clone's key wrote it.
+	const sealedOnBranch = async (plain: string): Promise<Buffer> => {
+		const checkout = await remote
+			.clone({ validate: async () => {} })
+			.branch()
+			.checkout(changeset);
+		writeFileSync(join(checkout.directory, "main.jsonl"), plain);
+		await checkout.push();
+		checkout.close();
+		return execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
+	};
+	const refusesOnBranch = async (sealed: Buffer) => {
+		replaceChangeset(remote, { "main.jsonl": sealed });
+		await expect(
+			remote
+				.clone({ validate: async () => {} })
+				.branch()
+				.checkout(changeset),
+		).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `this clone's state key cannot read main.jsonl in ${changeset}; the branch was written under another key, or the file was moved`,
+		});
+	};
+
+	it("refuses a sealed file of another format version, though the rest of it opens", async () => {
+		const sealed = await sealedOnBranch("melian\n");
+		await refusesOnBranch(Buffer.concat([Buffer.from([sealed[0]! + 1]), sealed.subarray(1)]));
+	});
+
+	it("refuses a sealed file too short to hold a whole authentication tag", async () => {
+		// Version, nonce and the first four bytes of an empty file's tag: GCM would check a four-byte tag.
+		const sealed = await sealedOnBranch("");
+		expect(sealed.length).toBe(29);
+		await refusesOnBranch(sealed.subarray(0, 17));
+	});
+
+	it("reads an empty file, which seals to exactly the header", async () => {
+		await sealedOnBranch("");
+		const checkout = await remote
+			.clone({ validate: async () => {} })
+			.branch()
+			.checkout(changeset);
+		expect(readFileSync(join(checkout.directory, "main.jsonl"), "utf8")).toBe("");
+	});
+
+	it("lets a checkout be closed twice", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		checkout.close();
+		expect(() => checkout.close()).not.toThrow();
+	});
+
+	it("leaves no scratch copy behind when it pushes", async () => {
+		const scratch = mkdtempSync(join(tmpdir(), "melian-scratch-"));
+		vi.stubEnv("TMPDIR", scratch);
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		await checkout.push();
+		expect(readdirSync(scratch)).toEqual([]);
+		rmSync(scratch, { recursive: true, force: true });
+	});
+
+	it("says no lease is held when the changeset's record is gone before the push", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		const bare = remote.bare;
+		const index = remote.index() as { changesets: Record<string, unknown> };
+		delete index.changesets[changeset];
+		const blob = gitWith(bare, `${JSON.stringify(index)}\n`, "hash-object", "-w", "--stdin");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const root = gitWith(bare, `100644 blob ${blob}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "x"),
+		);
+		expect(await checkout.push()).toEqual({
+			kind: "refused",
+			reason: "another run took the changeset's lease, at generation none, after this one's 1",
+		});
+	});
+
+	it("builds each commit on the tip it fetched, so the branch keeps its history", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		const taken = remote.tip()!;
+		expect(gitIn(remote.bare, "rev-list", "--count", taken)).toBe("1");
+		await note(await storageOf(first), "stored");
+		await first.push();
+		expect(gitIn(remote.bare, "rev-parse", `${remote.tip()}^`)).toBe(taken);
+	});
+
+	it("keeps its copy after a push another run's lease refused, when that run stored nothing", async () => {
+		const start = Date.parse("2026-11-08T00:00:00Z");
+		const hour = 60 * 60 * 1000;
+		const mine = remote.clone({ now: () => start });
+		const first = await mine.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const second = await mine.branch().checkout(changeset);
+		await note(await storageOf(second), "mine");
+		// Another clone takes the lease after this one's expires, and stores nothing.
+		await remote
+			.clone({ now: () => start + 3 * hour })
+			.branch()
+			.checkout(changeset);
+		expect(await second.push()).toMatchObject({ kind: "refused" });
+		second.close();
+		// The other clone's lease has expired, and the branch still holds the tree this copy grew from.
+		const again = await mine.branch({ now: () => start + 6 * hour }).checkout(changeset);
+		expect(again.setAside).toBeUndefined();
+		expect(await notes(await storageOf(again))).toEqual(["stored", "mine"]);
+	});
+
+	it("stops a fetch that runs past its deadline, whatever the transport, and names it", async () => {
+		const clone = remote.clone();
+		gitIn(clone.repoRoot, "config", "protocol.ext.allow", "always");
+		const start = Date.now();
+		const checkout = await clone.branch({ remote: "ext::sh -c sleep% 10", transferMs: 500 }).checkout(changeset);
+		expect(checkout.unreached).toBe("git fetch of melian/state ran past its deadline of 500 ms");
+		checkout.close();
+		expect(Date.now() - start).toBeLessThan(5000);
+	});
+
+	it.each([1, 2, 3])("checks two changesets out through one branch at once, round %i", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
+		const branch = remote.clone().branch();
+		const checkouts = await Promise.all(
+			["pull-0000000000000001", "pull-0000000000000002", "pull-0000000000000003"].map((id) => branch.checkout(id)),
+		);
+		expect(checkouts.map((checkout) => checkout.changeset)).toEqual([
+			"pull-0000000000000001",
+			"pull-0000000000000002",
+			"pull-0000000000000003",
+		]);
+	});
+
+	it("keeps this clone's decrypted copies where only its owner can read them", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "marker secret 0123");
+		await writer.push();
+		const clone = remote.clone();
+		// A copies directory left readable by an older build is tightened too.
+		mkdirSync(clone.directory, { recursive: true, mode: 0o755 });
+		chmodSync(clone.directory, 0o755);
+		const checkout = await clone.branch().checkout(changeset);
+		const mode = (path: string) => statSync(path).mode & 0o777;
+		expect(mode(clone.directory)).toBe(0o700);
+		expect(mode(checkout.directory)).toBe(0o700);
+		expect(readdirSync(checkout.directory).map((name) => mode(join(checkout.directory, name)))).toEqual(
+			readdirSync(checkout.directory).map(() => 0o600),
+		);
+	});
+
+	it("runs no hook of the clone's, which a head can supply, while it fetches, pushes or moves a ref", async () => {
+		const clone = remote.clone();
+		const hooks = join(clone.repoRoot, ".hooks");
+		const marker = join(clone.repoRoot, "hook-ran");
+		mkdirSync(hooks);
+		for (const hook of ["pre-push", "reference-transaction", "post-checkout"]) {
+			writeFileSync(join(hooks, hook), `#!/bin/sh\necho ${hook} >> "${marker}"\n`);
+			chmodSync(join(hooks, hook), 0o755);
+		}
+		gitIn(clone.repoRoot, "config", "core.hooksPath", hooks);
+		const checkout = await clone.branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		await checkout.push();
+		expect(existsSync(marker) ? readFileSync(marker, "utf8") : "").toBe("");
+	});
+
+	it("refuses a live lease to a branch of another copies directory, though its label is the same", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await expect(
+			clone.branch({ directory: join(clone.repoRoot, ".git", "melian", "elsewhere") }).checkout(changeset),
+		).rejects.toBeInstanceOf(LeaseHeld);
+		first.close();
+	});
+
+	it("keeps one identity for a copies directory across branches, so a crashed run's lease is taken over", async () => {
+		const clone = remote.clone();
+		await clone.branch().checkout(changeset);
+		const identity = readFileSync(join(clone.directory, ".clone-id"), "utf8").trim();
+		expect(identity).toMatch(/^[0-9a-f-]{36}$/);
+		expect(statSync(join(clone.directory, ".clone-id")).mode & 0o777).toBe(0o600);
+		expect(
+			(remote.index() as { changesets: Record<string, { lease: { holder: { clone: string } } }> }).changesets[
+				changeset
+			]!.lease.holder.clone,
+		).toBe(`${clone.holder} ${identity}`);
+	});
+
+	it("refuses a copies directory whose clone ID was damaged, rather than mint another", async () => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		writeFileSync(join(clone.directory, ".clone-id"), "not an id\n");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidHolder",
+			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, ".clone-id")}`,
+		});
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it("refuses a clone ID with more after it, rather than read its start", async () => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		writeFileSync(join(clone.directory, ".clone-id"), `${randomUUID()}x\n`);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidHolder",
+			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, ".clone-id")}`,
+		});
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it.each(["checkout", "push"] as const)(
+		"refuses at %s a main log of the branch's length but other bytes, though the storage opens it",
+		async (at) => {
+			// The storage accepts any bytes here, so only the main log's comparison with the branch's decides.
+			const clone = remote.clone({ validate: async () => {} });
+			const first = await clone.branch().checkout(changeset);
+			writeFileSync(join(first.directory, "main.jsonl"), "melian\n");
+			await first.push();
+			first.close();
+			if (at === "push") {
+				const second = await clone.branch().checkout(changeset);
+				writeFileSync(join(second.directory, "main.jsonl"), "change\n");
+				await expect(second.push()).rejects.toMatchObject({ code: "invalidCopy" });
+				return;
+			}
+			writeFileSync(join(first.directory, "main.jsonl"), "change\n");
+			const second = await clone.branch().checkout(changeset);
+			expect(second.setAside).toEqual(expect.stringContaining(".set-aside-"));
+			expect(readFileSync(join(second.directory, "main.jsonl"), "utf8")).toBe("melian\n");
+		},
+	);
+
+	it("keeps its clone ID beside a changeset whose name is any the branch accepts", async () => {
+		const clone = remote.clone();
+		const named = await clone.branch().checkout("holder");
+		named.close();
+		const checkout = await clone.branch().checkout(changeset);
+		expect(checkout.changeset).toBe(changeset);
+		checkout.close();
 	});
 });

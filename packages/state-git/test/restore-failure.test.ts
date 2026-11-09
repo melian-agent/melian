@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import * as fsp from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -19,6 +20,7 @@ beforeEach(() => {
 afterEach(() => {
 	// A module spied with `spy: true` keeps a test's implementation through restoreAllMocks.
 	vi.mocked(fsp.writeFile).mockReset();
+	vi.mocked(fsp.link).mockReset();
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	remote.close();
@@ -45,6 +47,9 @@ it("expires its own lease when restoring the copy fails after taking it", async 
 });
 
 it("says the lease stays on the branch when expiring it fails too", async () => {
+	// After the writer's push released its lease, so this clone can take it.
+	const start = Date.now() + 60 * 60 * 1000;
+	const until = new Date(start + 2 * 60 * 60 * 1000).toISOString().replaceAll(".", "\\.");
 	const writer = await remote.clone().branch().checkout(changeset);
 	await note(await storageOf(writer), "stored");
 	await writer.push();
@@ -59,8 +64,15 @@ it("says the lease stays on the branch when expiring it fails too", async () => 
 		}
 		return actual.writeFile(path, ...rest);
 	});
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toThrow(
-		/^no space left on device; the lease, generation 2, stays on melian\/state until \S+, since expiring it failed: git push of melian\/state failed: /,
+	await expect(
+		remote
+			.clone({ now: () => start })
+			.branch()
+			.checkout(changeset),
+	).rejects.toThrow(
+		new RegExp(
+			`^no space left on device; the lease, generation 2, stays on melian/state until ${until}, since expiring it failed: git push of melian/state failed: `,
+		),
 	);
 });
 
@@ -97,4 +109,38 @@ it("leaves alone a lease another run took before the restore failed", async () =
 	).changesets[changeset]!.lease;
 	expect(lease.generation).toBe(3);
 	expect(lease.expiresAt).toBe(new Date(start + 8 * hour).toISOString());
+});
+
+it("gives two first checkouts of a copies directory the one clone ID, though the first is slow to write it", async () => {
+	const actual = await vi.importActual<typeof fsp>("node:fs/promises");
+	let held = false;
+	vi.mocked(fsp.writeFile).mockImplementation(async (path, data, options) => {
+		// The first writer of the ID creates its file, then pauses before the ID is in it, as a slow disk lets another
+		// reader in between.
+		if (!held && String(path).includes(".clone-id")) {
+			held = true;
+			await actual.writeFile(path, "", options);
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			return actual.writeFile(path, data);
+		}
+		return actual.writeFile(path, data, options);
+	});
+	const clone = remote.clone();
+	const ids = ["pull-0000000000000001", "pull-0000000000000002"];
+	const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
+	expect(checkouts.map((checkout) => checkout.changeset)).toEqual(ids);
+	expect(readFileSync(join(clone.directory, ".clone-id"), "utf8").trim()).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it("reports a failure to link the clone ID into place as itself, not as a missing ID", async () => {
+	vi.mocked(fsp.link).mockImplementation(async () => {
+		throw Object.assign(new Error("operation not permitted"), { code: "EPERM" });
+	});
+	const clone = remote.clone();
+	await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+		code: "EPERM",
+		message: "operation not permitted",
+	});
+	vi.mocked(fsp.link).mockRestore();
+	expect(remote.tip()).toBeUndefined();
 });

@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ChangesetError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkGitVersion, git, gitOutput, requireGitVersion } from "../src/git.ts";
@@ -73,3 +77,56 @@ it("gives git an ended input when it is given none, so a command that reads it c
 	const result = await git(repo, ["hash-object", "--stdin"]);
 	expect(result).toMatchObject({ code: 0, stdout: "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\n" });
 }, 5_000);
+
+describe("git with a deadline", () => {
+	// A transport that never answers, as a stalled remote does; it exits on its own after ten seconds.
+	const stalled = ["-c", "protocol.ext.allow=always", "fetch", "ext::sh -c sleep% 10"];
+
+	it("stops git once the deadline passes, and says it timed out", async () => {
+		const start = Date.now();
+		const result = await git(repo, stalled, { deadlineMs: 500 });
+		expect(result).toMatchObject({ code: -1, timedOut: true });
+		expect(Date.now() - start).toBeLessThan(5000);
+	});
+
+	it("stops the git process itself, not only the wait for it", async () => {
+		// The transport's parent is git's remote helper, whose parent is the git process the deadline must stop; the
+		// transport records that pid, and exits on its own later.
+		const recorded = join(repo, "git-pid");
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, `ps -o ppid= -p $PPID | tr -d ' ' > ${recorded}\nsleep 10\n`);
+		await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], { deadlineMs: 500 });
+		const pid = Number(readFileSync(recorded, "utf8"));
+		// Only a real process's own pid is signalled, never 0, 1 or a group.
+		expect(Number.isSafeInteger(pid) && pid > 1).toBe(true);
+		const alive = () => {
+			try {
+				process.kill(pid, 0);
+				return true;
+			} catch {
+				return false;
+			}
+		};
+		for (let wait = 0; wait < 40 && alive(); wait++) await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(alive()).toBe(false);
+	});
+
+	it("lets the process exit once the deadline passes, though git's transport holds its output open", () => {
+		// The transport keeps the output git gave it for ten seconds; the process must not wait for it.
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, "sleep 10\n");
+		const fixture = fileURLToPath(new URL("./fixtures/deadline-exit.ts", import.meta.url));
+		const start = Date.now();
+		const out = execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, repo, transport], {
+			encoding: "utf8",
+			timeout: 20_000,
+		});
+		expect(out).toBe("true\n");
+		expect(Date.now() - start).toBeLessThan(5000);
+	}, 30_000);
+
+	it("leaves a command that ends in time as it is", async () => {
+		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });
+		expect(result).toEqual({ code: 0, stdout: "true\n", stdoutBytes: Buffer.from("true\n"), stderr: "" });
+	});
+});

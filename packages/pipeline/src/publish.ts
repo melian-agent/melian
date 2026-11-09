@@ -48,18 +48,24 @@ import { legacyKey, Round, RoundsDocument, RoundWriter } from "./rounds.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
-// `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
+// `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why, and names the root an
+// inherited one came from.
 type PublishedEntry = {
 	ruleId: string;
 	path: string;
 	line: number;
 	revision: string;
 	thread?: string;
-	dismissal?: { by: string; reason: string; at: string };
+	dismissal?: { by: string; reason: string; at: string; inheritedFrom?: string };
 	addressedIn?: string;
 };
 
 type ResolvedEntry = PublishedEntry & { id: string };
+
+// A closed finding's ledger record keeps its own dismissal's root, since the finding may later inherit from another.
+function ledgerDismissal({ reason, inheritedFrom }: NonNullable<PublishedEntry["dismissal"]>) {
+	return { reason, ...(inheritedFrom === undefined ? {} : { inheritedFrom }) };
+}
 
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
 // renders as well as its findings, since the head's verdict can change before a failed round is posted again.
@@ -220,7 +226,7 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 10,
+	version: 11,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -228,7 +234,8 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
-	// diagnostics; version 9 keys resolutions by thread. Version 10 lets a ledger round hold its run.
+	// diagnostics; version 9 keys resolutions by thread. Version 10 lets a ledger round hold its run. Version 11 keeps
+	// an inherited dismissal's root, so a version-10 Melian, which would drop it, refuses the document.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
@@ -761,7 +768,7 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 									path: entry.path,
 									line: entry.line,
 									commit: entry.addressedIn ?? head,
-									...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+									...(entry.dismissal === undefined ? {} : ledgerDismissal(entry.dismissal)),
 								})),
 							};
 							await runtime.commit(async (tx) => {
@@ -966,7 +973,7 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 						path: entry.path,
 						line: entry.line,
 						commit: entry.addressedIn ?? head,
-						...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+						...(entry.dismissal === undefined ? {} : ledgerDismissal(entry.dismissal)),
 					}));
 					if (storedVerdict?.details?.[revision] !== undefined)
 						currentRound.details = structuredClone(storedVerdict.details[revision]);

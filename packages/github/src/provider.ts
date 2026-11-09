@@ -349,6 +349,7 @@ export class GitHubProvider implements ReviewProvider {
 						links: this.links,
 						secret: draft.secret,
 						emoji: this.emoji,
+						pullRequest: draft.pullRequest,
 					}),
 				},
 			];

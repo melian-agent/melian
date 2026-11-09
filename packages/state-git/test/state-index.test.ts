@@ -48,6 +48,7 @@ describe("StateIndex", () => {
 	it.each([
 		["not JSON", "{", "it is not JSON"],
 		["not an object", "null", "it is not an object"],
+		["a number", "5", "it is not an object"],
 		["another version", indexOf({}, 2), "its version is 2, and this build of Melian reads version 1"],
 		[
 			"no version",
@@ -84,6 +85,63 @@ describe("StateIndex", () => {
 			"its key is not a commitment",
 		],
 		["a numeric key", JSON.stringify({ version: 1, key: 7, changesets: {} }), "its key is not a commitment"],
+		[
+			"a key that is a list holding a commitment",
+			JSON.stringify({ version: 1, key: ["f".repeat(64)], changesets: {} }),
+			"its key is not a commitment",
+		],
+		["changesets of null", indexOf(null), "its changesets are not an object"],
+		[
+			"a key this build does not know at its root",
+			JSON.stringify({ version: 1, changesets: {}, epoch: 2 }),
+			'it holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a changeset's record",
+			indexOf({ a: { lease: stored, written: 1, epoch: 2 } }),
+			'the record of a holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a lease",
+			indexOf({ a: { lease: { ...stored, epoch: 2 } } }),
+			'the lease of a holds the key "epoch", which this build of Melian does not know',
+		],
+		[
+			"a key this build does not know in a lease's holder",
+			indexOf({ a: { lease: { ...stored, holder: { ...stored.holder, host: "h" } } } }),
+			'the holder of a\'s lease holds the key "host", which this build of Melian does not know',
+		],
+		["a record of null", indexOf({ a: null }), "the record of a is not an object"],
+		[
+			"a changeset named __proto__",
+			`{"version":1,"changesets":{"__proto__":${JSON.stringify({ lease: stored })}}}`,
+			'it holds a changeset named "__proto__", which no changeset can be named',
+		],
+		[
+			"a changeset whose name starts with a hyphen",
+			indexOf({ "-a": { lease: stored } }),
+			'it holds a changeset named "-a", which no changeset can be named',
+		],
+		[
+			"a changeset whose name is upper case",
+			indexOf({ A: { lease: stored } }),
+			'it holds a changeset named "A", which no changeset can be named',
+		],
+		[
+			"a changeset name one character past the limit",
+			indexOf({ ["a".repeat(65)]: { lease: stored } }),
+			`it holds a changeset named "${"a".repeat(65)}", which no changeset can be named`,
+		],
+		[
+			"a key with a commitment at its end",
+			JSON.stringify({ version: 1, key: `x${"f".repeat(64)}`, changesets: {} }),
+			"its key is not a commitment",
+		],
+		[
+			"a key with a commitment at its start",
+			JSON.stringify({ version: 1, key: `${"f".repeat(64)}x`, changesets: {} }),
+			"its key is not a commitment",
+		],
 	])("refuses %s", (_name, json, reason) => {
 		expect(() => StateIndex.parse(json)).toThrow(
 			expect.objectContaining({
@@ -91,6 +149,10 @@ describe("StateIndex", () => {
 				message: `the state branch's index.json cannot be read: ${reason}`,
 			}),
 		);
+	});
+
+	it("reads a changeset name at the limit", () => {
+		expect(StateIndex.parse(indexOf({ ["a".repeat(64)]: { lease: stored } })).lease("a".repeat(64))).toBeDefined();
 	});
 
 	it("reads a written generation equal to its lease's", () => {

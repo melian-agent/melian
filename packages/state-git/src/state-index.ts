@@ -23,8 +23,17 @@ export class StateBranchError extends Error {
 
 const version = 1;
 
+export const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 function invalid(reason: string): StateBranchError {
 	return new StateBranchError("invalidBranch", `the state branch's index.json cannot be read: ${reason}`);
+}
+
+// A key this build does not know would be dropped by the next write, so the index is refused rather than read in part.
+function known(value: object, keys: readonly string[], where: string): void {
+	const unknown = Object.keys(value).find((key) => !keys.includes(key));
+	if (unknown !== undefined)
+		throw invalid(`${where} holds the key ${JSON.stringify(unknown)}, which this build of Melian does not know`);
 }
 
 // One changeset's record: its lease, taken or released, and the generation its latest write was made under.
@@ -57,6 +66,7 @@ export class StateIndex {
 			throw invalid("it is not JSON");
 		}
 		if (typeof value !== "object" || value === null) throw invalid("it is not an object");
+		known(value, ["version", "key", "changesets"], "it");
 		const { version: found, key, changesets } = value as Record<string, unknown>;
 		if (found !== version)
 			throw invalid(`its version is ${JSON.stringify(found)}, and this build of Melian reads version ${version}`);
@@ -66,8 +76,17 @@ export class StateIndex {
 			throw invalid("its key is not a commitment");
 		const records = new Map<string, ChangesetRecord>();
 		for (const [id, record] of Object.entries(changesets)) {
+			if (!changesetName.test(id))
+				throw invalid(`it holds a changeset named ${JSON.stringify(id)}, which no changeset can be named`);
 			if (typeof record !== "object" || record === null) throw invalid(`the record of ${id} is not an object`);
+			known(record, ["lease", "written"], `the record of ${id}`);
 			const { lease: stored, written } = record as Record<string, unknown>;
+			if (typeof stored === "object" && stored !== null) {
+				known(stored, ["holder", "takenAt", "expiresAt", "incarnation", "generation"], `the lease of ${id}`);
+				const { holder } = stored as Record<string, unknown>;
+				if (typeof holder === "object" && holder !== null)
+					known(holder, ["clone", "run"], `the holder of ${id}'s lease`);
+			}
 			let lease: Lease;
 			try {
 				lease = Lease.parse(stored);

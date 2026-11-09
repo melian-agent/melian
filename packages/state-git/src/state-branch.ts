@@ -1,24 +1,26 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, link, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { git, gitFailure, gitOutput, gitOutputBytes, Lease, type LeaseHolder } from "@melian-agent/core";
-import { StateBranchError, StateIndex } from "./state-index.ts";
+import { changesetName, StateBranchError, StateIndex } from "./state-index.ts";
 
 const branch = "refs/heads/melian/state";
 const indexFile = "index.json";
 const changesetsTree = "changesets";
 // Pi's JSONL storage writes exactly these: its main log and one sidecar per document and task.
 const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
-const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // A push that lost a race waits a random time below a bound that doubles from `backoffMs` up to `backoffCapMs`, so
 // writers on other changesets that collided spread out instead of colliding again.
 const attemptsLimit = 10;
 const backoffMs = 50;
 const backoffCapMs = 1000;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
+const defaultTransferMs = 2 * 60 * 1000;
+// A lease names its clone in at most 200 characters, the label and a 36-character ID with a space between.
+const holderLimit = 200 - 37;
 const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
@@ -30,11 +32,15 @@ const untranslated = {
 	LANGUAGE: "C",
 	GIT_TERMINAL_PROMPT: "0",
 	// Git's own limit: a transfer slower than a byte a second for a minute fails, so the branch reads as out of reach.
-	GIT_CONFIG_COUNT: "2",
+	GIT_CONFIG_COUNT: "3",
 	GIT_CONFIG_KEY_0: "http.lowSpeedLimit",
 	GIT_CONFIG_VALUE_0: "1",
 	GIT_CONFIG_KEY_1: "http.lowSpeedTime",
 	GIT_CONFIG_VALUE_1: "60",
+	// No hook of the clone's runs: a head can supply them through core.hooksPath, and they would get the review's
+	// environment, its credentials among it.
+	GIT_CONFIG_KEY_2: "core.hooksPath",
+	GIT_CONFIG_VALUE_2: "/dev/null",
 };
 const identity = {
 	...untranslated,
@@ -52,13 +58,19 @@ export interface StateBranchOptions {
 	readonly remote: string;
 	/** The directory holding this clone's copy of each changeset's storage. */
 	readonly directory: string;
-	/** This clone's identity, so a run in the same clone may take over a lease a crashed run left. */
+	/**
+	 * A label for this clone, which a lease it holds shows other runs. The clone's identity is an ID the branch mints in
+	 * `directory`, where the copy lock lives, so a run there may take over a lease a crashed run left, and no other
+	 * copies directory can, whatever its label.
+	 */
 	readonly holder: string;
 	/** The writers' 32-byte key, which every file on the branch is encrypted under. Without one, nothing reaches the branch. */
 	readonly key?: Uint8Array | undefined;
 	readonly now?: () => number;
 	/** How long a lease stays live after it is taken. */
 	readonly leaseMs?: number;
+	/** How long a fetch or push of the branch may run before it is stopped, on any transport. Two minutes by default. */
+	readonly transferMs?: number;
 	/**
 	 * Opens the copy in `directory` with the storage that wrote it, and rejects when that storage finds it damaged. A
 	 * checkout keeps this clone's copy only when it opens; otherwise it sets the copy aside for the branch's.
@@ -145,7 +157,10 @@ export class CopyLock {
 	}
 
 	static async take(directory: string, changeset: string): Promise<CopyLock> {
-		await mkdir(directory, { recursive: true });
+		// The copies hold decrypted storage, the publisher secret among it, so only this clone's owner may read them; a
+		// directory an older build left readable is tightened.
+		await mkdir(directory, { recursive: true, mode: 0o700 });
+		await chmod(directory, 0o700);
 		const path = join(directory, `${changeset}.lock`);
 		const damaged = (error: unknown) =>
 			new StateBranchError(
@@ -210,10 +225,12 @@ export class StateBranch {
 	readonly #options: StateBranchOptions;
 	readonly #run = randomUUID();
 	readonly #seal: Seal | undefined;
+	// The label and the copies directory's ID, once the first operation has read or minted it.
+	#clone: string | undefined;
 
 	constructor(options: StateBranchOptions) {
-		if (options.holder.length === 0 || options.holder.length > 200)
-			throw new StateBranchError("invalidHolder", "a state branch holder must be 1 to 200 characters");
+		if (options.holder.length === 0 || options.holder.length > holderLimit)
+			throw new StateBranchError("invalidHolder", `a state branch holder must be 1 to ${holderLimit} characters`);
 		this.#options = options;
 		this.#seal = options.key === undefined ? undefined : new Seal(options.key);
 	}
@@ -233,6 +250,7 @@ export class StateBranch {
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
 		const lock = await CopyLock.take(this.#options.directory, changeset);
 		try {
+			await this.#identify();
 			return await this.#checkout(changeset, lock);
 		} catch (error) {
 			lock.release();
@@ -255,6 +273,7 @@ export class StateBranch {
 		const lock = await CopyLock.take(this.#options.directory, changeset);
 		let taken: Lease | undefined;
 		try {
+			await this.#identify();
 			await this.#withRetry(async (index, stored) => {
 				if (stored(changeset) !== undefined)
 					throw new StateBranchError(
@@ -262,7 +281,7 @@ export class StateBranch {
 						`melian/state holds ${changeset}, which another clone stored there`,
 					);
 				const held = index.lease(changeset);
-				if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
+				if (held?.live(this.#now()) && held.holder.clone !== this.#holder.clone)
 					throw new LeaseHeld(changeset, held);
 				taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
 				return { index: index.leased(changeset, taken), lease: taken };
@@ -383,8 +402,7 @@ export class StateBranch {
 		let taken: Lease | undefined;
 		const { stored } = await this.#withRetry(async (index, onBranch) => {
 			const held = index.lease(changeset);
-			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
-				throw new LeaseHeld(changeset, held);
+			if (held?.live(this.#now()) && held.holder.clone !== this.#holder.clone) throw new LeaseHeld(changeset, held);
 			// A copy this build cannot read is refused before the lease goes over it.
 			const tree = onBranch(changeset);
 			if (tree !== undefined) await this.#open(changeset, tree);
@@ -478,8 +496,8 @@ export class StateBranch {
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
 	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
 		const opened = await this.#open(changeset, tree);
-		await mkdir(directory, { recursive: true });
-		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+		await mkdir(directory, { recursive: true, mode: 0o700 });
+		for (const [name, plain] of opened) await writeFile(join(directory, name), plain, { mode: 0o600 });
 	}
 
 	/**
@@ -503,7 +521,9 @@ export class StateBranch {
 
 	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
 	async #open(changeset: string, tree: string): Promise<[string, Buffer][]> {
-		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
+		const files = entries(
+			await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree], { env: untranslated }),
+		);
 		const stray = files.find((entry) => entry.mode !== "100644" || !storageFile.test(entry.name));
 		if (stray !== undefined)
 			throw new StateBranchError(
@@ -512,7 +532,9 @@ export class StateBranch {
 			);
 		const opened: [string, Buffer][] = [];
 		for (const entry of files) {
-			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha]);
+			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha], {
+				env: untranslated,
+			});
 			const plain = this.#sealer.open(`${changeset}/${entry.name}`, sealed);
 			if (plain === undefined)
 				throw new StateBranchError(
@@ -544,12 +566,54 @@ export class StateBranch {
 		return this.#options.directory;
 	}
 
+	get #transferMs(): number {
+		return this.#options.transferMs ?? defaultTransferMs;
+	}
+
+	// Whether `tip`'s history holds `commit`.
+	async #contains(tip: string, commit: string): Promise<boolean> {
+		const result = await git(this.#options.repoRoot, ["merge-base", "--is-ancestor", commit, tip], {
+			env: untranslated,
+		});
+		return result.code === 0;
+	}
+
+	// A fetch or push, which reaches the remote, under its deadline.
+	#transfer(args: readonly string[]) {
+		return git(this.#options.repoRoot, args, { env: untranslated, deadlineMs: this.#transferMs });
+	}
+
 	#now(): number {
 		return (this.#options.now ?? Date.now)();
 	}
 
+	// Reads the copies directory's ID, minting it, owner-only, when the directory has none. The ID is written whole to a
+	// file of its own and linked into place, which fails when another run linked first, so no run reads it half-written.
+	async #identify(): Promise<void> {
+		// A dotted name, which no changeset's can be, so no checkout replaces it.
+		const path = join(this.#options.directory, ".clone-id");
+		const read = () =>
+			readFile(path, "utf8").then(
+				(text) => text.trim(),
+				() => "",
+			);
+		if ((await read()) === "") {
+			const minted = `${path}.${randomUUID()}`;
+			await writeFile(minted, `${randomUUID()}\n`, { flag: "wx", mode: 0o600 });
+			await link(minted, path).catch((error: NodeJS.ErrnoException) => {
+				if (error.code !== "EEXIST") throw error;
+			});
+			await rm(minted, { force: true });
+		}
+		const id = await read();
+		if (!/^[0-9a-f-]{36}$/.test(id))
+			throw new StateBranchError("invalidHolder", `this clone's copies directory holds no clone ID at ${path}`);
+		this.#clone = `${this.#options.holder} ${id}`;
+	}
+
+	// Only an operation that has identified the copies directory reaches the branch, so every caller has the ID.
 	get #holder(): LeaseHolder {
-		return { clone: this.#options.holder, run: this.#run };
+		return { clone: this.#clone!, run: this.#run };
 	}
 
 	async #git(args: readonly string[], input?: string | Uint8Array): Promise<string> {
@@ -603,8 +667,9 @@ export class StateBranch {
 	}
 
 	async #fetch(): Promise<string | undefined> {
-		// A ref of this run's own, and no FETCH_HEAD, so runs on other changesets in this clone never contend for one.
-		const fetched = `refs/melian/state/${this.#run}`;
+		// A ref of this fetch's own, and no FETCH_HEAD, so neither runs on other changesets in this clone nor two operations
+		// of this run contend for one.
+		const fetched = `refs/melian/state/${this.#run}/${randomUUID()}`;
 		const args = [
 			"fetch",
 			"--quiet",
@@ -613,13 +678,22 @@ export class StateBranch {
 			this.#options.remote,
 			`+${branch}:${fetched}`,
 		];
-		const result = await git(this.#options.repoRoot, args, { env: untranslated });
+		const result = await this.#transfer(args);
+		if (result.timedOut === true)
+			throw new StateBranchError(
+				"fetchFailed",
+				`git fetch of melian/state ran past its deadline of ${this.#transferMs} ms`,
+			);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
 		}
-		const tip = (await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`])).trim();
-		await gitOutput(this.#options.repoRoot, ["update-ref", "-d", fetched]);
+		const tip = (
+			await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`], {
+				env: untranslated,
+			})
+		).trim();
+		await gitOutput(this.#options.repoRoot, ["update-ref", "-d", fetched], { env: untranslated });
 		return tip;
 	}
 
@@ -627,7 +701,7 @@ export class StateBranch {
 		if (tip === undefined) return { index: StateIndex.empty(), changesets: new Map() };
 		// A branch this build cannot read whole is refused, never read as empty: the next push would delete the rest. A
 		// git mode names its object's type: 100644 a plain blob, 040000 a tree.
-		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip]));
+		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip], { env: untranslated }));
 		const indexEntry = top.find((entry) => entry.name === indexFile);
 		const treeEntry = top.find((entry) => entry.name === changesetsTree);
 		if (top.length !== 2 || indexEntry?.mode !== "100644" || treeEntry?.mode !== "040000")
@@ -635,7 +709,9 @@ export class StateBranch {
 				"invalidBranch",
 				`the state branch's root holds ${JSON.stringify(top.map((entry) => `${entry.type} ${entry.name}`))}, where this build reads only the blob index.json and the tree changesets`,
 			);
-		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
+		const index = StateIndex.parse(
+			await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha], { env: untranslated }),
+		);
 		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
 		// The first push writes the commitment, so a branch that has a tip and none was written by something else.
 		if (index.key === undefined)
@@ -649,7 +725,9 @@ export class StateBranch {
 				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
 			);
 		const changesets = new Map<string, Entry>();
-		for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha]))) {
+		for (const entry of entries(
+			await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha], { env: untranslated }),
+		)) {
 			if (entry.mode !== "040000" || !changesetName.test(entry.name))
 				throw new StateBranchError(
 					"invalidBranch",
@@ -705,7 +783,17 @@ export class StateBranch {
 			`${commit}:${branch}`,
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
-		const result = await git(this.#options.repoRoot, args, { env: untranslated });
+		const result = await this.#transfer(args);
+		if (result.timedOut === true) {
+			// The transport git started can finish the push after git was stopped, so the branch says whether it landed:
+			// its tip is the commit, or a later run's push built on it.
+			const now = await this.#fetch().catch(() => undefined);
+			if (now !== undefined && (await this.#contains(now, commit))) return undefined;
+			throw new StateBranchError(
+				"pushFailed",
+				`git push of melian/state ran past its deadline of ${this.#transferMs} ms`,
+			);
+		}
 		if (result.code === 0) return undefined;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
 		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's
@@ -833,7 +921,7 @@ export class StateCheckout {
 			await rename(directory, setAside);
 		}
 		await rm(directory, { recursive: true, force: true });
-		if (onBranch === "none") await mkdir(directory, { recursive: true });
+		if (onBranch === "none") await mkdir(directory, { recursive: true, mode: 0o700 });
 		else await branch.materialize(changeset, onBranch, directory);
 		await writeFile(marker, `${onBranch}\n`);
 		return new StateCheckout(branch, changeset, onBranch, setAside, lock, lease);

@@ -8,6 +8,7 @@ import { vi } from "vitest";
 export const isolatedGitEnv = {
 	GIT_CONFIG_GLOBAL: "/dev/null",
 	GIT_CONFIG_NOSYSTEM: "1",
+	GIT_CONFIG_COUNT: "0",
 	GIT_AUTHOR_NAME: "Melian Test",
 	GIT_AUTHOR_EMAIL: "test@melian.invalid",
 	GIT_COMMITTER_NAME: "Melian Test",

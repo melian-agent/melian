@@ -1,0 +1,3465 @@
+{
+ "total": 147,
+ "omitted": 0,
+ "unmutated": [
+  {
+   "file": "packages/pipeline/src/probe-process.ts",
+   "reason": "it sends process signals, and a mutant there could signal a process outside the run"
+  }
+ ],
+ "base": "a05f566944de20032867fe0cd5f11f20e0b27480",
+ "head": "fcb25f875152e0c5ff29d1f877368a8cf4320373",
+ "scope": "This fix pass's commits only, as pull request #303's rule sets.",
+ "command": "node scripts/enumerate-mutants.mjs a05f5669...HEAD --json --limit 10000",
+ "runner": "each mutant applied in a throwaway worktree at the head; its failing test found by a file run, then that test run alone by its anchored ancestorTitles > title pattern; a kill counts only when exactly one test was collected and it failed",
+ "mutants": [
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 20,
+   "column": 6,
+   "endLine": 20,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+    "packages/cli/test/probe.test.ts > melian probe > refuses a directory without probe.mjs, or holding a link",
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGKILL\",\"timedOut\":true,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGTERM\",\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":true}",
+    "packages/cli/test/probe.test.ts > melian probe > closes the probe when its run throws",
+    "packages/cli/test/probe.test.ts > melian probe > says where the sandbox cannot run",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 20,
+   "column": 6,
+   "endLine": 20,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+    "packages/cli/test/probe.test.ts > melian probe > refuses a directory without probe.mjs, or holding a link",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGKILL\",\"timedOut\":true,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGTERM\",\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":true}",
+    "packages/cli/test/probe.test.ts > melian probe > closes the probe when its run throws",
+    "packages/cli/test/probe.test.ts > melian probe > says where the sandbox cannot run",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 24,
+   "column": 11,
+   "endLine": 24,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 24,
+   "column": 11,
+   "endLine": 24,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 24,
+   "column": 11,
+   "endLine": 24,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "path === script",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 24,
+   "column": 28,
+   "endLine": 29,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 25,
+   "column": 3,
+   "endLine": 25,
+   "endColumn": 28,
+   "mutatorName": "AssignmentOperator",
+   "replacement": "total.bytes -= entry.size",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 26,
+   "column": 7,
+   "endLine": 26,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 26,
+   "column": 7,
+   "endLine": 26,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 26,
+   "column": 7,
+   "endLine": 26,
+   "endColumn": 42,
+   "mutatorName": "EqualityOperator",
+   "replacement": "total.bytes >= probeLimits.fileBytes",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 26,
+   "column": 7,
+   "endLine": 26,
+   "endColumn": 42,
+   "mutatorName": "EqualityOperator",
+   "replacement": "total.bytes <= probeLimits.fileBytes",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 27,
+   "column": 4,
+   "endLine": 27,
+   "endColumn": 104,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 27,
+   "column": 25,
+   "endLine": 27,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "The CLI prints the error's message alone; the code reaches no caller.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 27,
+   "column": 41,
+   "endLine": 27,
+   "endColumn": 102,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 28,
+   "column": 14,
+   "endLine": 28,
+   "endColumn": 70,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 28,
+   "column": 61,
+   "endLine": 28,
+   "endColumn": 67,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 54,
+   "column": 29,
+   "endLine": 54,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 55,
+   "column": 29,
+   "endLine": 55,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+    "packages/cli/test/probe.test.ts > melian probe > refuses a directory without probe.mjs, or holding a link",
+    "packages/cli/test/probe.test.ts > melian probe > refuses more files than a probe takes",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGKILL\",\"timedOut\":true,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":null,\"signal\":\"SIGTERM\",\"timedOut\":false,\"truncated\":false}",
+    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":true}",
+    "packages/cli/test/probe.test.ts > melian probe > closes the probe when its run throws",
+    "packages/cli/test/probe.test.ts > melian probe > says where the sandbox cannot run",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses without --trust-head, and opens nothing",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 55,
+   "column": 40,
+   "endLine": 55,
+   "endColumn": 52,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses the aggregate byte limit while reading, before opening the probe",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 56,
+   "column": 16,
+   "endLine": 56,
+   "endColumn": 77,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > refuses a directory without probe.mjs, or holding a link",
+    "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
+    "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > refuses a directory without probe.mjs, or holding a link",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/probe.ts",
+   "line": 56,
+   "column": 61,
+   "endLine": 56,
+   "endColumn": 67,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that fails, and prints JSON",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe past its time limit",
+    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/cli/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 134,
+   "column": 26,
+   "endLine": 134,
+   "endColumn": 34,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 134,
+   "column": 27,
+   "endLine": 134,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 135,
+   "column": 26,
+   "endLine": 135,
+   "endColumn": 88,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 135,
+   "column": 27,
+   "endLine": 135,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 135,
+   "column": 39,
+   "endLine": 135,
+   "endColumn": 63,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 135,
+   "column": 65,
+   "endLine": 135,
+   "endColumn": 87,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 141,
+   "column": 22,
+   "endLine": 141,
+   "endColumn": 43,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 141,
+   "column": 23,
+   "endLine": 141,
+   "endColumn": 42,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 147,
+   "column": 63,
+   "endLine": 156,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads linux's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants an nvm version whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants the host's own nvm node its prefix",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the worktree with a scratch home and temporary directory and no other variable",
+    "packages/pipeline/test/probe.test.ts > Probe.run > returns the exit code and output, uncut and in time",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs from a worktree whose path holds a quote",
+    "packages/pipeline/test/probe.test.ts > Probe.run > leaves no timer behind once the probe has ended",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it",
+    "packages/pipeline/test/probe.test.ts > Probe.run > ends a probe that runs past its time limit",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses a second run while one runs, and any run after close",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses to run when the sandbox refuses the wrap, and runs nothing",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable",
+    "packages/pipeline/test/probe.test.ts > Probe.availability > runs an empty probe and reports how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 2,
+   "endLine": 154,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 2,
+   "endLine": 154,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants an nvm version whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants the host's own nvm node its prefix"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants an nvm version whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 2,
+   "endLine": 154,
+   "endColumn": 85,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(segments.includes(\".nvm\") || /^node(-|$)/.test(basename(prefix))) && /^v?\\d+\\.\\d+\\.\\d+/.test(basename(prefix)) && basename(dirname(prefix)) === \"node\"",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 2,
+   "endLine": 153,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 2,
+   "endLine": 153,
+   "endColumn": 37,
+   "mutatorName": "LogicalOperator",
+   "replacement": "segments.includes(\".nvm\") && /^node(-|$)/.test(basename(prefix))",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 152,
+   "column": 20,
+   "endLine": 152,
+   "endColumn": 26,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 153,
+   "column": 2,
+   "endLine": 153,
+   "endColumn": 14,
+   "mutatorName": "Regex",
+   "replacement": "/node(-|$)/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 153,
+   "column": 2,
+   "endLine": 153,
+   "endColumn": 14,
+   "mutatorName": "Regex",
+   "replacement": "/^node(-)/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 84,
+   "mutatorName": "LogicalOperator",
+   "replacement": "/^v?\\d+\\.\\d+\\.\\d+/.test(basename(prefix)) || basename(dirname(prefix)) === \"node\"",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/v?\\d+\\.\\d+\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v\\d+\\.\\d+\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\d\\.\\d+\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\D+\\.\\d+\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\d+\\.\\d\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\d+\\.\\D+\\.\\d+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\d+\\.\\d+\\.\\d/",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "The version pattern has no end anchor, so one trailing digit matches wherever more digits follow.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 3,
+   "endLine": 154,
+   "endColumn": 21,
+   "mutatorName": "Regex",
+   "replacement": "/^v?\\d+\\.\\d+\\.\\D+/",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 48,
+   "endLine": 154,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 48,
+   "endLine": 154,
+   "endColumn": 84,
+   "mutatorName": "EqualityOperator",
+   "replacement": "basename(dirname(prefix)) !== \"node\"",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 154,
+   "column": 78,
+   "endLine": 154,
+   "endColumn": 84,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 8,
+   "endLine": 155,
+   "endColumn": 110,
+   "mutatorName": "MethodExpression",
+   "replacement": "nodeOnly ? [prefix] : [real, join(prefix, \"lib\", \"node_modules\")]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 20,
+   "endLine": 155,
+   "endColumn": 28,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants an nvm version whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants the host's own nvm node its prefix"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 31,
+   "endLine": 155,
+   "endColumn": 74,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 51,
+   "endLine": 155,
+   "endColumn": 56,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 58,
+   "endLine": 155,
+   "endColumn": 72,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 155,
+   "column": 83,
+   "endLine": 155,
+   "endColumn": 109,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants an nvm version whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a node- tarball whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a directory named node whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that only contains node its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a name that starts nodejs its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants a version-like name that is not one its binary and module directory alone",
+    "packages/pipeline/test/probe.test.ts > nodeReads > leaves out a module directory that does not exist",
+    "packages/pipeline/test/probe.test.ts > nodeReads > grants the host's own nvm node its prefix"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 160,
+   "column": 50,
+   "endLine": 177,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole three-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole four-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps continuation bytes alone",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps nothing",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 8,
+   "endLine": 162,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 8,
+   "endLine": 162,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "start > 0 || (buf[start - 1]! & 0xc0) === 0x80",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 8,
+   "endLine": 162,
+   "endColumn": 17,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "At start 0, buf[-1] is undefined, whose masked value is 0, not 0x80, so the loop stops there either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 8,
+   "endLine": 162,
+   "endColumn": 17,
+   "mutatorName": "EqualityOperator",
+   "replacement": "start >= 0",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "At start 0, buf[-1] is undefined, whose masked value is 0, not 0x80, so the loop stops there either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 8,
+   "endLine": 162,
+   "endColumn": 17,
+   "mutatorName": "EqualityOperator",
+   "replacement": "start <= 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 21,
+   "endLine": 162,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 21,
+   "endLine": 162,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(buf[start - 1]! & 0xc0) !== 0x80",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 26,
+   "endLine": 162,
+   "endColumn": 35,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "start + 1",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 162,
+   "column": 56,
+   "endLine": 162,
+   "endColumn": 63,
+   "mutatorName": "UpdateOperator",
+   "replacement": "start++",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 163,
+   "column": 5,
+   "endLine": 163,
+   "endColumn": 16,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 163,
+   "column": 5,
+   "endLine": 163,
+   "endColumn": 16,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "With start 0 the lead is undefined, which reads as a one-byte sequence the whole buffer completes, so the length returned is the same.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 163,
+   "column": 5,
+   "endLine": 163,
+   "endColumn": 16,
+   "mutatorName": "EqualityOperator",
+   "replacement": "start !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 164,
+   "column": 18,
+   "endLine": 164,
+   "endColumn": 27,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "start + 1",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 166,
+   "column": 2,
+   "endLine": 166,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 166,
+   "column": 2,
+   "endLine": 166,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "An ASCII lead that skips this test falls through to expected 0, which returns the whole length, as expected 1 does.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 166,
+   "column": 2,
+   "endLine": 166,
+   "endColumn": 21,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(lead & 0x80) !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(lead & 0xe0) !== 0xc0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 170,
+   "column": 6,
+   "endLine": 170,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 170,
+   "column": 6,
+   "endLine": 170,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 170,
+   "column": 6,
+   "endLine": 170,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(lead & 0xf0) !== 0xe0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 172,
+   "column": 7,
+   "endLine": 172,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 172,
+   "column": 7,
+   "endLine": 172,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 172,
+   "column": 7,
+   "endLine": 172,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(lead & 0xf8) !== 0xf0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps an invalid lead byte"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 175,
+   "column": 5,
+   "endLine": 175,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 175,
+   "column": 5,
+   "endLine": 175,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "An invalid lead gives expected 0, and every remainder is at least 0 bytes, so the whole length is returned either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 175,
+   "column": 5,
+   "endLine": 175,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "expected !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 8,
+   "endLine": 176,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 8,
+   "endLine": 176,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole three-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole four-byte character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 8,
+   "endLine": 176,
+   "endColumn": 44,
+   "mutatorName": "EqualityOperator",
+   "replacement": "buf.length - (start - 1) > expected",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole three-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole four-byte character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 8,
+   "endLine": 176,
+   "endColumn": 44,
+   "mutatorName": "EqualityOperator",
+   "replacement": "buf.length - (start - 1) < expected",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole three-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole four-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 8,
+   "endLine": 176,
+   "endColumn": 32,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "buf.length + (start - 1)",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 22,
+   "endLine": 176,
+   "endColumn": 31,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "start + 1",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole three-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps a whole four-byte character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps ASCII",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 176,
+   "column": 60,
+   "endLine": 176,
+   "endColumn": 69,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "start + 1",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps one byte of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps two bytes of three",
+    "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps three bytes of four",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > completeUtf8 > keeps half a two-byte character",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 290,
+   "column": 19,
+   "endLine": 290,
+   "endColumn": 43,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 291,
+   "column": 9,
+   "endLine": 291,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 291,
+   "column": 9,
+   "endLine": 291,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 291,
+   "column": 9,
+   "endLine": 291,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "problems.length !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 291,
+   "column": 45,
+   "endLine": 291,
+   "endColumn": 102,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 291,
+   "column": 95,
+   "endLine": 291,
+   "endColumn": 99,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 294,
+   "column": 52,
+   "endLine": 301,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 305,
+   "column": 7,
+   "endLine": 305,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 305,
+   "column": 7,
+   "endLine": 305,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 305,
+   "column": 7,
+   "endLine": 305,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.#sessions !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 306,
+   "column": 35,
+   "endLine": 309,
+   "endColumn": 5,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 307,
+   "column": 14,
+   "endLine": 307,
+   "endColumn": 55,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 307,
+   "column": 32,
+   "endLine": 307,
+   "endColumn": 34,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 307,
+   "column": 51,
+   "endLine": 307,
+   "endColumn": 53,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 308,
+   "column": 17,
+   "endLine": 308,
+   "endColumn": 79,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 308,
+   "column": 29,
+   "endLine": 308,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 308,
+   "column": 44,
+   "endLine": 308,
+   "endColumn": 46,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 308,
+   "column": 60,
+   "endLine": 308,
+   "endColumn": 62,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 308,
+   "column": 75,
+   "endLine": 308,
+   "endColumn": 77,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 310,
+   "column": 3,
+   "endLine": 310,
+   "endColumn": 19,
+   "mutatorName": "UpdateOperator",
+   "replacement": "this.#sessions--",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 315,
+   "column": 18,
+   "endLine": 315,
+   "endColumn": 70,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 315,
+   "column": 37,
+   "endLine": 315,
+   "endColumn": 69,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 319,
+   "column": 14,
+   "endLine": 319,
+   "endColumn": 64,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 324,
+   "column": 16,
+   "endLine": 324,
+   "endColumn": 91,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 324,
+   "column": 45,
+   "endLine": 324,
+   "endColumn": 88,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 324,
+   "column": 56,
+   "endLine": 324,
+   "endColumn": 87,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 334,
+   "column": 35,
+   "endLine": 338,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.#sessions !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 336,
+   "column": 3,
+   "endLine": 336,
+   "endColumn": 19,
+   "mutatorName": "UpdateOperator",
+   "replacement": "this.#sessions++",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 337,
+   "column": 7,
+   "endLine": 337,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 337,
+   "column": 7,
+   "endLine": 337,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 337,
+   "column": 7,
+   "endLine": 337,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.#sessions !== 0",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens one session with no network for every open probe, and resets it when the last closes",
+    "packages/pipeline/test/probe.test.ts > RuntimeSandbox > opens again after a session that failed to start"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > RuntimeSandbox > serialises open and close so a reset never tears down a newer session",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 352,
+   "column": 5,
+   "endLine": 354,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 354,
+   "column": 17,
+   "endLine": 357,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 355,
+   "column": 6,
+   "endLine": 355,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 355,
+   "column": 6,
+   "endLine": 355,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > leaves a symlink to an outside directory, and the directory, as they were"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > leaves a symlink to an outside directory, and the directory, as they were",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 355,
+   "column": 6,
+   "endLine": 355,
+   "endColumn": 56,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(error as NodeJS.ErrnoException).code === \"EACCES\"",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > makeWritable > leaves a symlink to an outside directory, and the directory, as they were",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 355,
+   "column": 48,
+   "endLine": 355,
+   "endColumn": 56,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 358,
+   "column": 5,
+   "endLine": 362,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 359,
+   "column": 8,
+   "endLine": 359,
+   "endColumn": 21,
+   "mutatorName": "OptionalChaining",
+   "replacement": "handle.chmod",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 360,
+   "column": 42,
+   "endLine": 360,
+   "endColumn": 65,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > refuses a writer's head when the policy trusts no writers, and runs a reviewer's",
+    "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a timeout at its bound and refuses one past it, or below one",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a outputLimit at its bound and refuses one past it, or below one",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes the script, file count, file bytes and path length at their bounds and refuses one past",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a worktree inside the home directory, and refuses the home directory itself",
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads linux's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > makeWritable > leaves a symlink to an outside directory, and the directory, as they were",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the worktree with a scratch home and temporary directory and no other variable",
+    "packages/pipeline/test/probe.test.ts > Probe.run > returns the exit code and output, uncut and in time",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs from a worktree whose path holds a quote",
+    "packages/pipeline/test/probe.test.ts > Probe.run > leaves no timer behind once the probe has ended",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it",
+    "packages/pipeline/test/probe.test.ts > Probe.run > ends a probe that runs past its time limit",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses a second run while one runs, and any run after close",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses to run when the sandbox refuses the wrap, and runs nothing",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable",
+    "packages/pipeline/test/probe.test.ts > Probe.availability > runs an empty probe and reports how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > refuses a writer's head when the policy trusts no writers, and runs a reviewer's",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 360,
+   "column": 59,
+   "endLine": 360,
+   "endColumn": 63,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > refuses a writer's head when the policy trusts no writers, and runs a reviewer's",
+    "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a timeout at its bound and refuses one past it, or below one",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a outputLimit at its bound and refuses one past it, or below one",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes the script, file count, file bytes and path length at their bounds and refuses one past",
+    "packages/pipeline/test/probe.test.ts > Probe.open > takes a worktree inside the home directory, and refuses the home directory itself",
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > Probe.policy > reads linux's own programs and libraries, each one present",
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > makeWritable > leaves a symlink to an outside directory, and the directory, as they were",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the worktree with a scratch home and temporary directory and no other variable",
+    "packages/pipeline/test/probe.test.ts > Probe.run > returns the exit code and output, uncut and in time",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs from a worktree whose path holds a quote",
+    "packages/pipeline/test/probe.test.ts > Probe.run > leaves no timer behind once the probe has ended",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it",
+    "packages/pipeline/test/probe.test.ts > Probe.run > ends a probe that runs past its time limit",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses a second run while one runs, and any run after close",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses to run when the sandbox refuses the wrap, and runs nothing",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable",
+    "packages/pipeline/test/probe.test.ts > Probe.availability > runs an empty probe and reports how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > refuses a writer's head when the policy trusts no writers, and runs a reviewer's",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 361,
+   "column": 7,
+   "endLine": 361,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "tests": [
+    "packages/pipeline/test/probe.test.ts",
+    "packages/pipeline/test/probe-sandbox.test.ts",
+    "packages/cli/test/probe.test.ts"
+   ],
+   "result": "survived",
+   "claim": "equivalent",
+   "evidence": "A non-directory entry fails the O_DIRECTORY and O_NOFOLLOW open and is left alone, as the filter would leave it.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 361,
+   "column": 7,
+   "endLine": 361,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 362,
+   "column": 11,
+   "endLine": 364,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 363,
+   "column": 8,
+   "endLine": 363,
+   "endColumn": 21,
+   "mutatorName": "OptionalChaining",
+   "replacement": "handle.close",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 472,
+   "column": 9,
+   "endLine": 476,
+   "endColumn": 4,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 473,
+   "column": 4,
+   "endLine": 473,
+   "endColumn": 7,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 475,
+   "column": 39,
+   "endLine": 475,
+   "endColumn": 66,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 475,
+   "column": 60,
+   "endLine": 475,
+   "endColumn": 65,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 477,
+   "column": 36,
+   "endLine": 477,
+   "endColumn": 84,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 536,
+   "column": 10,
+   "endLine": 536,
+   "endColumn": 83,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "failingTests": [
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the worktree with a scratch home and temporary directory and no other variable",
+    "packages/pipeline/test/probe.test.ts > Probe.run > returns the exit code and output, uncut and in time",
+    "packages/pipeline/test/probe.test.ts > Probe.run > runs from a worktree whose path holds a quote",
+    "packages/pipeline/test/probe.test.ts > Probe.run > cuts truncated output at a code-point boundary, not mid-character",
+    "packages/pipeline/test/probe.test.ts > Probe.run > keeps output at its limit whole and cuts one byte past it",
+    "packages/pipeline/test/probe.test.ts > Probe.run > ends a probe that runs past its time limit",
+    "packages/pipeline/test/probe.test.ts > Probe.run > refuses a second run while one runs, and any run after close",
+    "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable",
+    "packages/pipeline/test/probe.test.ts > Probe.availability > runs an empty probe and reports how it ended"
+   ],
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the worktree with a scratch home and temporary directory and no other variable",
+   "exitCode": 1,
+   "collected": 1,
+   "tests": [
+    "packages/pipeline/test/probe.test.ts"
+   ],
+   "survivorClasses": []
+  }
+ ]
+}

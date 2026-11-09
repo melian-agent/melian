@@ -15,6 +15,8 @@ let repo: string;
 let home: string;
 
 beforeEach(() => {
+	// A real empty probe takes seconds on a loaded runner; the probes line has tests of its own below.
+	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
 	const fallback = github();
 	fallback.login = "global-viewer";
 	vi.stubGlobal("fetch", fakeGitHub(fallback));
@@ -623,5 +625,29 @@ describe("doctor state key", () => {
 		secrets("credentials:\n  state:\n    provider: melian-state\n    env: MELIAN_DOCTOR_STATE_KEY\n");
 		vi.stubEnv("MELIAN_DOCTOR_STATE_KEY", "set");
 		expect(line((await run(github())).stdout)).toMatch(/^ok {4}state key {3}writers' key state in /);
+	});
+});
+
+describe("doctor probes", () => {
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}probes\s+/.test(each));
+
+	it("says probes run when an empty one ran", async () => {
+		const availability = vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+		const { status, stdout } = await run(github());
+		expect(availability).toHaveBeenCalledOnce();
+		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime$/);
+		expect(status).toBe(0);
+	});
+
+	it("warns, without failing, that every probe is refused where none can run", async () => {
+		vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({
+			available: false,
+			reason: "sandbox-runtime cannot run here: bubblewrap\u001b[2J not found",
+		});
+		const { status, stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			/^warn {2}probes\s+cannot run here, so every probe is refused: sandbox-runtime cannot run here: bubblewrap\\u001b\[2J not found$/,
+		);
+		expect(status).toBe(0);
 	});
 });

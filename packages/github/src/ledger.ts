@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import {
+	describeInheritance,
 	type LedgerDraft,
 	type LedgerHistory,
 	type LedgerRound,
@@ -250,7 +251,7 @@ export class Ledger {
 						.dismissals()
 						.map(
 							({ id, ruleId, dismissal }) =>
-								`- ${prose(id)} ${code(visibleText(ruleId))}: ${prose(dismissal?.reason ?? "No reason stored.")}`,
+								`- ${prose(id)} ${code(visibleText(ruleId))}${describeInheritance(dismissal ?? {}, code)}: ${prose(dismissal?.reason ?? "No reason stored.")}`,
 						),
 				].join("\n\n"),
 			);
@@ -259,8 +260,8 @@ export class Ledger {
 				[
 					"### Closed findings",
 					...current.resolved.map(
-						({ id, commit, reason }) =>
-							`- ${prose(id)}: ${reason === undefined ? `Addressed in commit ${commit.slice(0, 12)}` : `Dismissed: ${prose(reason)}`}`,
+						(entry) =>
+							`- ${prose(entry.id)}: ${entry.reason === undefined ? `Addressed in commit ${entry.commit.slice(0, 12)}` : `Dismissed${describeInheritance(entry, code)}: ${prose(entry.reason)}`}`,
 					),
 				].join("\n\n"),
 			);
@@ -285,6 +286,7 @@ export class Ledger {
 		return [
 			`${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`,
 			...finding.trustFloorNotes().map(prose),
+			...finding.likelyDismissalNotes(`#${this.draft.pullRequest}`, code),
 		].join(" ");
 	}
 

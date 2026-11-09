@@ -19,7 +19,13 @@ import {
 	visibleText,
 } from "@melian-agent/core";
 import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
+import {
+	createReviewModels,
+	Probe,
+	piAuthPath,
+	providersWithCredentials,
+	staticToolSource,
+} from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
@@ -456,6 +462,18 @@ async function trustCheck(
 	}
 }
 
+// Runs an empty probe, so the line says whether one runs here, not only whether the parts are installed.
+async function probeCheck(): Promise<Check> {
+	const availability = await Probe.availability();
+	return availability.available
+		? { name: "probes", state: "ok", detail: "run under sandbox-runtime" }
+		: {
+				name: "probes",
+				state: "warn",
+				detail: `cannot run here, so every probe is refused: ${visibleText(availability.reason)}`,
+			};
+}
+
 // Names credentials by provider and source, never by value.
 export async function doctor(io: Io, options: { readonly fetch?: typeof globalThis.fetch } = {}): Promise<number> {
 	const nodeVersion = process.versions.node;
@@ -492,6 +510,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
 			await mutationCheck(io.cwd, io.env),
+			await probeCheck(),
 			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await resolutionChecks(io.cwd, io.env)),
