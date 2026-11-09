@@ -3,6 +3,7 @@ export {
 	type CheckRun,
 	type CheckRunRecord,
 	checksExtension,
+	checksExtensionFor,
 	type RunChecksInput,
 	type RunIdentity,
 	readCheckRecords,
