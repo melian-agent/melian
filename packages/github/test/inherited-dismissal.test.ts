@@ -340,6 +340,20 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 		);
 	});
 
+	it("names them in an advisory's entry too", () => {
+		const advisory = Finding.from({
+			...proposed.toJSON(),
+			properties: { ...proposed.properties, severity: "P3", resolution: "advisory" },
+		});
+		expect(ReviewComment.from(advisory).render({ revision: head, base, links, secret, emoji: false })).toBe(
+			[
+				marker(head, "finding", advisory.id, secret),
+				`- P3 | Advisory | Tests | Not verified | New in this change: [\`src/floor.ts:3\`](https://github.com/melian-agent/example/blob/${head}/src/floor.ts#L3) \`null-dereference\`: The manager may be absent. | Finding \`${advisory.id}\``,
+				`  Likely the same as dismissed finding ${root}. To accept the match, run melian dismiss &lt;range\\|\\#pr&gt; ${advisory.id} --reason &lt;text&gt;.`,
+			].join("\n"),
+		);
+	});
+
 	it("names them in the ledger's line for the finding", () => {
 		const decided = new Adjudication({ findings: [proposed], manifest: [], checks: [], config: defaultConfig });
 		const open = decided.adjudicate();

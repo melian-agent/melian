@@ -23,7 +23,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 
 The published status fails for counted blocks or unresolved acknowledgements, including pre-existing opt-ins.
 Failure descriptions count both groups apart. An all-dismissed success says “0 findings, N dismissed”, and “0 findings, N dismissed, M inherited from <root>, <root>” when M of them inherited a root's dismissal. It names each distinct root whole, in the order the verdict lists its dismissals, as many as fit in the 93 characters the base suffix leaves of GitHub's 140, and at least one. The rest it counts, as “and K more”, which `melian findings --all` lists.
-A finding a trust-floor restatement left live names its likely root and the command that accepts it, from `likelyDismissalNotes()`, in its inline comment and its ledger line.
+A finding a trust-floor restatement left live names its likely root and the command that accepts it, from `likelyDismissalNotes()`, in its inline comment, its advisory entry and its ledger line.
 The review body and ledger state the verdict's mapping and name the pull-request dismissal command.
 The ledger’s dismissal section uses `verdict.dismissals()`, including legacy merged members without their own dismissal metadata.
 Every publication lists attested dismissed report IDs, rules, files and reasons in its review body, including carried and merged reports.

@@ -232,13 +232,15 @@ export class ReviewComment {
 			// entry says why a refuted finding still posts.
 			const notes = finding.trustFloorNotes();
 			const verification = finding.properties.verification;
-			const held =
-				notes.length === 0
+			const held = [
+				...(notes.length === 0
 					? []
 					: [
 							...(verification === undefined ? [] : [this.#verifier(verification, rendering)]),
 							...notes.map(inline),
-						].map((line) => `  ${line}`);
+						]),
+				...finding.likelyDismissalNotes().map(inline),
+			].map((line) => `  ${line}`);
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
