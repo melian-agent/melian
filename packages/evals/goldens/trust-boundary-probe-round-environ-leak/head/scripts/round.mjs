@@ -43,9 +43,10 @@ export function headWriter(events, { sha, branch }) {
 	);
 }
 
-// Each run's comment opens with a marker naming the run and a nonce its round job drew, so a rerun of the report job
-// finds and updates that comment. The run's ID is public, and every workflow's token posts as one bot, so only the
-// nonce, which no other workflow can read before this run posts, makes the marker this run's.
+// Each run's comment opens with a marker naming the run and a nonce its round job drew and uploaded, so a rerun of the
+// report job finds and updates that comment, and a builder can tie the comment to its run. The nonce guards against
+// nothing that can read the run's artefact: a workflow that does can post a matching marker first, and the report then
+// overwrites that comment with the round's own body.
 export function marker(runId, nonce) {
 	const id = /^\d+$/.test(runId) ? runId : "unknown";
 	return `<!-- melian-round run:${id} nonce:${/^[0-9a-f]{32}$/.test(nonce) ? nonce : "unknown"} -->`;
@@ -132,6 +133,15 @@ function findingLine(finding) {
 	);
 }
 
+// What a builder needs to fix a finding, as the lines under its headline, labelled as the terminal labels them.
+function details({ properties: { explanation, failureScenario } }) {
+	return [
+		["Why here", explanation?.whyHere],
+		["Failure scenario", failureScenario],
+		["What to do", explanation?.whatToDo],
+	].filter(([, text]) => typeof text === "string");
+}
+
 // The base and head of the last round `melian findings --rounds --json` lists, or undefined when there is none to read.
 function lastRound(text) {
 	let rounds;
@@ -153,6 +163,61 @@ function readOr(path, fallback) {
 		return fallback;
 	}
 }
+
+// What of a verdict may leave the job: the fields the comment renders, and nothing a static tool printed. A head's
+// tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
+// tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
+// place but not its text. Null for anything that is not a verdict, which the comment reads as no verdict.
+export function publicVerdict(text) {
+	try {
+		const verdict = JSON.parse(text);
+		const check = ({ name, status, lineage }) => ({ name, status, lineage });
+		const finding = ({ ruleId, message, locations, properties }) => {
+			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
+			const region = locations[0]?.physicalLocation.region;
+			const lens = !source.check.startsWith("static.");
+			return {
+				ruleId,
+				message: { text: lens ? message.text : staticText },
+				locations:
+					region === undefined
+						? []
+						: [{ physicalLocation: { region: { startLine: region.startLine, endLine: region.endLine } } }],
+				properties: {
+					id,
+					severity,
+					resolution,
+					path,
+					source: { check: source.check },
+					// A lens wrote these about files it read from git; it never sees a static tool's text, so they may leave.
+					...(lens
+						? {
+								explanation: explanation && { whyHere: explanation.whyHere, whatToDo: explanation.whatToDo },
+								failureScenario,
+							}
+						: {}),
+				},
+			};
+		};
+		const { findings } = verdict;
+		return {
+			status: Object.hasOwn(statuses, verdict.status) ? verdict.status : undefined,
+			blocking: typeof verdict.blocking === "boolean" ? verdict.blocking : undefined,
+			findings: Object.fromEntries(
+				aboveAdvisory.map((resolution) => [
+					resolution,
+					Array.isArray(findings[resolution]) ? findings[resolution].map(finding) : undefined,
+				]),
+			),
+			notRun: Array.isArray(verdict.notRun) ? verdict.notRun.map(check) : undefined,
+			...(Array.isArray(verdict.ran) ? { ran: verdict.ran.map(check) } : {}),
+		};
+	} catch {
+		return null;
+	}
+}
+
+const staticText = "A static check's finding; a local run shows its text.";
 
 // The comment for one round, from the verdict JSON `melian review --json` wrote and nothing it printed. `base` and
 // `head` are what the gate approved, and `mergeBase` their merge base, which a round of them reviews from. `reviewed`
@@ -218,7 +283,7 @@ export class RoundComment {
 				? undefined
 				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
 		if (problem !== undefined) {
-			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`])}`;
+			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`])}`;
 		}
 		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
@@ -231,8 +296,21 @@ export class RoundComment {
 			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));
 		const findings = aboveAdvisory.flatMap((resolution) => verdict.findings[resolution]);
 		quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
-		quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
-		return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
+		const cuttable = [];
+		for (const finding of findings) {
+			quoted.push(`  ${findingLine(finding)}`);
+			for (const [label, text] of details(finding)) {
+				cuttable.push({ at: quoted.length, label });
+				quoted.push(oneLine(`    ${label}: ${text}`));
+			}
+		}
+		// Past the limit, the longest detail goes first, and its line says so; fenced cuts whole lines only after that.
+		const budget = maxLength - header.length - 2;
+		for (const { at, label } of cuttable.sort((a, b) => quoted[b.at].length - quoted[a.at].length)) {
+			if (fenced(quoted).length <= budget) break;
+			quoted[at] = `    ${label}: cut to fit the comment's limit; a local run shows it.`;
+		}
+		return `${header}\n\n${fenced(quoted, budget)}`;
 	}
 }
 
@@ -247,7 +325,7 @@ export function fenced(text, budget = Number.POSITIVE_INFINITY) {
 	const sizes = [0];
 	for (const line of lines) sizes.push(sizes.at(-1) + line.length + 1);
 	if (frame + sizes[lines.length] - 1 <= budget) return render(lines);
-	const note = (kept) => `... ${lines.length - kept} more lines; the run's artefact has them all.`;
+	const note = (kept) => `... ${lines.length - kept} more lines; a local run shows them all.`;
 	let kept = lines.length - 1;
 	while (kept > 0 && frame + sizes[kept] + note(kept).length > budget) kept--;
 	return render([...lines.slice(0, kept), note(kept)]);

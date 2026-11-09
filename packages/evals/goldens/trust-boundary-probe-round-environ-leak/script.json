@@ -41,7 +41,7 @@
           "name": "report_finding",
           "arguments": {
             "file": "scripts/round.mjs",
-            "line": 108,
+            "line": 109,
             "rule": "secret-exposure",
             "severity": "P1",
             "explanation": {
@@ -49,16 +49,16 @@
               "why": "The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in the error, and the comment and the uploaded artefact carry it out of the job.",
               "fix": "Render a check that did not run by name and status alone, and upload only a public copy of the verdict that drops every check reason and error and every static finding's text."
             },
-            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict, round.txt and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.",
+            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.",
             "evidence": [
               {
                 "file": "scripts/round.mjs",
-                "line": 108,
+                "line": 109,
                 "role": "cause"
               },
               {
                 "file": ".github/workflows/melian-round.yml",
-                "line": 197,
+                "line": 230,
                 "role": "context"
               }
             ],

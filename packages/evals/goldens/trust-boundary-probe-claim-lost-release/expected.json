@@ -10,11 +10,11 @@
       "rule": "fail-open",
       "source": "lens.trust-boundary",
       "cause": "introduced",
-      "failureScenario": "The timeline holds a maintainer's status: ready, a builder's Claim:, the builder's Released:, then the claim run's own labeled status: in progress and unlabeled status: ready. The release's run reads the bot's unlabeled ready as a hand removal, sets want to undefined, and writes nothing, so the issue stays in progress after its release.",
+      "failureScenario": "The timeline holds a maintainer's status: ready, a builder's Claim:, the builder's Released:, then the claim run's own labeled status: in progress and unlabeled status: ready. The release's run reads the bot's unlabeled ready as a hand removal, sets want to undefined, and removes both status labels, so the released issue is never marked ready.",
       "evidence": [
         {
           "file": ".github/workflows/claim.yml",
-          "line": 55,
+          "line": 77,
           "role": "cause"
         }
       ]

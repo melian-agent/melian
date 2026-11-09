@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
       contents: read
@@ -85,6 +85,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
+      # a script pins the round job's Node.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
       # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
       # read fails this step, and no later job holds a secret. A head no push event names is refused too, never taken
@@ -108,38 +113,86 @@ jobs:
 
   round:
     needs: gate
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 150
+    # The logins are secrets of the melian-round Environment, whose deployment branches are limited to main, so GitHub
+    # withholds them from any other branch's copy of this workflow. Repository secrets reach every branch's workflow,
+    # and that copy can drop every check below, so this Environment, not the workflow's own refusal, keeps them out.
+    environment: melian-round
     permissions:
       contents: read
       pull-requests: read
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
-      nonce: ${{ steps.artifact.outputs.nonce }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
-      # the name from this output, never from its own run_attempt. The nonce marks this run's comment as its own.
+      # the name from this output, never from its own run_attempt. The nonce ties the run's comment to the run, for a rerun
+      # of the report and for a builder checking the comment. It goes to the report in the artefact, not a printed env.
+      # The artefact is public once uploaded, so the nonce guards against nothing that can read it: such a workflow can
+      # post a matching marker first, and the report then overwrites that comment with the round's own body.
       - id: artifact
         run: |
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-          echo "nonce=$(openssl rand -hex 16)" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/public"
+          openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"
+      # A rerun keeps the run's first event, ref and commit, and the default branch may have moved past a fix to this
+      # workflow or its scripts since, or another branch may have become the default. "Re-run failed jobs" can also skip
+      # the gate. So before any step holds a login, this job asks the repository which branch is the default now and
+      # where it points, and refuses any other ref or commit; a fresh dispatch runs the current code.
+      - name: Refuse a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ "$REF" != "refs/heads/$default" ]; then
+            echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
+            exit 1
+          fi
+          current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
+          if [ "$current" != "$SHA" ]; then
+            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
       # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
       # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
-      # so Melian can fetch the pull request and find its merge base; the credentials let it fetch refs/pull/N/head.
+      # so Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
+      # token, and none stays in .git/config, where a head's tool configuration could read it.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: melian
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: melian
+      # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
+      # approved. Refuse one that moved, before the step that holds them; the report then posts its stale notice. Seconds
+      # remain between this read and Melian's own, and the comment's check of what the round reviewed covers them.
+      - name: Refuse a pull request that moved after the gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+        run: |
+          now=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || now=""
+          if [ "$now" != "$BASE $HEAD" ]; then
+            echo "::error::pull request $NUMBER moved from $BASE $HEAD to ${now:-an unreadable revision} after the gate"
+            mkdir -p "$RUNNER_TEMP/public"
+            echo none > "$RUNNER_TEMP/public/exit"
+            exit 1
+          fi
       # The logins reach only this step. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex login's access token
       # goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's store stays empty, so
       # nothing refreshes the login and rotates its refresh token. An expired token reads as absent, and the plan derives
       # a Claude route, which the comment lists as a check that left the committed routes. The comment reads only the
-      # verdict JSON; the text output is for the summary and the artefact.
+      # verdict JSON.
       - name: Run the round
         working-directory: melian
         env:
@@ -152,7 +205,7 @@ jobs:
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
         run: |
-          out="$RUNNER_TEMP/round"
+          out="$RUNNER_TEMP/public"
           mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
           export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
           if token=$(node scripts/round-codex-token.mjs); then
@@ -161,55 +214,59 @@ jobs:
             printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
           fi
           unset token CODEX_AUTH_B64
-          node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
-          # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
-          # approved. Refuse one that moved; the report then posts its stale notice. Seconds remain between this read and
-          # Melian's own, and the comment's check of what the round reviewed covers them.
-          now=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || now=""
-          if [ "$now" != "$BASE $HEAD" ]; then
-            echo "::error::pull request $NUMBER moved from $BASE $HEAD to ${now:-an unreadable revision} after the gate"
-            echo none > "$out/exit"
-            exit 0
-          fi
+          node packages/cli/bin/melian.js doctor || true
           set +e
           node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$out/verdict.json" 2> "$out/round.err"
           echo $? > "$out/exit"
-          node packages/cli/bin/melian.js findings "#$NUMBER" --no-color > "$out/round.txt" 2>> "$out/round.err"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
-          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2>> "$out/round.err"
-          git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2>> "$out/round.err"
+          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2> /dev/null
+          git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2> /dev/null
           exit 0
-      - name: Write the job summary
-        if: always()
-        run: |
-          out="$RUNNER_TEMP/round"
-          {
-            echo "## Melian round, exit $(cat "$out/exit" 2>/dev/null || echo none)"
-            node melian/scripts/round-comment.mjs --fence "$out/round.txt"
-            echo "### Standard error"
-            node melian/scripts/round-comment.mjs --fence "$out/round.err"
-          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: ${{ runner.temp }}/round
+          path: ${{ runner.temp }}/public
           if-no-files-found: ignore
           retention-days: 30
 
   report:
     needs: [gate, round]
     if: always() && needs.gate.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
     steps:
+      # A rerun of the report job alone checks out the run's first commit too, and runs its scripts with a token that can
+      # write comments, so it refuses the same commits the round job does, before the checkout.
+      - name: Refuse a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ "$REF" != "refs/heads/$default" ]; then
+            echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
+            exit 1
+          fi
+          current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
+          if [ "$current" != "$SHA" ]; then
+            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
+      # a script pins the round job's Node.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       # A round that finished uploaded its artefact, so a missing one fails this job rather than post a comment that
       # says the round ended before a verdict. An empty name would download every artefact of the run.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -227,15 +284,15 @@ jobs:
           HEAD: ${{ needs.gate.outputs.head }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
-          NONCE: ${{ needs.round.outputs.nonce }}
         run: |
           out="$RUNNER_TEMP/round"
+          nonce=$(cat "$out/nonce" 2>/dev/null) || nonce=""
           # Read again just before posting: a push or a retarget during the round leaves findings for a revision the
           # pull request no longer shows. A failed read leaves both empty, and the comment posts no findings.
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
-            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$NONCE" --base "$BASE" --head "$HEAD" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and this job's identity, and
@@ -243,7 +300,7 @@ jobs:
           # with a new nonce and artefact, so it posts that round's own comment.
           gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
             --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
-          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$NONCE" "github-actions[bot]")
+          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "github-actions[bot]")
           if [ -n "$own" ]; then
             gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
           else
