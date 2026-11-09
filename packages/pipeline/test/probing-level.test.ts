@@ -1514,7 +1514,7 @@ describe("a level that probes", () => {
 	it("counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox", async () => {
 		const limits = probingLimits as { probes: number };
 		const probes = limits.probes;
-		limits.probes = 2;
+		limits.probes = 1;
 		onTestFinished(() => {
 			limits.probes = probes;
 		});
@@ -1534,7 +1534,6 @@ describe("a level that probes", () => {
 				prober: [
 					call("run_probe", { attack: 1, script: passing }),
 					call("run_probe", { attack: 1, script: passing }),
-					call("run_probe", { attack: 1, script: passing }),
 					call("skip_attack", { attack: 1, reason: "r" }),
 					fauxAssistantMessage("Done."),
 				],
@@ -1542,9 +1541,9 @@ describe("a level that probes", () => {
 			{ sandbox },
 		);
 		await run;
-		expect(wraps).toBe(2);
-		expect(lastResults(requests[prober]![3]!)).toContain(
-			"a prober runs at most 2 probes; answer the attacks left with skip_attack",
+		expect(wraps).toBe(1);
+		expect(lastResults(requests[prober]![2]!)).toContain(
+			"a prober runs at most 1 probes; answer the attacks left with skip_attack",
 		);
 	});
 
