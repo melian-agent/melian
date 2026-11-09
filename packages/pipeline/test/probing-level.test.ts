@@ -1557,6 +1557,22 @@ describe("a level that probes", () => {
 		expect(again.requests[planner]).toHaveLength(2);
 	});
 
+	it("tells apart two probe.read lists that join to the same text", async () => {
+		const fake = createFakeModels();
+		const scripts = { planner: plan, prober: probing(failing) };
+		const first = await review(scripts, {
+			fake,
+			config: { probe: { read: ["node_modules", "generated, secrets"] } },
+		});
+		await first.run;
+		const again = await review(scripts, {
+			fake,
+			config: { probe: { read: ["node_modules", "generated", "secrets"] } },
+		});
+		await again.run;
+		expect(again.requests[planner]).toHaveLength(2);
+	});
+
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
 		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
 		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();
