@@ -12,7 +12,6 @@ import {
 	type Finding,
 	FindingsLog,
 	Lens,
-	type LensLevels,
 	type LensTier,
 	loadConfig,
 	type MelianConfig,
@@ -302,58 +301,7 @@ export type GoldenMode =
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
 			readonly thinking?: EvalThinking;
-			/** Routes for a level that probes, which a measurement of its routes sets; see {@link ProbingRoutes}. */
-			readonly probing?: ProbingRoutes;
 	  };
-
-/**
- * One combination a measurement of a level that probes runs: the planner's model, on the heavy tier, and the prober's,
- * on the medium tier. Without `prober`, every level that probes runs without probes on the planner's model, as the
- * level the measurement compares against.
- */
-export interface ProbingRoutes {
-	readonly planner: string;
-	readonly prober?: string;
-}
-
-/**
- * The lenses and routes of a run under `routes`: each level that probes, and `trust-boundary`'s `deep`, moves its prober
- * to medium, or drops its probe for the level without probes.
- */
-export function routedProbing(
-	routes: ProbingRoutes,
-	lenses: readonly Lens[],
-	config: MelianConfig,
-): { lenses: Lens[]; config: MelianConfig } {
-	const moved = lenses.map((lens) =>
-		Lens.from({
-			...lens.toJSON(),
-			levels: Object.fromEntries(
-				Object.entries(lens.levels).map(([level, settings]) => {
-					// No shipped level probes until this measurement picks its routes, so trust-boundary's deep is measured.
-					const probing = settings.probe ?? (lens.name === "trust-boundary" && level === "deep" ? {} : undefined);
-					if (probing === undefined) return [level, settings];
-					const { probe: _, ...rest } = settings;
-					return [
-						level,
-						routes.prober === undefined ? rest : { ...rest, probe: { ...probing, prober: "medium" } },
-					];
-				}),
-			) as LensLevels,
-		}),
-	);
-	// Each tier keeps its reasoning level, so the measurement runs the routes as they would ship, but no other model.
-	const routed = (tier: "heavy" | "medium", model: string) => {
-		const thinking = config.models[tier]?.thinking;
-		return { model, ...(thinking === undefined ? {} : { thinking }) };
-	};
-	const models = {
-		...config.models,
-		heavy: routed("heavy", routes.planner),
-		...(routes.prober === undefined ? {} : { medium: routed("medium", routes.prober) }),
-	};
-	return { lenses: moved, config: { ...config, models } };
-}
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
 export interface GoldenRun {
@@ -435,9 +383,6 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
-		let routed = lenses;
-		if (mode.kind === "live" && mode.probing !== undefined)
-			({ lenses: routed, config } = routedProbing(mode.probing, lenses, config));
 		const storage = createMemoryStorage();
 		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
 		const reviewHarness = await openReviewHarness(storage, models, {
@@ -451,7 +396,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				harness: reviewHarness,
 				changeset,
 				config,
-				lenses: routed,
+				lenses,
 				standards,
 				models,
 				policy: source,

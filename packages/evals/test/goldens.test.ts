@@ -1172,3 +1172,15 @@ describe("scoreGolden", () => {
 		expect(scoreCorpus(scores)).toEqual({ precision: 1 / 3, recall: 1 });
 	});
 });
+
+describe("scripting a prober", () => {
+	it("refuses a prober script for a lens the review has not, or a name that only starts like one", async () => {
+		const fake = testing.createFakeModels();
+		const lenses = await Lens.builtins();
+		expect(() => testing.scriptLenses(fake, lenses, { "nope/prober": [] })).toThrow("nope/prober");
+		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/proberx": [] })).toThrow(
+			"trust-boundary/proberx",
+		);
+		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/prober": [] })).not.toThrow();
+	});
+});
