@@ -1,0 +1,255 @@
+{
+ "total": 14,
+ "omitted": 0,
+ "base": "ea767a4c",
+ "head": "8de58e52",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000 at 462b2573",
+ "note": "Fix pass 10 of pull request #296: the mutants of the attempt count, each run against its named test alone; the seeded default needed the limit of one.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1361,
+   "column": 23,
+   "endLine": 1361,
+   "endColumn": 43,
+   "mutatorName": "LogicalOperator",
+   "replacement": "state.attempts && []",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1361,
+   "column": 41,
+   "endLine": 1361,
+   "endColumn": 43,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 10,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 10,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 10,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!attempts.includes(id) || attempts.length >= probingLimits.probes",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 10,
+   "endLine": 1362,
+   "endColumn": 32,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "attempts.includes(id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 36,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 36,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "EqualityOperator",
+   "replacement": "attempts.length > probingLimits.probes",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1362,
+   "column": 36,
+   "endLine": 1362,
+   "endColumn": 75,
+   "mutatorName": "EqualityOperator",
+   "replacement": "attempts.length < probingLimits.probes",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1366,
+   "column": 37,
+   "endLine": 1369,
+   "endColumn": 7,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1368,
+   "column": 27,
+   "endLine": 1368,
+   "endColumn": 75,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1368,
+   "column": 39,
+   "endLine": 1368,
+   "endColumn": 73,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1368,
+   "column": 44,
+   "endLine": 1368,
+   "endColumn": 67,
+   "mutatorName": "LogicalOperator",
+   "replacement": "document.attempts && []",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox",
+   "survivorClasses": [],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1368,
+   "column": 65,
+   "endLine": 1368,
+   "endColumn": 67,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs as many probes as a prober may, and refuses one past them whatever its budget",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": {
+    "head": "8de58e52",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 14
+ }
+}
