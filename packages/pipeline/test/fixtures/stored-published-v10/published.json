@@ -1,0 +1,450 @@
+{
+  "root": 1,
+  "version": 10,
+  "published": {
+    "order": [
+      "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b"
+    ],
+    "revisions": {
+      "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b": {
+        "reviews": [
+          "1001",
+          "1006"
+        ],
+        "open": {
+          "2a0604e2d428931a": {
+            "ruleId": "unhandled-error",
+            "path": "src/config.ts",
+            "line": 1,
+            "revision": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b"
+          },
+          "8404b1b24eec5b0b": {
+            "ruleId": "wrong-result",
+            "path": "src/user.ts",
+            "line": 19,
+            "revision": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b"
+          }
+        },
+        "resolved": {
+          "4998b25271b2fd2e 1002 c1759a6a8330f0b3": {
+            "id": "4998b25271b2fd2e",
+            "ruleId": "null-dereference",
+            "path": "src/user.ts",
+            "line": 7,
+            "revision": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b",
+            "thread": "1002",
+            "dismissal": {
+              "by": "Tal",
+              "reason": "The manager is always set here.",
+              "at": "2026-10-04T00:00:00.000Z"
+            }
+          }
+        },
+        "replies": {
+          "4998b25271b2fd2e 1002 c1759a6a8330f0b3": "1007"
+        },
+        "publishedBy": {
+          "trustedWriters": true,
+          "login": "melian-user",
+          "permission": "write",
+          "authorPermission": "read"
+        },
+        "status": {
+          "state": "success",
+          "description": "2 findings, none blocking"
+        },
+        "rounds": 2,
+        "verdict": "3cf56a83ac23b268",
+        "verdictRevision": "75c6792b87d2dd841e01467ad047390f504dda7d..d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b",
+        "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003"
+      }
+    },
+    "ledgerRounds": [
+      {
+        "base": "75c6792b87d2dd841e01467ad047390f504dda7d",
+        "head": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b",
+        "round": 1,
+        "status": "findings"
+      },
+      {
+        "publishedBy": {
+          "trustedWriters": true,
+          "login": "melian-user",
+          "permission": "write",
+          "authorPermission": "read"
+        },
+        "base": "75c6792b87d2dd841e01467ad047390f504dda7d",
+        "head": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b",
+        "round": 2,
+        "verdict": {
+          "status": "findings",
+          "blocking": false,
+          "findings": {
+            "block": [],
+            "acknowledge": [],
+            "advisory": [
+              {
+                "ruleId": "unhandled-error",
+                "level": "error",
+                "message": {
+                  "text": "RETRIES may be unset."
+                },
+                "partialFingerprints": {
+                  "melian/v1": "2a0604e2d428931a"
+                },
+                "locations": [
+                  {
+                    "physicalLocation": {
+                      "artifactLocation": {
+                        "uri": "src/config.ts"
+                      },
+                      "region": {
+                        "startLine": 1,
+                        "snippet": {
+                          "text": "export const retries = Number(process.env.RETRIES);"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "id": "2a0604e2d428931a",
+                  "path": "src/config.ts",
+                  "occurrence": 0,
+                  "cause": "pre-existing",
+                  "severity": "P1",
+                  "explanation": {
+                    "what": "RETRIES may be unset.",
+                    "whyHere": "RETRIES may be unset. Why.",
+                    "whatToDo": "RETRIES may be unset. Fix."
+                  },
+                  "source": {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  },
+                  "verification": {
+                    "verdict": "confirmed",
+                    "reason": "The scripted verifier traced the claim.",
+                    "answers": {
+                      "code": "yes",
+                      "guard": "no",
+                      "base": "no"
+                    },
+                    "executor": "llm",
+                    "model": "faux/scripted",
+                    "version": "678bb91db027f664"
+                  },
+                  "evidence": [
+                    {
+                      "file": "src/config.ts",
+                      "startLine": 1,
+                      "role": "cause",
+                      "revision": "head",
+                      "snippet": "export const retries = Number(process.env.RETRIES);"
+                    }
+                  ],
+                  "failureScenario": "RETRIES may be unset. Scenario.",
+                  "status": "new",
+                  "reportedBy": [
+                    {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    }
+                  ],
+                  "resolution": "advisory",
+                  "decidedBy": {
+                    "check": "lens.correctness",
+                    "rule": "unhandled-error",
+                    "requirement": {
+                      "entry": "built-in"
+                    },
+                    "cap": "pre-existing"
+                  }
+                }
+              },
+              {
+                "ruleId": "wrong-result",
+                "level": "warning",
+                "message": {
+                  "text": "An empty name yields no initials."
+                },
+                "partialFingerprints": {
+                  "melian/v1": "8404b1b24eec5b0b"
+                },
+                "locations": [
+                  {
+                    "physicalLocation": {
+                      "artifactLocation": {
+                        "uri": "src/user.ts"
+                      },
+                      "region": {
+                        "startLine": 19,
+                        "snippet": {
+                          "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "id": "8404b1b24eec5b0b",
+                  "path": "src/user.ts",
+                  "occurrence": 0,
+                  "cause": "pre-existing",
+                  "severity": "P2",
+                  "explanation": {
+                    "what": "An empty name yields no initials.",
+                    "whyHere": "An empty name yields no initials. Why.",
+                    "whatToDo": "An empty name yields no initials. Fix."
+                  },
+                  "source": {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  },
+                  "verification": {
+                    "verdict": "confirmed",
+                    "reason": "The scripted verifier traced the claim.",
+                    "answers": {
+                      "code": "yes",
+                      "guard": "no",
+                      "base": "no"
+                    },
+                    "executor": "llm",
+                    "model": "faux/scripted",
+                    "version": "678bb91db027f664"
+                  },
+                  "evidence": [
+                    {
+                      "file": "src/user.ts",
+                      "startLine": 19,
+                      "role": "cause",
+                      "revision": "head",
+                      "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                    }
+                  ],
+                  "failureScenario": "An empty name yields no initials. Scenario.",
+                  "status": "new",
+                  "reportedBy": [
+                    {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    }
+                  ],
+                  "resolution": "advisory",
+                  "decidedBy": {
+                    "check": "lens.correctness",
+                    "rule": "wrong-result",
+                    "requirement": {
+                      "entry": "built-in"
+                    },
+                    "cap": "pre-existing"
+                  }
+                }
+              }
+            ],
+            "silent": []
+          },
+          "dismissed": [
+            {
+              "ruleId": "null-dereference",
+              "level": "error",
+              "message": {
+                "text": "manager may be absent."
+              },
+              "partialFingerprints": {
+                "melian/v1": "4998b25271b2fd2e"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/user.ts"
+                    },
+                    "region": {
+                      "startLine": 7,
+                      "snippet": {
+                        "text": "\treturn (user.manager as User).name;"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "4998b25271b2fd2e",
+                "path": "src/user.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "trigger": {
+                  "file": "src/user.ts",
+                  "index": 0,
+                  "snippet": "\treturn (user.manager as User).name;",
+                  "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                },
+                "severity": "P1",
+                "explanation": {
+                  "what": "manager may be absent.",
+                  "whyHere": "manager may be absent. Why.",
+                  "whatToDo": "manager may be absent. Fix."
+                },
+                "source": {
+                  "check": "lens.correctness",
+                  "version": "18c49f913df8@careful"
+                },
+                "verification": {
+                  "verdict": "confirmed",
+                  "reason": "The scripted verifier traced the claim.",
+                  "answers": {
+                    "code": "yes",
+                    "guard": "no",
+                    "base": "no"
+                  },
+                  "executor": "llm",
+                  "model": "faux/scripted",
+                  "version": "678bb91db027f664"
+                },
+                "evidence": [
+                  {
+                    "file": "src/user.ts",
+                    "startLine": 7,
+                    "role": "cause",
+                    "revision": "head",
+                    "proves": true,
+                    "snippet": "\treturn (user.manager as User).name;"
+                  }
+                ],
+                "failureScenario": "manager may be absent. Scenario.",
+                "status": "dismissed",
+                "dismissal": {
+                  "by": "Tal",
+                  "reason": "The manager is always set here.",
+                  "at": "2026-10-04T00:00:00.000Z"
+                },
+                "reportedBy": [
+                  {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  }
+                ],
+                "resolution": "block",
+                "decidedBy": {
+                  "check": "lens.correctness",
+                  "rule": "null-dereference",
+                  "requirement": {
+                    "entry": "built-in"
+                  }
+                }
+              }
+            }
+          ],
+          "notRun": [],
+          "ran": [
+            {
+              "name": "guardrails",
+              "status": "ran"
+            },
+            {
+              "name": "static.biome",
+              "status": "ran"
+            },
+            {
+              "name": "static.tsc",
+              "status": "ran"
+            },
+            {
+              "name": "lens.contracts",
+              "status": "ran",
+              "level": "careful",
+              "version": "dd8fb36095b4"
+            },
+            {
+              "name": "lens.correctness",
+              "status": "ran",
+              "level": "careful",
+              "version": "18c49f913df8"
+            },
+            {
+              "name": "verifier",
+              "status": "ran",
+              "version": "678bb91db027f664"
+            }
+          ],
+          "preExistingImportant": [
+            {
+              "id": "2a0604e2d428931a",
+              "state": "new",
+              "originalSeverity": "P1"
+            }
+          ]
+        },
+        "details": {
+          "policy": "revision:75c6792b87d2dd841e01467ad047390f504dda7d",
+          "manifest": [
+            "guardrails",
+            "static.biome",
+            "static.tsc",
+            "lens.correctness",
+            "lens.contracts",
+            "verifier"
+          ],
+          "lenses": [
+            {
+              "name": "contracts",
+              "version": "dd8fb36095b4",
+              "level": "careful",
+              "models": [
+                "faux/scripted"
+              ],
+              "standards": [],
+              "ran": "faux/scripted",
+              "usage": {
+                "models": [
+                  "faux/scripted"
+                ],
+                "tokens": 6595,
+                "cost": 0
+              },
+              "budget": {
+                "findings": 8,
+                "tokens": 200000,
+                "tools": 30
+              }
+            },
+            {
+              "name": "correctness",
+              "version": "18c49f913df8",
+              "level": "careful",
+              "models": [
+                "faux/scripted"
+              ],
+              "standards": [],
+              "ran": "faux/scripted",
+              "usage": {
+                "models": [
+                  "faux/scripted"
+                ],
+                "tokens": 11800,
+                "cost": 0
+              },
+              "budget": {
+                "findings": 8,
+                "tokens": 200000,
+                "tools": 30
+              }
+            }
+          ],
+          "standards": []
+        },
+        "resolved": [
+          {
+            "id": "4998b25271b2fd2e",
+            "ruleId": "null-dereference",
+            "path": "src/user.ts",
+            "line": 7,
+            "commit": "d801c9f8c18cda4f9ac3e4545de8dab1bb5a8c0b",
+            "reason": "The manager is always set here."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -814,11 +814,11 @@ describe("version 7 findings and verdicts", () => {
 		}
 	}
 
-	it("refuses a version-10 findings document opened by a version-7 definition", async () => {
+	it("refuses a version-11 findings document opened by a version-7 definition", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
-			/newer version 10 than 7/,
+			/newer version 11 than 7/,
 		);
 	});
 
@@ -893,6 +893,15 @@ describe("lowered sightings", () => {
 		expect(stored.properties).not.toHaveProperty("originalSeverity");
 	});
 
+	it("reads a lowered sighting as reported at the lens's severity, with its verification attached", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, lowered);
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		expect(reported!.properties).toMatchObject({ severity: "P1", verification: lowered });
+		expect(reported!.properties).not.toHaveProperty("originalSeverity");
+	});
+
 	it("takes the highest severity among sightings of one ID after lowering, and names the original", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };
@@ -910,6 +919,23 @@ describe("lowered sightings", () => {
 		expect(tied!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
 		expect(tied!.properties.source.check).toBe("lens.contracts");
 		expect(tied!.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
+	});
+
+	it("freezes as a dismissal's root the sighting a read after lowering speaks through", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		const second = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await judge(root, lowered);
+		const dismissal = { by: "tal", reason: "constant input", at: "2026-10-03T00:00:00.000Z" };
+		await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.id, dismissal, "rev1", "P2"), context);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		expect(state.items[evalFinding.id]!.lifecycle.dismissedSighting!.sighting.properties).toMatchObject({
+			severity: "P2",
+			source: other,
+			failureScenario: "It fails.",
+		});
 	});
 
 	// Codex's H1 on pull request 131: the refuted sighting must not speak through the one that stands.

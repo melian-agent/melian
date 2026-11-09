@@ -19,6 +19,8 @@ export interface TerminalRenderOptions {
 	readonly historical?: boolean;
 	/** Print each mark's emoji beside its word. Off by default, which prints the words alone. */
 	readonly emoji?: boolean;
+	/** The range or `#N` the review covered, which each `melian dismiss` command it prints names. */
+	readonly target?: string;
 	/**
 	 * The emoji each repository lens declares: by `lens.<name>@<version>` for one variant of a lens, and by
 	 * `lens.<name>` for every variant, when they declare one emoji between them.
@@ -122,6 +124,17 @@ export function describeDecision(by: DecidedBy, own: { readonly check: string; r
 	].join("; ");
 }
 
+/**
+ * Says a dismissal was inherited, for an author: ", inherited from 0123456789abcdef", the root's ID as `quote` gives it,
+ * or nothing for a dismissal someone made. It never names the root's dismisser.
+ */
+export function describeInheritance(
+	{ inheritedFrom }: { readonly inheritedFrom?: string },
+	quote: (text: string) => string = visibleText,
+): string {
+	return inheritedFrom === undefined ? "" : `, inherited from ${quote(inheritedFrom)}`;
+}
+
 const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "token", tools: "tool call" };
 
 /**
@@ -166,6 +179,8 @@ export class Rendering {
 	readonly historical: boolean;
 	/** Print each mark's emoji beside its word. */
 	readonly emoji: boolean;
+	/** The range or `#N` each `melian dismiss` command names. */
+	readonly target: string | undefined;
 	readonly #color: boolean;
 	readonly #lensEmojis: Readonly<Record<string, string>>;
 
@@ -177,6 +192,7 @@ export class Rendering {
 		this.decided = options.decided === true;
 		this.historical = options.historical === true;
 		this.emoji = options.emoji === true;
+		this.target = options.target;
 		this.#lensEmojis = options.lensEmojis ?? {};
 	}
 

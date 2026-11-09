@@ -77,8 +77,11 @@ import {
 	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
+	overlapsSite,
 	type Producer,
+	type Restating,
 	readFindings,
+	recordInheritances,
 	recordRevision,
 	reopenDismissals,
 	type SightedFinding,
@@ -121,6 +124,7 @@ import {
 } from "./lens-tools.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
 import { ConversationUsageRecorder } from "./reasoning.ts";
+import { Predecessors } from "./restatement.ts";
 import {
 	attachable,
 	type CallerRecord,
@@ -556,14 +560,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				// reported other lines of one defect hashes another snippet.
 				const higher = await sighted(next);
 				const restates = (finding: SightedFinding) =>
-					higher.some(
-						(each) =>
-							each.id === finding.id ||
-							(each.path === finding.path &&
-								each.ruleId === finding.ruleId &&
-								each.line <= finding.endLine &&
-								finding.line <= each.endLine),
-					);
+					higher.some((each) => each.id === finding.id || overlapsSite(each, finding));
 				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
 				const reported = (await runtime.snapshot(LensDocument, child!, context))?.spend?.refuted ?? [];
 				const refuted = reported.filter((id) => escalation.carried.includes(id) && !restated.has(id));
@@ -1972,6 +1969,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 		let decisionsAtBase: string | undefined;
 		let designAtBase: VerificationCandidate["designAtBase"];
+		const predecessors = await Predecessors.open(harness, root, reviewed, state, context);
+		const restating: Restating[] = [];
 		for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 			if (defect.speaker.properties.status === "dismissed") continue;
 			const candidateState = VerificationState.from(defect.speaker).toJSON();
@@ -2041,6 +2040,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					designAtBase = { sections: sections.render(), files: sections.renderFiles() };
 				}
 			}
+			const restatement = await predecessors.of(defect);
+			if (restatement !== undefined) restating.push(restatement.restating);
 			candidates.push({
 				...(designClaim ? { decisionsAtBase, designAtBase } : {}),
 				key: defect.speaker.id,
@@ -2053,9 +2054,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					coReported: !defect.lensOnly(),
 					silent: defect.silentAt(configFor),
 				},
+				...(restatement === undefined ? {} : { dismissed: restatement.dismissed }),
 			});
 		}
-		return { storedFindings, policies, candidates };
+		return { storedFindings, policies, candidates, restating };
 	};
 	const verifierRefuses = (model: string) =>
 		request.plan?.tier("verifier").acceptOverridden === false &&
@@ -2271,9 +2273,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			),
 		context,
 	);
-	const { storedFindings, policies, candidates } = await candidatesFor(producers, lensResult, ran.lenses);
+	const { storedFindings, policies, candidates, restating } = await candidatesFor(producers, lensResult, ran.lenses);
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
+	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -2324,7 +2327,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(Object.keys(reused).length === 0 ? {} : { reused }),
 			};
 			spans.end();
-			const verifying = await startVerification(
+			verifying = await startVerification(
 				harness,
 				verificationInput,
 				selectionOf(lenses, escalateAt),
@@ -2389,6 +2392,22 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		}
 	}
+	// Each round re-derives every restatement link from its own stored judgements, in one commit, before adjudication
+	// reads the findings version. A verifier that did not run to the end judged no sameness, and leaves no links.
+	// A review a later one replaced, by lens selection or by verification task, leaves the links that one recorded.
+	await (await harness.root(context)).commit(async (tx) => {
+		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
+		const selection = selectionOf(lenses, escalateAt);
+		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
+		if (verifying !== undefined && entry?.verification?.task !== verifying) return;
+		await recordInheritances(
+			tx,
+			root,
+			reviewed,
+			verificationCheck?.status === "ran" ? restating : [],
+			verifierVersion,
+		);
+	}, context);
 	spans.step("adjudication.prepare");
 	const checks =
 		request.plan?.mark(
