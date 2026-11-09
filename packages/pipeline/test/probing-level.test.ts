@@ -53,20 +53,26 @@ let repo: string;
 let harness: ReviewHarness | undefined;
 let storage: Storage;
 
+const baseFiles = {
+	"src/load.ts": "export function load(path: string) {\n\treturn path;\n}\n",
+	"docs/decisions/2026-01-01-paths-stay-inside.md":
+		"# Paths stay inside\n\nStatus: accepted.\n\nA path an author names stays inside the repository.\n",
+};
+const headFiles = {
+	"src/load.ts":
+		'import { readFileSync } from "node:fs";\nexport function load(path: string) {\n\treturn readFileSync(path, "utf8");\n}\n',
+	"fixture/leak.txt": "LEAK\n",
+};
+
 beforeEach(() => {
-	repo = baseAndHead(
-		{
-			"src/load.ts": "export function load(path: string) {\n\treturn path;\n}\n",
-			"docs/decisions/2026-01-01-paths-stay-inside.md":
-				"# Paths stay inside\n\nStatus: accepted.\n\nA path an author names stays inside the repository.\n",
-		},
-		{
-			"src/load.ts":
-				'import { readFileSync } from "node:fs";\nexport function load(path: string) {\n\treturn readFileSync(path, "utf8");\n}\n',
-			"fixture/leak.txt": "LEAK\n",
-		},
-	);
+	repo = baseAndHead(baseFiles, headFiles);
 });
+
+// The repository again, with `policy` as the base's melian.yaml, which a probe's allowlist and writer trust come from.
+function withBasePolicy(policy: string) {
+	rmSync(repo, { recursive: true, force: true });
+	repo = baseAndHead({ ...baseFiles, "melian.yaml": policy }, headFiles);
+}
 
 afterEach(async () => {
 	await harness?.close();
@@ -490,15 +496,16 @@ describe("a level that probes", () => {
 	});
 
 	it.each([
-		["no writer", {}, undefined, "the host did not say whose head this is"],
+		["no writer", undefined, undefined, "the host did not say whose head this is"],
 		[
-			"a writer under a policy that trusts no writer",
-			{ trust: { writers: false } },
+			"a writer under a base policy that trusts no writer",
+			"trust:\n  writers: false\n",
 			{ trusted: true, by: "writer" } as const,
 			"trust.writers is false in the repository's policy",
 		],
-	] as const)("runs no probe for %s", async (_, config, writer, reason) => {
-		const { run } = await withoutProbes({ config, writer });
+	] as const)("runs no probe for %s", async (_, policy, writer, reason) => {
+		if (policy !== undefined) withBasePolicy(policy);
+		const { run } = await withoutProbes({ writer });
 		expect(record((await run).verdict).reason).toContain(`deep ran without probes, which cannot run here: ${reason}`);
 	});
 
@@ -1147,11 +1154,9 @@ describe("a level that probes", () => {
 		expect(judged).toMatch(/Claim c1 finding [0-9a-f]+, reported at P1\n<\/instructions>$/);
 	});
 
-	it("probes a head the reviewer vouches for under a policy that trusts no writer", async () => {
-		const { run } = await review(
-			{ planner: plan, prober: probing(failing) },
-			{ config: { trust: { writers: false } } },
-		);
+	it("probes a head the reviewer vouches for under a base policy that trusts no writer", async () => {
+		withBasePolicy("trust:\n  writers: false\n");
+		const { run } = await review({ planner: plan, prober: probing(failing) });
 		expect((await run).verdict.counted()).toHaveLength(1);
 	});
 
@@ -1600,6 +1605,7 @@ describe("a level that probes", () => {
 	});
 
 	it("lets a probe read what the base policy's probe.read allows beyond the head's tree", async () => {
+		withBasePolicy("probe:\n  read: [node_modules, generated.txt]\n");
 		writeFileSync(join(repo, "generated.txt"), "BUILT\n");
 		const reading =
 			'import { readFileSync } from "node:fs";\nconsole.log(readFileSync("generated.txt", "utf8").trim());\n';
@@ -1608,7 +1614,7 @@ describe("a level that probes", () => {
 				planner: plan,
 				prober: [call("run_probe", { attack: 1, script: reading }), fauxAssistantMessage("Reported 0 findings.")],
 			},
-			{ config: { probe: { read: ["node_modules", "generated.txt"] } } },
+			{},
 		);
 		await run;
 		expect(lastResults(requests[prober]![1]!)).toContain("BUILT");
@@ -1664,17 +1670,7 @@ describe("a level that probes", () => {
 		);
 	});
 
-	it("runs a probing lens again when the base policy's probe.read changes, so its probes read what policy allows now", async () => {
-		const fake = createFakeModels();
-		const scripts = { planner: plan, prober: probing(failing) };
-		const first = await review(scripts, { fake, config: { probe: { read: ["node_modules"] } } });
-		await first.run;
-		const again = await review(scripts, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } });
-		await again.run;
-		expect(again.requests[planner]).toHaveLength(2);
-	});
-
-	it("runs a probing run a quick one escalates to again when probe.read changes, as a first run does", async () => {
+	it("runs a probing run a quick one escalates to again when its probing environment changes, as a first run does", async () => {
 		const fake = createFakeModels();
 		const { probe: _, ...plain } = finding("p0");
 		const scripts = {
@@ -1694,23 +1690,23 @@ describe("a level that probes", () => {
 			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
 			{ name: "recorded" },
 		);
-		const at = (read: string[]) => ({
+		const at = (writer: ReviewOptions["writer"]) => ({
 			fake,
 			decider,
+			writer,
 			lens: careful,
 			config: {
 				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
 				// Quick runs on medium, so it needs a route too.
 				models: { heavy: { model: route }, medium: { model: route } },
-				probe: { read },
 			},
 		});
-		const first = await review(scripts, at(["node_modules"]));
+		const first = await review(scripts, at({ trusted: true, by: "reviewer" }));
 		const done = await first.run;
 		expect(record(done.verdict)).toMatchObject({ level: "careful" });
 		expect(first.requests[reviewer]).toHaveLength(2);
 		expect(first.requests[planner]).toHaveLength(2);
-		const again = await review(scripts, at(["node_modules", "generated.txt"]));
+		const again = await review(scripts, at({ trusted: true, by: "writer" }));
 		await again.run;
 		expect(again.requests[planner]).toHaveLength(2);
 	});
@@ -1727,7 +1723,7 @@ describe("a level that probes", () => {
 		await later.run;
 		expect(systemPromptOf(later.requests[planner]![0]!)).toContain("load reads any path");
 		gitIn(repo, "reset", "--quiet", "--hard", first);
-		const again = await review(scripts, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } });
+		const again = await review(scripts, { fake, writer: { trusted: true, by: "writer" } });
 		await again.run;
 		expect(systemPromptOf(again.requests[planner]![0]!)).not.toContain("load reads any path");
 	});
@@ -1742,33 +1738,17 @@ describe("a level that probes", () => {
 		gitIn(repo, "commit", "--quiet", "-m", "later");
 		const later = gitIn(repo, "rev-parse", "HEAD");
 		await (await review(scripts, { fake })).run;
-		// The first revision is reviewed again under another grant and now reports nothing.
+		// The first revision is reviewed again under another writer's word and now reports nothing.
 		gitIn(repo, "reset", "--quiet", "--hard", first);
 		const quiet = {
 			planner: plan,
 			prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
 		};
-		await (await review(quiet, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } })).run;
+		await (await review(quiet, { fake, writer: { trusted: true, by: "writer" } })).run;
 		gitIn(repo, "reset", "--quiet", "--hard", later);
 		const again = await review(scripts, { fake });
 		await again.run;
 		expect(again.requests[planner] ?? []).toHaveLength(0);
-	});
-
-	it("tells apart two probe.read lists that join to the same text", async () => {
-		const fake = createFakeModels();
-		const scripts = { planner: plan, prober: probing(failing) };
-		const first = await review(scripts, {
-			fake,
-			config: { probe: { read: ["node_modules", "generated, secrets"] } },
-		});
-		await first.run;
-		const again = await review(scripts, {
-			fake,
-			config: { probe: { read: ["node_modules", "generated", "secrets"] } },
-		});
-		await again.run;
-		expect(again.requests[planner]).toHaveLength(2);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {

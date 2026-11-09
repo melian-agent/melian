@@ -24,6 +24,7 @@ import {
 	type LensToolName,
 	LevelBand,
 	lensLimits,
+	loadConfig,
 	Manifest,
 	type MelianConfig,
 	type MemberClaim,
@@ -2054,8 +2055,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	);
 	// Whether probes may run for this review, asked once and only when a level that probes runs: for a head the host
 	// allows, under trusting policy, on a sandbox that runs here.
+	// What a probe may read and whether policy trusts writers come from the base, never from the change, whoever vouches
+	// for it: the allowlist decides what of the reviewer's machine a probe reads, by the maintainer's ruling of 2026-11-10.
+	let basePolicy: Promise<MelianConfig> | undefined;
+	const baseConfig = () =>
+		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: base }, ".").then(
+			({ config: policy }) => policy,
+		));
 	let probesAsked: Promise<string | undefined> | undefined;
-	const probeRefused = () => (probesAsked ??= probeRefusal(request, config));
+	const probeRefused = () => (probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy)));
 	// Why a level that probes runs without them here: probes may not run, or its prober's tier reaches no model, or the
 	// plan refuses that tier. It then runs as it would without `probe`, and its record says why.
 	const withoutProbes = async (level: ScrutinyLevel, settings: LensLevel): Promise<string | undefined> => {
@@ -2220,9 +2228,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					// Only a level whose probes may run reaches here, so the host has said whose head this is.
 					environment: {
 						writer: options.writer!,
-						trustWriters: config.trust.writers,
+						trustWriters: (await baseConfig()).trust.writers,
 						timeout,
-						read: [...config.probe.read],
+						read: [...(await baseConfig()).probe.read],
 					},
 				},
 				context: (boundary: string) => [
