@@ -1005,6 +1005,15 @@ describe("the walkthrough publication posts", () => {
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
 	});
+	it("is the stored one, with no note, when its route matches the round's light model at an explicit thinking level", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/first@high" },
+			provenance: { [revision]: planned([{ model: "faux/first", thinking: "high" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+		expect(publishedWalkthroughNote(state as never, revision)).toBeUndefined();
+	});
 	it("is the stored one when the model that wrote it is a fallback of the round's light tier", () => {
 		const state = {
 			walkthroughs: { [revision]: walkthrough },
