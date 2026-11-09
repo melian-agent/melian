@@ -371,7 +371,9 @@ export async function summarizeReview(options: {
 		const index = await harness.snapshot(SummaryIndex, conversation.id, context);
 		const known = index?.tasks[revision];
 		const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
-		const onRoute = record !== undefined && routeOf(record.input as unknown as SummaryInput) === wanted;
+		// A task marked for abort, as the harness's open marks every live walkthrough, ends aborted whatever it asks.
+		const onRoute =
+			record !== undefined && !record.abortRequested && routeOf(record.input as unknown as SummaryInput) === wanted;
 		// The commit below refuses a task on another route, and Pi Durable allows no abort inside one.
 		if (record !== undefined && record.state.status !== "terminal" && !onRoute)
 			await harness.abortTask(record.id, context);
@@ -398,7 +400,10 @@ export async function summarizeReview(options: {
 			const document = await tx.doc(VerdictDocument, conversation.id);
 			if (!rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
 			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
-			const onRoute = previous !== undefined && routeOf(previous.input as unknown as SummaryInput) === wanted;
+			const onRoute =
+				previous !== undefined &&
+				!previous.abortRequested &&
+				routeOf(previous.input as unknown as SummaryInput) === wanted;
 			if (onRoute && (await attachable(tx, known, [...undecided, "failed", "completed"]))) {
 				if (index.counted[revision] === known) {
 					if (document.walkthroughAttempts !== undefined)
