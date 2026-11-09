@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ChangesetError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkGitVersion, git, gitOutput, requireGitVersion } from "../src/git.ts";
@@ -108,6 +110,20 @@ describe("git with a deadline", () => {
 		for (let wait = 0; wait < 40 && alive(); wait++) await new Promise((resolve) => setTimeout(resolve, 50));
 		expect(alive()).toBe(false);
 	});
+
+	it("lets the process exit once the deadline passes, though git's transport holds its output open", () => {
+		// The transport keeps the output git gave it for ten seconds; the process must not wait for it.
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, "sleep 10\n");
+		const fixture = fileURLToPath(new URL("./fixtures/deadline-exit.ts", import.meta.url));
+		const start = Date.now();
+		const out = execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, repo, transport], {
+			encoding: "utf8",
+			timeout: 20_000,
+		});
+		expect(out).toBe("true\n");
+		expect(Date.now() - start).toBeLessThan(5000);
+	}, 30_000);
 
 	it("leaves a command that ends in time as it is", async () => {
 		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });

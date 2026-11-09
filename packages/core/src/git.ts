@@ -95,12 +95,14 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			});
 		};
 		// Git's own process, by the pid spawn recorded. A transport git started, such as ssh, can hold the output pipes
-		// open after git stops, so the result does not wait for them; the transport ends on its own.
+		// open after git stops, so the result does not wait for them. A transport inherits git's stderr, so this end of it
+		// is closed, and the transport keeps nothing of this process alive; it ends on its own.
 		const deadline =
 			options.deadlineMs === undefined
 				? undefined
 				: setTimeout(() => {
 						child.kill();
+						child.stderr.destroy();
 						finish(-1, true);
 					}, options.deadlineMs);
 		child.on("close", (code) => finish(code ?? -1, false));
