@@ -351,6 +351,10 @@ describe("a restatement proposed as likely the same as a dismissed finding", () 
 				`Rule \`null-dereference\` | Finding \`${proposed.id}\``,
 			].join("\n"),
 		);
+		// A host that does not name the pull request leaves the quoted placeholder.
+		expect(ReviewComment.from(proposed).render({ ...context, pullRequest: undefined })).toContain(
+			`\`melian dismiss '<range or #N>' ${proposed.id} --reason '<reason>'\``,
+		);
 	});
 
 	it("names them in an advisory's entry too", () => {
