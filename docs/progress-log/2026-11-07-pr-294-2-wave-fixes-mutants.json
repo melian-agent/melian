@@ -1,0 +1,563 @@
+{
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2088,
+   "column": 17,
+   "endLine": 2089,
+   "endColumn": 107,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2092,
+   "column": 46,
+   "endLine": 2092,
+   "endColumn": 48,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave while an earlier wave still runs",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2093,
+   "column": 8,
+   "endLine": 2093,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2093,
+   "column": 8,
+   "endLine": 2093,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave while an earlier wave still runs",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2093,
+   "column": 8,
+   "endLine": 2093,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "running === undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 65,
+   "column": 16,
+   "endLine": 65,
+   "endColumn": 86,
+   "mutatorName": "LogicalOperator",
+   "replacement": "VerificationWaves.of(state, revision, entry?.task).#entry?.waves && []",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 65,
+   "column": 16,
+   "endLine": 65,
+   "endColumn": 80,
+   "mutatorName": "OptionalChaining",
+   "replacement": "VerificationWaves.of(state, revision, entry?.task).#entry.waves",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > owns the indexed verification and the waves of the indexed lens task, and nothing else",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 65,
+   "column": 54,
+   "endLine": 65,
+   "endColumn": 65,
+   "mutatorName": "OptionalChaining",
+   "replacement": "entry.task",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > owns the indexed verification and the waves of the indexed lens task, and nothing else",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 65,
+   "column": 84,
+   "endLine": 65,
+   "endColumn": 86,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > owns the indexed verification and the waves of the indexed lens task, and nothing else",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 66,
+   "column": 29,
+   "endLine": 66,
+   "endColumn": 57,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 66,
+   "column": 39,
+   "endLine": 66,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 66,
+   "column": 39,
+   "endLine": 66,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 66,
+   "column": 39,
+   "endLine": 66,
+   "endColumn": 57,
+   "mutatorName": "EqualityOperator",
+   "replacement": "wave.task !== task",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 67,
+   "column": 6,
+   "endLine": 67,
+   "endColumn": 12,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 67,
+   "column": 6,
+   "endLine": 67,
+   "endColumn": 12,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > owns the indexed verification and the waves of the indexed lens task, and nothing else",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 67,
+   "column": 6,
+   "endLine": 67,
+   "endColumn": 12,
+   "mutatorName": "EqualityOperator",
+   "replacement": "at <= 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 67,
+   "column": 6,
+   "endLine": 67,
+   "endColumn": 12,
+   "mutatorName": "EqualityOperator",
+   "replacement": "at >= 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 67,
+   "column": 21,
+   "endLine": 67,
+   "endColumn": 26,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > owns the indexed verification and the waves of the indexed lens task, and nothing else",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 68,
+   "column": 55,
+   "endLine": 68,
+   "endColumn": 86,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 69,
+   "column": 9,
+   "endLine": 73,
+   "endColumn": 4,
+   "mutatorName": "MethodExpression",
+   "replacement": "waves.slice(at + 1).some(later => later.candidates.every(candidate => candidate.claims.every(claim => !claims.has(claim))))",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 69,
+   "column": 9,
+   "endLine": 70,
+   "endColumn": 17,
+   "mutatorName": "MethodExpression",
+   "replacement": "waves",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 70,
+   "column": 10,
+   "endLine": 70,
+   "endColumn": 16,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "at - 1",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 71,
+   "column": 10,
+   "endLine": 72,
+   "endColumn": 96,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 72,
+   "column": 4,
+   "endLine": 72,
+   "endColumn": 96,
+   "mutatorName": "MethodExpression",
+   "replacement": "later.candidates.some(candidate => candidate.claims.every(claim => !claims.has(claim)))",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 72,
+   "column": 27,
+   "endLine": 72,
+   "endColumn": 95,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 72,
+   "column": 42,
+   "endLine": 72,
+   "endColumn": 95,
+   "mutatorName": "MethodExpression",
+   "replacement": "candidate.claims.some(claim => !claims.has(claim))",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 72,
+   "column": 65,
+   "endLine": 72,
+   "endColumn": 94,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 72,
+   "column": 76,
+   "endLine": 72,
+   "endColumn": 94,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "claims.has(claim)",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stops owning a wave once a later wave verifies any of its claims",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 7,
+   "endLine": 93,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a candidate's latest wave until a later wave verifies one of its claims in another candidate",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 7,
+   "endLine": 93,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 7,
+   "endLine": 93,
+   "endColumn": 65,
+   "mutatorName": "MethodExpression",
+   "replacement": "wave.candidates.every(candidate => candidate.key === key)",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a candidate's latest wave until a later wave verifies one of its claims in another candidate",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 28,
+   "endLine": 93,
+   "endColumn": 64,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 43,
+   "endLine": 93,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a candidate's latest wave until a later wave verifies one of its claims in another candidate",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 43,
+   "endLine": 93,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 93,
+   "column": 43,
+   "endLine": 93,
+   "endColumn": 64,
+   "mutatorName": "EqualityOperator",
+   "replacement": "candidate.key !== key",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 94,
+   "column": 11,
+   "endLine": 94,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 94,
+   "column": 11,
+   "endLine": 94,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification-waves.ts",
+   "line": 94,
+   "column": 11,
+   "endLine": 94,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "wave.version !== version",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves-unit.test.ts > verification waves > stands for a wave only under the verifier version that ran it",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  }
+ ],
+ "total": 38,
+ "omitted": 0,
+ "unmutated": []
+}

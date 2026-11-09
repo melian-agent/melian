@@ -1,0 +1,97 @@
+{
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 18,
+   "endLine": 718,
+   "endColumn": 101,
+   "mutatorName": "MethodExpression",
+   "replacement": "input.candidates",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification.test.ts > verification ownership and budgets > unlocks no provider for a candidate a live verification task reuses",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 42,
+   "endLine": 718,
+   "endColumn": 100,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/resumed-providers.test.ts > names a verification task's providers when a crash left it before its spawn commit",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 57,
+   "endLine": 718,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification.test.ts > verification ownership and budgets > unlocks no provider for a candidate a live verification task reuses",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 57,
+   "endLine": 718,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/resumed-providers.test.ts > names a verification task's providers when a crash left it before its spawn commit",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 57,
+   "endLine": 718,
+   "endColumn": 100,
+   "mutatorName": "EqualityOperator",
+   "replacement": "input.reused?.[candidate.key] !== undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/resumed-providers.test.ts > names a verification task's providers when a crash left it before its spawn commit",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 718,
+   "column": 57,
+   "endLine": 718,
+   "endColumn": 86,
+   "mutatorName": "OptionalChaining",
+   "replacement": "input.reused[candidate.key]",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/resumed-providers.test.ts > names a verification task's providers when a crash left it before its spawn commit",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": "killed"
+  }
+ ],
+ "total": 6,
+ "omitted": 0,
+ "unmutated": []
+}

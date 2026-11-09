@@ -33,6 +33,7 @@ import { PrepareDocument, type PrepareRecord } from "./spans.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
 import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
+import { VerificationWaves, VerificationWavesDocument } from "./verification-waves.ts";
 
 export const RunDetailsDocument = defineDocFamily<{ run?: StoredRunDetails }, null>({
 	kind: "melian.run-details",
@@ -478,6 +479,12 @@ export class TelemetryReader {
 		const decisions = await this.document(DecisionDocument, scope, context);
 		const summaries = await this.document(SummaryIndex, scope, context);
 		const checks = await this.document(ChecksDocument, scope, context);
+		// Waves verified claims while the lens task ran; the final task asked only for what they had not settled.
+		const waves = VerificationWaves.of(
+			await this.document(VerificationWavesDocument, scope, context),
+			revision,
+			selected?.task,
+		).tasks();
 		const rows: Stage[] = [];
 		const checkRows: Stage[] = [];
 		for (const entry of Object.values(decisions?.decisions[revision] ?? {})) {
@@ -546,6 +553,7 @@ export class TelemetryReader {
 		}
 		for (const [id, name] of [
 			[selected?.task, "melian.lens"],
+			...waves.map((wave) => [wave, "melian.verification.candidate"] as const),
 			[selected?.verification?.task, "melian.verification.candidate"],
 			[summaries?.tasks[revision], "melian.walkthrough"],
 		] as const) {

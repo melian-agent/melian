@@ -857,13 +857,24 @@ export async function seenBefore(
 		.filter((id) => items[id]!.lifecycle.firstSeenRevision !== revision);
 }
 
-export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
+// Clears the verdicts at `revision` of every claim `clears` names by `<id> <check>@<version>`, or of every claim.
+export async function clearVerifications(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	clears: (claim: string) => boolean = () => true,
+): Promise<void> {
 	const state = await tx.doc(FindingsDocument, root);
 	let cleared = false;
-	for (const record of Object.values(state.items)) {
-		if (record.verifications?.[revision] === undefined) continue;
-		delete record.verifications[revision];
-		cleared = true;
+	for (const [id, record] of Object.entries(state.items)) {
+		const verdicts = record.verifications?.[revision];
+		if (verdicts === undefined) continue;
+		for (const producer of Object.keys(verdicts)) {
+			if (!clears(`${id} ${producer}`)) continue;
+			delete verdicts[producer];
+			cleared = true;
+		}
+		if (Object.keys(verdicts).length === 0) delete record.verifications![revision];
 	}
 	if (cleared) bump(state, [revision]);
 }
