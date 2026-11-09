@@ -3,6 +3,7 @@ export {
 	type CheckRun,
 	type CheckRunRecord,
 	checksExtension,
+	checksExtensionFor,
 	type RunChecksInput,
 	type RunIdentity,
 	readCheckRecords,
@@ -115,6 +116,22 @@ export { CallerContext, type CallerData, type CallerGroup } from "./callers.ts";
 export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
+export {
+	type CleanupOutcome,
+	Probe,
+	type ProbeAvailability,
+	ProbeError,
+	type ProbeErrorCode,
+	type ProbeFile,
+	type ProbeInput,
+	type ProbeOptions,
+	type ProbePolicy,
+	type ProbeResult,
+	type ProbeSandbox,
+	probeLimits,
+	RuntimeSandbox,
+	type SandboxRuntime,
+} from "./probe.ts";
 export {
 	MembershipReader,
 	PullRequestRoundHistory,

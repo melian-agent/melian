@@ -135,6 +135,7 @@ it.each([
 		const tools = await ToolProvisioning.open(repo, {
 			root: join(repo, "cache"),
 			platform: "darwin-arm64",
+			env: {},
 			manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
 			fetch: async () => new Response(bytes),
 		});

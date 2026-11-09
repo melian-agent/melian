@@ -128,6 +128,24 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 
+	it("lets a probe read the dependency install by default, and takes the root policy's list whole", async () => {
+		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["node_modules"] });
+		writeFiles(repo, { "melian.yaml": "probe: { read: [generated, dist/report.json] }\n" });
+		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["generated", "dist/report.json"] });
+	});
+
+	it("refuses a probe allowlist that is not a list of paths", async () => {
+		writeFiles(repo, { "melian.yaml": "probe: { read: [3] }\n" });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({ code: "invalidValue", key: "probe.read.0" });
+	});
+
+	it("refuses a probe allowlist in a nested policy", async () => {
+		writeFiles(repo, { "services/melian.yaml": "probe: { read: [secrets] }\n" });
+		const error = await rejection(load("services/api.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "probe", file: "services/melian.yaml" });
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("defaults the retirement window and merges root overrides", async () => {
 		expect((await load("src/index.ts")).config.comparison.retirement).toEqual({ pullRequests: 10, recall: 0.75 });
 		writeFiles(repo, { "melian.yaml": "comparison: { retirement: { recall: 0.9 } }\n" });
@@ -690,6 +708,13 @@ describe("melian.local.yaml", () => {
 		writeFiles(repo, { "melian.local.yaml": "trust: { writers: false }\n" });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
 		expect(error).toMatchObject({ code: "invalidValue", key: "trust", file: "melian.local.yaml" });
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
+	it("refuses a probe allowlist in clone preferences", async () => {
+		writeFiles(repo, { "melian.local.yaml": "probe: { read: [secrets] }\n" });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "probe", file: "melian.local.yaml" });
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 

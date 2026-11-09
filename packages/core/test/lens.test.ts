@@ -248,7 +248,7 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "ac79e2affc42",
-			conventions: "6af5dc25448d",
+			conventions: "2192d831f4ed",
 			correctness: "2ada4940e253",
 			design: "9a74abf63df2",
 			durability: "2d013afa303b",
@@ -260,7 +260,7 @@ describe("built-in lenses", () => {
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
 			contracts: "acfe949c2b5b",
-			conventions: "1534759f9b4c",
+			conventions: "4675f03ab583",
 			correctness: "c49c348ce9f1",
 			design: "2e445fdc0850",
 			"removed-behaviour": "0885fd05330f",
