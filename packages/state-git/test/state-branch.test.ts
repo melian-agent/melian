@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import {
 	chmodSync,
@@ -1587,4 +1587,52 @@ describe("the mutation inventory at f6872a26", () => {
 		expect(checkout.changeset).toBe(changeset);
 		checkout.close();
 	});
+});
+
+describe("the host round's finding on 403d1099, a copy worked on offline", () => {
+	// Checks the changeset out in a child process that holds the copy until its input closes, and answers whether that
+	// checkout reached the branch.
+	async function hold(clone: Clone, from: string): Promise<{ child: ChildProcess; state: string }> {
+		const fixture = fileURLToPath(new URL("./fixtures/hold-checkout.ts", import.meta.url));
+		const args = [clone.repoRoot, from, clone.directory, clone.holder, changeset, remote.key.toString("hex")];
+		const child = spawn(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
+			env: { ...process.env, ...isolatedGitEnv },
+			stdio: ["pipe", "pipe", "inherit"],
+		});
+		const state = await new Promise<string>((resolve, reject) => {
+			let out = "";
+			child.stdout!.on("data", (chunk: Buffer) => {
+				out += chunk.toString();
+				if (out.includes("\n")) resolve(out.trim());
+			});
+			child.on("exit", (code) =>
+				reject(new Error(`the holding process exited with ${code} before it held the copy`)),
+			);
+		});
+		return { child, state };
+	}
+
+	const absent = () => join(remote.root, "absent.git");
+
+	it.each([
+		["the holder's fetch fails", true, false],
+		["the second process's fetch fails", false, true],
+		["both fetches fail", true, true],
+	] as const)(
+		"lets no second process in the clone reach a copy another holds, when %s",
+		async (_name, first, second) => {
+			const clone = remote.clone();
+			const { child, state } = await hold(clone, first ? absent() : remote.bare);
+			try {
+				expect(state).toBe(first ? "unreached" : "reached");
+				await expect(clone.branch(second ? { remote: absent() } : {}).checkout(changeset)).rejects.toBeInstanceOf(
+					CopyInUse,
+				);
+				await expect(clone.branch().open(changeset)).rejects.toBeInstanceOf(CopyInUse);
+			} finally {
+				child.stdin!.end();
+				await new Promise((resolve) => (child.exitCode === null ? child.on("exit", resolve) : resolve(undefined)));
+			}
+		},
+	);
 });
