@@ -83,6 +83,48 @@ function success(summary = "Changes a value.") {
 	);
 }
 describe("walkthrough summaries", () => {
+	it("writes nothing from a walkthrough task the index no longer names", async () => {
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const replaced = await root.commit(async (tx) => {
+			const task = await tx.createTask(
+				SummaryTask,
+				{
+					root: root.id,
+					revision,
+					prompt: "Summarise the change.",
+					model: models.ref("scripted"),
+					paths: ["src/a.ts"],
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+			(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task + 1000;
+			return task;
+		}, context);
+		scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [success("Written by a replaced task.")] },
+		]);
+		harness.resume();
+		expect((await harness.waitForTask(replaced, context)).state.outcome).toEqual({
+			status: "completed",
+			result: "superseded",
+		});
+		const doc = await stored();
+		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughAttempts?.[revision]).toBeUndefined();
+	});
+	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
+		const revision = Revision.key(changeset.revision);
+		scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [success(), fauxAssistantMessage("No tool used.")] },
+		]);
+		expect((await summarize())?.walkthroughRoutes?.[revision]).toBeDefined();
+		const doc = await summarize({ rerun: true });
+		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+	});
 	it("applies thinking to a light route supplied through accept alone", async () => {
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		const doc = await summarize({

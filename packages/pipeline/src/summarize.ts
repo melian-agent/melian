@@ -138,6 +138,10 @@ export function publishedWalkthroughNote(
 		? "No walkthrough available. Another light route wrote it."
 		: undefined;
 }
+function forget(document: StoredVerdictState, revision: string): void {
+	if (document.walkthroughs !== undefined) delete document.walkthroughs[revision];
+	if (document.walkthroughRoutes !== undefined) delete document.walkthroughRoutes[revision];
+}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,
@@ -170,6 +174,9 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 			const result = (await runtime.snapshot(SummaryResult, child.id, context))?.walkthrough;
 
 			await runtime.commit(async (tx) => {
+				// A later call replaced this task, so the walkthrough it wrote belongs to no review.
+				if ((await tx.doc(SummaryIndex, task.input.root)).tasks[task.input.revision] !== runtime.taskId)
+					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				const document = await tx.doc(VerdictDocument, task.input.root);
 				if (result !== undefined && settled.status === "done") {
 					document.walkthroughs = { ...document.walkthroughs, [task.input.revision]: structuredClone(result) };
@@ -181,7 +188,7 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
 					await countAttempt(tx, task.input.root, task.input.revision, runtime.taskId);
-					if (document.walkthroughs !== undefined) delete document.walkthroughs[task.input.revision];
+					forget(document, task.input.revision);
 					document.walkthroughNotes = {
 						...document.walkthroughNotes,
 						[task.input.revision]: "No walkthrough available. The summariser returned no summary.",
@@ -364,7 +371,7 @@ export async function summarizeReview(options: {
 			await conversation.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversation.id);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				if (doc.walkthroughs !== undefined) delete doc.walkthroughs[revision];
+				forget(doc, revision);
 			}, context);
 			return;
 		}
@@ -450,7 +457,7 @@ export async function summarizeReview(options: {
 			await root.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversationId);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				if (doc.walkthroughs !== undefined) delete doc.walkthroughs[revision];
+				forget(doc, revision);
 			}, context);
 		} catch {}
 	}

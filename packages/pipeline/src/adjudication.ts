@@ -158,7 +158,9 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 13,
+	version: 14,
+	// Version 14 records the light route beside each walkthrough, so an older build refuses a store this one wrote
+	// rather than rewrite a walkthrough and leave its route standing; a version 13 document reads unchanged.
 	// Version 13 lets a check record carry caveats; a version 12 verdict has none and reads unchanged.
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",

@@ -1,0 +1,27 @@
+{
+  "commit": "799a54bf",
+  "revision": "026b88a7c05373f26f1df10572be211b17e29444..fa2dba3b7ebf6928ff6370dde6e9364fcc4676ae",
+  "root": 1,
+  "document": {
+    "verdicts": {},
+    "provenance": {
+      "026b88a7c05373f26f1df10572be211b17e29444..fa2dba3b7ebf6928ff6370dde6e9364fcc4676ae": {
+        "kind": "pull-request",
+        "policy": "revision:026b88a7c05373f26f1df10572be211b17e29444",
+        "manifest": [],
+        "lenses": []
+      }
+    },
+    "walkthroughs": {
+      "026b88a7c05373f26f1df10572be211b17e29444..fa2dba3b7ebf6928ff6370dde6e9364fcc4676ae": {
+        "summary": "Written by main.",
+        "files": [
+          {
+            "path": "src/a.ts",
+            "summary": "Changes a."
+          }
+        ]
+      }
+    }
+  }
+}
