@@ -138,10 +138,6 @@ export function publishedWalkthroughNote(
 		? "No walkthrough available. Another light route wrote it."
 		: undefined;
 }
-function forget(document: StoredVerdictState, revision: string): void {
-	if (document.walkthroughs !== undefined) delete document.walkthroughs[revision];
-	if (document.walkthroughRoutes !== undefined) delete document.walkthroughRoutes[revision];
-}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,
@@ -188,7 +184,9 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
 					await countAttempt(tx, task.input.root, task.input.revision, runtime.taskId);
-					forget(document, task.input.revision);
+					// Only the task the summary index names removes a walkthrough; a failure outside it writes its note alone.
+					if (document.walkthroughs !== undefined) delete document.walkthroughs[task.input.revision];
+					if (document.walkthroughRoutes !== undefined) delete document.walkthroughRoutes[task.input.revision];
 					document.walkthroughNotes = {
 						...document.walkthroughNotes,
 						[task.input.revision]: "No walkthrough available. The summariser returned no summary.",
@@ -371,7 +369,6 @@ export async function summarizeReview(options: {
 			await conversation.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversation.id);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				forget(doc, revision);
 			}, context);
 			return;
 		}
@@ -463,7 +460,6 @@ export async function summarizeReview(options: {
 			await root.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversationId);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				forget(doc, revision);
 			}, context);
 		} catch {}
 	}

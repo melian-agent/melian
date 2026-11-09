@@ -125,14 +125,34 @@ describe("walkthrough summaries", () => {
 				},
 			},
 		],
-	])("removes a walkthrough and its route when a rerun ends in a note because %s", async (_name, overrides) => {
+	])(
+		"keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because %s",
+		async (_name, overrides) => {
+			const revision = Revision.key(changeset.revision);
+			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+			const route = (await summarize())?.walkthroughRoutes?.[revision];
+			expect(route).toBeDefined();
+			const doc = await summarize({ rerun: true, ...overrides });
+			expect(doc?.walkthroughNotes?.[revision]).toBeDefined();
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+			expect(doc?.walkthroughRoutes?.[revision]).toBe(route);
+		},
+	);
+	it("keeps a walkthrough a concurrent call stored while this call's credential unlock failed", async () => {
 		const revision = Revision.key(changeset.revision);
-		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		expect((await summarize())?.walkthroughRoutes?.[revision]).toBeDefined();
-		const doc = await summarize({ rerun: true, ...overrides });
-		expect(doc?.walkthroughNotes?.[revision]).toBeDefined();
-		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
-		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+		const root = await harness.root(context);
+		const doc = await summarize({
+			unlockModels: async () => {
+				await root.commit(async (tx) => {
+					const document = await tx.doc(VerdictDocument, root.id);
+					document.walkthroughs = { [revision]: { summary: "Written by a concurrent call.", files: [] } };
+					document.walkthroughRoutes = { [revision]: "faux/scripted@" };
+				}, context);
+				throw new Error("credential failed");
+			},
+		});
+		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written by a concurrent call.");
+		expect(doc?.walkthroughRoutes?.[revision]).toBe("faux/scripted@");
 	});
 	it("writes its own walkthrough when another route's lands between its reads and its commit", async () => {
 		const revision = Revision.key(changeset.revision);
