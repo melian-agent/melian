@@ -1358,10 +1358,15 @@ export function runProbeTool(sandbox?: ProbeSandbox) {
 					const id = `p${api.taskId}`;
 					let record = state.probes?.[id];
 					if (record === undefined) {
-						if (Object.keys(state.probes ?? {}).length >= probingLimits.probes)
+						const attempts = state.attempts ?? [];
+						if (!attempts.includes(id) && attempts.length >= probingLimits.probes)
 							throw new Error(
 								`a prober runs at most ${probingLimits.probes} probes; answer the attacks left with skip_attack`,
 							);
+						await api.commit(async (tx) => {
+							const document = await tx.doc(ProbingDocument, api.conversationId);
+							document.attempts = [...new Set([...(document.attempts ?? []), id])];
+						}, context);
 						const run = await runHeadProbe({ script: args.script, files }, review, lens.probing, sandbox);
 						if ("refused" in run) throw new Error(`the probe did not run: ${run.refused}`);
 						const ran: ProbeRecord = {

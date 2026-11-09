@@ -41,6 +41,8 @@ export type ProbeRecord = {
 type ProbingState = {
 	plan?: Attack[];
 	probes?: Record<string, ProbeRecord>;
+	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
+	attempts?: string[];
 	skips?: Record<string, string>;
 	findings?: Record<string, string>;
 };
@@ -75,7 +77,8 @@ export const probingLimits = {
 } as const;
 
 /** What a probe may run under, as the review's host decided it: whose head this is, and the base policy's word. */
-export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; timeout?: number };
+// `read` is the base policy's `probe.read`; absent from an environment an older Melian stored, which read the install alone.
+export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; timeout?: number; read?: string[] };
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
@@ -131,7 +134,7 @@ export async function runHeadProbe(
 	try {
 		const commit = await boundedHead(revision.repoRoot, revision.head, limits);
 		const probe = await Probe.open(input, {
-			head: { checkout: revision.repoRoot, commit },
+			head: { checkout: revision.repoRoot, commit, read: environment.read },
 			writer: environment.writer,
 			trustWriters: environment.trustWriters,
 			timeout: environment.timeout ?? probeLimits.timeout.default,

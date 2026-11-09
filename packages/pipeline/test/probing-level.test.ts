@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -169,6 +169,7 @@ async function review(
 		decider?: ReviewOptions["decider"];
 		plan?: (config: MelianConfig, lenses: readonly Lens[], fake: FakeModels) => Promise<ReviewOptions["plan"]>;
 		unlockModels?: ReviewOptions["unlockModels"];
+		rerun?: boolean;
 	} = {},
 ) {
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -218,6 +219,7 @@ async function review(
 		...(options.decider === undefined ? {} : { decider: options.decider }),
 		...(plan === undefined ? {} : { plan }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
+		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
 	return { run, requests, sandbox, heads, changeset };
 }
@@ -1478,6 +1480,71 @@ describe("a level that probes", () => {
 			"a prober runs at most 2 probes; answer the attacks left with skip_attack",
 		);
 		expect(probes).toBe(48);
+	});
+
+	it("lets a probe read what the base policy's probe.read allows beyond the head's tree", async () => {
+		writeFileSync(join(repo, "generated.txt"), "BUILT\n");
+		const reading =
+			'import { readFileSync } from "node:fs";\nconsole.log(readFileSync("generated.txt", "utf8").trim());\n';
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [call("run_probe", { attack: 1, script: reading }), fauxAssistantMessage("Reported 0 findings.")],
+			},
+			{ config: { probe: { read: ["node_modules", "generated.txt"] } } },
+		);
+		await run;
+		expect(lastResults(requests[prober]![1]!)).toContain("BUILT");
+	});
+
+	it("keeps only the reruns the revision's current claims rest on, however often a failed prober is run again", async () => {
+		const fake = createFakeModels();
+		const reported = () => probing(failing).slice(0, 2);
+		const first = await review({ planner: plan, prober: reported() }, { fake });
+		expect((await failure(first.run)).code).toBe("lensFailed");
+		const again = await review({ planner: plan, prober: reported() }, { fake, rerun: true });
+		expect((await failure(again.run)).code).toBe("lensFailed");
+		const root = (await harness!.harness.root(backgroundContext)).id;
+		const runs = (await harness!.harness.snapshot(ProbeReruns, root, backgroundContext))!.runs[
+			Revision.key(again.changeset.revision)
+		]!;
+		expect(Object.keys(runs)).toHaveLength(1);
+	});
+
+	it("counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox", async () => {
+		const limits = probingLimits as { probes: number };
+		const probes = limits.probes;
+		limits.probes = 1;
+		onTestFinished(() => {
+			limits.probes = probes;
+		});
+		let wraps = 0;
+		const base = unconfinedSandbox();
+		const sandbox: ProbeSandbox = {
+			...base,
+			wrap: async (command, policy) => {
+				if (!inHeadTree(command)) return base.wrap(command, policy);
+				wraps++;
+				throw new Error("the sandbox refused");
+			},
+		};
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ sandbox },
+		);
+		await run;
+		expect(wraps).toBe(1);
+		expect(lastResults(requests[prober]![2]!)).toContain(
+			"a prober runs at most 1 probes; answer the attacks left with skip_attack",
+		);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {

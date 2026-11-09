@@ -1236,11 +1236,13 @@ async function rerunProbes(
 	context: Context,
 ): Promise<void> {
 	const at = Revision.key(revision);
+	const current = new Set<string>();
 	for (const candidate of candidates) {
 		for (const claim of candidate.state.claims) {
 			const probe = candidate.probes?.[claimKey(claim)];
 			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
+			current.add(key);
 			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
 			if (stored !== undefined && "result" in stored) continue;
 			const run = await runHeadProbe(
@@ -1255,6 +1257,12 @@ async function rerunProbes(
 			}, context);
 		}
 	}
+	// A run again of a failed lens names new probes, so the revision keeps only the runs its current claims rest on.
+	await (await harness.root(context)).commit(async (tx) => {
+		const document = await tx.doc(ProbeReruns, root);
+		const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
+		document.runs = { ...document.runs, [at]: Object.fromEntries(kept) };
+	}, context);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -2206,7 +2214,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					...(thinking === undefined ? {} : { thinking }),
 					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
 					// Only a level whose probes may run reaches here, so the host has said whose head this is.
-					environment: { writer: options.writer!, trustWriters: config.trust.writers, timeout },
+					environment: {
+						writer: options.writer!,
+						trustWriters: config.trust.writers,
+						timeout,
+						read: [...config.probe.read],
+					},
 				},
 				context: (boundary: string) => [
 					`## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.\n${quoteUntrusted("listing", atBase, boundary)}`,
