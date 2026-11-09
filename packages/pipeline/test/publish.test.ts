@@ -8,7 +8,7 @@ import {
 	Revision,
 	replyKey,
 } from "@melian-agent/core";
-import { createGitHubProvider, marker } from "@melian-agent/github";
+import { createGitHubProvider, marker, parseMarker } from "@melian-agent/github";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import previous from "../../github/test/fixtures/publish-v4.json" with { type: "json" };
@@ -225,6 +225,41 @@ describe("publication planning recovery", () => {
 		expect(discovery.mock.calls.map(([, , wanted]) => wanted.round)).toEqual([next]);
 		expect(state.reviews).toHaveLength(1);
 		expect(state.reviews[0]!.body).toContain(`round=${next}`);
+	});
+
+	// Pull request #344: a round that only adds a proposal kept the fingerprint, so publishing took it as posted.
+	it("posts a new review when a later round of the head only adds a proposal", async () => {
+		const decide = async (decided: Finding) => {
+			const verdict = new Adjudication({
+				findings: [decided],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			}).adjudicate();
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			}, context);
+			return verdict.fingerprint();
+		};
+		const live = await decide(finding);
+		await publish();
+		const proposed = await decide(
+			Finding.from({
+				...finding.toJSON(),
+				properties: { ...finding.properties, likelyDismissedAs: { id: "0123456789abcdef" } },
+			}),
+		);
+		await publish();
+		const opening = (body: string) => parseMarker(body.split("\n")[0]!);
+		expect(state.reviews.map(({ body }) => opening(body))).toMatchObject([
+			{ kind: "verdict", id: live, round: 1 },
+			{ kind: "verdict", id: proposed, round: 2 },
+		]);
+		expect(state.ledgers).toHaveLength(1);
+		expect(state.ledgers[0]!.body).toContain(`"round":2,"verdict":"${proposed}"`);
+		expect(state.ledgers[0]!.body.split("\n").filter((line) => line.includes("Likely the same"))).toEqual([
+			`- ${finding.id}: \`src/a.ts\`:1 — \`unsafe\` (acknowledge): Unsafe Likely the same as dismissed finding 0123456789abcdef. To accept the match, dismiss only on the user's instruction: \`melian dismiss '#7' ${finding.id} --reason '<reason>'\``,
+		]);
 	});
 
 	it("recovers the root of the review it posted when an older review holds a root for the same finding", async () => {
