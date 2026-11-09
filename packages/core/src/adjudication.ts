@@ -781,8 +781,8 @@ export class Verdict {
 			const roots = [...new Set(inherited)];
 			const naming = (named: number) =>
 				`${description}, ${inherited.length} inherited from ${roots.slice(0, named).join(", ")}${named === roots.length ? "" : ` and ${roots.length - named} more`}`;
-			let named = roots.length;
-			while (named > 1 && naming(named).length > statusRoom) named--;
+			// Each further root lengthens the text, so the counts that fit run from one up to the largest.
+			const named = roots.filter((_, index) => naming(index + 1).length <= statusRoom).length;
 			return { state: "success", description: naming(named) };
 		}
 		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
