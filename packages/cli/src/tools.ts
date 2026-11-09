@@ -22,7 +22,8 @@ export class ToolInventory {
 	): Promise<ToolInventory> {
 		const root = await git(cwd, ["rev-parse", "--show-toplevel"]);
 		return new ToolInventory(
-			provisioning ?? (await ToolProvisioning.open(root, { root: await stateDirectory(root, environment) })),
+			provisioning ??
+				(await ToolProvisioning.open(root, { root: await stateDirectory(root, environment), env: environment })),
 		);
 	}
 	async readiness(): Promise<ToolReadiness[]> {

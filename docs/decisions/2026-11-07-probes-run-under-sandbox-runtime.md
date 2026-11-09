@@ -1,0 +1,93 @@
+# Probes run under sandbox-runtime
+
+Status: ruled by the maintainer, 2026-11-07, in [issue #285](https://github.com/melian-agent/melian/issues/285).
+
+## Problem
+
+On trust surfaces, Melian's rounds miss what a reviewer who runs probes finds. A lens reads and searches; it never runs anything.
+
+Example: on [pull request #275](https://github.com/melian-agent/melian/pull/275), a head `biome.json` that extended `/proc/<pid>/environ` would have put the runner's logins in a public comment. The review of record found it by running Biome on such a file. `melian compare stats` counts nine `needs-execution` misses, and every one came from running something.
+
+A probe is a short script a lens writes, with its fixture files, to show a claim. A model wrote it, and the model read the head, so the head's author can steer what the probe does. [The unconfined decision](2026-10-14-static-checks-run-unconfined.md) runs static checks unconfined and reserves a sandbox for agents. A probe is the agent's own code, so it is that case.
+
+## Decision
+
+Probes run under [`@anthropic-ai/sandbox-runtime`](https://github.com/anthropics/sandbox-runtime), Apache-2.0, pinned at 0.0.81. It is the sandbox Claude Code uses: seatbelt on macOS and bubblewrap on Linux, with network traffic forced through a proxy it runs. Melian asks it for every rule and re-derives none.
+
+`Probe`, in the pipeline, runs one script with its files. Its options name the head, a checkout and a commit, the host's writer decision, a time limit and an output limit. It returns the exit code, the output up to the limit, whether the output was cut, and whether the run timed out. `close()` removes its scratch directory.
+
+What the sandbox allows a probe:
+
+- No network. The proxy's allow list is empty and nothing may ask to widen it. On Linux the probe has no network namespace at all; on macOS seatbelt lets it reach only the proxy, which refuses every host.
+- A scratch `HOME` and `TMPDIR`, both under the probe's writable directory. Melian passes the probe four variables, `PATH`, `HOME`, `TMPDIR` and `LANG`, with the same reason static tools get no more. sandbox-runtime adds about 30 of its own, such as its proxy settings, `GIT_SSH_COMMAND` and `JAVA_TOOL_OPTIONS`. The review of record at e5903809 listed them, and found none was a reviewer's secret.
+- Writes to that directory alone. The script and its files sit beside it, readable but not writable, so a run cannot rewrite the probe a verifier will rerun. sandbox-runtime keeps `/tmp/claude` writable for its own use; Melian denies it.
+- Reads of the head's tracked tree, of the dependency install, of Node's install, of sandbox-runtime's own helpers, and of the operating system's programs and libraries alone: `/bin`, `/sbin`, and `/usr`'s `bin`, `sbin`, `lib*`, `libexec` and `share`, with `/System` and `/private/var/select` on macOS and `/lib*` on Linux. Node does not start without its libraries and OpenSSL configuration, a probe that runs a shell needs the shell's, and Linux runs sandbox-runtime's seccomp helper from its package. The maintainer accepted these reads beyond the worktree and Node's install on 2026-11-07, keeping every deny below. Node's own `etc`, where a global npmrc can hold a registry token, is denied, and so is npm's builtin `npmrc` under Node's `lib/node_modules/npm`. Everything else is denied, `/sys` apart: the reviewer's home, `~/.ssh` and `~/.config` among it, the reviewer's working tree, every other checkout, `/etc` and `/tmp`. `/sys` stays readable, which shows cgroups and interface names. In the tree and the install, `.npmrc`, `.env*`, `.git`, `melian.secrets.yaml` and `melian.local.yaml` are denied at any depth.
+
+### The head's tracked tree, never the working tree
+
+The maintainer ruled on 2026-11-08, after round seven's finding that a probe read a reviewer's untracked `.npmrc`: a probe reads the head's tracked tree only, plus what an explicit allowlist names.
+
+A grant of the checkout cannot express that. The attacking review of the rule found that `sandbox-exec` refuses a profile granting this repository's 3,432 tracked files one by one, since the profile passes its 65,535-byte data limit, and a directory grant exposes every untracked file under it. `git ls-files` lists a staged but uncommitted file, and skip-worktree, sparse checkout and assume-unchanged hide what the disk holds, so the tracked set must come from the head's tree. `git worktree add` and `git archive` both ran a smudge filter and wrote decrypted plaintext.
+
+So `Probe` writes the tree. It makes a temporary repository outside the probe's scratch, with an `objects/info/alternates` file naming the checkout's object store, and runs `read-tree <commit>` and `checkout-index --all` into the scratch's `tree` directory. git runs with `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`, and the temporary repository's `info/attributes` sets `* -text -eol -ident -filter -working-tree-encoding`, so no filter, LFS, hook, line-ending or ident conversion applies: each blob is written as stored. The commit is the one the probe was asked to review, never the live index; `melian probe` passes `HEAD`'s. A gitlink is left an empty directory, with nothing of the submodule in it. The probe runs in that tree and is granted it as one read entry, never the checkout.
+
+The maintainer's three rulings that day:
+
+1. Every allowlist entry is a copy into the probe's scratch tree or a link into the dependency install, never a read grant on the live worktree. The allowlist is `probe.read` in the root `melian.yaml`, policy read from the base as all policy is, so a head cannot widen it. It holds relative paths only, and `Probe` refuses an absolute path, a `..` segment, the checkout itself, and any path that resolves outside the checkout. Its default is `node_modules`, the dependency install alone. Any other entry is copied in when the probe opens, so a later change to it never reaches the probe.
+2. A probe gets no `.git` and no history for now. A probe that needs history is a later decision, never a `.git` allowlist entry.
+3. The fix lands in [pull request #289](https://github.com/melian-agent/melian/pull/289).
+
+`node_modules` links the install in entry by entry, by the same `linkDependencies` the static checks use, so a workspace package links to the tree's own copy, never the checkout's sources. The probe may read the install directories those links lead into, with the deny patterns above over them. A head that tracks its own `node_modules` keeps it, and nothing is linked.
+
+### A head's links stay inside its tree
+
+The tree is the head's, links included, and `Probe` writes into it as the reviewer, unconfined, before the sandbox starts. Two reviews in a row found a link that carried such a write to the host.
+
+- Codex's adversarial review of 199a13b8: a head tracked `generated` as a link to a host directory, and the allowlist copy of `generated/out.txt` overwrote the host's file.
+- The Actions round at b1c62ffb: a head tracked a workspace directory, `foo`, as a link to a host directory, and dependency linking created `foo/node_modules` there.
+- A probe of the second case also found a third. A head that linked `foo` to the tree's own root made `foo/node_modules` the tree's `node_modules`. `ln -s` then followed an install link already there and wrote into the reviewer's own `node_modules`.
+
+The maintainer ruled on 2026-11-08, in the builder's session, that a head whose tracked links leave the tree is refused. [The ruling's record](https://github.com/melian-agent/melian/issues/285#issuecomment-6720745287) sets out the question.
+
+After git writes the tree, `Probe` walks it and resolves every link one component at a time, as the kernel resolves it: `realpath` for each component that exists, and the rest as written once one does not. Folding `..` first would be wrong: with `sub -> .`, `sub/..` reads as inside and reaches the scratch. The head is refused when any link:
+
+- resolves outside the tree;
+- resolves to the tree's root;
+- resolves into a `node_modules`, where the install's links to the host land;
+- dangles with a `..` past its first missing component;
+- cannot be resolved, as in a loop.
+
+The install is matched by file identity, never by name. When dependency linking will run, the tree's `node_modules` is created before the walk. A link is refused when any directory its resolved path passes through has that directory's `dev` and `ino`. So on a filesystem that ignores case or folds Unicode, such as APFS, `NODE_MODULES` and `node_moduleſ` are refused. A first fix compared the names `realpath(3)` returned, and macOS CI showed that macOS keeps the spelling it was given. The coordinator's independent test review at 25b76f8f found that a letter-for-letter comparison let `packages/foo -> ../NODE_MODULES/dep` through, and dependency linking then wrote into the reviewer's install. A component under a regular file counts as missing, as an absent one does, so a dangling link through a file inside the tree is kept.
+
+Dependency linking also refuses at the moment it writes. The review of record at e5903809 found a link the walk cannot judge: one whose target only dependency linking creates. A head that tracks `packages/foo -> bar/NODE_MODULES/dep` dangles at walk time, since `bar`'s own `node_modules` is not linked yet. On APFS, linking then made `foo`'s `node_modules` through it, inside the reviewer's install. The maintainer ruled on 2026-11-09, in the builder's session, that linking never writes through a link. Its script stops at the first failure. Before each `mkdir -p`, it checks that no component between the tree and the directory is a link. It makes each link with `ln -sn`, which fails on a link already at its name rather than writing where that link points. The static checks share `linkDependencies`, so their worktrees gain the same guard.
+
+The walk runs again after the allowlist copies, since a copy keeps the links of the reviewer's checkout as written. Dependency linking runs only after both walks pass. A refused head is one that could not use such a link inside the sandbox anyway: a link out is unreadable there, and the tree's `node_modules` is the install's. A relative link that stays inside the tree, live or dangling, is kept.
+
+Two attacking reviews of the rule were started and a safety classifier stopped each before it ran a probe. The second reviewer's reading named the root alias and the `..` folding. The builder ran both as tests, and they failed before the walk and pass after it. The walk has no bound of its own. It is linear in the tree's entries, as `checkout-index` is.
+
+Probes run for a writer's head only. A probe takes the host's `WriterTrust`, the decision `static.mutation` takes: a head a writer pushed to the base repository, or one the reviewer vouches for with `--trust-head`. A fork's head is refused, and so is a writer's under `trust.writers: false`. The sandbox narrows what a probe can reach; it does not make a stranger's head safe to execute on the reviewer's machine.
+
+Fail closed. Before a probe runs, sandbox-runtime says whether it supports the platform and whether its dependencies are present: bubblewrap, socat and ripgrep on Linux, nothing more on macOS. Melian probes on macOS and Linux only; Windows, which sandbox-runtime supports in alpha, is refused. When any answer is no, or the sandbox fails to start, the probe is refused with that reason and never runs unconfined. `melian doctor` runs an empty probe and prints whether it ran.
+
+A probe ends by recorded pid. While it runs, Melian records every process it sees descending from the command it started, each pid with its start time, as the mutation supervisor does. At the time limit, and again after it exits, Melian ends the recorded processes with SIGTERM and then SIGKILL. It never signals 0, 1, a negative pid or a process group.
+
+sandbox-runtime's manager is one per process. Melian opens it with the first probe and resets it when the last one closes. Each probe passes its own paths to the wrap, so probes of different heads run side by side.
+
+## What it gives up
+
+- The probe shares the reviewer's kernel. An escape from sandbox-runtime, seatbelt or bubblewrap, or a kernel bug, is an escape: the probe then runs as the reviewer, with the reviewer's files and network. The package calls itself a research preview.
+- A recorded process is known by its pid and `ps`'s start time, which has one-second precision, as the mutation supervisor's is. A pid that a recorded child frees and another process takes within the same second matches, and teardown would signal that process, and a probe can churn pids on purpose. The maintainer ruled on 2026-11-08, in the builder's session, to accept this as a limit here, consistent with [the mutation decision](2026-10-08-mutation-testing-as-a-static-check.md), and to track a finer process identity in [issue #352](https://github.com/melian-agent/melian/issues/352).
+- macOS has no hold on a process once it leaves the tree. A probe whose child detaches between two scans of the process table is never recorded, so it outlives the probe. Seatbelt still confines it, and its writable directory is deleted at `close()`. A detached child that still holds the probe's standard output would keep the run from ever seeing the streams close; the time limit therefore stops the recorded tree, waits a short grace for the streams, and then abandons them and returns, rather than waiting on an escaped grandchild.
+- The time limit is Melian's, and it only holds while Melian runs. Two backstops end the runner at the limit plus the grace and five seconds even if Melian is killed. A watchdog timer inside the runner covers a probe that waits. A probe that never yields, such as `while (true) {}`, never lets that timer fire, so the runner also runs under a CPU-time limit of the same number of seconds, set with `ulimit -t` in the wrapped command, which the kernel enforces with `SIGXCPU`. A separate watchdog process was the other choice; it would be one more process to start, record and stop, and it would itself die with Melian unless detached. A grandchild that has already reparented away from the runner escapes the timer, confined by the sandbox and by its own inherited CPU limit.
+- `melian probe` reads each file through one descriptor opened with `O_NOFOLLOW` and `O_NONBLOCK`, and checks that descriptor with `fstat` to be a regular file within the size bound, reading at most one byte past it. It never checks a path and then reopens it, so a file swapped for a link after the listing cannot redirect the read outside the directory. `O_NOFOLLOW` guards only the last component: a directory under the probe's directory swapped for a link between its listing and a file's open still redirects that open. Node has no `openat`, so closing that needs a design of its own. The maintainer accepted this on 2026-11-08 as a limit of `melian probe <dir>`: the directory is the reviewer's own, so the swap needs someone who can already write to it, and the probing lens passes its files in memory and reads no directory.
+- Cleanup never changes a mode or lists a directory by path after looking at it: it relaxes only the scratch's own fixed directories through an `O_NOFOLLOW` descriptor, so a survivor that swaps one for a symlink to a host directory cannot steer a `chmod` onto the target. A directory the probe locked deeper inside its scratch, or a file it made immutable with `chflags`, can therefore block removal; `close()` then leaves the scratch in place and returns the path rather than risk a host change or let the failure replace the probe's result, and `melian probe` prints that leftover and exits non-zero. A leftover scratch is accepted; a host change is not.
+- A checkout whose name holds a glob character, such as `[ab]`, `*`, `?` or `{c,d}`, still has the `.env*` and `.npmrc` in its tree and install denied: the deny patterns only ever deny, so a broad match is safe, and a test holds the denials for those names. Every path the probe may read is passed literally, so such a name never reads as a glob.
+- Linux needs unprivileged user namespaces. Ubuntu 24.04, which GitHub's runners use, restricts them through AppArmor by default, so the CI job turns that off and installs the three tools. A host that keeps the restriction cannot probe.
+- On Linux, bubblewrap shows a directory the probe may not read as an empty, writable tmpfs. A write there succeeds inside the sandbox and is lost when the probe ends; nothing reaches the host. A probe cannot tell a denied directory from an empty one.
+- On macOS, sandbox-runtime 0.0.81 writes `com.apple.SecurityServer` and `com.apple.securityd.xpc` into its seatbelt profile unconditionally, and its configuration has no setting that denies a mach service: `allowMachLookup` only adds services. The maintainer tested on 2026-11-07 whether a probe reaches the keychain through them. He ran `melian probe` from this branch at bad33202 on his Mac, against two canaries in his login keychain, a generic and an internet password added with `-A`, which `security` read outside the sandbox. Inside the probe, `find-generic-password` and `find-internet-password` each failed, through the default search list and with the login keychain named by its path, answering "SecKeychainSearchCopyNext: The specified item could not be found". `dump-keychain` on that path returned no canary. `list-keychains` answered. The keychain is unreachable from a probe, so macOS probes stay on. `packages/pipeline/test/probe-keychain.test.ts` repeats the test on CI's macOS runner, against a throwaway keychain of its own.
+- The operating system's programs and libraries are readable. They hold no user's data, but a probe can read which versions are installed.
+- A probe can still burn CPU and memory up to its time limit. sandbox-runtime sets no resource limits.
+
+## Deferred: microVMs
+
+A microVM, such as microsandbox, libkrun or Firecracker, gives a probe its own kernel, so a kernel bug no longer reaches the host. It was considered and deferred. It needs a VM runtime and, on most hosts, nested virtualisation, which builders' cloud VMs and GitHub's runners may lack. A probe that cannot run anywhere a builder works finds nothing. The `Probe` class hides the sandbox behind `open`, `run` and `close`, so a microVM backend can replace sandbox-runtime without changing a caller, once the hosts Melian runs on offer one.

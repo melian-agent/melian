@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,9 +68,17 @@ function startController(command: string) {
 	return controller;
 }
 
+// An orphan that exits stays a zombie until pid 1 reaps it, and a cloud container's pid 1 can leave it unreaped.
+const zombie = (pid: number) =>
+	spawnSync("/bin/ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" })
+		.stdout.trim()
+		.startsWith("Z");
 const running = (records: readonly RecordedProcess[]) => {
 	const current = table.list();
-	return records.filter((record) => current.some((entry) => entry.pid === record.pid && entry.start === record.start));
+	return records.filter(
+		(record) =>
+			current.some((entry) => entry.pid === record.pid && entry.start === record.start) && !zombie(record.pid),
+	);
 };
 const readTree = () => JSON.parse(readFileSync(join(control, "tree.json"), "utf8")) as RecordedProcess[];
 

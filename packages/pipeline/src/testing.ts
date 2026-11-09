@@ -221,6 +221,11 @@ export type VerifierScript = Readonly<
 				}[];
 				/** Passed to `report_verdict` as its `lower`, whatever it holds, so a script can try the fence. */
 				lower?: Readonly<Record<string, unknown>>;
+				/**
+				 * Sameness answers by dismissed finding ID, for each the prompt lists; `different` for any it leaves out.
+				 * Every key is passed as given, listed or not, so a script can try the refusal.
+				 */
+				matches?: Readonly<Record<string, string>>;
 		  }
 	>
 >;
@@ -299,9 +304,15 @@ export function scriptVerifier(messages: readonly Message[], verdicts: VerifierS
 	)
 		return fauxAssistantMessage("Every claim judged.");
 	const prompt = systemPromptOf(messages);
+	const dismissed = [...prompt.matchAll(/Dismissed d[1-9][0-9]* finding ([0-9a-f]{16})/g)].map((match) => match[1]!);
 	const calls = [...prompt.matchAll(/Claim (c[1-9][0-9]*) finding ([0-9a-f]+)/g)].map((match) => {
 		const scripted = verdicts[match[2]!] ?? "confirmed";
 		const outcome = typeof scripted === "string" ? { verdict: scripted } : scripted;
+		const scriptedMatches = "matches" in outcome ? outcome.matches : undefined;
+		const matches = {
+			...Object.fromEntries(dismissed.map((id) => [id, "different"])),
+			...scriptedMatches,
+		};
 		const reason = outcome.reason ?? "The scripted verifier traced the claim.";
 		return fauxToolCall("report_verdict", {
 			claim: match[1]!,
@@ -311,6 +322,7 @@ export function scriptVerifier(messages: readonly Message[], verdicts: VerifierS
 			...("correction" in outcome && outcome.correction !== undefined ? { correction: outcome.correction } : {}),
 			...("evidence" in outcome && outcome.evidence !== undefined ? { evidence: [...outcome.evidence] } : {}),
 			...("lower" in outcome && outcome.lower !== undefined ? { lower: { ...outcome.lower } } : {}),
+			...(Object.keys(matches).length === 0 ? {} : { matches }),
 		} as Parameters<typeof fauxToolCall>[1]);
 	});
 	return fauxAssistantMessage(calls, { stopReason: "toolUse" });

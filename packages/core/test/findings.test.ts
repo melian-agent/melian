@@ -301,6 +301,36 @@ describe("dismissalReason", () => {
 			"invalidFinding",
 		);
 	});
+
+	it("accepts an inherited dismissal naming its root by ID, and a proposal naming a likely root, and nothing looser", () => {
+		const finding = Finding.create(minimalInput);
+		const inherited = {
+			...finding.properties,
+			status: "dismissed" as const,
+			dismissal: {
+				by: "melian",
+				reason: "Constant input.",
+				at: "2026-10-04T00:00:00Z",
+				inheritedFrom: "0123456789abcdef",
+			},
+		};
+		expect(Finding.parse({ ...finding, properties: inherited }).properties.dismissal).toEqual(inherited.dismissal);
+		expect(
+			rejection({
+				...finding,
+				properties: { ...inherited, dismissal: { ...inherited.dismissal, inheritedFrom: "not-an-id" } },
+			}).code,
+		).toBe("invalidFinding");
+		const proposed = { ...finding.properties, likelyDismissedAs: { id: "0123456789abcdef" } };
+		expect(Finding.parse({ ...finding, properties: proposed }).properties.likelyDismissedAs).toEqual({
+			id: "0123456789abcdef",
+		});
+		for (const likelyDismissedAs of [{ id: "short" }, { id: "0123456789abcdef", by: "x" }]) {
+			expect(rejection({ ...finding, properties: { ...finding.properties, likelyDismissedAs } }).code).toBe(
+				"invalidFinding",
+			);
+		}
+	});
 });
 
 describe("levelForSeverity", () => {

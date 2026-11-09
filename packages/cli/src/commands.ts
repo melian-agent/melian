@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import {
 	Changeset,
 	checksOfTier,
+	describeInheritance,
 	FindingsLog,
 	Lens,
 	loadConfig,
@@ -85,9 +86,12 @@ export const reviewExitCodes = { passed: 0, blocking: 1, notReviewed: 2, finding
 /** What `melian review` prints for a verdict, and the exit code it ends with. */
 export class ReviewOutcome {
 	readonly verdict: Verdict;
+	/** The range or `#N` reviewed, which each `melian dismiss` command the verdict prints names. */
+	readonly target: string | undefined;
 
-	constructor(verdict: Verdict) {
+	constructor(verdict: Verdict, target?: string) {
 		this.verdict = verdict;
+		this.target = target;
 	}
 
 	/** One of {@link reviewExitCodes}. */
@@ -121,7 +125,8 @@ export class ReviewOutcome {
 				.filter((lens) => lenses.every((other) => other.name !== lens.name || other.emoji === lens.emoji))
 				.map((lens) => [`lens.${lens.name}`, lens.emoji!]),
 		]);
-		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true, notes }));
+		const { target } = this;
+		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true, notes, target }));
 	}
 }
 
@@ -157,7 +162,7 @@ export class PublicationAttestations {
 					`  Revision ${visibleText(revision)}, round ${round}`,
 					...dismissals.map(
 						({ id, ruleId, path, dismissal }) =>
-							`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}: by ${visibleText(dismissal?.by ?? "unknown")} at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
+							`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}${describeInheritance(dismissal ?? {})}: ${dismissal?.inheritedFrom === undefined ? `by ${visibleText(dismissal?.by ?? "unknown")} ` : ""}at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
 					),
 					"",
 				].join("\n");
@@ -276,6 +281,7 @@ export async function review(
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry,
 		checkout: repoRoot,
+		environment: io.env,
 		...triage.harnessOptions(),
 	});
 	const { harness } = reviewHarness;
@@ -319,6 +325,7 @@ export async function review(
 					{
 						env: createNodeExecutionEnv(repoRoot),
 						repoRoot,
+						environment: io.env,
 						base: changeset.revision.base,
 						...(source.kind === "revision" ? { policyCommit: source.commit } : {}),
 						commit: changeset.revision.head,
@@ -379,7 +386,7 @@ export async function review(
 			});
 		}
 		spans.step("output");
-		const outcome = new ReviewOutcome(verdict);
+		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
@@ -669,6 +676,7 @@ export async function findings(
 			all: options.all,
 			decided: true,
 			notes: options.notes,
+			target: argument,
 		});
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));

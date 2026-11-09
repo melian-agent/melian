@@ -157,6 +157,17 @@ describe("the stored lowering and answers", () => {
 		);
 		expect(Value.Check(verificationSchema, { ...record, evidence: [] })).toBe(false);
 	});
+
+	it("holds a same or different answer per dismissed finding ID, and nothing else", () => {
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "same" } })).toBe(true);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "different" } })).toBe(
+			true,
+		);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "maybe" } })).toBe(
+			false,
+		);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { d1: "same" } })).toBe(false);
+	});
 });
 
 describe("the lowering fence", () => {
@@ -238,6 +249,14 @@ describe("reports of one claim", () => {
 		const weaker = { ...plain, verdict: "plausible" } as const;
 		expect(after(weaker, stronger)).toEqual(stronger);
 		expect(after(stronger, weaker)).toEqual(stronger);
+	});
+
+	it("takes a later report's sameness answers, whichever verdict wins", () => {
+		const root = "0123456789abcdef";
+		const first = { ...verification, matches: { [root]: "same" } } as const;
+		const later = { ...verification, verdict: "plausible", matches: { [root]: "different" } } as const;
+		expect(after(first, later)).toEqual({ ...first, matches: { [root]: "different" } });
+		expect(after(first, verification)).toStrictEqual(verification);
 	});
 
 	it("lets a later equal report that weakens nothing replace the reason", () => {

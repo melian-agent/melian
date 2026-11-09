@@ -7,6 +7,7 @@ import {
 	type StoredComparisonAdjudication,
 	visibleText,
 } from "@melian-agent/core";
+import { probeLimits } from "@melian-agent/pipeline";
 import { dismiss, findings, type Io, publish, review, reviewExitCodes, telemetry } from "./commands.ts";
 import {
 	adjudicateComparison,
@@ -20,6 +21,7 @@ import {
 import { doctor } from "./doctor.ts";
 import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
+import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
@@ -68,7 +70,13 @@ Commands:
                          Enumerate changed production lines without running tests or head code. Exits 0 success, 1 failure.
   mutants sample <inventory>
                          Print deterministic probes from a complete classified inventory. Exits 0 success, 1 refused.
-  doctor                 Check Node, git, credentials, model routes, tool readiness, and GitHub access.
+  probe <dir> --trust-head [--timeout <seconds>] [--json]
+                         Run <dir>/probe.mjs, with the directory's other files beside it, in the head's tracked tree
+                         under the sandbox: no network, writes to its scratch alone, reads of the tree, the install,
+                         Node and the system alone. Exits 0 when it exits 0, 1 when it fails, times out or floods its output,
+                         2 when it cannot run here.
+  doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
+                         access.
 
 Options:
   --head, --base <sha>   Confirm the merge_group event SHAs (status merge-group).
@@ -78,9 +86,10 @@ Options:
                          stored; a completed triage decision is never asked again (review).
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
+                         For probe, run the probe in your checkout; pass it only for code you have read.
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
-  --open, --all, --json  For findings; --json also applies to review and telemetry.
+  --open, --all, --json  For findings; --json also applies to review, telemetry and probe.
   --notes                Show each distinct lens note once (review, findings).
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --accept              Accept rejected members (compare refresh only).
@@ -99,6 +108,7 @@ Options:
   --markdown            Print BACKLOG.md's generated section (compare backlog).
   --out <path>          Write the export to this path (compare export).
   --limit <N>           List at most N mutants (default 200); --all lists every mutant (mutants list).
+  --timeout <seconds>    End the probe after this many seconds, at most 600 (default 30) (probe).
   --no-walkthrough       Omit the walkthrough (review, publish).
   --no-color             Print without colour.
   -h, --help             Show this help.
@@ -150,6 +160,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
+				timeout: { type: "string" },
 				notes: { type: "boolean", default: false },
 				reason: { type: "string" },
 				verdict: { type: "string" },
@@ -189,6 +200,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		const scoped: Io = { ...io, color: io.color && values.color };
 		if (name !== "mutants" && values.limit !== undefined)
 			throw new UsageError("--limit is only available for mutants list");
+		if (name !== "probe" && values.timeout !== undefined)
+			throw new UsageError("--timeout is only available for probe");
 		switch (name) {
 			case "mutants": {
 				const [subcommand, ...targets] = rest;
@@ -370,6 +383,19 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				}
 				const fallback: typeof sources = [];
 				return await compare(scoped, target, [...sources, ...fallback], values.round);
+			}
+			case "probe": {
+				const seconds = values.timeout;
+				if (
+					seconds !== undefined &&
+					(!/^[1-9]\d*$/.test(seconds) || Number(seconds) * 1000 > probeLimits.timeout.max)
+				)
+					throw new UsageError(`--timeout takes whole seconds from 1 to ${probeLimits.timeout.max / 1000}`);
+				return await probe(scoped, one(rest, name, "directory"), {
+					trustHead: values["trust-head"],
+					json: values.json,
+					...(seconds === undefined ? {} : { timeout: Number(seconds) * 1000 }),
+				});
 			}
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");

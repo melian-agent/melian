@@ -3,6 +3,7 @@ import {
 	type ChangedFile,
 	type CheckRecord,
 	defaultConfig,
+	dismissalVersion,
 	Finding,
 	type FindingInput,
 	Revision,
@@ -31,6 +32,20 @@ const changed = (path: string, hunks: ReturnType<typeof hunk>[], extra: Partial<
 	binary: false,
 	hunks,
 	...extra,
+});
+
+describe("dismissalVersion", () => {
+	const person = { by: "Maintainer", reason: "Reason A", at: "2026-10-17T00:00:00Z" };
+
+	it("keeps a person's dismissal at the version main gave it, so recorded reply keys still match", () => {
+		expect(dismissalVersion(person)).toBe("f181e9c19886a046");
+	});
+
+	it("gives each root of an inherited dismissal a version of its own", () => {
+		const fromA = dismissalVersion({ ...person, inheritedFrom: "root-a" });
+		const fromB = dismissalVersion({ ...person, inheritedFrom: "root-b" });
+		expect(new Set([dismissalVersion(person), fromA, fromB]).size).toBe(3);
+	});
 });
 
 describe("Revision.diffLines", () => {

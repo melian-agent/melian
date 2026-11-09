@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import {
 	type ClosedFinding,
 	describeBudgetEnd,
+	describeInheritance,
 	describeLineage,
 	dismissalVersion,
 	type Finding,
@@ -164,6 +165,8 @@ export interface CommentContext {
 	readonly secret: string;
 	/** Show each mark's emoji beside its word, as `publish.emoji: on` asks. On by default. */
 	readonly emoji?: boolean;
+	/** The pull request the comment posts on, which its `melian dismiss` commands name. */
+	readonly pullRequest?: number;
 }
 
 /**
@@ -203,6 +206,7 @@ export class ReviewComment {
 		const { finding, placement } = this;
 		const { revision, links } = context;
 		const { path, id } = finding.properties;
+		const target = context.pullRequest === undefined ? undefined : `#${context.pullRequest}`;
 		const [start, end] = finding.lines();
 		const link = `[${code(path)} ${lineSpan(start, end)}](${blobUrl(links, revision, path, start, end)})`;
 		const where =
@@ -231,13 +235,15 @@ export class ReviewComment {
 			// entry says why a refuted finding still posts.
 			const notes = finding.trustFloorNotes();
 			const verification = finding.properties.verification;
-			const held =
-				notes.length === 0
+			const held = [
+				...(notes.length === 0
 					? []
 					: [
 							...(verification === undefined ? [] : [this.#verifier(verification, rendering)]),
 							...notes.map(inline),
-						].map((line) => `  ${line}`);
+						]),
+				...finding.likelyDismissalNotes(target, code),
+			].map((line) => `  ${line}`);
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
@@ -264,7 +270,9 @@ export class ReviewComment {
 			"",
 			...judged,
 			...moved.flatMap((line) => [line, ""]),
-			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
+			...[...finding.trustFloorNotes().map(inline), ...finding.likelyDismissalNotes(target, code)].flatMap(
+				(line) => [line, ""],
+			),
 			...this.#text(context),
 			"",
 			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
@@ -392,15 +400,15 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	}
 	if (verdict.dismissed.length > 0) {
 		// Dismissals that share a reason are one decision, so the reason is said once, above the findings it covers.
-		const reasons = new Map<string, { id: string; ruleId: string; path: string }[]>();
 		const dismissals = verdict.dismissals();
-		for (const { id, ruleId, path, dismissal } of dismissals) {
-			const reason = dismissal?.reason ?? "No reason stored.";
-			reasons.set(reason, [...(reasons.get(reason) ?? []), { id, ruleId, path }]);
+		const reasons = new Map<string, typeof dismissals>();
+		for (const each of dismissals) {
+			const reason = each.dismissal?.reason ?? "No reason stored.";
+			reasons.set(reason, [...(reasons.get(reason) ?? []), each]);
 		}
 		const lines = [...reasons].flatMap(([reason, covered]) => {
-			const named = ({ id, ruleId, path }: (typeof covered)[number]) =>
-				`${code(id)} ${code(ruleId)} in ${code(path)}`;
+			const named = ({ id, ruleId, path, dismissal }: (typeof covered)[number]) =>
+				`${code(id)} ${code(ruleId)} in ${code(path)}${describeInheritance(dismissal ?? {}, code)}`;
 			if (covered.length === 1) return [`- ${named(covered[0]!)}: ${inline(reason)}`];
 			return [`- ${inline(reason)}`, ...covered.map((finding) => `  - ${named(finding)}`)];
 		});
@@ -440,7 +448,9 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const resolved = draft.resolved.filter((finding) => finding.dismissal === undefined).map(named);
 	if (resolved.length > 0) parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
 	const dismissed = draft.resolved.flatMap((finding) =>
-		finding.dismissal === undefined ? [] : [`${named(finding)}: ${inline(finding.dismissal.reason)}`],
+		finding.dismissal === undefined
+			? []
+			: [`${named(finding)}${describeInheritance(finding.dismissal, code)}: ${inline(finding.dismissal.reason)}`],
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
 	const carried = new Set(draft.carried);
@@ -466,6 +476,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			links,
 			secret,
 			emoji: options.emoji,
+			pullRequest: draft.pullRequest,
 		});
 	// A finding that asks for action stays open; an advisory asks for none, so it folds under its count.
 	const open = inBody.filter(({ finding }) => finding.properties.resolution !== "advisory").map(render);
@@ -525,7 +536,7 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 	const version = finding.dismissal === undefined ? {} : { dismissal: dismissalVersion(finding.dismissal) };
 	const head = marker(revision, "resolved", finding.id, secret, version);
 	if (finding.dismissal !== undefined) {
-		return `${head}\nDismissed at ${code(short(revision))}: ${inline(finding.dismissal.reason)}`;
+		return `${head}\nDismissed at ${code(short(revision))}${describeInheritance(finding.dismissal, code)}: ${inline(finding.dismissal.reason)}`;
 	}
 	return `${head}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
 }
