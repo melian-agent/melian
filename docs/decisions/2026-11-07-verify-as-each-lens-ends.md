@@ -3,6 +3,8 @@
 Status: accepted by the maintainer, 2026-11-07, option A in [issue #253](https://github.com/melian-agent/melian/issues/253#issuecomment-6702565990).
 
 Amends: [design.md](../design.md), step 7 of the review flow, which verified each merged candidate once after every lens had ended.
+Amends: [2026-11-08-restore-verifier-clauses.md](2026-11-08-restore-verifier-clauses.md), that a revision and input attach to one verification task, and that a replacement task judges every claim again. Waves are verification tasks of their own, and a final task copies the outcome of a wave that still stands for a candidate, judging only the rest.
+Amends: [2026-11-08-restore-credentials-clauses.md](2026-11-08-restore-credentials-clauses.md), that one defect is verified once. A defect whose membership never changes is still verified once; one a later lens joins is verified again with every sighting, and the last verification decides.
 
 ## Problem
 
