@@ -797,8 +797,15 @@ export function createLensExtension(sandbox?: ProbeSandbox) {
  */
 export const lensExtension = createLensExtension();
 
-/** A registry holding the lens extension, with probes run under `sandbox`, sandbox-runtime when absent. */
-export function createReviewRegistry(sandbox?: ProbeSandbox): Registry {
+/**
+ * A registry holding the lens extension, with probes under sandbox-runtime, the sandbox a review over a harness built
+ * from it checks and reruns probes under. {@link ReviewHarness} takes another.
+ */
+export function createReviewRegistry(): Registry {
+	return reviewRegistry();
+}
+
+function reviewRegistry(sandbox?: ProbeSandbox): Registry {
 	const registry = createRegistry();
 	registry.install(sandbox === undefined ? lensExtension : createLensExtension(sandbox));
 	registry.install(summarizeExtension);
@@ -851,7 +858,7 @@ export class ReviewHarness {
 	): Promise<ReviewHarness> {
 		const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
 		const { checkout, decider, probeSandbox } = options;
-		const registry = createReviewRegistry(probeSandbox);
+		const registry = reviewRegistry(probeSandbox);
 		if (checkout !== undefined) registry.install(checksExtensionFor(options.environment ?? {}));
 		if (decider !== undefined) registry.install(decisionExtension(decider));
 		const env = checkout === undefined ? {} : { env: () => createNodeExecutionEnv(checkout) };
@@ -2532,7 +2539,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			) {
 				const resolved = resolveModelForTier("verifier", config.models);
 				route = [resolved.model, ...resolved.fallbacks];
-			} else route = [...run.route];
+			} else route = [...(run.probe?.route ?? run.route)];
 		}
 		const available: ModelReference[] = [];
 		const collection = modelsOf(models);

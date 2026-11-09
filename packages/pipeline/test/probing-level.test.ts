@@ -42,6 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns } from "../src/probing.ts";
+import { createReviewRegistry } from "../src/review.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
@@ -1395,6 +1396,60 @@ describe("a level that probes", () => {
 		);
 		expect((await run).verdict.counted()).toHaveLength(1);
 		expect(judged[0]).toBe("claude-judge");
+	});
+
+	it("judges a finding from a level without probes on its lens's route when no verifier route is named", async () => {
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { probe: _, ...plain } = finding("p0");
+		const { run } = await review(
+			{
+				planner: [],
+				prober: [],
+				others: [
+					{ match: "Melian adversarial verifier", replies: [judge, judge] },
+					{
+						match: reviewer,
+						replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+					},
+				],
+			},
+			{ lens: (lens) => lens },
+		);
+		expect((await run).verdict.counted()).toHaveLength(1);
+		expect(judged[0]).toBe("faux-1");
+	});
+
+	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
+		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
+		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();
+	});
+
+	it("judges a prober's finding on the prober's route when no verifier route is named", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }] });
+		const provider = fake.ref("plan").provider;
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: probing(failing),
+				others: [{ match: "Melian adversarial verifier", replies: [judge, judge] }],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: { models: { heavy: { model: `${provider}/plan` }, light: { model: `${provider}/probe` } } },
+			},
+		);
+		expect((await run).verdict.counted()).toHaveLength(1);
+		expect(judged[0]).toBe("probe");
 	});
 
 	it("chooses the verifier against the prober's family for a finding whose prober failed after reporting it", async () => {
