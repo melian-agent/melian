@@ -199,6 +199,43 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Stored before routes.");
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
+	it("creates its own task when another call indexes a task on another route between its reads and its commit", async () => {
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const asked: string[] = [];
+		const reply = (summary: string) => (_messages: unknown, model: string) => {
+			asked.push(model);
+			return success(summary);
+		};
+		scriptConversations(models, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [reply("Written on the first."), reply("Written on the second.")],
+			},
+		]);
+		const other = models.ref("other");
+		const doc = await summarize({
+			config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+			unlockModels: async () => {
+				await root.commit(async (tx) => {
+					const task = await tx.createTask(
+						SummaryTask,
+						{
+							root: root.id,
+							revision,
+							prompt: "Summarise the change.",
+							model: models.ref("scripted"),
+							paths: ["src/a.ts"],
+						},
+						{ ownership: { kind: "conversation" } },
+					);
+					(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+				}, context);
+			},
+		});
+		expect(asked).toContain("other");
+		expect(doc?.walkthroughRoutes?.[revision]).toBe(`${other.provider}/${other.modelId}@`);
+	});
 	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
 		const revision = Revision.key(changeset.revision);
 		scriptConversations(models, [
