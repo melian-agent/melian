@@ -269,7 +269,13 @@ export {
 	type ScrutinyLevel,
 	scrutinyLevels,
 } from "./lens.ts";
-export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
+export {
+	type ModelReference,
+	parseModelReference,
+	type ResolvedModelRoute,
+	resolveModelForTier,
+	resolveModelRoute,
+} from "./models.ts";
 export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
 export {
@@ -277,7 +283,9 @@ export {
 	type PlanInput,
 	type PlanLine,
 	type PlannedLens,
+	type PlannedLensRoute,
 	type PlannedModel,
+	type PlannedRoute,
 	type PlannedTier,
 	ReviewPlan,
 	type StoredPlan,

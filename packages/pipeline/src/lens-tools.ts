@@ -73,6 +73,7 @@ import {
 import { ReviewIndex } from "./review-index.ts";
 import { injectionAttemptRule, injectionPolicy, injectionSeverity, quoteUntrusted } from "./untrusted.ts";
 import { type ReportVerdictInput, reportVerdictSchema } from "./verification-instructions.ts";
+import { VerificationWaves, VerificationWavesDocument } from "./verification-waves.ts";
 
 // `added` is the hunk's new lines, the code a dismissal of an introduced finding is tied to. `changes` is its added and
 // removed lines in diff order, each keeping its `+` or `-`, the code a dismissal of an affected finding is tied to;
@@ -1104,8 +1105,14 @@ export const reportVerdict = defineTool({
 			const evidence = await evidenceFrom(args.evidence ?? [], review, revision, args.evidence?.[0]?.file ?? "");
 			const at = Revision.key(review);
 			const notes = await api.commit(async (tx) => {
-				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
-				if (entry?.verification?.task !== lens.task)
+				if (
+					!VerificationWaves.owns(
+						await tx.doc(ReviewIndex, lens.review),
+						await tx.doc(VerificationWavesDocument, lens.review),
+						at,
+						lens.task,
+					)
+				)
 					throw new Error("superseded: this verification task no longer owns the revision");
 				const document = await tx.doc(LensDocument, api.conversationId);
 				if (spent !== undefined || document.spend?.ended !== undefined)

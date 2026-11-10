@@ -91,6 +91,11 @@ const user = (body: string) =>
 		"}",
 	);
 
+// Melian's own lenses as the fake model's routes run them: the test routes every tier, so no lens keeps its own route.
+function unrouted(lenses: MelianConfig["lenses"]): MelianConfig["lenses"] {
+	return Object.fromEntries(Object.entries(lenses).map(([name, { route: _, ...settings }]) => [name, settings]));
+}
+
 let repo: string;
 let fake: FakeModels;
 let harness: Harness;
@@ -2093,7 +2098,7 @@ describe("reviewChangeset", () => {
 			);
 
 			await reviewed({
-				config: { ...melian, models: config.models },
+				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },
 				lenses: await Lens.load(
 					repo,
 					base,
@@ -2754,7 +2759,10 @@ describe("adjudication", () => {
 		]);
 		const error = await reviewed({ policy: { kind: "worktree" } }).catch((caught: unknown) => caught);
 		expect(error).toMatchObject({ code: "adjudicationFailed" });
+		// The three lens requests alone: no verifier judged a finding whose policy could not be read.
+		expect(fake.provider.state.callCount).toBe(3);
 		expect((error as ReviewError).findings).toHaveLength(2);
+		expect((error as ReviewError).lenses).toEqual([]);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
 		// A pre-existing finding never resolves above advisory, so only silent shows that the fixed policy decided.
 		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P2: silent") });
@@ -3358,7 +3366,7 @@ describe("adjudication", () => {
 			);
 
 			const { verdict } = await reviewed({
-				config: { ...melian, models: config.models },
+				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },
 				checks: [
 					{ name: "static.enola", status: "ran" },
 					{ name: "static.mutation", status: "ran" },

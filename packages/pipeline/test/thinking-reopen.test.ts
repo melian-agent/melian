@@ -28,10 +28,10 @@ const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf
 
 it.each([
 	["melian.lenses", 5],
-	["melian.verification", 2],
+	["melian.verification", 3],
 	["melian.summarize", 2],
-	["melian.adjudication", 6],
-	["melian.adjudication", 6, "thinking-policy-v11"],
+	["melian.adjudication", 7],
+	["melian.adjudication", 7, "thinking-policy-v11"],
 ] as const)(
 	"reopens main's versioned %s input with no invented thinking",
 	async (kind, version, priorFixture?: "thinking-policy-v11") => {
@@ -169,7 +169,7 @@ it.each(["thinking-main", "thinking-policy-v11"])(
 						"current",
 						context,
 					);
-					expect((await storage.document(document!.id, "current", context))!.version).toBe(13);
+					expect((await storage.document(document!.id, "current", context))!.version).toBe(14);
 				} finally {
 					await opened.close(context);
 				}
