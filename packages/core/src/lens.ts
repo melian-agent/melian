@@ -826,16 +826,18 @@ export class Lens {
 	}
 
 	/**
-	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level and `paths` the
-	 * lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
+	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level, unless `route`
+	 * routes the lens, and `paths` the lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
 	 * lens is returned as it loaded.
 	 */
 	configured(settings: LensSettings | undefined): Lens {
-		if (settings?.tier === undefined && settings?.paths === undefined) return this;
+		if (settings === undefined) return this;
+		const tier = settings.route === undefined ? settings.tier : undefined;
+		if (tier === undefined && settings.paths === undefined) return this;
 		return new Lens(
 			versioned({
 				...this.toJSON(),
-				levels: settings.tier === undefined ? this.levels : retiered(this.levels, settings.tier),
+				levels: tier === undefined ? this.levels : retiered(this.levels, tier),
 				paths: settings.paths ?? this.paths,
 			}),
 		);
@@ -861,25 +863,26 @@ export class Lens {
 	}
 
 	/**
-	 * The levels triage may choose for the lens: those it declares inside `band` whose model tier `routed` says reaches a
-	 * model with credentials, from `quick` to `deep`. Empty when none does, and the lens cannot run within its band.
+	 * The levels triage may choose for the lens: those it declares inside `band` whose route `routed` says reaches a
+	 * model with credentials, asked with each level's tier and the level, since a lens with its own route runs every
+	 * level on it, from `quick` to `deep`. Empty when none does, and the lens cannot run within its band.
 	 */
-	runnableLevels(band: LevelBand, routed: (tier: LensTier) => boolean): ScrutinyLevel[] {
-		return band.holds(this.declaredLevels()).filter((level) => routed(this.level(level).tier));
+	runnableLevels(band: LevelBand, routed: (tier: LensTier, level: ScrutinyLevel) => boolean): ScrutinyLevel[] {
+		return band.holds(this.declaredLevels()).filter((level) => routed(this.level(level).tier, level));
 	}
 
 	/**
 	 * Why the lens has no {@link Lens.runnableLevels} in `band`: each level the band holds, with why its tier reaches no
 	 * model as `unrouted` says, or that the lens declares none of the band's levels.
 	 */
-	unrunnable(band: LevelBand, unrouted: (tier: LensTier) => string | undefined): string {
+	unrunnable(band: LevelBand, unrouted: (tier: LensTier, level: ScrutinyLevel) => string | undefined): string {
 		const declared = this.declaredLevels();
 		const held = band.holds(declared);
 		if (held.length === 0) return `it declares none of them, only ${declared.join(", ")}`;
 		return held
 			.map((level) => {
 				const { tier } = this.level(level);
-				return `${level} runs on ${tier}, and ${unrouted(tier) ?? "it has no route"}`;
+				return `${level} runs on ${tier}, and ${unrouted(tier, level) ?? "it has no route"}`;
 			})
 			.join("; ");
 	}
@@ -985,9 +988,9 @@ export class Lens {
 	 * level takes what it leaves out from the top level, so a lens that extends another and sets a top-level tier or
 	 * budget moves the levels that name none, and can leave `careful` on a lighter tier than `quick`, or allowing more
 	 * than `deep`. Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts
-	 * its choice.
+	 * its choice. With `routed`, every level runs on the lens's own route, so only budgets compare.
 	 */
-	inversions(): string[] {
+	inversions(routed = false): string[] {
 		const declared = scrutinyLevels.flatMap((level) => {
 			const settings = this.levels[level];
 			return settings === undefined ? [] : [{ level, ...settings }];
@@ -995,7 +998,7 @@ export class Lens {
 		return declared.slice(1).flatMap((upper, index) => {
 			const lower = declared[index]!;
 			const tier =
-				tierOrder.indexOf(upper.tier) < tierOrder.indexOf(lower.tier)
+				!routed && tierOrder.indexOf(upper.tier) < tierOrder.indexOf(lower.tier)
 					? [`${upper.level} runs on ${upper.tier}, below ${lower.level}'s ${lower.tier}`]
 					: [];
 			const budgets = (["tokens", "tools"] as const).flatMap((budget) => {

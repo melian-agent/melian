@@ -57,6 +57,7 @@ import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { VerificationTask } from "../src/verification.ts";
+import { VerificationWaves, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -1064,7 +1065,12 @@ describe("a decision task another call replaced", () => {
 			await entered.promise;
 			const root = await harness.root(context);
 			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!;
-			old = before.verification!.task as TaskId;
+			// The lens's end started a wave, which is the verification parked here.
+			old = VerificationWaves.of(
+				await harness.snapshot(VerificationWavesDocument, root.id, context),
+				revision(),
+				before.task,
+			).tasks()[0] as TaskId;
 			expect((await harness.getTask(before.task! as TaskId, context))!.state.status).toBe("terminal");
 			const result = await review({ decider });
 			expect(chooser.requests).toHaveLength(1);
