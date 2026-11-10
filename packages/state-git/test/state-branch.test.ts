@@ -38,9 +38,17 @@ vi.setConfig({ testTimeout: 60_000 });
 let remote: Remote;
 
 // Checks the changeset out in a child process that exits without closing it, as a crashed review does.
-function crash(clone: Clone): void {
+function crash(clone: Clone, mode: "checkout" | "reserve" = "checkout"): void {
 	const fixture = fileURLToPath(new URL("./fixtures/crash-checkout.ts", import.meta.url));
-	const args = [clone.repoRoot, remote.bare, clone.directory, clone.holder, changeset, remote.key.toString("hex")];
+	const args = [
+		clone.repoRoot,
+		remote.bare,
+		clone.directory,
+		clone.holder,
+		changeset,
+		remote.key.toString("hex"),
+		mode,
+	];
 	execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
 		env: { ...process.env, ...isolatedGitEnv },
 	});
@@ -891,6 +899,15 @@ describe("a reservation of a changeset the branch does not hold", () => {
 				changeset
 			]!.lease.holder.clone,
 		).toBe(`${clone.holder} ${identity}`);
+		await reservation.release();
+	});
+
+	it("takes over the live lease a crashed reservation of its own copies directory left", async () => {
+		const clone = remote.clone();
+		crash(clone, "reserve");
+		expect(index().changesets[changeset]!.lease.generation).toBe(1);
+		const reservation = await clone.branch().reserve(changeset);
+		expect(reservation.generation).toBe(2);
 		await reservation.release();
 	});
 
