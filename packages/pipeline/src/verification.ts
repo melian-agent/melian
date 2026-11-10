@@ -310,7 +310,7 @@ export async function startVerification(
 	const { nonce: _, ...revision } = input.revision;
 	// A rerun the sandbox refused runs again on a repeat review, so a verification attaches only to the reruns it read.
 	// A review with none keeps the key it had before reruns joined it, so its stored verifications still attach.
-	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))?.runs[Revision.key(input.revision)] ?? {};
+	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const key = JSON.stringify({
 		root: input.root,
 		revision,
