@@ -1,6 +1,8 @@
 # The final hand rerun is waived until `melian mutants verify` lands
 
 Amends: [docs/decisions/2026-11-09-reruns-scoped-to-the-pull-request.md](2026-11-09-reruns-scoped-to-the-pull-request.md), the final rerun
+Amends: [docs/decisions/2026-11-07-targeted-mutant-rerun.md](2026-11-07-targeted-mutant-rerun.md), the rerun before the last round
+Amends: [docs/decisions/2026-11-04-mutation-proof-scope.md](2026-11-04-mutation-proof-scope.md), the rerun of every claim at the last head
 
 The maintainer ruled on 2026-11-10 that the final hand rerun of a pull request's mutation inventory is waived until `melian mutants verify` ([issue #240](https://github.com/melian-agent/melian/issues/240)) replaces it.
 
