@@ -1284,6 +1284,44 @@ describe("a level that probes", () => {
 		expect(prompts.filter((prompt) => prompt.includes("rests on probe p"))).toHaveLength(1);
 	});
 
+	it("verifies a probing claim only after its probe runs again, though another lens still runs when it ends", async () => {
+		const { probe: _, ...plain } = finding("p1");
+		let asked!: () => void;
+		const verifying = new Promise<void>((resolve) => {
+			asked = resolve;
+		});
+		// Correctness holds its report until a verifier is asked, or a second passes, so a wave that verified the probing
+		// claim while correctness ran would ask first.
+		const slow: ScriptedReply = async () => {
+			await Promise.race([verifying, new Promise((resolve) => setTimeout(resolve, 1_000))]);
+			return call("report_finding", {
+				...plain,
+				rule: "null-dereference",
+				line: 2,
+				evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+			});
+		};
+		const judge: ScriptedReply = (messages) => {
+			asked();
+			return scriptVerifier(messages);
+		};
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: probing(failing),
+				others: [
+					{ match: "Melian adversarial verifier", replies: [judge, judge, judge, judge] },
+					{ match: "You are the correctness reviewer", replies: [slow, fauxAssistantMessage("Done.")] },
+				],
+			},
+			{ config: { tiers: { full: ["lens.trust-boundary", "lens.correctness"] } } },
+		);
+		expect((await run).verdict.counted()).toHaveLength(2);
+		const prompts = [...new Set(requests["Melian adversarial verifier"]!.map(systemPromptOf))];
+		expect(prompts).toHaveLength(2);
+		expect(prompts.filter((prompt) => prompt.includes("When Melian ran it again it failed"))).toHaveLength(1);
+	});
+
 	it("runs each merged claim's probe again under its own lens's time limit", async () => {
 		// A planner records its plan on its first turn and finishes on its next, whichever lens's planner asks.
 		const planning: ScriptedReply = (messages) =>
@@ -1600,6 +1638,11 @@ describe("a level that probes", () => {
 		expect(judged).toBe(2);
 		// The key as the build before reruns joined it wrote it: the same fields, in the same order, without reruns.
 		const root = await harness!.harness.root(backgroundContext);
+		const verification = async () =>
+			(await harness!.harness.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[
+				Revision.key(first.changeset.revision)
+			]!.verification!.task;
+		const stored = await verification();
 		await root.commit(async (tx) => {
 			const entry = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(first.changeset.revision)]!;
 			const { reruns: __, ...older } = JSON.parse(entry.verification!.input) as Record<string, unknown>;
@@ -1608,6 +1651,7 @@ describe("a level that probes", () => {
 		const again = await review(scripts, { fake, lens: (lens) => lens });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(judged).toBe(2);
+		expect(await verification()).toBe(stored);
 	});
 
 	it("runs as many probes as a prober may, and refuses one past them whatever its budget", async () => {

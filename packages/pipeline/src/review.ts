@@ -2135,7 +2135,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const routeFor = (lens: Lens, level: ScrutinyLevel) => resolved.get(routeAt(lens, level).key)!;
 	// A prober on its level's tier runs on the level's route, the lens's own where it names one.
 	const proberAt = (lens: Lens, level: ScrutinyLevel) => {
-		const prober = lens.level(level).probe?.prober;
+		const prober = lens.level(level).probe!.prober;
 		return prober === undefined ? routeAt(lens, level) : proberRoutes.get(prober)!;
 	};
 	// A route the plan refuses has none, yet triage may still choose it: the lens then records the plan's refusal, as
@@ -2349,7 +2349,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const probingAt = async (settings: LensLevel, level: ScrutinyLevel) => {
 			const prober = proberAt(lens, level);
 			const timeout = settings.probe!.timeout ?? probeLimits.timeout.default;
-			const thinking = prober.route?.thinking;
+			const thinking = prober.route!.thinking;
 			const { decisions: atBase, earlier } = await probingContext();
 			return {
 				run: {
@@ -2627,6 +2627,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const record = await harness.getTask(task as TaskId, context);
 		if (record === undefined || record.state.status === "terminal") return;
 		const runs = record.input as unknown as StoredLensTaskInput;
+		// A level that probes has each claim's probe run again before the verifier reads it, which the final step does.
+		if (runsOf(runs.lenses).some((run) => run.probe !== undefined)) return;
 		const rule = new EscalationRule(runs.escalateAt ?? escalateAt);
 		const stored = new Map(runs.lenses.map((run) => [run.key, run]));
 		await (await harness.root(context)).commit(async (tx) => {
@@ -2665,18 +2667,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.filter((first) => ended[first.key] !== undefined)
 						.map((first) => settle(first, ended, rule));
 					const { producers } = account(manifest, settledEnded, { records: [], skippable: [] }, options);
-					const probing = runsOf(runs.lenses)
-						.filter((run) => run.probe !== undefined)
-						.map((run) => lensSource(run.name, run.version, run.level));
-					// A claim of a level that probes waits for the final step, which runs its probe again before the verifier reads it.
-					const candidates = (await candidatesFor(producers, ended, runs.lenses)).candidates.filter(
-						(candidate) =>
-							!candidate.state.claims.some((claim) =>
-								probing.some(
-									(source) => source.check === claim.source.check && source.version === claim.source.version,
-								),
-							),
-					);
+					const { candidates } = await candidatesFor(producers, ended, runs.lenses);
 					// startWave keeps only the candidates no wave already stands for.
 					const started =
 						candidates.length > 0 && candidates.every((candidate) => candidate.route.length > 0)
