@@ -64,7 +64,10 @@ it.each(fixtures)(
 		}, context);
 		await current.close(context);
 
-		const reader = await openHarness(await openSqliteStorage(file), { models: fake.models, registry: createRegistry() });
+		const reader = await openHarness(await openSqliteStorage(file), {
+			models: fake.models,
+			registry: createRegistry(),
+		});
 		try {
 			await expect(reader.snapshot(older, root, context)).rejects.toThrow(/newer version/);
 		} finally {
