@@ -1653,6 +1653,31 @@ describe("cross-head answer discovery", () => {
 		},
 	);
 
+	it("replies to a dismissed finding with its reason, and neither edits nor resolves its thread", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		const dismissal = { by: "Test", reason: "Safe.", at: "2026-10-18T00:00:00.000Z" };
+		const reply = await providerFor(state).replyResolved(
+			7,
+			{
+				id: "fedcba9876543210",
+				thread: "1",
+				revision: old,
+				ruleId: "rule",
+				path: "src/user.ts",
+				line: 7,
+				dismissal,
+			},
+			head,
+			secret,
+		);
+		expect(state.comments).toHaveLength(2);
+		expect(reply).toBe(String(state.comments[1]!.id));
+		expect(state.comments[1]!.body).toContain("Safe.");
+		expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+		expect(state.resolvedThreads).toEqual([]);
+	});
+
 	it("posts no dismissal's reply once the lease is refused", async () => {
 		const state = pullRequestState();
 		state.comments.push(root(1));
