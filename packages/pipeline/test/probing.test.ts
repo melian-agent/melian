@@ -526,9 +526,14 @@ describe("the evidence a verifier reads, exactly", () => {
 		);
 	});
 
-	it("keys a rerun by its claim and its probe", () => {
+	it("keys a rerun by its claim's lens run and its probe, whichever claim cites it", () => {
+		const probe = { id: "p9" } as ClaimProbe;
 		const claim = { id: "a", source: { check: "lens.x", version: "v" } };
-		expect(rerunKey(claim, { id: "p9" } as ClaimProbe)).toBe(JSON.stringify([probeClaimKey(claim), "p9"]));
+		expect(rerunKey(claim, probe)).toBe('["lens.x","v","p9"]');
+		const other = { id: "b", source: claim.source };
+		expect(rerunKey(other, probe)).toBe(rerunKey(claim, probe));
+		const unversioned = { id: "a", source: { check: "lens.x" } };
+		expect(rerunKey(unversioned, probe)).toBe('["lens.x","","p9"]');
 	});
 
 	it("lists no block when the one finding is too long to fit", () => {

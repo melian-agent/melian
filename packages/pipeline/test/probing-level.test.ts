@@ -874,6 +874,32 @@ describe("a level that probes", () => {
 		expect(heads()).toBe(2);
 	});
 
+	it("runs a probe again once however many findings cite it", async () => {
+		let id = "p0";
+		const { run, heads } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				(messages) => {
+					id = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? id;
+					return call("report_finding", finding(id));
+				},
+				() =>
+					call("report_finding", {
+						...finding(id),
+						line: 2,
+						rule: "head-controls-judge",
+						evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+					}),
+				fauxAssistantMessage("Reported 2 findings."),
+			],
+		});
+		const result = await run;
+		expect(result.verdict.counted()).toHaveLength(2);
+		// The prober's probe and one rerun the two claims share.
+		expect(heads).toHaveLength(2);
+	});
+
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();
 		let heads = 0;
@@ -1572,6 +1598,57 @@ describe("a level that probes", () => {
 					models: {
 						heavy: { model: `${provider}/plan` },
 						light: { model: `${provider}/probe` },
+						verifier: { model: `${provider}/gpt-judge`, fallbacks: [`${provider}/claude-judge`] },
+					},
+				},
+				plan: async (config, lenses, models) => {
+					const { catalog, credentials } = await planInputs(models.review);
+					return ReviewPlan.resolve({
+						config,
+						routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+						catalog,
+						credentials,
+						lenses,
+						checks: ["lens.trust-boundary"],
+					});
+				},
+			},
+		);
+		expect((await run).verdict.counted()).toHaveLength(1);
+		expect(judged[0]).toBe("claude-judge");
+	});
+
+	it("chooses the verifier against the family of the model the prober finished on, not its first", async () => {
+		const fake = createFakeModels({
+			models: [
+				{ id: "plan", name: "Claude Planner" },
+				{ id: "first", name: "Claude Prober" },
+				{ id: "second", name: "GPT Prober" },
+				{ id: "claude-judge", name: "Claude Judge" },
+				{ id: "gpt-judge", name: "GPT Judge" },
+			],
+		});
+		const provider = fake.ref("plan").provider;
+		const limited: ScriptedReply = () =>
+			fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [limited, ...probing(failing)],
+				others: [{ match: "Melian adversarial verifier", replies: [judge, judge] }],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/plan` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
 						verifier: { model: `${provider}/gpt-judge`, fallbacks: [`${provider}/claude-judge`] },
 					},
 				},

@@ -325,12 +325,12 @@ function renderedPlan(plan: readonly Attack[]): string {
 		.join("\n");
 }
 
-/** A claim probe's key among a revision's reruns: the claim and the probe's ID, which names one prober's run. */
-export function rerunKey(
-	claim: { readonly id: string; readonly source: { check: string; version?: string } },
-	probe: ClaimProbe,
-): string {
-	return JSON.stringify([probeClaimKey(claim), probe.id]);
+/**
+ * A claim probe's key among a revision's reruns: the claim's lens run and the probe's ID, which names one prober's
+ * probe, so every claim that cites one probe shares its rerun and a run's reruns stay within its probes' limit.
+ */
+export function rerunKey(claim: { readonly source: { check: string; version?: string } }, probe: ClaimProbe): string {
+	return JSON.stringify([claim.source.check, claim.source.version ?? "", probe.id]);
 }
 
 /**
