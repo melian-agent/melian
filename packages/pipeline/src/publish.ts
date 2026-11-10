@@ -922,12 +922,12 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 							let recorded: string | null;
 							// A resolution marker proves the edit or reply, but an older reply left the thread open.
 							if (found === undefined || found === entry.thread) {
-								await revalidate();
 								const reply = await provider.replyResolved(
 									pullRequest,
 									{ ...entry, thread: entry.thread },
 									head,
 									secret,
+									revalidate,
 								);
 								recorded = reply ?? null;
 								if (reply !== undefined) result.replies++;

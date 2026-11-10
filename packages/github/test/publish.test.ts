@@ -59,11 +59,14 @@ function providerFor(state: FakeState) {
 }
 
 // Reviews revision 1 and moves a fake pull request to it.
-async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName, nanRetries)) {
+async function reviewedRevisionOne(
+	script = lensScript(unsafeManager, emptyName, nanRetries),
+	fence?: () => Promise<void>,
+) {
 	const fake = scenarioModels();
 	const state = pullRequestState();
 	const github = providerFor(state);
-	harness = await openPublishHarness(createMemoryStorage(), fake, github);
+	harness = await openPublishHarness(createMemoryStorage(), fake, github, fence);
 	const { changeset, review } = await reviewScenario(repo, harness, fake, script);
 	await review.catch((error: unknown) => {
 		if (!(error instanceof ReviewError)) throw error;
@@ -389,6 +392,31 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toHaveLength(before);
 		expect(again).toMatchObject({ posted: 0, replies: 0, recovered: 0 });
 		expect(state.reviews).toHaveLength(1);
+	});
+
+	it("resolves no addressed thread once the lease is lost after its comment's edit", async () => {
+		// Another run takes the lease once the edit has landed, before the thread is resolved.
+		let refused = () => false;
+		const { fake, github, changeset, state } = await reviewedRevisionOne(undefined, async () => {
+			if (refused()) throw new Error("another run holds the lease");
+		});
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const first = await readFindings(harness!, root, Revision.key(changeset.revision), context);
+		const manager = first.find((finding) => finding.ruleId === "null-dereference")!;
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const edited = () =>
+			state.calls.some(({ method, path }) => method === "PATCH" && path.endsWith(`/comments/${thread}`));
+		refused = edited;
+		await publish(github, second.changeset).catch(() => undefined);
+		expect(edited()).toBe(true);
+		expect(state.resolvedThreads).not.toContain(Number(thread));
 	});
 
 	it("edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither", async () => {
@@ -1597,6 +1625,59 @@ describe("cross-head answer discovery", () => {
 			);
 		},
 	);
+
+	it.each([
+		["the edit", 1],
+		["the resolution", 2],
+	] as const)(
+		"writes nothing more once the lease is refused before %s of an addressed finding",
+		async (_name, refusedAt) => {
+			const state = pullRequestState();
+			state.comments.push(root(1));
+			let checks = 0;
+			const refusal = new Error("another run holds the lease");
+			await expect(
+				providerFor(state).replyResolved(
+					7,
+					{ id: "fedcba9876543210", thread: "1", revision: old, ruleId: "rule", path: "src/user.ts", line: 7 },
+					head,
+					secret,
+					async () => {
+						if (++checks === refusedAt) throw refusal;
+					},
+				),
+			).rejects.toBe(refusal);
+			const edits = state.calls.filter(({ method }) => method === "PATCH");
+			expect(edits).toHaveLength(refusedAt - 1);
+			expect(state.resolvedThreads).toEqual([]);
+		},
+	);
+
+	it("posts no dismissal's reply once the lease is refused", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		const refusal = new Error("another run holds the lease");
+		await expect(
+			providerFor(state).replyResolved(
+				7,
+				{
+					id: "fedcba9876543210",
+					thread: "1",
+					revision: old,
+					ruleId: "rule",
+					path: "src/user.ts",
+					line: 7,
+					dismissal: { by: "Test", reason: "Safe.", at: "2026-10-18T00:00:00.000Z" },
+				},
+				head,
+				secret,
+				async () => {
+					throw refusal;
+				},
+			),
+		).rejects.toBe(refusal);
+		expect(state.comments).toHaveLength(1);
+	});
 
 	it("does not mistake a refused thread read for a deleted reply target", async () => {
 		const state = pullRequestState();
