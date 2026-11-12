@@ -12,6 +12,7 @@ import {
 	headTreeLimits,
 	type ProbingEnvironment,
 	probeClaimKey,
+	probeConclusive,
 	probeFailed,
 	proberInstructions,
 	probingLimits,
@@ -293,6 +294,16 @@ describe("probeFailed", () => {
 		expect(probeFailed(result({ exitCode: null, signal: "SIGTERM" }))).toBe(false);
 		expect(probeFailed(result({ timedOut: true }))).toBe(false);
 		expect(probeFailed(result({ truncated: true }))).toBe(false);
+	});
+});
+
+describe("probeConclusive", () => {
+	it("holds for a probe that exited with a code within its limits, whether it passed or failed", () => {
+		expect(probeConclusive(result())).toBe(true);
+		expect(probeConclusive(result({ exitCode: 0 }))).toBe(true);
+		expect(probeConclusive(result({ exitCode: null, signal: "SIGTERM" }))).toBe(false);
+		expect(probeConclusive(result({ exitCode: 0, timedOut: true }))).toBe(false);
+		expect(probeConclusive(result({ exitCode: 0, truncated: true }))).toBe(false);
 	});
 });
 

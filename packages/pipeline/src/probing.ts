@@ -82,7 +82,12 @@ export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; t
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
-	return !result.timedOut && !result.truncated && result.exitCode !== null && result.exitCode !== 0;
+	return probeConclusive(result) && result.exitCode !== 0;
+}
+
+/** Whether a probe's result says anything: it exited with a code, within its time limit and its output limit. */
+export function probeConclusive(result: StoredProbeResult): boolean {
+	return !result.timedOut && !result.truncated && result.exitCode !== null;
 }
 
 /** A probe's run, or why it could not run. */

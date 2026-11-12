@@ -926,6 +926,23 @@ describe("a level that probes", () => {
 		expect(runs[0]).toHaveProperty("result");
 	});
 
+	it("runs a probe again on a repeat review when its stored rerun timed out", async () => {
+		const fake = createFakeModels();
+		let heads = 0;
+		const lens = probingWith({ timeout: 2_000 });
+		const first = await review(
+			{ planner: plan, prober: probing(failing) },
+			{ fake, lens, rewrite: (command) => (inHeadTree(command) && ++heads === 2 ? "sleep 10" : command) },
+		);
+		// The scripted verifier confirms, which a rerun that showed nothing refuses.
+		expect((await failure(first.run)).code).toBe("verifierFailed");
+		expect(first.heads).toHaveLength(2);
+		const again = await review({ planner: [], prober: [] }, { fake, lens });
+		const found = (await again.run).verdict.counted();
+		expect(first.heads).toHaveLength(3);
+		expect(found.map((each) => each.properties.verification?.verdict)).toEqual(["confirmed"]);
+	});
+
 	it("judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it", async () => {
 		const fake = createFakeModels();
 		let heads = 0;
