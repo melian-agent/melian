@@ -1474,6 +1474,19 @@
 			"evidence": "packages/pipeline/test/summarize.test.ts > walkthrough summaries > started alongside the review, before its verdict records a provenance > keeps the walkthrough the decided round's light route wrote when a review on another route returns no summary",
 			"survivorClasses": [],
 			"run": "killed at 0840dd91"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 125,
+			"column": 21,
+			"endLine": 125,
+			"endColumn": 54,
+			"mutatorName": "HandLoopReversal",
+			"replacement": "[route.model, ...route.fallbacks].reverse()",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/summarize.test.ts > the walkthrough publication posts > is the walkthrough of the round's first light model when its fallback wrote one too",
+			"survivorClasses": [],
+			"run": "killed after the named test passed unmutated; the own-build round at 2cfccf3e raised it as finding a635bc3e593e4145"
 		}
 	]
 }

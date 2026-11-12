@@ -54,17 +54,20 @@ it.each(fixtures)(
 			models: fake.models,
 			registry: createReviewRegistry(),
 		});
-		const reopened = await current.snapshot(VerdictDocument, root, context);
-		expect(reopened).toEqual(recorded.document);
-		expect(publishedWalkthrough(reopened, recorded.revision)).toEqual(
-			recorded.document.walkthroughs?.[recorded.revision],
-		);
-		await (await current.root(context)).commit(async (tx) => {
-			(await tx.doc(VerdictDocument, root)).routedWalkthroughs = {
-				[recorded.revision]: { "faux/scripted@": { summary: "Written by this build.", files: [] } },
-			};
-		}, context);
-		await current.close(context);
+		try {
+			const reopened = await current.snapshot(VerdictDocument, root, context);
+			expect(reopened).toEqual(recorded.document);
+			expect(publishedWalkthrough(reopened, recorded.revision)).toEqual(
+				recorded.document.walkthroughs?.[recorded.revision],
+			);
+			await (await current.root(context)).commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root)).routedWalkthroughs = {
+					[recorded.revision]: { "faux/scripted@": { summary: "Written by this build.", files: [] } },
+				};
+			}, context);
+		} finally {
+			await current.close(context);
+		}
 
 		const reader = await openHarness(await openSqliteStorage(file), {
 			models: fake.models,

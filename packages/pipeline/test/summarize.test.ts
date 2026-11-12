@@ -1263,6 +1263,14 @@ describe("the walkthrough publication posts", () => {
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
 	});
+	it("is the walkthrough of the round's first light model when its fallback wrote one too", () => {
+		const fallback = { ...walkthrough, summary: "Written on the fallback." };
+		const state = {
+			routedWalkthroughs: { [revision]: { "faux/second@": fallback, "faux/first@": walkthrough } },
+			provenance: { [revision]: planned([{ model: "faux/first" }, { model: "faux/second" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+	});
 	it("is none when another plan's light model wrote it", () => {
 		const state = {
 			routedWalkthroughs: { [revision]: { "faux/other@": walkthrough } },
