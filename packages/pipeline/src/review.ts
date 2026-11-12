@@ -1189,9 +1189,17 @@ function ranOn(
 	for (const lens of lenses) {
 		const outcome = result?.[lens.key];
 		if (outcome?.status !== "done" || outcome.model === undefined) continue;
+		// A prober on its level's own tier answers to the policy the plan judges that level by, as its planner does, so a
+		// preference that moved the lens cannot carry the prober onto a model the committed tier refuses.
+		const prober = lens.probe?.onLevelTier === true ? outcome.probing?.model : undefined;
 		ran.set(lens.name, [
 			...(ran.get(lens.name) ?? []),
-			{ scope: lens.coverage.scope, version: lens.version, level: lens.level, model: outcome.model },
+			...[outcome.model, ...(prober === undefined ? [] : [prober])].map((model) => ({
+				scope: lens.coverage.scope,
+				version: lens.version,
+				level: lens.level,
+				model,
+			})),
 		]);
 	}
 	return ran;
@@ -3020,11 +3028,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	}, context);
 	spans.step("adjudication.prepare");
-	const lensRan = (key: string) => {
-		const outcome = lensResult?.[key];
-		return outcome?.status === "done" ? outcome : undefined;
-	};
-	const marked =
+	const checks =
 		request.plan?.mark(
 			accounted.records(),
 			ranOn(
@@ -3032,23 +3036,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lensResult,
 			),
 		) ?? accounted.records();
-	// A prober on its level's own tier answers to the policy the plan judges that level by, as its planner does, so a
-	// preference that moved the lens cannot carry the prober onto a model the committed tier refuses.
-	const proberRefusals = new Map<string, string | undefined>();
-	for (const { run } of settled) {
-		const model = lensRan(run.key)?.probing?.model;
-		if (run.probe?.onLevelTier !== true || model === undefined) continue;
-		proberRefusals.set(
-			`lens.${run.name} ${run.level}`,
-			request.plan?.judge(run.name, run.level, model, run.coverage.scope).refusal,
-		);
-	}
-	const checks = marked.map((check) => {
-		const reason = proberRefusals.get(`${check.name} ${check.level}`);
-		return reason === undefined || check.status === "failed"
-			? check
-			: { ...check, status: "failed" as const, reason };
-	});
+	const lensRan = (key: string) => {
+		const outcome = lensResult?.[key];
+		return outcome?.status === "done" ? outcome : undefined;
+	};
 	const lineageOf = (name: string, level: ScrutinyLevel) =>
 		checks.find((check) => check.name === `lens.${name}` && check.level === level)?.lineage;
 	const input = adjudicationInput({

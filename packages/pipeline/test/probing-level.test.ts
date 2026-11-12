@@ -1585,6 +1585,83 @@ describe("a level that probes", () => {
 		expect(record((await again.run).verdict)).toMatchObject({ status: "ran" });
 	});
 
+	it.each([
+		["the root's", false],
+		["the scoped variant's", true],
+	])("fails a moved lens when %s prober alone finished on a model the committed tier refuses", async (_, scoped) => {
+		rmSync(repo, { recursive: true, force: true });
+		// The variant's prober has a time limit of its own, which its instructions state.
+		const marker = "It has 20 seconds";
+		repo = baseAndHead(
+			{
+				...baseFiles,
+				"src/.melian/lenses/trust-boundary/LENS.md": "---\nname: trust-boundary\nextends: trust-boundary\n---\n",
+			},
+			headFiles,
+		);
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "backup" }] });
+		const provider = fake.ref("plan").provider;
+		const [accepted, backup] = [`${provider}/plan`, `${provider}/backup`];
+		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
+		let overloaded = false;
+		// Each conversation's turn by what it holds, so the two variants' conversations can interleave on one queue.
+		const planning: ScriptedReply = (messages) =>
+			messages.some((message) => message.role === "toolResult")
+				? fauxAssistantMessage("Planned 1 attack.")
+				: call("record_plan", { attacks: [attack] });
+		const probingTurn: ScriptedReply = (messages, model) => {
+			if (!overloaded && model === "plan" && systemPromptOf(messages).includes(marker) === scoped) {
+				overloaded = true;
+				return fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+			}
+			const results = messages.filter((message) => message.role === "toolResult").map(textOf);
+			const probe = /probe (p[0-9]+) failed/.exec(results.join("\n"))?.[1];
+			if (probe === undefined) return call("run_probe", { attack: 1, script: failing });
+			if (results.some((text) => text.includes("recorded finding")))
+				return fauxAssistantMessage("Reported 1 finding.");
+			// The variant reviews src/; the root lens what lies outside it.
+			if (!results.some((text) => text.includes("outside the paths"))) return call("report_finding", finding(probe));
+			const outside = { file: "fixture/leak.txt", line: 1 };
+			return call("report_finding", { ...finding(probe), ...outside, evidence: [{ ...outside, role: "cause" }] });
+		};
+		const { run } = await review(
+			{ planner: Array.from({ length: 8 }, () => planning), prober: Array.from({ length: 16 }, () => probingTurn) },
+			{
+				fake,
+				lens: (lens) => probingWith({ timeout: lens.scope === "" ? 30_000 : 20_000 })(lens),
+				config: {
+					lenses: { "trust-boundary": { tier: "light", level: { floor: "deep" } } },
+					models: { heavy: committed, light: { model: accepted, fallbacks: [backup] } },
+				},
+				plan: async (config, lenses, models) => {
+					const { catalog, credentials } = await planInputs(models.review);
+					return ReviewPlan.resolve({
+						config,
+						routes: {
+							committed: { heavy: committed },
+							overridden: { light: "melian.local.yaml" },
+							lensTiers: {},
+							retiered: { "trust-boundary": "melian.local.yaml" },
+						},
+						catalog,
+						credentials,
+						lenses,
+						checks: ["lens.trust-boundary"],
+					});
+				},
+			},
+		);
+		const verdict = await run.then(
+			(done) => done.verdict,
+			(error: unknown) => (error as ReviewError).verdict!,
+		);
+		expect(overloaded).toBe(true);
+		const records = [...(verdict.ran ?? []), ...verdict.notRun].filter(({ name }) => name === "lens.trust-boundary");
+		// Only the variant whose prober left the accepted route fails.
+		expect(records.map(({ status }) => status).sort()).toEqual(["failed", "ran"]);
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
 	it("keeps the plan's reason for a moved lens whose planner and prober both left accept", async () => {
 		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "first" }, { id: "second" }] });
 		const provider = fake.ref("plan").provider;
