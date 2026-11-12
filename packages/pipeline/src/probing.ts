@@ -340,9 +340,13 @@ export function rerunKey(claim: { readonly source: { check: string; version?: st
 
 /**
  * Each claim probe a review ran again before its verifier started, by revision and then by {@link rerunKey}, on the
- * root conversation. A repeat review reads the run it stored rather than run the probe again.
+ * root conversation, and the task that owns each revision's reruns with the probes it runs. A repeat review reads the
+ * run it stored rather than run the probe again.
  */
-export const ProbeReruns = defineDoc<{ runs: Record<string, Record<string, ProbeRun>> }>({
+export const ProbeReruns = defineDoc<{
+	runs: Record<string, Record<string, ProbeRun>>;
+	tasks?: Record<string, { task: number; key: string }>;
+}>({
 	kind: "melian.probe-reruns",
 	version: 1,
 	scope: "conversation",

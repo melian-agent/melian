@@ -815,7 +815,7 @@ export function createLensExtension(sandbox?: ProbeSandbox) {
 		],
 		sections: [injectionPolicySection],
 		hooks: [lensPolicyHook],
-		tasks: [LensTask, VerificationTask, AdjudicationTask],
+		tasks: [LensTask, VerificationTask, AdjudicationTask, probeRerunTask(sandbox)],
 	});
 }
 
@@ -1350,47 +1350,103 @@ async function claimProbes(
 	return Object.keys(probes).length === 0 ? {} : { probes };
 }
 
-// Runs each candidate's claim probes again, before verification, and stores each run on the root under the revision,
-// so the verifier reads the run whatever crashes or repeats around it. A probe a stored run failed or passed runs no
-// more; one refused, timed out, cut or ended by a signal runs again, since the cause may have passed.
+type ProbeRerunInput = {
+	root: ConversationId;
+	revision: ReviewState;
+	probes: { key: string; script: string; files: { path: string; text: string }[]; environment: ProbingEnvironment }[];
+};
+
+/**
+ * Runs a revision's claim probes again, before verification, and stores each run on the root under the revision, so the
+ * verifier reads the run whatever crashes or repeats around it. A probe a stored run failed or passed runs no more; one
+ * refused, timed out, cut or ended by a signal runs again, since the cause may have passed. Only the task
+ * {@link ProbeReruns} names for the revision writes: a later review whose claims rest on other probes takes the
+ * revision over, and the task it replaced stops.
+ */
+export function probeRerunTask(sandbox?: ProbeSandbox) {
+	return defineTask<ProbeRerunInput, { phase: "run" }, Record<string, never>>({
+		name: "melian.probe-reruns",
+		version: 1,
+		initial: () => ({ phase: "run" }),
+		phases: {
+			run: async (task, runtime, context) => {
+				const { root, revision, probes } = task.input;
+				const at = Revision.key(revision);
+				const done = { status: "terminal", outcome: { status: "completed", result: {} } } as const;
+				for (const probe of probes) {
+					const stored = (await runtime.snapshot(ProbeReruns, root, context))?.runs[at]?.[probe.key];
+					if (stored !== undefined && "result" in stored && probeConclusive(stored.result)) continue;
+					const run = await runHeadProbe(
+						{ script: probe.script, files: probe.files },
+						revision,
+						probe.environment,
+						sandbox,
+					);
+					let replaced = false;
+					await runtime.commit(async (tx) => {
+						const document = await tx.doc(ProbeReruns, root);
+						replaced = document.tasks?.[at]?.task !== runtime.taskId;
+						if (replaced) return done;
+						document.runs = { ...document.runs, [at]: { ...document.runs[at], [probe.key]: run } };
+						return undefined;
+					}, context);
+					if (replaced) return;
+				}
+				// A run again of a failed lens names new probes, so the revision keeps only the runs its current claims rest on.
+				await runtime.commit(async (tx) => {
+					const document = await tx.doc(ProbeReruns, root);
+					if (document.tasks?.[at]?.task !== runtime.taskId) return done;
+					const current = new Set(probes.map((probe) => probe.key));
+					const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
+					document.runs = { ...document.runs, [at]: Object.fromEntries(kept) };
+					return done;
+				}, context);
+			},
+		},
+		abort: async (_task, runtime, context) => {
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		},
+	});
+}
+
+const ProbeRerunTask = probeRerunTask();
+
+// Starts the task that runs each candidate's claim probes again, or attaches to the live one another review started
+// for the same probes, and waits for it. Claims that cite one probe share its rerun.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
 	revision: ReviewState,
 	candidates: readonly VerificationCandidate[],
-	sandbox: ProbeSandbox | undefined,
 	context: Context,
 ): Promise<void> {
 	const at = Revision.key(revision);
-	const current = new Set<string>();
-	for (const candidate of candidates) {
+	const probes = new Map<string, ProbeRerunInput["probes"][number]>();
+	for (const candidate of candidates)
 		for (const claim of candidate.state.claims) {
 			const probe = candidate.probes?.[probeClaimKey(claim)];
 			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
-			// Claims that cite one probe share its rerun, and this review runs it once, whatever it showed.
-			if (current.has(key)) continue;
-			current.add(key);
-			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
-			if (stored !== undefined && "result" in stored && probeConclusive(stored.result)) continue;
-			const run = await runHeadProbe(
-				{ script: probe.probe.script, files: probe.probe.files },
-				revision,
-				probe.environment,
-				sandbox,
-			);
-			await (await harness.root(context)).commit(async (tx) => {
-				const document = await tx.doc(ProbeReruns, root);
-				document.runs = { ...document.runs, [at]: { ...document.runs[at], [key]: run } };
-			}, context);
+			if (probes.has(key)) continue;
+			probes.set(key, {
+				key,
+				script: probe.probe.script,
+				files: structuredClone(probe.probe.files),
+				environment: structuredClone(probe.environment),
+			});
 		}
-	}
-	// A run again of a failed lens names new probes, so the revision keeps only the runs its current claims rest on.
-	await (await harness.root(context)).commit(async (tx) => {
+	const input: ProbeRerunInput = { root, revision, probes: [...probes.values()] };
+	const key = JSON.stringify(input.probes);
+	const task = await (await harness.root(context)).commit(async (tx) => {
 		const document = await tx.doc(ProbeReruns, root);
-		const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
-		document.runs = { ...document.runs, [at]: Object.fromEntries(kept) };
+		const known = document.tasks?.[at];
+		if (known?.key === key && (await tx.task(known.task as TaskId))?.state.status !== "terminal")
+			return known.task as TaskId;
+		const created = await tx.createTask(ProbeRerunTask, input, { ownership: { kind: "conversation" } });
+		document.tasks = { ...document.tasks, [at]: { task: created, key } };
+		return created as TaskId;
 	}, context);
+	await harness.waitForTask(task, context);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -2903,14 +2959,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
-			await rerunProbes(
-				harness,
-				root,
-				state,
-				candidates,
-				request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined,
-				context,
-			);
+			await rerunProbes(harness, root, state, candidates, context);
 			const reused: Record<string, VerificationResult[string]> = {};
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();

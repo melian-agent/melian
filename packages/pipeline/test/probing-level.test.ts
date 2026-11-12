@@ -932,6 +932,15 @@ describe("a level that probes", () => {
 		expect(heads).toBe(2);
 	});
 
+	it("runs a probe again once when two reviews of one head verify at once", async () => {
+		const fake = createFakeModels();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const second = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await Promise.all([first.run, second.run].map((run) => run.catch(() => undefined)));
+		// The prober's probe and one rerun, which the second review attached to.
+		expect(first.heads).toHaveLength(2);
+	});
+
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();
 		let heads = 0;
