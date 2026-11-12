@@ -138,6 +138,7 @@ import {
 	answerPrompt,
 	type ClaimProbe,
 	type EarlierFinding,
+	headTreeLimits,
 	ProbeReruns,
 	ProbingDocument,
 	type ProbingEnvironment,
@@ -145,6 +146,7 @@ import {
 	probeClaimKey,
 	probeConclusive,
 	proberInstructions,
+	probingLimits,
 	recordPlanPrompt,
 	renderEarlierFindings,
 	renderPlan,
@@ -1181,6 +1183,22 @@ function planned(options: ReviewOptions): ReviewOptions {
 
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
 // names the model that ran.
+// Every fixed input a probing run's planner and prober receive, as this build renders them: each role tool's name,
+// description and schema, the fixed limits, and each fixed prompt. A release that changes any of them runs the level
+// again; the plan and its earlier findings, which move between reviews of one head, stay out.
+function probingProtocol(): string {
+	const sample = { target: "t", reason: "r", passing: "p", failing: "f" };
+	return JSON.stringify({
+		tools: [recordPlan, runProbe, skipAttack, reportFinding].map(({ name, description, parameters }) => ({
+			name,
+			description,
+			parameters,
+		})),
+		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
+		prompts: [plannerInstructions([]), renderPlan([sample], "0".repeat(24)), recordPlanPrompt, answerPrompt([1])],
+	});
+}
+
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
@@ -2430,7 +2448,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									standardsSource,
 								) +
 								// The planner's decisions and earlier findings move between reviews of one head, as caller context
-								// does, so they stay out of the key; the probe field below holds its role.
+								// does, so they stay out of the key; the probe field below holds the fixed probing protocol.
 								baseline("0".repeat(24)),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
@@ -2445,7 +2463,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							probe:
 								probing === undefined
 									? undefined
-									: { ...probing.run, environment: undefined, planner: plannerInstructions([]) },
+									: { ...probing.run, environment: undefined, protocol: probingProtocol() },
 						}),
 					)
 					.digest("hex"),

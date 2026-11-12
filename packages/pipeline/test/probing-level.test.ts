@@ -1898,6 +1898,21 @@ describe("a level that probes", () => {
 		expect(await verification()).toBe(stored);
 	});
 
+	it("runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does", async () => {
+		const fake = createFakeModels();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await first.run.catch(() => undefined);
+		const limits = probingLimits as { probes: number };
+		const probes = limits.probes;
+		limits.probes = probes - 1;
+		onTestFinished(() => {
+			limits.probes = probes;
+		});
+		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await again.run.catch(() => undefined);
+		expect(again.requests[planner]).toHaveLength(2);
+	});
+
 	it("runs as many probes as a prober may, and refuses one past them whatever its budget", async () => {
 		const limits = probingLimits as { probes: number };
 		const probes = limits.probes;
