@@ -239,9 +239,923 @@
     "collected": 1,
     "failed": true
    }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 525,
+   "column": 42,
+   "endLine": 528,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-run.test.ts > renews the lease on melian/state before every write to GitHub",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-run.test.ts > renews the lease on melian/state before every write to GitHub",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 6,
+   "endLine": 526,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 6,
+   "endLine": 526,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 6,
+   "endLine": 526,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "config.publish.emoji !== \"on\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 31,
+   "endLine": 526,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 43,
+   "endLine": 526,
+   "endColumn": 59,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 526,
+   "column": 52,
+   "endLine": 526,
+   "endColumn": 57,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts no emoji anywhere when the base's melian.yaml turns them off, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 527,
+   "column": 15,
+   "endLine": 527,
+   "endColumn": 39,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 528,
+   "column": 9,
+   "endLine": 531,
+   "endColumn": 3,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 528,
+   "column": 30,
+   "endLine": 531,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-run.test.ts > shows the review's run in the ledger, from the telemetry its storage holds",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/publication.ts",
+   "line": 205,
+   "column": 17,
+   "endLine": 205,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/publication.ts",
+   "line": 209,
+   "column": 14,
+   "endLine": 209,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 68,
+   "column": 5,
+   "endLine": 68,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 68,
+   "column": 5,
+   "endLine": 68,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 68,
+   "column": 5,
+   "endLine": 68,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "request.method !== \"GET\"",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 68,
+   "column": 24,
+   "endLine": 68,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 68,
+   "column": 38,
+   "endLine": 68,
+   "endColumn": 43,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 8,
+   "endLine": 69,
+   "endColumn": 111,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "request.url === \"/graphql\" && typeof request.query === \"string\" && /^\\s*query\\b/.test(request.query)",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 110,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 110,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 110,
+   "mutatorName": "LogicalOperator",
+   "replacement": "request.url === \"/graphql\" && typeof request.query === \"string\" || /^\\s*query\\b/.test(request.query)",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "No REST request the provider sends carries a query parameter, so a REST write's absent query fails the document test as well.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 73,
+   "mutatorName": "LogicalOperator",
+   "replacement": "request.url === \"/graphql\" || typeof request.query === \"string\"",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "No REST request the provider sends carries a query parameter, so a REST write's absent query fails the document test as well.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 10,
+   "endLine": 69,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "request.url !== \"/graphql\"",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 26,
+   "endLine": 69,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 40,
+   "endLine": 69,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "RegExp.test reads a missing query as the text undefined, which never starts with query.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 40,
+   "endLine": 69,
+   "endColumn": 73,
+   "mutatorName": "EqualityOperator",
+   "replacement": "typeof request.query !== \"string\"",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 65,
+   "endLine": 69,
+   "endColumn": 73,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 77,
+   "endLine": 69,
+   "endColumn": 90,
+   "mutatorName": "Regex",
+   "replacement": "/\\s*query\\b/",
+   "claim": "equivalent",
+   "evidence": "The provider's only GraphQL write, resolveReviewThread, holds no word query, so an unanchored match reads it as a write all the same.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 77,
+   "endLine": 69,
+   "endColumn": 90,
+   "mutatorName": "Regex",
+   "replacement": "/^\\squery\\b/",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 69,
+   "column": 77,
+   "endLine": 69,
+   "endColumn": 90,
+   "mutatorName": "Regex",
+   "replacement": "/^\\S*query\\b/",
+   "claim": "equivalent",
+   "evidence": "The provider's queries start with query(, which this still matches, and its mutation starts with mutation(, which it does not.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 92,
+   "column": 6,
+   "endLine": 92,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/provider.test.ts > publication response gaps > accepts an empty thread page and confirms the root is deleted through REST",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/provider.test.ts > publication response gaps > accepts an empty thread page and confirms the root is deleted through REST",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 92,
+   "column": 6,
+   "endLine": 92,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the edit of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the edit of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 169,
+   "column": 6,
+   "endLine": 169,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 169,
+   "column": 6,
+   "endLine": 169,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 169,
+   "column": 6,
+   "endLine": 169,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "beforeWrite === undefined",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 170,
+   "column": 3,
+   "endLine": 175,
+   "endColumn": 6,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 170,
+   "column": 28,
+   "endLine": 170,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 170,
+   "column": 58,
+   "endLine": 175,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 171,
+   "column": 8,
+   "endLine": 171,
+   "endColumn": 24,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "writes(request)",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 171,
+   "column": 8,
+   "endLine": 171,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 171,
+   "column": 8,
+   "endLine": 171,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 172,
+   "column": 50,
+   "endLine": 174,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 173,
+   "column": 5,
+   "endLine": 173,
+   "endColumn": 84,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > writes nothing once the lease is lost during the read before a write",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 431,
+   "column": 7,
+   "endLine": 431,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > answers a dismissed finding's thread with the reason, and counts it out of the status",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > answers a dismissed finding's thread with the reason, and counts it out of the status",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 431,
+   "column": 7,
+   "endLine": 431,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 431,
+   "column": 7,
+   "endLine": 431,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "finding.dismissal !== undefined",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1037,
+   "column": 9,
+   "endLine": 1037,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > abandons a round the provider refuses three times, and plans a new one on the next publish (writers trusted: true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > abandons a round the provider refuses three times, and plans a new one on the next publish (writers trusted: true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1037,
+   "column": 9,
+   "endLine": 1037,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > stops before posting when the pull request's head moves after publish validated it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > stops before posting when the pull request's head moves after publish validated it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1037,
+   "column": 9,
+   "endLine": 1037,
+   "endColumn": 70,
+   "mutatorName": "LogicalOperator",
+   "replacement": "error instanceof TargetMoved && error instanceof WriteRefused",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > stops before posting when the pull request's head moves after publish validated it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > stops before posting when the pull request's head moves after publish validated it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1122,
+   "column": 24,
+   "endLine": 1122,
+   "endColumn": 81,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1122,
+   "column": 56,
+   "endLine": 1122,
+   "endColumn": 79,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/github/test/publish.test.ts > publishing a review > records the publisher and a read-only author's permission without blocking publication",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/publish.ts",
+   "line": 1149,
+   "column": 2,
+   "endLine": 1149,
+   "endColumn": 47,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+   "survivorClasses": [],
+   "run": {
+    "head": "3eebfe43",
+    "test": "packages/cli/test/publish-emoji.test.ts > posts emojis in the comment and the review when the base has no setting, whatever the head says",
+    "collected": 1,
+    "failed": true
+   }
   }
  ],
- "total": 13,
+ "total": 67,
  "omitted": 0,
  "unmutated": []
 }
