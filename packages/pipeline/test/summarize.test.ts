@@ -256,8 +256,20 @@ describe("walkthrough summaries", () => {
 		]);
 		expect(writtenRoute(await summarize(), revision)).toBeDefined();
 		const doc = await summarize({ rerun: true });
-		expect(written(doc, revision)).toBeUndefined();
-		expect(writtenRoute(doc, revision)).toBeUndefined();
+		expect(doc?.routedWalkthroughs).toEqual({});
+	});
+	it("writes its own walkthrough beside another revision's", async () => {
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).routedWalkthroughs = {
+				"other..revision": { "faux/scripted@": { summary: "Another revision's.", files: [] } },
+			};
+		}, context);
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const doc = await summarize();
+		expect(written(doc, revision)?.summary).toBe("Changes a value.");
+		expect(written(doc, "other..revision")?.summary).toBe("Another revision's.");
 	});
 	it("applies thinking to a light route supplied through accept alone", async () => {
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
@@ -974,8 +986,10 @@ describe("walkthrough summaries", () => {
 				};
 			}, context);
 			const before = models.provider.state.callCount;
-			const doc = await summarize({ origin: pullRequest });
+			const unlock = vi.fn(async () => {});
+			const doc = await summarize({ origin: pullRequest, unlockModels: unlock });
 			expect(models.provider.state.callCount).toBe(before);
+			expect(unlock).not.toHaveBeenCalled();
 			expect(written(doc, revision)?.summary).toBe("Stored before routes.");
 			expect(doc?.walkthroughNotes).toBeUndefined();
 		});
@@ -1301,6 +1315,13 @@ describe("the walkthrough publication posts", () => {
 			provenance: { "other..revision": planned([{ model: "faux/first" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+	});
+	it("is none when the round has no plan and two light routes wrote one", () => {
+		const state = {
+			routedWalkthroughs: { [revision]: { "faux/first@": walkthrough, "faux/other@": walkthrough } },
+			provenance: { [revision]: { ...planned([]), plan: undefined } },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
 	});
 	it("is none when nothing is stored", () => {
 		expect(publishedWalkthrough({} as never, revision)).toBeUndefined();

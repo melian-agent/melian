@@ -119,9 +119,11 @@ export function publishedWalkthrough(
 		return legacy ?? (written.length === 1 ? written[0] : undefined);
 	}
 	const routes = ReviewPlan.from(plan).routes();
-	const route = routes.light?.model === undefined ? undefined : resolveModelForTier("light", routes);
-	for (const model of route === undefined ? [] : [route.model, ...route.fallbacks]) {
-		const written = routed[routeOf({ model, thinking: routes.light?.thinking })];
+	const light = routes.light;
+	if (light?.model === undefined) return legacy;
+	const route = resolveModelForTier("light", routes);
+	for (const model of [route.model, ...route.fallbacks]) {
+		const written = routed[routeOf({ model, thinking: light.thinking })];
 		if (written !== undefined) return written;
 	}
 	return legacy;
