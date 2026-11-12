@@ -114,6 +114,52 @@ it("renders carried advisories as short, escaped entries even when a saved place
 	expect(bounded).toContain("1 finding did not fit");
 });
 
+it("sends no fallback review once the lease is refused after GitHub rejects the inline one", async () => {
+	const outside = Finding.create({ ...input, file: "src/outside.ts", severity: "P2" });
+	const verdict = new Adjudication({
+		findings: [outside],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	const state = fakeState(
+		"melian-agent",
+		"example",
+		{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: revision } },
+		{ "src/run.ts": [[12, 12]] },
+	);
+	let checks = 0;
+	const provider = createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "t",
+		fetch: fakeGitHub(state),
+		// The lease passes for the inline review, and is lost before its fallback.
+		beforeWrite: async () => {
+			if (++checks > 1) throw new Error("another run holds the lease");
+		},
+	});
+	await expect(
+		provider.postReview({
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [
+				{ finding: verdict.findings.acknowledge[0]!, placement: { kind: "lines", startLine: 40, line: 40 } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		}),
+	).rejects.toMatchObject({ code: "writeRefused" });
+	expect(state.calls.filter(({ method, path }) => method === "POST" && path.endsWith("/reviews"))).toHaveLength(1);
+	expect(state.reviews).toEqual([]);
+	expect(checks).toBe(2);
+});
+
 it("refuses an inline advisory even when an older pending round saved an inline placement", async () => {
 	const finding = Finding.create({ ...input, severity: "P3" });
 	const outside = Finding.create({ ...input, file: "src/outside.ts", severity: "P2" });

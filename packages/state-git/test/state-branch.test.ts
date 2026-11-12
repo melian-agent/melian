@@ -920,6 +920,26 @@ describe("a reservation of a changeset the branch does not hold", () => {
 		await first.release();
 	});
 
+	it("extends the lease when confirmed, so no other clone takes it at the original expiry", async () => {
+		const hour = 60 * 60 * 1000;
+		let now = Date.parse("2026-11-12T00:00:00Z");
+		const reservation = await remote
+			.clone({ now: () => now })
+			.branch()
+			.reserve(changeset);
+		now += hour;
+		expect(await reservation.confirm()).toEqual({ kind: "confirmed" });
+		expect(index().changesets[changeset]!.lease.expiresAt).toBe(new Date(now + 2 * hour).toISOString());
+		const past = now + 90 * 60 * 1000;
+		await expect(
+			remote
+				.clone({ now: () => past })
+				.branch()
+				.reserve(changeset),
+		).rejects.toBeInstanceOf(LeaseHeld);
+		await reservation.release();
+	});
+
 	it("refuses a changeset the branch holds", async () => {
 		await storeNoted();
 		await expect(remote.clone().branch().reserve(changeset)).rejects.toMatchObject({
