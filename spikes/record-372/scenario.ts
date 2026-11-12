@@ -22,6 +22,7 @@ import {
 	fauxToolCall,
 	type ScriptedReply,
 	scriptConversations,
+	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 
 export const scratch = "/tmp/claude-0/-home-user-melian/49d5dd77-41ed-5de6-b60b-6b3531f2559a/scratchpad/spike-372";
@@ -213,4 +214,20 @@ export function lensRequests(requests: Record<string, Message[][]>, lenses: read
 			seen.length,
 		]),
 	);
+}
+
+// Each request a fake model answered, by conversation: a lens by name with the tool results it carried, the verifier
+// with the finding IDs its claims named.
+export function requestLog(requests: Record<string, Message[][]>, lenses: readonly Lens[]) {
+	return Object.entries(requests).flatMap(([match, seen]) => {
+		const lens = lenses.find((each) => each.instructions === match)?.name;
+		return seen.map((messages, index) => {
+			if (lens !== undefined)
+				return `${lens} request ${index + 1}: ${messages.filter((m) => m.role === "toolResult").length} tool results`;
+			const claims = [...systemPromptOf(messages).matchAll(/Claim (c[0-9]+) finding ([0-9a-f]+)/g)].map(
+				(match) => `${match[1]}=${match[2]}`,
+			);
+			return `verifier request ${index + 1}: claims ${claims.join(" ")}`;
+		});
+	});
 }

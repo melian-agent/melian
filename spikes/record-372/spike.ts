@@ -8,7 +8,17 @@ import { Lens, Revision } from "@melian-agent/core";
 import { type CheckRunRecord, backgroundContext as context, reviewChangeset, runChecks } from "@melian-agent/pipeline";
 import { DirectoryRecordStore, recordId, Signer, verified, winners } from "./records.mjs";
 import { reference } from "./reference.ts";
-import { config, fakeModels, lensRequests, open, repository, type Setup, scratch, setup } from "./scenario.ts";
+import {
+	config,
+	fakeModels,
+	lensRequests,
+	open,
+	repository,
+	requestLog,
+	type Setup,
+	scratch,
+	setup,
+} from "./scenario.ts";
 import { checkKey, exportFinished, type Imported, type SeedLog, seedChecks, seededLensExtension } from "./seed.ts";
 
 const repo = repository();
@@ -86,6 +96,7 @@ for (let waited = 0; ; waited += 50) {
 }
 await sleep(500);
 const requestsA = lensesOf(a.requests);
+const logA = requestLog(a.requests, scene.lenses);
 
 // ---- Export A's finished results as signed records into a directory store.
 const signer = new Signer();
@@ -154,12 +165,7 @@ async function seeded(
 		requests: lensRequests(b.requests, lenses),
 		checks: { imported: usedChecks, ran: missing },
 		lenses: log,
-		firstRequests: Object.fromEntries(
-			Object.entries(b.requests).map(([match, seen]) => [
-				lenses.find((lens) => lens.instructions === match)?.name ?? "verifier",
-				seen.map((messages) => messages.filter((m) => m.role === "user").length),
-			]),
-		),
+		log: requestLog(b.requests, lenses),
 	};
 }
 
@@ -199,10 +205,11 @@ const checkPolicyRun = await seeded("b-check-policy", scene.lenses, (_, policy) 
 
 const summary = {
 	revision,
-	A: { requests: requestsA, exported: exported.map((each) => ({ kind: each.kind, key: each.key })) },
+	A: { requests: requestsA, log: logA, exported: exported.map((each) => ({ kind: each.kind, key: each.key })) },
 	reference: { requests: ref.requests },
 	B: {
 		requests: b.requests,
+		log: b.log,
 		checks: b.checks,
 		lenses: b.lenses,
 		verdictEqualsReference: isDeepStrictEqual(b.verdict, ref.verdict),
