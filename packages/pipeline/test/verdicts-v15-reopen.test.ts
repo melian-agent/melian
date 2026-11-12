@@ -60,7 +60,9 @@ it.each(fixtures)(
 			recorded.document.walkthroughs?.[recorded.revision],
 		);
 		await (await current.root(context)).commit(async (tx) => {
-			(await tx.doc(VerdictDocument, root)).walkthroughRoutes = { [recorded.revision]: "faux/scripted@" };
+			(await tx.doc(VerdictDocument, root)).routedWalkthroughs = {
+				[recorded.revision]: { "faux/scripted@": { summary: "Written by this build.", files: [] } },
+			};
 		}, context);
 		await current.close(context);
 

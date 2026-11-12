@@ -4,6 +4,6 @@ A repeat review attaches to a live walkthrough task only on the light route it w
 
 A review harness now aborts every live walkthrough task as it opens, so a crashed review's walkthrough never resumes on the old route, and an aborted walkthrough costs no attempt.
 
-The verdict document is now version 15, so an older build refuses a store that records walkthrough routes. Lens routes took version 14 on `main` while this pull request was open, so it took the next. `test/fixtures/verdicts-v13-main`, recorded by main at `799a54bf`, and `test/fixtures/verdicts-v14-main`, recorded by main at `33fe7f18`, prove both reopens. A walkthrough task the summary index no longer names writes nothing, and a walkthrough's route leaves with it.
+The verdict document is now version 15, so an older build refuses a store that keeps walkthroughs by route. Lens routes took version 14 on `main` while this pull request was open, so it took the next. `test/fixtures/verdicts-v13-main`, recorded by main at `799a54bf`, and `test/fixtures/verdicts-v14-main`, recorded by main at `33fe7f18`, prove both reopens. A walkthrough task the summary index no longer names writes nothing.
 
 Only the walkthrough task the summary index names now writes or removes a walkthrough; a failed unlock, a missing light model or a failed prompt writes its note and leaves a stored walkthrough alone, so a concurrent call's summary survives another call's failure.

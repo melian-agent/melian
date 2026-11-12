@@ -313,7 +313,8 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const root = await harness.root(context);
 		const revision = Revision.key(options.changeset.revision);
 		const stored = (await harness.snapshot(VerdictDocument, root.id, context))!;
-		expect(stored.walkthroughRoutes?.[revision]).toBeDefined();
+		const [written] = Object.entries(stored.routedWalkthroughs?.[revision] ?? {});
+		expect(written?.[0]).toBe("faux/scripted@");
 		// The plan the verdict was decided under routes light to the model that wrote the summary, faux/scripted.
 		await root.commit(async (tx) => {
 			const document = await tx.doc(VerdictDocument, root.id);
@@ -321,7 +322,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 				tiers: [{ tier: "light", status: "routed", models: [{ model: "faux/scripted", credential: "test" }] }],
 				lenses: [],
 			};
-			if (route !== undefined) document.walkthroughRoutes = { [revision]: route };
+			if (route !== undefined) document.routedWalkthroughs = { [revision]: { [route]: written![1] } };
 		}, context);
 		const state = pullRequestState();
 		moveTo(state, options.changeset);

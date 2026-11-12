@@ -592,7 +592,9 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		});
 		const document = await harness.snapshot(VerdictDocument, (await harness.root(context)).id, context);
 		expect(document?.walkthroughNotes?.[revision]).toBeUndefined();
-		expect(document?.walkthroughs?.[revision]?.summary).toBe("Written after the crash.");
+		expect(Object.values(document?.routedWalkthroughs?.[revision] ?? {}).map(({ summary }) => summary)).toEqual([
+			"Written after the crash.",
+		]);
 	});
 
 	it("unlocks nothing for a same-route walkthrough marked aborted once the attempts are spent", async () => {

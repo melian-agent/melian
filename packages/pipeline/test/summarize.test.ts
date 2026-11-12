@@ -76,6 +76,15 @@ async function summarize(overrides: Partial<Parameters<typeof summarizeReview>[0
 	await summarizeReview({ harness, changeset, config, models: models.review, ...overrides });
 	return stored();
 }
+// The walkthrough an older Melian stored for the revision, or the only one a route wrote there.
+function written(doc: Awaited<ReturnType<typeof stored>>, revision: string) {
+	const routed = Object.values(doc?.routedWalkthroughs?.[revision] ?? {});
+	return doc?.walkthroughs?.[revision] ?? (routed.length === 1 ? routed[0] : undefined);
+}
+function writtenRoute(doc: Awaited<ReturnType<typeof stored>>, revision: string) {
+	const routes = Object.keys(doc?.routedWalkthroughs?.[revision] ?? {});
+	return routes.length === 1 ? routes[0] : undefined;
+}
 function success(summary = "Changes a value.") {
 	return fauxAssistantMessage(
 		[fauxToolCall("record_walkthrough", { summary, files: [{ path: "src/a.ts", summary: "Changes a." }] })],
@@ -110,8 +119,8 @@ describe("walkthrough summaries", () => {
 			result: "superseded",
 		});
 		const doc = await stored();
-		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
-		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+		expect(written(doc, revision)).toBeUndefined();
+		expect(writtenRoute(doc, revision)).toBeUndefined();
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 		expect(doc?.walkthroughAttempts?.[revision]).toBeUndefined();
 	});
@@ -130,12 +139,12 @@ describe("walkthrough summaries", () => {
 		async (_name, overrides) => {
 			const revision = Revision.key(changeset.revision);
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-			const route = (await summarize())?.walkthroughRoutes?.[revision];
+			const route = writtenRoute(await summarize(), revision);
 			expect(route).toBeDefined();
 			const doc = await summarize({ rerun: true, ...overrides });
 			expect(doc?.walkthroughNotes?.[revision]).toBeDefined();
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
-			expect(doc?.walkthroughRoutes?.[revision]).toBe(route);
+			expect(written(doc, revision)?.summary).toBe("Changes a value.");
+			expect(writtenRoute(doc, revision)).toBe(route);
 		},
 	);
 	it("keeps a walkthrough a concurrent call stored while this call's credential unlock failed", async () => {
@@ -145,14 +154,15 @@ describe("walkthrough summaries", () => {
 			unlockModels: async () => {
 				await root.commit(async (tx) => {
 					const document = await tx.doc(VerdictDocument, root.id);
-					document.walkthroughs = { [revision]: { summary: "Written by a concurrent call.", files: [] } };
-					document.walkthroughRoutes = { [revision]: "faux/scripted@" };
+					document.routedWalkthroughs = {
+						[revision]: { "faux/scripted@": { summary: "Written by a concurrent call.", files: [] } },
+					};
 				}, context);
 				throw new Error("credential failed");
 			},
 		});
-		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written by a concurrent call.");
-		expect(doc?.walkthroughRoutes?.[revision]).toBe("faux/scripted@");
+		expect(written(doc, revision)?.summary).toBe("Written by a concurrent call.");
+		expect(writtenRoute(doc, revision)).toBe("faux/scripted@");
 	});
 	it("writes its own walkthrough when another route's lands between its reads and its commit", async () => {
 		const revision = Revision.key(changeset.revision);
@@ -173,14 +183,17 @@ describe("walkthrough summaries", () => {
 			unlockModels: async () => {
 				await root.commit(async (tx) => {
 					const document = await tx.doc(VerdictDocument, root.id);
-					document.walkthroughs = { [revision]: { summary: "Written on another route.", files: [] } };
-					document.walkthroughRoutes = { [revision]: "faux/other@" };
+					document.routedWalkthroughs = {
+						[revision]: { "faux/other@": { summary: "Written on another route.", files: [] } },
+					};
 				}, context);
 			},
 		});
 		expect(asked).toEqual(["scripted"]);
-		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the wanted route.");
-		expect(doc?.walkthroughRoutes?.[revision]).toBe("faux/scripted@");
+		expect(doc?.routedWalkthroughs?.[revision]).toEqual({
+			"faux/other@": { summary: "Written on another route.", files: [] },
+			"faux/scripted@": expect.objectContaining({ summary: "Written on the wanted route." }),
+		});
 	});
 	it("keeps a walkthrough stored without a route between its reads and its commit, and asks no model", async () => {
 		const revision = Revision.key(changeset.revision);
@@ -196,7 +209,7 @@ describe("walkthrough summaries", () => {
 			},
 		});
 		expect(models.provider.state.callCount).toBe(before);
-		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Stored before routes.");
+		expect(written(doc, revision)?.summary).toBe("Stored before routes.");
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
 	it("creates its own task when another call indexes a task on another route between its reads and its commit", async () => {
@@ -234,24 +247,24 @@ describe("walkthrough summaries", () => {
 			},
 		});
 		expect(asked).toContain("other");
-		expect(doc?.walkthroughRoutes?.[revision]).toBe(`${other.provider}/${other.modelId}@`);
+		expect(writtenRoute(doc, revision)).toBe(`${other.provider}/${other.modelId}@`);
 	});
 	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
 		const revision = Revision.key(changeset.revision);
 		scriptConversations(models, [
 			{ match: "You write Melian's walkthrough", replies: [success(), fauxAssistantMessage("No tool used.")] },
 		]);
-		expect((await summarize())?.walkthroughRoutes?.[revision]).toBeDefined();
+		expect(writtenRoute(await summarize(), revision)).toBeDefined();
 		const doc = await summarize({ rerun: true });
-		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
-		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
+		expect(written(doc, revision)).toBeUndefined();
+		expect(writtenRoute(doc, revision)).toBeUndefined();
 	});
 	it("applies thinking to a light route supplied through accept alone", async () => {
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		const doc = await summarize({
 			config: { ...config, models: { light: { accept: ["faux/scripted"], thinking: "high" } } },
 		});
-		expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
+		expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Changes a value.");
 	});
 	it("distinguishes a thinking-only light route from an empty legacy route", async () => {
 		const revision = Revision.key(changeset.revision);
@@ -278,7 +291,7 @@ describe("walkthrough summaries", () => {
 		}, context);
 		await summarize();
 		expect(auth).not.toHaveBeenCalled();
-		expect((await stored())?.walkthroughs).toBeUndefined();
+		expect((await stored())?.routedWalkthroughs).toBeUndefined();
 		expect((await stored())?.walkthroughNotes).toBeUndefined();
 	});
 	it("distinguishes no route from no credentials and retries after credentials arrive", async () => {
@@ -291,7 +304,7 @@ describe("walkthrough summaries", () => {
 		auth.mockRestore();
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		const doc = await summarize();
-		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(doc, revision)?.summary).toBe("Changes a value.");
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
 	it("resolves the light model through the review's stored plan, not the configuration", async () => {
@@ -311,7 +324,7 @@ describe("walkthrough summaries", () => {
 		expect((await summarize())?.walkthroughNotes?.[revision]).toContain("No light model is configured.");
 		await withPlan({ status: "routed", models: [{ model: `${ref.provider}/${ref.modelId}`, credential: "test" }] });
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		expect((await summarize({ config: { ...config, models: {} } }))?.walkthroughs?.[revision]?.summary).toBe(
+		expect(written(await summarize({ config: { ...config, models: {} } }), revision)?.summary).toBe(
 			"Changes a value.",
 		);
 	});
@@ -360,7 +373,7 @@ describe("walkthrough summaries", () => {
 			},
 			unlockModels: unlock,
 		});
-		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(result, revision)?.summary).toBe("Changes a value.");
 		expect(used).toEqual([fallback.modelId]);
 		expect(unlock).toHaveBeenCalledOnce();
 		expect(unlock).toHaveBeenCalledWith([fallback.provider]);
@@ -391,7 +404,7 @@ describe("walkthrough summaries", () => {
 		]) {
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [reply] }]);
 			const doc = await summarize();
-			expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+			expect(written(doc, revision)).toBeUndefined();
 			expect(doc?.walkthroughNotes?.[revision]).toBe(
 				"No walkthrough available. The summariser returned no summary.",
 			);
@@ -402,14 +415,14 @@ describe("walkthrough summaries", () => {
 		await summarize();
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(0);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
-		expect((await summarize({ rerun: true }))?.walkthroughs?.[revision]?.summary).toBe("Rerun summary.");
+		expect(written(await summarize({ rerun: true }), revision)?.summary).toBe("Rerun summary.");
 	});
 	it("summarises once across two reviews and reads the stored walkthrough the second time", async () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		const revision = Revision.key(changeset.revision);
-		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(await summarize(), revision)?.summary).toBe("Changes a value.");
 		const result = await summarize();
-		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(result, revision)?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
 	});
 	it("unlocks credentials once, before the first request, and not for a review that reads a stored walkthrough", async () => {
@@ -419,7 +432,7 @@ describe("walkthrough summaries", () => {
 			before.push(models.provider.state.callCount);
 		});
 		const revision = Revision.key(changeset.revision);
-		expect((await summarize({ unlockModels: unlock }))?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(await summarize({ unlockModels: unlock }), revision)?.summary).toBe("Changes a value.");
 		expect(before).toEqual([0]);
 		expect(unlock).toHaveBeenCalledWith([models.ref().provider]);
 
@@ -586,7 +599,7 @@ describe("walkthrough summaries", () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		registry.install(summarizeExtension);
 		const result = await summarize();
-		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(result, revision)?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
 	});
 
@@ -607,7 +620,7 @@ describe("walkthrough summaries", () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		registry.install(summarizeExtension);
 		const result = await summarize();
-		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(written(result, revision)?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
 	});
 
@@ -640,9 +653,7 @@ describe("walkthrough summaries", () => {
 		wait.mockRestore();
 		await harness.waitForIdle(context);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Recovered.")] }]);
-		expect((await summarize({ rerun: true }))?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe(
-			"Recovered.",
-		);
+		expect(written(await summarize({ rerun: true }), Revision.key(changeset.revision))?.summary).toBe("Recovered.");
 	});
 	it("records a failed task outcome without throwing", async () => {
 		await harness.close(context);
@@ -722,7 +733,7 @@ describe("walkthrough summaries", () => {
 		const doc = await summarize();
 		expect(started).toHaveLength(2);
 		expect(doc?.walkthroughAttempts?.[revision]).toBe(2);
-		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(written(doc, revision)).toBeUndefined();
 		expect(doc?.walkthroughNotes?.[revision]).toBe("No walkthrough available. The summariser failed.");
 	});
 
@@ -787,7 +798,7 @@ describe("walkthrough summaries", () => {
 			},
 		]);
 		const doc = await summarize();
-		const walkthrough = doc?.walkthroughs?.[Revision.key(changeset.revision)];
+		const walkthrough = written(doc, Revision.key(changeset.revision));
 		expect(walkthrough).toBeDefined();
 		expect(walkthrough?.files.every(({ path }) => path === "src/a.ts")).toBe(true);
 		expect(JSON.stringify(walkthrough).length).toBeLessThan(17_000);
@@ -814,7 +825,7 @@ describe("walkthrough summaries", () => {
 			await withoutProvenance();
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 			const doc = await summarize({ origin: pullRequest });
-			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
+			expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Changes a value.");
 		});
 		it("summarises a pull request from its origin before any verdict document exists", async () => {
 			const fresh = await openHarness(createMemoryStorage(), {
@@ -826,7 +837,7 @@ describe("walkthrough summaries", () => {
 				scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 				await summarizeReview({ harness: fresh, changeset, config, models: models.review, origin: pullRequest });
 				const doc = await fresh.snapshot(VerdictDocument, (await fresh.root(context)).id, context);
-				expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
+				expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Changes a value.");
 			} finally {
 				await fresh.close(context);
 			}
@@ -836,7 +847,7 @@ describe("walkthrough summaries", () => {
 			const auth = vi.spyOn(models.models, "checkAuth");
 			await summarize();
 			expect(auth).not.toHaveBeenCalled();
-			expect((await stored())?.walkthroughs).toBeUndefined();
+			expect((await stored())?.routedWalkthroughs).toBeUndefined();
 			expect((await stored())?.walkthroughNotes).toBeUndefined();
 		});
 		it("summarises again when the review's plan routes the walkthrough to another model, and not when it does not", async () => {
@@ -869,8 +880,59 @@ describe("walkthrough summaries", () => {
 			expect(seen).toEqual(["scripted"]);
 			const doc = await summarize({ origin: pullRequest, plan: routed("other") });
 			expect(seen).toEqual(["scripted", "other"]);
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on other.");
+			expect(
+				Object.fromEntries(
+					Object.entries(doc?.routedWalkthroughs?.[revision] ?? {}).map(([route, { summary }]) => [
+						route,
+						summary,
+					]),
+				),
+			).toEqual({
+				[`${models.ref("scripted").provider}/scripted@`]: "Written on scripted.",
+				[`${models.ref("other").provider}/other@`]: "Written on other.",
+			});
 		});
+		it.each([
+			["returns no summary", () => fauxAssistantMessage("No tool call.")],
+			["writes its own", () => success("Written on other.")],
+		])(
+			"keeps the walkthrough the decided round's light route wrote when a review on another route %s",
+			async (_name, replacement) => {
+				await withoutProvenance();
+				const revision = Revision.key(changeset.revision);
+				const routed = (id: string) =>
+					ReviewPlan.from({
+						tiers: [
+							{
+								tier: "light",
+								status: "routed",
+								models: [{ model: `${models.ref(id).provider}/${id}`, credential: "test" }],
+							},
+						],
+						lenses: [],
+					});
+				scriptConversations(models, [
+					{ match: "You write Melian's walkthrough", replies: [success("Written on scripted."), replacement()] },
+				]);
+				await summarize({ origin: pullRequest, plan: routed("scripted") });
+				await summarize({ origin: pullRequest, plan: routed("other") });
+				const root = await harness.root(context);
+				await root.commit(async (tx) => {
+					(await tx.doc(VerdictDocument, root.id)).provenance = {
+						[revision]: {
+							kind: "pull-request",
+							policy: `revision:${changeset.revision.base}`,
+							manifest: [],
+							lenses: [],
+							plan: routed("scripted").toJSON(),
+						},
+					};
+				}, context);
+				const doc = await stored();
+				expect(publishedWalkthrough(doc, revision)?.summary).toBe("Written on scripted.");
+				expect(publishedWalkthroughNote(doc, revision)).toBeUndefined();
+			},
+		);
 		it("summarises again when only the light route's thinking level changes", async () => {
 			const asked: string[] = [];
 			scriptConversations(models, [
@@ -893,8 +955,13 @@ describe("walkthrough summaries", () => {
 			const high = { ...config, models: { light: { ...light, thinking: "high" as const } } };
 			const doc = await summarize({ config: high });
 			expect(asked).toHaveLength(2);
-			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("At high thinking.");
-			expect(doc?.walkthroughRoutes?.[Revision.key(changeset.revision)]).toBe(`${light.model}@high`);
+			expect(
+				Object.fromEntries(
+					Object.entries(doc?.routedWalkthroughs?.[Revision.key(changeset.revision)] ?? {}).map(
+						([route, { summary }]) => [route, summary],
+					),
+				),
+			).toEqual({ [`${light.model}@low`]: "At low thinking.", [`${light.model}@high`]: "At high thinking." });
 			await summarize({ config: high });
 			expect(asked).toHaveLength(2);
 		});
@@ -909,7 +976,7 @@ describe("walkthrough summaries", () => {
 			const before = models.provider.state.callCount;
 			const doc = await summarize({ origin: pullRequest });
 			expect(models.provider.state.callCount).toBe(before);
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Stored before routes.");
+			expect(written(doc, revision)?.summary).toBe("Stored before routes.");
 			expect(doc?.walkthroughNotes).toBeUndefined();
 		});
 		it("keeps a walkthrough another route wrote while no light model has credentials", async () => {
@@ -923,7 +990,7 @@ describe("walkthrough summaries", () => {
 			const doc = await summarize({
 				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
 			});
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written first.");
+			expect(written(doc, revision)?.summary).toBe("Written first.");
 			expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 		});
 		it("counts a failed attempt on top of the attempts already spent", async () => {
@@ -954,7 +1021,7 @@ describe("walkthrough summaries", () => {
 			const auth = vi.spyOn(models.models, "checkAuth");
 			await summarize({ origin: { kind: "range" } });
 			expect(auth).not.toHaveBeenCalled();
-			expect((await stored())?.walkthroughs).toBeUndefined();
+			expect((await stored())?.routedWalkthroughs).toBeUndefined();
 			expect((await stored())?.walkthroughNotes).toBeUndefined();
 		});
 		it("resolves the light model through the plan it is given, not the configuration", async () => {
@@ -1016,8 +1083,8 @@ describe("walkthrough summaries", () => {
 				},
 			});
 			expect(asked).toEqual([wanted.modelId]);
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the new route.");
-			expect(doc?.walkthroughRoutes?.[revision]).toBe(`${light.provider}/${light.modelId}@${thinking ?? ""}`);
+			expect(written(doc, revision)?.summary).toBe("Written on the new route.");
+			expect(writtenRoute(doc, revision)).toBe(`${light.provider}/${light.modelId}@${thinking ?? ""}`);
 			const record = await harness.getTask(stale as TaskId, context);
 			expect(record?.state.status === "terminal" && record.state.outcome.status).toBe("aborted");
 		});
@@ -1134,7 +1201,7 @@ describe("walkthrough summaries", () => {
 			}, context);
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 			const doc = await summarize();
-			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+			expect(written(doc, revision)?.summary).toBe("Changes a value.");
 			expect((await harness.snapshot(SummaryIndex, root.id, context))?.tasks[revision]).toBe(pending);
 		});
 	});
@@ -1162,16 +1229,14 @@ describe("the walkthrough publication posts", () => {
 	});
 	it("is the stored one when the round's plan routes its light tier to the model that wrote it", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/first@" },
+			routedWalkthroughs: { [revision]: { "faux/first@": walkthrough } },
 			provenance: { [revision]: planned([{ model: "faux/first" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
 	});
 	it("is the stored one, with no note, when its route matches the round's light model at an explicit thinking level", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/first@high" },
+			routedWalkthroughs: { [revision]: { "faux/first@high": walkthrough } },
 			provenance: { [revision]: planned([{ model: "faux/first", thinking: "high" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
@@ -1179,24 +1244,21 @@ describe("the walkthrough publication posts", () => {
 	});
 	it("is the stored one when the model that wrote it is a fallback of the round's light tier", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/second@" },
+			routedWalkthroughs: { [revision]: { "faux/second@": walkthrough } },
 			provenance: { [revision]: planned([{ model: "faux/first" }, { model: "faux/second" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
 	});
 	it("is none when another plan's light model wrote it", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/other@" },
+			routedWalkthroughs: { [revision]: { "faux/other@": walkthrough } },
 			provenance: { [revision]: planned([{ model: "faux/first" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
 	});
 	it("is none when the round's plan sets another thinking level", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/first@low" },
+			routedWalkthroughs: { [revision]: { "faux/first@low": walkthrough } },
 			provenance: { [revision]: planned([{ model: "faux/first", thinking: "high" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
@@ -1214,8 +1276,7 @@ describe("the walkthrough publication posts", () => {
 		expect(
 			publishedWalkthrough(
 				{
-					walkthroughs: { [revision]: walkthrough },
-					walkthroughRoutes: { [revision]: "faux/other@" },
+					routedWalkthroughs: { [revision]: { "faux/other@": walkthrough } },
 					provenance: { [revision]: { ...planned([]), plan: undefined } },
 				} as never,
 				revision,
@@ -1224,8 +1285,7 @@ describe("the walkthrough publication posts", () => {
 	});
 	it("is none when the round's plan routes no light model", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/first@" },
+			routedWalkthroughs: { [revision]: { "faux/first@": walkthrough } },
 			provenance: {
 				[revision]: {
 					...planned([]),
@@ -1237,8 +1297,7 @@ describe("the walkthrough publication posts", () => {
 	});
 	it("is the stored one when only another revision has a provenance", () => {
 		const state = {
-			walkthroughs: { [revision]: walkthrough },
-			walkthroughRoutes: { [revision]: "faux/other@" },
+			routedWalkthroughs: { [revision]: { "faux/other@": walkthrough } },
 			provenance: { "other..revision": planned([{ model: "faux/first" }]) },
 		};
 		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
@@ -1254,8 +1313,7 @@ describe("the walkthrough publication posts", () => {
 		[
 			"no note beside a walkthrough it posts",
 			{
-				walkthroughs: { [revision]: walkthrough },
-				walkthroughRoutes: { [revision]: "faux/first@" },
+				routedWalkthroughs: { [revision]: { "faux/first@": walkthrough } },
 				provenance: { [revision]: planned([{ model: "faux/first" }]) },
 			},
 			undefined,
@@ -1263,8 +1321,7 @@ describe("the walkthrough publication posts", () => {
 		[
 			"the fixed note for a walkthrough another light route wrote",
 			{
-				walkthroughs: { [revision]: walkthrough },
-				walkthroughRoutes: { [revision]: "faux/other@" },
+				routedWalkthroughs: { [revision]: { "faux/other@": walkthrough } },
 				provenance: { [revision]: planned([{ model: "faux/first" }]) },
 			},
 			"No walkthrough available. Another light route wrote it.",

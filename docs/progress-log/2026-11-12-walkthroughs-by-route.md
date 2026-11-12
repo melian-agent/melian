@@ -1,0 +1,7 @@
+Each light route now keeps its own walkthrough of a revision, in the verdict document's `routedWalkthroughs`, for [pull request #330](https://github.com/melian-agent/melian/pull/330). A walkthrough task writes or removes only its own route's walkthrough, and publication posts the one the verdict's plan routes. Before, a re-review on another route overwrote the revision's one walkthrough, or deleted it when its summariser returned nothing, and a re-review that then failed before adjudication left the still-current round with none. Melian's design lens found it on the own-build round at `b58d908f`, and the maintainer ruled on 2026-11-12, in the builder's session, to key walkthroughs by route. Version 15 is unreleased, so the shape changed without another bump; `walkthroughRoutes` is gone.
+
+A walkthrough an older Melian stored without its route stays in `walkthroughs`, stands, and posts when no planned route wrote one, as the maintainer ruled on 2026-11-09. The same round's finding 25ce5eeb9bba7e37 raised that case again and is covered by that ruling.
+
+A note no longer posts beside a walkthrough publication posts, so another route's failure note never hides the decided round's walkthrough.
+
+The maintainer accepted the Actions round's finding 18642f0d68ae4cc5 as read on 2026-11-12, in the builder's session: an aborted walkthrough costs no attempt, though one aborted after its request went out has spent a call. [Issue #367](https://github.com/melian-agent/melian/issues/367) holds charging such an abort.
