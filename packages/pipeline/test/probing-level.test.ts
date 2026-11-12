@@ -942,8 +942,11 @@ describe("a level that probes", () => {
 		expect(first.heads).toHaveLength(2);
 	});
 
-	it("writes and prunes nothing from a rerun task another review took the revision from", async () => {
-		const { run, changeset } = await review({ planner: plan, prober: probing(failing) });
+	it.each([
+		["runs no more probes once another review takes the revision", [failing, failing], 1],
+		["prunes nothing when every probe it holds already stands", [], 0],
+	])("writes nothing from a rerun task another review took the revision from: %s", async (_, scripts, ran) => {
+		const { run, changeset, heads } = await review({ planner: plan, prober: probing(failing) });
 		await run;
 		const reviewer = harness!.harness;
 		const root = await reviewer.root(backgroundContext);
@@ -951,20 +954,32 @@ describe("a level that probes", () => {
 		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!;
 		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
 		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
-		const stored = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
+		const before = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
+		const standing = Object.keys(before);
 		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		// New probes it would run, or only the probe whose rerun already stands, which leaves the prune alone to decide.
+		const probes =
+			scripts.length === 0
+				? [{ key: standing[0]!, script: failing, files: [], environment }]
+				: scripts.map((script, n) => ({ key: `replaced ${n}`, script, files: [], environment }));
 		const task = await root.commit(async (tx) => {
 			const document = await tx.doc(ProbeReruns, root.id);
 			document.tasks = { ...document.tasks, [at]: { task: -1, key: "another review's probes" } };
+			document.runs = {
+				...document.runs,
+				[at]: { ...document.runs[at], "another review's": before[standing[0]!]! },
+			};
 			return tx.createTask(
 				probeRerunTask(),
-				{ root: root.id, revision, probes: [{ key: "replaced", script: failing, files: [], environment }] },
+				{ root: root.id, revision, probes },
 				{ ownership: { kind: "conversation" } },
 			);
 		}, backgroundContext);
+		const headsBefore = heads.length;
 		await reviewer.waitForTask(task, backgroundContext);
 		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
-		expect(Object.keys(runs)).toEqual(stored);
+		expect(Object.keys(runs).sort()).toEqual([...standing, "another review's"].sort());
+		expect(heads.length - headsBefore).toBe(ran);
 	});
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {

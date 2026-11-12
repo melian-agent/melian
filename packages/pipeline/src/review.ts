@@ -1374,7 +1374,7 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 				const at = Revision.key(revision);
 				const done = { status: "terminal", outcome: { status: "completed", result: {} } } as const;
 				for (const probe of probes) {
-					const stored = (await runtime.snapshot(ProbeReruns, root, context))?.runs[at]?.[probe.key];
+					const stored = (await runtime.snapshot(ProbeReruns, root, context))!.runs[at]?.[probe.key];
 					if (stored !== undefined && "result" in stored && probeConclusive(stored.result)) continue;
 					const run = await runHeadProbe(
 						{ script: probe.script, files: probe.files },
@@ -1385,7 +1385,7 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 					let replaced = false;
 					await runtime.commit(async (tx) => {
 						const document = await tx.doc(ProbeReruns, root);
-						replaced = document.tasks?.[at]?.task !== runtime.taskId;
+						replaced = document.tasks![at]!.task !== runtime.taskId;
 						if (replaced) return done;
 						document.runs = { ...document.runs, [at]: { ...document.runs[at], [probe.key]: run } };
 						return undefined;
@@ -1395,7 +1395,7 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 				// A run again of a failed lens names new probes, so the revision keeps only the runs its current claims rest on.
 				await runtime.commit(async (tx) => {
 					const document = await tx.doc(ProbeReruns, root);
-					if (document.tasks?.[at]?.task !== runtime.taskId) return done;
+					if (document.tasks![at]!.task !== runtime.taskId) return done;
 					const current = new Set(probes.map((probe) => probe.key));
 					const kept = Object.entries(document.runs[at] ?? {}).filter(([key]) => current.has(key));
 					document.runs = { ...document.runs, [at]: Object.fromEntries(kept) };
@@ -1412,7 +1412,7 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 const ProbeRerunTask = probeRerunTask();
 
 // Starts the task that runs each candidate's claim probes again, or attaches to the live one another review started
-// for the same probes, and waits for it. Claims that cite one probe share its rerun.
+// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
@@ -1427,7 +1427,6 @@ async function rerunProbes(
 			const probe = candidate.probes?.[probeClaimKey(claim)];
 			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
-			if (probes.has(key)) continue;
 			probes.set(key, {
 				key,
 				script: probe.probe.script,
@@ -1440,7 +1439,7 @@ async function rerunProbes(
 	const task = await (await harness.root(context)).commit(async (tx) => {
 		const document = await tx.doc(ProbeReruns, root);
 		const known = document.tasks?.[at];
-		if (known?.key === key && (await tx.task(known.task as TaskId))?.state.status !== "terminal")
+		if (known?.key === key && (await tx.task(known.task as TaskId))!.state.status !== "terminal")
 			return known.task as TaskId;
 		const created = await tx.createTask(ProbeRerunTask, input, { ownership: { kind: "conversation" } });
 		document.tasks = { ...document.tasks, [at]: { task: created, key } };
