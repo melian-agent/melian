@@ -5,7 +5,14 @@ import { Lease, LeaseError, type StoredLease } from "@melian-agent/core";
  * clone's copy holds what Pi's storage never writes.
  */
 export class StateBranchError extends Error {
-	readonly code: "fetchFailed" | "pushFailed" | "invalidBranch" | "invalidCopy" | "invalidKey" | "invalidHolder";
+	readonly code:
+		| "fetchFailed"
+		| "pushFailed"
+		| "invalidBranch"
+		| "invalidCopy"
+		| "invalidKey"
+		| "invalidHolder"
+		| "storedElsewhere";
 
 	constructor(code: StateBranchError["code"], message: string) {
 		super(message);

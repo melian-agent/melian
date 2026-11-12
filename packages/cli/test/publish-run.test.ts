@@ -32,6 +32,7 @@ import { publish } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import * as repository from "../src/repository.ts";
 import { storagePath } from "../src/repository.ts";
+import { ChangesetStore } from "../src/state.ts";
 import * as targets from "../src/target.ts";
 
 afterEach(() => {
@@ -63,6 +64,7 @@ async function published(
 	failedRerun?: boolean,
 	fails = true,
 	afterChecks = false,
+	observe?: (method: string) => void,
 ): Promise<{ state: FakeState; stderr: string }> {
 	const base = "";
 	const head = "";
@@ -81,7 +83,10 @@ async function published(
 				owner: state.owner,
 				repo: state.repo,
 				token: "t",
-				fetch: fakeGitHub(state),
+				fetch: async (input, init) => {
+					observe?.(init?.method ?? "GET");
+					return fakeGitHub(state)(input, init);
+				},
 				...options,
 			}),
 		);
@@ -239,4 +244,62 @@ it("keeps the decided round's run after a rerun checks the head and then fails",
 	const { state } = await published(true, true, true);
 	expect(state.ledgers[0]!.body).toContain("Run details: 2.0 s");
 	expect(state.ledgers[0]!.body).not.toContain("check guardrails");
+});
+
+it("publishes only from storage it leased from the state branch", async () => {
+	const write = vi.spyOn(ChangesetStore, "write");
+	await published();
+	expect(write.mock.calls.filter((call) => call[4]?.authoritative === true)).toHaveLength(1);
+});
+
+it("renews the lease on melian/state before every write to GitHub", async () => {
+	const events: string[] = [];
+	vi.spyOn(ChangesetStore.prototype, "checkpoint").mockImplementation(async () => {
+		events.push("checkpoint");
+	});
+	await published(undefined, true, false, (method) => {
+		if (method !== "GET") events.push("write");
+	});
+	expect(events.filter((event) => event === "write").length).toBeGreaterThan(1);
+	expect(events.findIndex((event, i) => event === "write" && events[i - 1] !== "checkpoint")).toBe(-1);
+});
+
+it("posts nothing more once melian/state refuses the lease", async () => {
+	let writes = 0;
+	let checks = 0;
+	vi.spyOn(ChangesetStore.prototype, "checkpoint").mockImplementation(async () => {
+		if (++checks === 3)
+			throw new repository.CliError(
+				"melian publish could not store the pull request's storage on melian/state before posting: another run took the changeset's lease, at generation 2, after this one's 1; nothing more was posted",
+			);
+	});
+	await expect(
+		published(undefined, true, false, (method) => {
+			if (method !== "GET") writes++;
+		}),
+	).rejects.toMatchObject({
+		code: "staleTarget",
+		message: expect.stringMatching(/another run took the changeset's lease, at generation 2, after this one's 1/),
+	});
+	expect(writes).toBe(1);
+});
+
+it("reports a refused fence as the failure, not the store's close after it", async () => {
+	let checks = 0;
+	vi.spyOn(ChangesetStore.prototype, "checkpoint").mockImplementation(async () => {
+		if (++checks === 3) throw new repository.CliError("another run took the changeset's lease");
+	});
+	vi.spyOn(ChangesetStore.prototype, "close").mockRejectedValue(
+		new repository.CliError("GitHub has this publication, but melian/state did not take its storage"),
+	);
+	await expect(published()).rejects.toMatchObject({ code: "staleTarget" });
+});
+
+it("fails a publication that posted when its store is left behind", async () => {
+	vi.spyOn(ChangesetStore.prototype, "close").mockRejectedValue(
+		new repository.CliError("GitHub has this publication, but melian/state did not take its storage"),
+	);
+	await expect(published()).rejects.toThrow(
+		/^GitHub has this publication, but melian\/state did not take its storage$/,
+	);
 });

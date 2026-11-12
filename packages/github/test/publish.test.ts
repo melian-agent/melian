@@ -16,7 +16,7 @@ import {
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
-import { PublishedDocument } from "../../pipeline/src/publish.ts";
+import { PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { RoundsDocument } from "../../pipeline/src/rounds.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
@@ -59,11 +59,14 @@ function providerFor(state: FakeState) {
 }
 
 // Reviews revision 1 and moves a fake pull request to it.
-async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName, nanRetries)) {
+async function reviewedRevisionOne(
+	script = lensScript(unsafeManager, emptyName, nanRetries),
+	fence?: () => Promise<void>,
+) {
 	const fake = scenarioModels();
 	const state = pullRequestState();
 	const github = providerFor(state);
-	harness = await openPublishHarness(createMemoryStorage(), fake, github);
+	harness = await openPublishHarness(createMemoryStorage(), fake, github, fence);
 	const { changeset, review } = await reviewScenario(repo, harness, fake, script);
 	await review.catch((error: unknown) => {
 		if (!(error instanceof ReviewError)) throw error;
@@ -389,6 +392,31 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toHaveLength(before);
 		expect(again).toMatchObject({ posted: 0, replies: 0, recovered: 0 });
 		expect(state.reviews).toHaveLength(1);
+	});
+
+	it("resolves no addressed thread once the lease is lost after its comment's edit", async () => {
+		// Another run takes the lease once the edit has landed, before the thread is resolved.
+		let refused = () => false;
+		const { fake, github, changeset, state } = await reviewedRevisionOne(undefined, async () => {
+			if (refused()) throw new Error("another run holds the lease");
+		});
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const first = await readFindings(harness!, root, Revision.key(changeset.revision), context);
+		const manager = first.find((finding) => finding.ruleId === "null-dereference")!;
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const edited = () =>
+			state.calls.some(({ method, path }) => method === "PATCH" && path.endsWith(`/comments/${thread}`));
+		refused = edited;
+		await publish(github, second.changeset).catch(() => undefined);
+		expect(edited()).toBe(true);
+		expect(state.resolvedThreads).not.toContain(Number(thread));
 	});
 
 	it("edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither", async () => {
@@ -1598,6 +1626,84 @@ describe("cross-head answer discovery", () => {
 		},
 	);
 
+	it.each([
+		["the edit", 1],
+		["the resolution", 2],
+	] as const)(
+		"writes nothing more once the lease is refused before %s of an addressed finding",
+		async (_name, refusedAt) => {
+			const state = pullRequestState();
+			state.comments.push(root(1));
+			let checks = 0;
+			const refusal = new Error("another run holds the lease");
+			await expect(
+				providerFor(state).replyResolved(
+					7,
+					{ id: "fedcba9876543210", thread: "1", revision: old, ruleId: "rule", path: "src/user.ts", line: 7 },
+					head,
+					secret,
+					async () => {
+						if (++checks === refusedAt) throw refusal;
+					},
+				),
+			).rejects.toBe(refusal);
+			const edits = state.calls.filter(({ method }) => method === "PATCH");
+			expect(edits).toHaveLength(refusedAt - 1);
+			expect(state.resolvedThreads).toEqual([]);
+		},
+	);
+
+	it("replies to a dismissed finding with its reason, and neither edits nor resolves its thread", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		const dismissal = { by: "Test", reason: "Safe.", at: "2026-10-18T00:00:00.000Z" };
+		const reply = await providerFor(state).replyResolved(
+			7,
+			{
+				id: "fedcba9876543210",
+				thread: "1",
+				revision: old,
+				ruleId: "rule",
+				path: "src/user.ts",
+				line: 7,
+				dismissal,
+			},
+			head,
+			secret,
+		);
+		expect(state.comments).toHaveLength(2);
+		expect(reply).toBe(String(state.comments[1]!.id));
+		expect(state.comments[1]!.body).toContain("Safe.");
+		expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+		expect(state.resolvedThreads).toEqual([]);
+	});
+
+	it("posts no dismissal's reply once the lease is refused", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		const refusal = new Error("another run holds the lease");
+		await expect(
+			providerFor(state).replyResolved(
+				7,
+				{
+					id: "fedcba9876543210",
+					thread: "1",
+					revision: old,
+					ruleId: "rule",
+					path: "src/user.ts",
+					line: 7,
+					dismissal: { by: "Test", reason: "Safe.", at: "2026-10-18T00:00:00.000Z" },
+				},
+				head,
+				secret,
+				async () => {
+					throw refusal;
+				},
+			),
+		).rejects.toBe(refusal);
+		expect(state.comments).toHaveLength(1);
+	});
+
 	it("does not mistake a refused thread read for a deleted reply target", async () => {
 		const state = pullRequestState();
 		state.comments.push(root(1));
@@ -1633,5 +1739,50 @@ describe("cross-head answer discovery", () => {
 			await expect(result).rejects.toMatchObject({ code: "failed" });
 			expect(state.resolvedThreads).toEqual([]);
 		}
+	});
+});
+
+describe("the hook before posting", () => {
+	const writes = (state: FakeState) => state.calls.filter(({ method }) => method !== "GET");
+
+	it("runs once the publisher secret is stored, before any write to GitHub", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const seen: { secret?: string; writes: number }[] = [];
+		await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+			beforePosting: async () => {
+				const root = (await harness!.root(context)).id;
+				seen.push({
+					secret: (await harness!.snapshot(PublisherDocument, root, context))?.secret,
+					writes: writes(state).length,
+				});
+			},
+		});
+		expect(seen).toEqual([{ secret: expect.stringMatching(/^[0-9a-f]{64}$/), writes: 0 }]);
+		expect(writes(state).length).toBeGreaterThan(0);
+	});
+
+	it("posts nothing when the hook rejects", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const refusal = new Error("the state branch refused the storage");
+		await expect(
+			publishReview({
+				harness: harness!,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+				beforePosting: async () => {
+					throw refusal;
+				},
+			}),
+		).rejects.toBe(refusal);
+		expect(writes(state)).toEqual([]);
 	});
 });

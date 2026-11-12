@@ -59,6 +59,16 @@ describe("liveModels", () => {
 		expect(existsSync(marker)).toBe(true);
 	});
 
+	it("leaves the state branch's writers' key out of the model catalogue", async () => {
+		mkdirSync(join(config, "melian"), { recursive: true, mode: 0o700 });
+		writeFileSync(
+			join(config, "melian", "secrets.yaml"),
+			"credentials:\n  state: { provider: melian-state, env: MELIAN_STATE_TEST_KEY }\n",
+			{ mode: 0o600 },
+		);
+		await expect(liveModels(join(repo, "packages", "evals"), env())).resolves.toBeDefined();
+	});
+
 	it("returns the models once every named command has run", async () => {
 		const marker = join(repo, "ran");
 		secrets(`touch ${marker}; printf key-value`);

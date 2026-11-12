@@ -30,7 +30,10 @@ beforeEach(() => {
 	io = { cwd: "/repo", env: {}, color: false, stdout: vi.fn(), stderr: vi.fn() };
 	stores = { repoRoot: "/repo", directory: "/state", candidates: [], entries: [], histories: new Map() };
 	vi.spyOn(ComparisonStores, "read").mockResolvedValue(stores);
-	vi.spyOn(repository, "git").mockResolvedValue("git@github.com:owner/repo.git");
+	vi.spyOn(repository, "git").mockImplementation(async (_cwd, args) => {
+		expect(args).toEqual(["remote", "get-url", "origin"]);
+		return "git@github.com:owner/repo.git";
+	});
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -58,7 +61,7 @@ it.each(["member", "unreachable"] as const)(
 		const comparison = Comparison.of(candidate);
 		const key = `${answer.base}..${answer.head}`;
 		stores.entries.push({ changeset: range, unattributed: key, comparison });
-		await (await PullRequestComparison.open(io, 7)).export({ json: true });
+		await (await PullRequestComparison.open(io, 7, true)).export({ json: true });
 		const exported = JSON.parse(output());
 		expect(exported.comparisons).toEqual({});
 		expect(exported.unattributed).toEqual({ [key]: comparison.toJSON() });
@@ -74,7 +77,7 @@ it.each(["member", "unreachable"] as const)(
 		]) {
 			stores.entries.splice(0, stores.entries.length, ...entries);
 			vi.mocked(io.stdout).mockClear();
-			await (await PullRequestComparison.open(io, 7)).export({ json: false });
+			await (await PullRequestComparison.open(io, 7, true)).export({ json: false });
 			expect(output()).toContain(expected);
 			expect(io.stderr).not.toHaveBeenCalled();
 		}
@@ -87,7 +90,7 @@ it("does not call own-store raw compatibility records additions beyond a snapsho
 	stores.histories.set(id, history);
 	stores.candidates.push({ id: `${id}.r1`, base: answer.base, head: answer.head, provenance: { kind: "range" } });
 	stores.entries.push({ changeset: id, unattributed: "raw-key", comparison: Comparison.of(answer) });
-	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	await (await PullRequestComparison.open(io, 7, true)).export({ json: true });
 	expect(Object.keys(JSON.parse(output()).unattributed)).toEqual(["raw-key"]);
 	expect(io.stderr).not.toHaveBeenCalled();
 });
@@ -110,7 +113,7 @@ it("warns when a later owned comparison is in the same pull store as a saved mem
 	for (const json of [true, false]) {
 		vi.mocked(io.stdout).mockClear();
 		vi.mocked(io.stderr).mockClear();
-		await (await PullRequestComparison.open(io, 7)).export({ json });
+		await (await PullRequestComparison.open(io, 7, true)).export({ json });
 		if (json) {
 			const exported = JSON.parse(output());
 			expect(Object.keys(exported.comparisons)).toEqual([first.id, second.id]);
@@ -149,7 +152,7 @@ it("keeps saved owned members in mint-time order when store scan order differs",
 			comparison: Comparison.of(round),
 		})),
 	);
-	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	await (await PullRequestComparison.open(io, 7, true)).export({ json: true });
 	expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([first.id, second.id, third.id]);
 });
 
@@ -166,7 +169,7 @@ it("keeps pre-snapshot mint order instead of sorting owned round IDs lexically",
 	stores.entries.push(
 		...[first, second].map((round) => ({ changeset: id, round: round.id, comparison: Comparison.of(round) })),
 	);
-	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	await (await PullRequestComparison.open(io, 7, true)).export({ json: true });
 	expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([first.id, second.id]);
 	expect(io.stderr).not.toHaveBeenCalled();
 });

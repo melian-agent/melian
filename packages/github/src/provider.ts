@@ -403,10 +403,13 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
+		beforeWrite: () => Promise<void> = async () => {},
 	): Promise<string | undefined> {
 		await this.isThreadOpen(pullRequest, finding.thread);
 		try {
-			if (finding.dismissal === undefined) return await this.address(pullRequest, finding, revision, secret);
+			if (finding.dismissal === undefined)
+				return await this.address(pullRequest, finding, revision, secret, beforeWrite);
+			await beforeWrite();
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 				this.octokit.rest.pulls.createReplyForReviewComment({
 					owner: this.owner,
@@ -557,6 +560,7 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
+		beforeWrite: () => Promise<void>,
 	): Promise<string | undefined> {
 		const { data } = await call("read the finding to address", () =>
 			this.octokit.rest.pulls.getReviewComment({
@@ -570,6 +574,7 @@ export class GitHubProvider implements ReviewProvider {
 		const closed = marker(finding.addressedIn ?? revision, "resolved", finding.id, secret);
 		if (editable && !data.body.split(/\r?\n/).includes(closed)) {
 			const suffix = `\n\nAddressed in commit ${(finding.addressedIn ?? revision).slice(0, 12)}.\n${closed}`;
+			await beforeWrite();
 			await call("edit the addressed finding", () =>
 				this.octokit.rest.pulls.updateReviewComment({
 					owner: this.owner,
@@ -579,6 +584,7 @@ export class GitHubProvider implements ReviewProvider {
 				}),
 			);
 		}
+		await beforeWrite();
 		const resolved = await this.resolveThread(pullRequest, finding.thread);
 		return editable && resolved ? finding.thread : undefined;
 	}

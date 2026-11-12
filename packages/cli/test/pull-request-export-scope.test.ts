@@ -339,6 +339,7 @@ it("snapshot catalogue ignores files outside the store filename whitelist", asyn
 it("sorts the complete refresh catalogue independently of filesystem enumeration order", async () => {
 	const comparison = await seed(foreign);
 	vi.spyOn(fs, "readdir").mockImplementation(async (path) => {
+		if (path === join(ownPath, "..", "state")) return [] as never;
 		expect(path).toBe(join(ownPath, ".."));
 		return [`${foreign}.sqlite`, `${own}.sqlite`] as never;
 	});

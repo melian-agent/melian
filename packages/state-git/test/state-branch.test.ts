@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import {
 	chmodSync,
@@ -19,7 +19,7 @@ import { defineDoc, openJsonlStorage } from "@melian-agent/pipeline";
 import { createSession } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
-import { LeaseHeld, StateBranchError } from "../src/index.ts";
+import { CopyInUse, LeaseHeld, StateBranchError } from "../src/index.ts";
 import {
 	type Clone,
 	changeset,
@@ -38,12 +38,27 @@ vi.setConfig({ testTimeout: 60_000 });
 let remote: Remote;
 
 // Checks the changeset out in a child process that exits without closing it, as a crashed review does.
-function crash(clone: Clone): void {
+function crash(clone: Clone, mode: "checkout" | "reserve" = "checkout"): void {
 	const fixture = fileURLToPath(new URL("./fixtures/crash-checkout.ts", import.meta.url));
-	const args = [clone.repoRoot, remote.bare, clone.directory, clone.holder, changeset, remote.key.toString("hex")];
+	const args = [
+		clone.repoRoot,
+		remote.bare,
+		clone.directory,
+		clone.holder,
+		changeset,
+		remote.key.toString("hex"),
+		mode,
+	];
 	execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
 		env: { ...process.env, ...isolatedGitEnv },
 	});
+}
+
+// Stores a copy holding one note, since a copy nothing wrote puts no tree on the branch.
+async function storeNoted(): Promise<void> {
+	const checkout = await remote.clone().branch().checkout(changeset);
+	await note(await storageOf(checkout), "stored");
+	await checkout.push();
 }
 
 beforeEach(() => {
@@ -185,6 +200,7 @@ describe("the lease", () => {
 
 	it("is released by the push", async () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
 		await checkout.push();
 		const { changesets } = remote.index() as {
 			changesets: Record<string, { lease: { expiresAt: string }; written: number }>;
@@ -314,16 +330,8 @@ describe("what the branch holds", () => {
 
 	it("names a fetch that fails", async () => {
 		const clone = remote.clone();
-		const error = await clone
-			.branch({ remote: join(remote.root, "absent.git") })
-			.checkout(changeset)
-			.catch((caught: unknown) => caught);
-		expect(error).toBeInstanceOf(StateBranchError);
-		expect(error).toMatchObject({
-			code: "fetchFailed",
-			// git's own error, without the newline it ends with.
-			message: expect.stringMatching(/^git fetch of melian\/state failed: \S[\s\S]*\S$/),
-		});
+		const checkout = await clone.branch({ remote: join(remote.root, "absent.git") }).checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: \S[\s\S]*\S$/);
 	});
 });
 
@@ -362,6 +370,7 @@ describe("Codex's review of d449ec6", () => {
 			const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
 			await Promise.all(
 				checkouts.map(async (checkout) => {
+					await note(await storageOf(checkout), checkout.changeset);
 					await checkout.push();
 					checkout.close();
 				}),
@@ -427,7 +436,7 @@ describe("Codex's review of d449ec6", () => {
 			(tree: string) => `040000 tree ${tree}\tPull Request\n040000 tree ${tree}\t${changeset}\n`,
 		],
 	])("refuses a changesets tree holding %s, and pushes nothing", async (_name, listing) => {
-		await (await remote.clone().branch().checkout(changeset)).push();
+		await storeNoted();
 		const bare = remote.bare;
 		const tree = gitIn(bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}`);
 		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
@@ -576,6 +585,82 @@ describe("Codex's review of edc438b", () => {
 	});
 });
 
+describe("a clone that cannot reach the branch", () => {
+	it("works on its own copy when the branch cannot be fetched, and keeps the copy's lock", async () => {
+		const clone = remote.clone();
+		const unreachable = { remote: join(remote.root, "absent.git") };
+		const checkout = await clone.branch(unreachable).checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: /);
+		await note(await storageOf(checkout), "offline");
+		await expect(clone.branch(unreachable).checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await checkout.push()).toEqual({ kind: "unreached", reason: checkout.unreached });
+		checkout.close();
+		expect(remote.tip()).toBeUndefined();
+		const reached = await clone.branch().checkout(changeset);
+		expect(reached.unreached).toBeUndefined();
+		expect(await notes(await storageOf(reached))).toEqual(["offline"]);
+	});
+
+	it("works on its own copy when the lease cannot be pushed", async () => {
+		const hook = join(remote.bare, "hooks", "pre-receive");
+		writeFileSync(hook, "#!/bin/sh\necho 'read-only token' >&2\nexit 1\n");
+		chmodSync(hook, 0o755);
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git push of melian\/state failed: [\s\S]*read-only token/);
+		expect(await checkout.push()).toMatchObject({ kind: "unreached" });
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it("still refuses a live lease it can read", async () => {
+		await remote.clone().branch().checkout(changeset);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toBeInstanceOf(LeaseHeld);
+	});
+
+	it("still refuses a branch it cannot read", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		await expect(
+			remote
+				.clone({ key: randomBytes(32) })
+				.branch()
+				.checkout(changeset),
+		).rejects.toMatchObject({
+			code: "invalidBranch",
+		});
+	});
+});
+
+describe("opening a copy without the branch", () => {
+	it("takes the copy's lock and touches no remote", async () => {
+		const clone = remote.clone();
+		const writer = await clone.branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
+		writer.close();
+		const reader = (await clone.branch({ remote: join(remote.root, "absent.git") }).open(changeset))!;
+		expect(reader.unreached).toBe("opened without the state branch");
+		expect(await notes(await storageOf(reader))).toEqual(["stored"]);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await reader.push()).toEqual({ kind: "unreached", reason: "opened without the state branch" });
+		reader.close();
+		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
+	});
+
+	it("answers undefined for a changeset this clone has no copy of", async () => {
+		expect(await remote.clone().branch().open(changeset)).toBeUndefined();
+	});
+});
+
+describe("a clone with no writers' key", () => {
+	it("works on its own copy under the lock, and touches no remote", async () => {
+		const clone = remote.clone({ key: undefined });
+		const checkout = await clone.branch().checkout(changeset);
+		expect(checkout.unreached).toBe("no writers' key is configured for the state branch");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await checkout.push()).toEqual({ kind: "unreached", reason: checkout.unreached });
+		expect(remote.tip()).toBeUndefined();
+	});
+});
+
 describe("what the mutation inventory found untested", () => {
 	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl", "task-01.jsonl"])(
 		"refuses %s on the branch",
@@ -719,20 +804,158 @@ const GOLDEN = {
 	sealed: "0179f42154297f99b85f1a6d5af912a28f8e24aa9085d85478267ca04bbb4bf12357fcbd",
 };
 
+describe("storing a copy and keeping the lease", () => {
+	it("pushes the copy, keeps the lease, and lets the run push again", async () => {
+		const clone = remote.clone();
+		const checkout = await clone.branch().checkout(changeset);
+		await note(await storageOf(checkout), "before posting");
+		expect(await checkout.push({ keepLease: true })).toMatchObject({ kind: "pushed" });
+		expect((remote.index() as { changesets: Record<string, unknown> }).changesets[changeset]).toBeDefined();
+		const fresh = remote.clone({ now: () => Date.now() + 3 * 60 * 60 * 1000 });
+		const restored = await fresh.branch().checkout(changeset);
+		expect(await notes(await storageOf(restored))).toEqual(["before posting"]);
+		restored.close();
+	});
+
+	it("pushes again after keeping the lease, and then releases it", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "first");
+		await checkout.push({ keepLease: true });
+		await note(await storageOf(checkout), "second");
+		expect(await checkout.push()).toMatchObject({ kind: "pushed" });
+		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 1 }, written: 1 } } });
+		expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual([
+			"first",
+			"second",
+		]);
+	});
+});
+
+describe("whether the branch holds a changeset", () => {
+	it("answers from the branch alone, with no key", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		expect(await reader.stored(changeset)).toBe(false);
+		await storeNoted();
+		expect(await reader.stored(changeset)).toBe(true);
+		expect(await reader.stored("pull-fedcba9876543210")).toBe(false);
+	});
+
+	it("names a fetch that fails", async () => {
+		await expect(
+			remote
+				.clone()
+				.branch({ remote: join(remote.root, "absent.git") })
+				.stored(changeset),
+		).rejects.toMatchObject({
+			code: "fetchFailed",
+		});
+	});
+});
+
 describe("the fencing generation", () => {
 	it("rises with every taking, and every write records the one it was made under", async () => {
 		const clone = remote.clone();
 		const first = await clone.branch().checkout(changeset);
 		expect(first.generation).toBe(1);
+		await note(await storageOf(first), "first");
 		await first.push();
 		first.close();
 		const second = await clone.branch().checkout(changeset);
 		expect(second.generation).toBe(2);
+		await note(await storageOf(second), "second");
 		await second.push();
 		expect(gitIn(remote.bare, "log", "-1", "--format=%s", "refs/heads/melian/state")).toMatch(
 			/^melian: run [0-9a-f-]{36}, incarnation [0-9a-f-]{36}, generation 2$/,
 		);
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 2 } } });
+	});
+});
+
+describe("a reservation of a changeset the branch does not hold", () => {
+	const index = () =>
+		remote.index() as {
+			changesets: Record<string, { lease: { generation: number; expiresAt: string }; written?: number }>;
+		};
+
+	it("takes the lease without storing a copy, renews it on confirm, and releases it", async () => {
+		const reservation = await remote.clone().branch().reserve(changeset);
+		expect(reservation.generation).toBe(1);
+		expect(index().changesets[changeset]!.lease.generation).toBe(1);
+		expect(index().changesets[changeset]!.written).toBeUndefined();
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+		expect(await reservation.confirm()).toEqual({ kind: "confirmed" });
+		await reservation.release();
+		expect(Date.parse(index().changesets[changeset]!.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+	});
+
+	it("names its clone by the label and the copies directory's ID, as a checkout does", async () => {
+		const clone = remote.clone();
+		const reservation = await clone.branch().reserve(changeset);
+		const identity = readFileSync(join(clone.directory, ".clone-id"), "utf8").trim();
+		expect(identity).toMatch(/^[0-9a-f-]{36}$/);
+		expect(
+			(remote.index() as { changesets: Record<string, { lease: { holder: { clone: string } } }> }).changesets[
+				changeset
+			]!.lease.holder.clone,
+		).toBe(`${clone.holder} ${identity}`);
+		await reservation.release();
+	});
+
+	it("takes over the live lease a crashed reservation of its own copies directory left", async () => {
+		const clone = remote.clone();
+		crash(clone, "reserve");
+		expect(index().changesets[changeset]!.lease.generation).toBe(1);
+		const reservation = await clone.branch().reserve(changeset);
+		expect(reservation.generation).toBe(2);
+		await reservation.release();
+	});
+
+	it("refuses a live lease of another copies directory, though its label is the same", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().reserve(changeset);
+		await expect(
+			clone.branch({ directory: join(clone.repoRoot, ".git", "melian", "elsewhere") }).reserve(changeset),
+		).rejects.toBeInstanceOf(LeaseHeld);
+		await first.release();
+	});
+
+	it("refuses a changeset the branch holds", async () => {
+		await storeNoted();
+		await expect(remote.clone().branch().reserve(changeset)).rejects.toMatchObject({
+			code: "storedElsewhere",
+			message: `melian/state holds ${changeset}, which another clone stored there`,
+		});
+	});
+
+	it("refuses while another clone holds the lease", async () => {
+		await remote.clone().branch().checkout(changeset);
+		await expect(remote.clone().branch().reserve(changeset)).rejects.toBeInstanceOf(LeaseHeld);
+	});
+
+	it("is refused on confirm once another run took the lease, or stored the changeset", async () => {
+		const start = Date.parse("2026-11-08T00:00:00Z");
+		const reservation = await remote
+			.clone({ now: () => start })
+			.branch()
+			.reserve(changeset);
+		const later = await remote
+			.clone({ now: () => start + 3 * 60 * 60 * 1000 })
+			.branch()
+			.checkout(changeset);
+		expect(await reservation.confirm()).toEqual({
+			kind: "refused",
+			reason: "another run took the changeset's lease, at generation 2, after this one's 1",
+		});
+		await later.push();
+		expect(await reservation.confirm()).toMatchObject({ kind: "refused" });
+	});
+
+	it("needs the writers' key", async () => {
+		await expect(remote.clone({ key: undefined }).branch().reserve(changeset)).rejects.toMatchObject({
+			code: "invalidKey",
+			message: "no writers' key is configured for the state branch",
+		});
 	});
 });
 
@@ -855,6 +1078,83 @@ describe("the lease record's incarnation", () => {
 	});
 });
 
+describe("Codex's review of b231987", () => {
+	it("stores no tree for a copy nothing wrote, and releases the lease", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(await checkout.push()).toEqual({ kind: "pushed", commit: remote.tip() });
+		expect(await reader.stored(changeset)).toBe(false);
+		const record = (remote.index() as { changesets: Record<string, { lease: { expiresAt: string } }> }).changesets[
+			changeset
+		]!;
+		expect(record).not.toHaveProperty("written");
+		expect(Date.parse(record.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+	});
+
+	it("records no write for a copy unchanged since the branch's, and keeps the stored tree", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const stored = remote.stored();
+		const second = await clone.branch().checkout(changeset);
+		expect(await second.push()).toMatchObject({ kind: "pushed" });
+		expect(remote.stored()).toBe(stored);
+		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 1 } } });
+	});
+
+	it("refuses to push a copy emptied since the branch stored it", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		for (const name of readdirSync(second.directory)) rmSync(join(second.directory, name));
+		const tip = remote.tip();
+		await expect(second.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: `this clone's copy of ${changeset} holds no files, though the branch's does, so Melian will not push it`,
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("keeps the lease for a copy nothing wrote yet, without storing a tree", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(await checkout.push({ keepLease: true })).toMatchObject({ kind: "pushed" });
+		expect(await reader.stored(changeset)).toBe(false);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toThrow(LeaseHeld);
+	});
+});
+
+describe("Codex's review of b231987, a reservation's lock", () => {
+	it("refuses a second reservation in the same clone while the first holds the changeset", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().reserve(changeset);
+		await expect(clone.branch().reserve(changeset)).rejects.toBeInstanceOf(CopyInUse);
+		await first.release();
+		const again = await clone.branch().reserve(changeset);
+		expect(again.generation).toBe(2);
+		await again.release();
+	});
+
+	it("refuses a checkout in the same clone while a reservation holds the changeset", async () => {
+		const clone = remote.clone();
+		const reservation = await clone.branch().reserve(changeset);
+		await expect(clone.branch().checkout(changeset)).rejects.toBeInstanceOf(CopyInUse);
+		await reservation.release();
+	});
+
+	it("releases the lock when the reservation is refused", async () => {
+		await storeNoted();
+		const clone = remote.clone();
+		await expect(clone.branch().reserve(changeset)).rejects.toMatchObject({ code: "storedElsewhere" });
+		(await clone.branch().checkout(changeset)).close();
+	});
+});
+
 describe("Codex's review of 7a1764ec", () => {
 	it.each([
 		["deleted", (path: string) => rmSync(path)],
@@ -945,6 +1245,21 @@ describe("Codex's review of 94ad27eb", () => {
 		const second = await clone.branch().checkout(changeset);
 		expect(second.setAside).toBeUndefined();
 		expect(await notes(await storageOf(second))).toEqual(["unpushed"]);
+	});
+});
+
+describe("Codex's review of a4de0552", () => {
+	it("refuses to push a copy Pi's storage cannot open, and moves nothing", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		const sidecar = readdirSync(checkout.directory).find((name) => name.startsWith("doc-"))!;
+		rmSync(join(checkout.directory, sidecar));
+		const tip = remote.tip();
+		await expect(checkout.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
+		});
+		expect(remote.tip()).toBe(tip);
 	});
 });
 
@@ -1161,12 +1476,9 @@ describe("the mutation inventory at f6872a26", () => {
 		const clone = remote.clone();
 		gitIn(clone.repoRoot, "config", "protocol.ext.allow", "always");
 		const start = Date.now();
-		await expect(
-			clone.branch({ remote: "ext::sh -c sleep% 10", transferMs: 500 }).checkout(changeset),
-		).rejects.toMatchObject({
-			code: "fetchFailed",
-			message: "git fetch of melian/state ran past its deadline of 500 ms",
-		});
+		const checkout = await clone.branch({ remote: "ext::sh -c sleep% 10", transferMs: 500 }).checkout(changeset);
+		expect(checkout.unreached).toBe("git fetch of melian/state ran past its deadline of 500 ms");
+		checkout.close();
 		expect(Date.now() - start).toBeLessThan(5000);
 	});
 
@@ -1292,4 +1604,52 @@ describe("the mutation inventory at f6872a26", () => {
 		expect(checkout.changeset).toBe(changeset);
 		checkout.close();
 	});
+});
+
+describe("the host round's finding on 403d1099, a copy worked on offline", () => {
+	// Checks the changeset out in a child process that holds the copy until its input closes, and answers whether that
+	// checkout reached the branch.
+	async function hold(clone: Clone, from: string): Promise<{ child: ChildProcess; state: string }> {
+		const fixture = fileURLToPath(new URL("./fixtures/hold-checkout.ts", import.meta.url));
+		const args = [clone.repoRoot, from, clone.directory, clone.holder, changeset, remote.key.toString("hex")];
+		const child = spawn(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
+			env: { ...process.env, ...isolatedGitEnv },
+			stdio: ["pipe", "pipe", "inherit"],
+		});
+		const state = await new Promise<string>((resolve, reject) => {
+			let out = "";
+			child.stdout!.on("data", (chunk: Buffer) => {
+				out += chunk.toString();
+				if (out.includes("\n")) resolve(out.trim());
+			});
+			child.on("exit", (code) =>
+				reject(new Error(`the holding process exited with ${code} before it held the copy`)),
+			);
+		});
+		return { child, state };
+	}
+
+	const absent = () => join(remote.root, "absent.git");
+
+	it.each([
+		["the holder's fetch fails", true, false],
+		["the second process's fetch fails", false, true],
+		["both fetches fail", true, true],
+	] as const)(
+		"lets no second process in the clone reach a copy another holds, when %s",
+		async (_name, first, second) => {
+			const clone = remote.clone();
+			const { child, state } = await hold(clone, first ? absent() : remote.bare);
+			try {
+				expect(state).toBe(first ? "unreached" : "reached");
+				await expect(clone.branch(second ? { remote: absent() } : {}).checkout(changeset)).rejects.toBeInstanceOf(
+					CopyInUse,
+				);
+				await expect(clone.branch().open(changeset)).rejects.toBeInstanceOf(CopyInUse);
+			} finally {
+				child.stdin!.end();
+				await new Promise((resolve) => (child.exitCode === null ? child.on("exit", resolve) : resolve(undefined)));
+			}
+		},
+	);
 });

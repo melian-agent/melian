@@ -215,13 +215,15 @@ export interface ReviewProvider {
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
 	/**
 	 * Edits an addressed finding and resolves its thread, or replies with a dismissal's reason. Returns the edited
-	 * comment or reply ID, or `undefined` when the thread is gone.
+	 * comment or reply ID, or `undefined` when the thread is gone. `beforeWrite` runs before each write; a rejection
+	 * stops the rest.
 	 */
 	replyResolved(
 		pullRequest: number,
 		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
 		secret: string,
+		beforeWrite?: () => Promise<void>,
 	): Promise<string | undefined>;
 	/** Whether a thread can be reused; resolved or deleted threads return false. Read lazily before reuse. */
 	isThreadOpen(pullRequest: number, comment: string): Promise<boolean>;

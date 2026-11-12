@@ -187,33 +187,25 @@ it("waits a random time below a bound that doubles to a second between lost race
 
 it("gives up when the branch moves under ten pushes in a row", async () => {
 	moves = 10;
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message: "the state branch moved under 10 pushes in a row",
-	});
+	expect((await remote.clone().branch().checkout(changeset)).unreached).toBe(
+		"the state branch moved under 10 pushes in a row",
+	);
 });
 
 it("names a lock the remote never grants, rather than a moving branch", async () => {
 	locked = 10;
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message: "the remote could not lock melian/state under 10 pushes in a row",
-	});
+	expect((await remote.clone().branch().checkout(changeset)).unreached).toBe(
+		"the remote could not lock melian/state under 10 pushes in a row",
+	);
 });
 
 it("does not retry a push the remote refused for another reason", async () => {
 	const hook = join(remote.bare, "hooks", "pre-receive");
 	writeFileSync(hook, "#!/bin/sh\necho 'state branch is protected' >&2\nexit 1\n");
 	chmodSync(hook, 0o755);
-	const error = await remote
-		.clone()
-		.branch()
-		.checkout(changeset)
-		.catch((caught: unknown) => caught);
-	expect(error).toMatchObject({
-		code: "pushFailed",
-		message: expect.stringMatching(/^git push of melian\/state failed: [\s\S]*state branch is protected/),
-	});
+	const checkout = await remote.clone().branch().checkout(changeset);
+	expect(checkout.unreached).toMatch(/^git push of melian\/state failed: [\s\S]*state branch is protected/);
+	expect(remote.tip()).toBeUndefined();
 });
 
 it("never lets a fetch or push wait on a credential prompt", async () => {
@@ -246,11 +238,9 @@ it("reads git's fetch and push output in the C locale, which git does not transl
 
 it("names a push the remote refused with no porcelain line, as a refused credential gives", async () => {
 	denied = true;
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message:
-			"git push of melian/state failed: remote: Permission to melian-agent/melian.git denied to reader.\nfatal: unable to access 'remote': The requested URL returned error: 403",
-	});
+	expect((await remote.clone().branch().checkout(changeset)).unreached).toBe(
+		"git push of melian/state failed: remote: Permission to melian-agent/melian.git denied to reader.\nfatal: unable to access 'remote': The requested URL returned error: 403",
+	);
 });
 
 it("fails a push whose objects cannot be written, rather than push a tree that names them", async () => {
@@ -276,10 +266,9 @@ it("gives every fetch and push a deadline of two minutes by default", async () =
 
 it("names a push that ran past its deadline", async () => {
 	stalled = true;
-	await expect(remote.clone().branch({ transferMs: 900 }).checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message: "git push of melian/state ran past its deadline of 900 ms",
-	});
+	expect((await remote.clone().branch({ transferMs: 900 }).checkout(changeset)).unreached).toBe(
+		"git push of melian/state ran past its deadline of 900 ms",
+	);
 });
 
 it("counts a push its deadline stopped as landed when the branch's tip is the commit it sent", async () => {
@@ -293,10 +282,9 @@ it("counts a push its deadline stopped as landed when the branch's tip is the co
 it("names a push its deadline stopped when the branch cannot be read again to see whether it landed", async () => {
 	stalled = true;
 	unreachableAfter = true;
-	await expect(remote.clone().branch({ transferMs: 900 }).checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message: "git push of melian/state ran past its deadline of 900 ms",
-	});
+	expect((await remote.clone().branch({ transferMs: 900 }).checkout(changeset)).unreached).toBe(
+		"git push of melian/state ran past its deadline of 900 ms",
+	);
 });
 
 it("counts a push its deadline stopped as landed when another run has since pushed on top of it", async () => {

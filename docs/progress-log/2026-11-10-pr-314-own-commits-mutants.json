@@ -1,0 +1,247 @@
+{
+ "mutants": [
+  {
+   "file": "packages/cli/src/state.ts",
+   "line": 50,
+   "column": 15,
+   "endLine": 50,
+   "endColumn": 23,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/cli/test/state-branch.test.ts > a pull request's storage on the state branch > keeps the marker secret, the ledger comment and every dismissal for a fresh clone",
+   "survivorClasses": [],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/cli/test/state-branch.test.ts > a pull request's storage on the state branch > keeps the marker secret, the ledger comment and every dismissal for a fresh clone",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 8,
+   "endLine": 284,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+   "survivorClasses": [],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 8,
+   "endLine": 284,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > refuses a live lease of another copies directory, though its label is the same",
+   "survivorClasses": [],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > refuses a live lease of another copies directory, though its label is the same",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 8,
+   "endLine": 284,
+   "endColumn": 75,
+   "mutatorName": "LogicalOperator",
+   "replacement": "held?.live(this.#now()) || held.holder.clone !== this.#holder.clone",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 8,
+   "endLine": 284,
+   "endColumn": 18,
+   "mutatorName": "OptionalChaining",
+   "replacement": "held.live",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes the lease without storing a copy, renews it on confirm, and releases it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 35,
+   "endLine": 284,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes over the live lease a crashed reservation of its own copies directory left",
+   "survivorClasses": [],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > takes over the live lease a crashed reservation of its own copies directory left",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-branch.ts",
+   "line": 284,
+   "column": 35,
+   "endLine": 284,
+   "endColumn": 75,
+   "mutatorName": "EqualityOperator",
+   "replacement": "held.holder.clone === this.#holder.clone",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > refuses a live lease of another copies directory, though its label is the same",
+   "survivorClasses": [],
+   "run": {
+    "head": "723e3e44",
+    "test": "packages/state-git/test/state-branch.test.ts > a reservation of a changeset the branch does not hold > refuses a live lease of another copies directory, though its label is the same",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > replies to a dismissed finding with its reason, and neither edits nor resolves its thread",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > replies to a dismissed finding with its reason, and neither edits nor resolves its thread",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the resolution of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "finding.dismissal !== undefined",
+   "claim": "killed",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > publishing a review > edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 412,
+   "column": 3,
+   "endLine": 412,
+   "endColumn": 23,
+   "mutatorName": "StatementRemoval (by hand)",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > posts no dismissal's reply once the lease is refused",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > posts no dismissal's reply once the lease is refused",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 577,
+   "column": 3,
+   "endLine": 577,
+   "endColumn": 23,
+   "mutatorName": "StatementRemoval (by hand)",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the edit of an addressed finding",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > cross-head answer discovery > writes nothing more once the lease is refused before the edit of an addressed finding",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/github/src/provider.ts",
+   "line": 587,
+   "column": 2,
+   "endLine": 587,
+   "endColumn": 22,
+   "mutatorName": "StatementRemoval (by hand)",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+   "survivorClasses": [],
+   "run": {
+    "head": "edd5ccaf",
+    "test": "packages/github/test/publish.test.ts > publishing a review > resolves no addressed thread once the lease is lost after its comment's edit",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 13,
+ "omitted": 0,
+ "unmutated": []
+}

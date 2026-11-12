@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import {
 	Changeset,
 	checksOfTier,
@@ -8,6 +7,7 @@ import {
 	loadConfig,
 	loadSecrets,
 	type MelianConfig,
+	modelCredentials,
 	type PullRequest,
 	Rendering,
 	type RepositoryPermission,
@@ -21,6 +21,7 @@ import {
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
+import type { Storage } from "@melian-agent/pipeline";
 import {
 	CallerContext,
 	backgroundContext as context,
@@ -56,7 +57,8 @@ import {
 	scriptVariable,
 	Triage,
 } from "./models.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git } from "./repository.ts";
+import { ChangesetStore } from "./state.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -256,7 +258,7 @@ export async function review(
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
-		credentials: secrets.credentials,
+		credentials: modelCredentials(secrets),
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 	spans.step("triage.create");
@@ -274,15 +276,19 @@ export async function review(
 	});
 	const unlockModels = (providers: readonly string[]) => spans.time("unlock", () => triage.unlockModels(providers));
 	spans.step("storage.open");
-	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
+	const store = await ChangesetStore.write(io, repoRoot, changeset.id);
+	const { storage } = store;
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const storage = await openStorage(path);
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry,
 		checkout: repoRoot,
 		environment: io.env,
 		...triage.harnessOptions(),
+	}).catch(async (error: unknown) => {
+		await storage.close(context).catch(() => {});
+		await store.close();
+		throw error;
 	});
 	const { harness } = reviewHarness;
 	try {
@@ -426,13 +432,14 @@ export async function review(
 		throw error;
 	} finally {
 		await reviewHarness.close(context);
+		await store.close();
 	}
 }
 
 // The spans end where the record is stored, just before the verdict prints, so the record covers the whole review.
 async function reviewTimings(
 	reviewHarness: ReviewHarness,
-	storage: Awaited<ReturnType<typeof openStorage>>,
+	storage: Storage,
 	spans: PrepareSpans,
 	revision: string,
 	before: number,
@@ -512,11 +519,19 @@ export async function publish(
 	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
 	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
 	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
-	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
-	const storage = await openStorage(path);
+	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id, undefined, { authoritative: true });
+	const { storage } = store;
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider);
+	// The lease is renewed before every post, so a run that stalled past it posts nothing over the run that took it.
+	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider, context, () =>
+		store.checkpoint(),
+	).catch(async (error: unknown) => {
+		await storage.close(context).catch(() => {});
+		await store.close();
+		throw error;
+	});
 	const { harness } = publishHarness;
+	let failed = false;
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
@@ -531,6 +546,7 @@ export async function publish(
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
 			},
 			readRun: (roundId) => reviewRun(storage, roundId, io),
+			beforePosting: () => store.checkpoint(),
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -553,19 +569,22 @@ export async function publish(
 		}
 		return 0;
 	} catch (error) {
+		failed = true;
 		if (error instanceof PublishError) io.stdout(new PublicationAttestations(error.attestations).render());
 		throw error;
 	} finally {
 		await publishHarness.close(context);
+		// The publication's own failure is the one to report; a store left behind after it is said beside it.
+		if (failed)
+			await store.close().catch((closing: unknown) => {
+				io.stderr(`melian: ${closing instanceof Error ? closing.message : String(closing)}\n`);
+			});
+		else await store.close();
 	}
 }
 
 // The ledger is still worth posting without its run details, so an unreadable record leaves them out and says so.
-async function reviewRun(
-	storage: Awaited<ReturnType<typeof openStorage>>,
-	roundId: string,
-	io: Io,
-): Promise<StoredRunDetails | undefined> {
+async function reviewRun(storage: Storage, roundId: string, io: Io): Promise<StoredRunDetails | undefined> {
 	try {
 		return await TelemetryReader.open(storage).runDetails(roundId);
 	} catch (error) {
@@ -619,11 +638,11 @@ export async function findings(
 	if (options.round !== undefined) return roundFindings(io, options.round, options);
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
-	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	const missing = stored.missing();
-	if (!existsSync(path)) throw missing;
+	const store = await ChangesetStore.read(io, changeset.repoRoot, changeset.id);
+	if (store === undefined) throw missing;
 	if (options.rounds) {
-		const storage = await openStorage(path);
+		const { storage } = store;
 		try {
 			const rounds = await new RoundReader(storage).read(changeset.id);
 			const dates = new Map<string, number>();
@@ -652,9 +671,14 @@ export async function findings(
 			return 0;
 		} finally {
 			await storage.close(context);
+			await store.close();
 		}
 	}
-	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
+	const reviewHarness = await openReviewHarness(store.storage, idleModels(io.env)).catch(async (error: unknown) => {
+		await store.storage.close(context).catch(() => {});
+		await store.close();
+		throw error;
+	});
 	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
@@ -687,6 +711,7 @@ export async function findings(
 		return 0;
 	} finally {
 		await reviewHarness.close(context);
+		await store.close();
 	}
 }
 
@@ -698,9 +723,9 @@ async function roundFindings(
 	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
 	if (match === null) throw new CliError(`invalid round ID ${id}`);
 	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-	const path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
-	if (!existsSync(path)) throw new CliError(`Melian has no round ${id}`);
-	const storage = await openStorage(path);
+	const store = await ChangesetStore.read(io, repoRoot, match[1]!);
+	if (store === undefined) throw new CliError(`Melian has no round ${id}`);
+	const { storage } = store;
 	try {
 		const round = (await new RoundReader(storage).read(match[1]!)).find((round) => round.id === id);
 		if (round === undefined) throw new CliError(`Melian has no round ${id}`);
@@ -727,6 +752,7 @@ async function roundFindings(
 		return 0;
 	} finally {
 		await storage.close(context);
+		await store.close();
 	}
 }
 
@@ -760,11 +786,16 @@ export async function dismiss(
 ): Promise<number> {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
-	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
-	if (!existsSync(path)) throw stored.missing();
 	const by = await gitAuthor(changeset.repoRoot);
+	if (!(await ChangesetStore.exists(io, changeset.repoRoot, changeset.id))) throw stored.missing();
+	// A pull request's copy may first arrive from the state branch here; recordDismissal says whether it holds a review.
+	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id);
 	// Only the adjudication task: a review or publication a crash interrupted must not resume here.
-	const dismissHarness = await DismissHarness.open(await openStorage(path), idleModels(io.env));
+	const dismissHarness = await DismissHarness.open(store.storage, idleModels(io.env)).catch(async (error: unknown) => {
+		await store.storage.close(context).catch(() => {});
+		await store.close();
+		throw error;
+	});
 	try {
 		const dismissal = { by, reason, at: new Date().toISOString() };
 		const recorded = await recordDismissal({
@@ -815,21 +846,22 @@ export async function dismiss(
 		return 0;
 	} finally {
 		await dismissHarness.close(context);
+		await store.close();
 	}
 }
 
 export async function telemetry(io: Io, argument: string, options: { readonly json: boolean }): Promise<number> {
 	const stored = await StoredReview.open(io, argument);
-	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
-	if (!existsSync(path)) throw new CliError("No stage telemetry is stored for this revision.");
-	const storage = await openStorage(path);
+	const store = await ChangesetStore.read(io, stored.changeset.repoRoot, stored.changeset.id);
+	if (store === undefined) throw new CliError("No stage telemetry is stored for this revision.");
 	try {
-		const timings = await TelemetryReader.open(storage).read(Revision.key(stored.changeset.revision));
+		const timings = await TelemetryReader.open(store.storage).read(Revision.key(stored.changeset.revision));
 		if (timings.stages.length === 0 && timings.prepare === undefined)
 			throw new CliError("No stage telemetry is stored for this revision.");
 		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
 		return 0;
 	} finally {
-		await storage.close(context);
+		await store.storage.close(context);
+		await store.close();
 	}
 }

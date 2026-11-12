@@ -18,6 +18,7 @@ import type { Io } from "../src/commands.ts";
 import { ComparisonStores } from "../src/comparison-stores.ts";
 import { PullRequestComparison } from "../src/pull-request-comparison.ts";
 import * as repository from "../src/repository.ts";
+import { ChangesetStore } from "../src/state.ts";
 import * as target from "../src/target.ts";
 
 const id = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
@@ -115,6 +116,7 @@ beforeEach(() => {
 	);
 	vi.spyOn(repository, "openStorage").mockResolvedValue(storage);
 	vi.spyOn(ComparisonStores, "read").mockResolvedValue(stores);
+	vi.spyOn(ChangesetStore, "restore").mockResolvedValue(undefined);
 	vi.spyOn(target, "gitHubAccess").mockResolvedValue({ owner: "owner", repo: "repo", token: "scripted" });
 	vi.spyOn(PullRequestRoundsReader, "open").mockReturnValue({ read: async () => structuredClone(answer) } as never);
 	vi.spyOn(PullRequestMembership.prototype, "classify").mockImplementation(
@@ -486,4 +488,18 @@ it("passes an explicit export context while retaining own history reads", async 
 		true,
 		true,
 	);
+});
+
+it("restores the pull request's own storage from the state branch before it reads any store", async () => {
+	const order: string[] = [];
+	vi.mocked(ChangesetStore.restore).mockImplementation(async () => {
+		order.push("restore");
+	});
+	vi.mocked(ComparisonStores.read).mockImplementation(async () => {
+		order.push("read");
+		return stores;
+	});
+	await PullRequestComparison.open(io, 7);
+	expect(order).toEqual(["restore", "read"]);
+	expect(ChangesetStore.restore).toHaveBeenCalledWith(io, expect.any(String), id);
 });

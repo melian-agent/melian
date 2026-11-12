@@ -1,0 +1,5 @@
+[Pull request #314](https://github.com/melian-agent/melian/pull/314), fixes for Codex's adversarial review of a35d88c. Each began with a test that failed on a35d88c for the reported reason.
+
+- On a fresh clone, `compare "#N"` and `compare refresh` scanned the clone's stores before any command had restored the pull request's own, so the first refresh classified an empty membership and pushed it. `PullRequestComparison.open` now calls `ChangesetStore.restore` first, which takes the branch's copy and releases the lease; an export stays offline.
+- `ChangesetStore.close` turned every failure to push into an offline warning, so a copy holding what Pi never writes, a branch this key cannot read, or a disk error let a command, `publish` included, exit successfully with nothing stored. Only a fetch or push failure is offline now; anything else fails the command.
+- The scan of state copies read any failure to list `state/` as no copies. Only a missing directory is empty now; any other failure names the directory.

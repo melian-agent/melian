@@ -165,10 +165,15 @@ export function scenarioModels(): FakeModels {
 	return createFakeModels({ models: [{ id: "scripted" }] });
 }
 
-// Opens a harness that reviews and publishes through `provider`.
-export function openPublishHarness(storage: Storage, fake: FakeModels, provider: ReviewProvider): Promise<Harness> {
+// Opens a harness that reviews and publishes through `provider`, running `fence` before every write to it.
+export function openPublishHarness(
+	storage: Storage,
+	fake: FakeModels,
+	provider: ReviewProvider,
+	fence?: () => Promise<void>,
+): Promise<Harness> {
 	const registry = createReviewRegistry();
-	registry.install(publishExtension(provider));
+	registry.install(publishExtension(provider, fence));
 	return openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
 }
 

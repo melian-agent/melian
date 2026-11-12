@@ -287,6 +287,17 @@ describe("stored comparison reading and export", () => {
 		});
 	});
 
+	it("refuses a state directory it cannot read, rather than read it as holding no copies", async () => {
+		vi.spyOn(repository, "stateDirectory").mockResolvedValue("/state");
+		vi.spyOn(fsp, "readdir")
+			.mockResolvedValueOnce([names[0]] as never)
+			.mockRejectedValueOnce(Object.assign(new Error("denied"), { code: "EACCES" }));
+		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => [] } as never);
+		await expect(comparisonBacklog(io, false)).rejects.toMatchObject({
+			message: `cannot read comparisons at ${join(dir, "state")}: denied`,
+		});
+	});
+
 	it("closes each database it reads, and the one it fails on", async () => {
 		vi.spyOn(repository, "stateDirectory").mockResolvedValue("/state");
 		vi.spyOn(fsp, "readdir").mockResolvedValue([names[0], names[1]] as never);
