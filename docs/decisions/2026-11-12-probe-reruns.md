@@ -11,7 +11,7 @@ Choice:
 
 - A rerun is keyed by its claim's lens run and the probe's ID, so every claim that cites one probe shares its rerun, and a run's reruns stay within its 48 probes.
 - A stored rerun that failed or passed stands for every repeat review of its head. One that timed out, was cut or ended by a signal runs again on a repeat review, as a refused one does, since its cause may have passed.
-- A probe reads the checkout's `node_modules` and the base policy's `probe.read` files as they stand on the host when it runs. The attach key names those paths, not their contents.
+- A probe reads the checkout's `node_modules` and the base policy's `probe.read` files as they stand on the host when it runs, under the host's sandbox. The attach key names those paths, not their contents, and not the sandbox.
 - An attack counts as answered once a probe ran for it, whatever the probe showed, or once the prober skipped it with a reason.
 
 What it gives up:
