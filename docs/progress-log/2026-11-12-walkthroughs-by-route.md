@@ -5,3 +5,5 @@ A walkthrough an older Melian stored without its route stays in `walkthroughs`, 
 A note no longer posts beside a walkthrough publication posts, so another route's failure note never hides the decided round's walkthrough.
 
 The maintainer accepted the Actions round's finding 18642f0d68ae4cc5 as read on 2026-11-12, in the builder's session: an aborted walkthrough costs no attempt, though one aborted after its request went out has spent a call. [Issue #367](https://github.com/melian-agent/melian/issues/367) holds charging such an abort.
+
+The pass's 112 mutants are in `2026-11-12-walkthroughs-by-route-mutants.json`: 98 killed by a named test at `0426b078`, five more killed by tests `0840dd91` added, two removed when `0840dd91` restructured their guard, and the seven mutants that restructure added, all killed.
