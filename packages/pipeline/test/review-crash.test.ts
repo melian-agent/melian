@@ -21,6 +21,7 @@ import {
 	readFindings,
 	readVerdict,
 	reviewChangeset,
+	summarizeReview,
 	type TaskId,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
@@ -34,6 +35,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { CallerContext } from "../src/callers.ts";
 import { DecisionDocument, decisionExtension, decisionTask } from "../src/decisions.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
@@ -42,7 +44,7 @@ import { defineTask } from "../src/harness.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { lensExtension } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { SummaryTask } from "../src/summarize.ts";
+import { SummaryIndex, SummaryTask } from "../src/summarize.ts";
 import { VerificationTask } from "../src/verification.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
@@ -512,24 +514,129 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		});
 	});
 
-	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
+	it("aborts at open a walkthrough task an earlier process left, so it resumes no model", async () => {
+		const database = join(dir, "walkthrough.sqlite");
 		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
-		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		const earlier = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		const root = await earlier.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const task = await root.commit(
+			(tx) =>
+				tx.createTask(
+					SummaryTask,
+					{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		await earlier.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
 		harness = reopened.harness;
-		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		expect(await reopened.resumesModels(context)).toBe(false);
 		expect(await reopened.resumedProviders(context)).toEqual([]);
+		harness.resume();
+		const { state } = await harness.waitForTask(task, context);
+		expect(state.outcome.status).toBe("aborted");
+		expect(fake.provider.state.callCount).toBe(0);
+	});
 
+	it("replaces, rather than attaches to, a same-route walkthrough the harness marked aborted as it opened", async () => {
+		const database = join(dir, "walkthrough-marked.sqlite");
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const revision = Revision.key(changeset.revision);
+		const light = fake.ref("light");
+		const earlier = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		const root = await earlier.root(context, { agent: { model: fake.ref("orchestrator") } });
 		await root.commit(async (tx) => {
-			await tx.createTask(
+			const task = await tx.createTask(
 				SummaryTask,
-				{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
+				{ root: root.id, revision, prompt: "Summarise the change.", model: light, paths: [] },
 				{ ownership: { kind: "conversation" } },
 			);
+			(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
 		}, context);
+		await earlier.close(context);
 
-		expect(await reopened.resumesModels(context)).toBe(true);
-		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+		scriptConversations(fake, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [
+					fauxAssistantMessage(
+						[fauxToolCall("record_walkthrough", { summary: "Written after the crash.", files: [] })],
+						{ stopReason: "toolUse" },
+					),
+				],
+			},
+		]);
+		await summarizeReview({
+			harness,
+			changeset,
+			config: { ...defaultConfig, models: { light: { model: `${light.provider}/${light.modelId}` } } },
+			models: fake.review,
+			origin: {
+				kind: "pull-request",
+				repository: { owner: "melian-agent", name: "example" },
+				pullRequest: 7,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+			},
+		});
+		const document = await harness.snapshot(VerdictDocument, (await harness.root(context)).id, context);
+		expect(document?.walkthroughNotes?.[revision]).toBeUndefined();
+		expect(Object.values(document?.routedWalkthroughs?.[revision] ?? {}).map(({ summary }) => summary)).toEqual([
+			"Written after the crash.",
+		]);
+	});
+
+	it("unlocks nothing for a same-route walkthrough marked aborted once the attempts are spent", async () => {
+		const database = join(dir, "walkthrough-marked-cap.sqlite");
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const revision = Revision.key(changeset.revision);
+		const light = fake.ref("light");
+		const earlier = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		const root = await earlier.root(context, { agent: { model: fake.ref("orchestrator") } });
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 2 };
+			const task = await tx.createTask(
+				SummaryTask,
+				{ root: root.id, revision, prompt: "Summarise the change.", model: light, paths: [] },
+				{ ownership: { kind: "conversation" } },
+			);
+			(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+		}, context);
+		await earlier.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+		const unlockModels = vi.fn(async () => {});
+		await summarizeReview({
+			harness,
+			changeset,
+			config: { ...defaultConfig, models: { light: { model: `${light.provider}/${light.modelId}` } } },
+			models: fake.review,
+			origin: {
+				kind: "pull-request",
+				repository: { owner: "melian-agent", name: "example" },
+				pullRequest: 7,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+			},
+			unlockModels,
+		});
+		expect(unlockModels).not.toHaveBeenCalled();
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 

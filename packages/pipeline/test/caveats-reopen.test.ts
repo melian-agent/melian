@@ -106,7 +106,7 @@ it.each([
 
 it.each([
 	["melian.reviews", 3, 4],
-	["melian.verdicts", 12, 14],
+	["melian.verdicts", 12, 15],
 ] as const)(
 	"reopens main's version-%s %s document twice, reading its caller note as a caveat",
 	async (kind, from, to) => {

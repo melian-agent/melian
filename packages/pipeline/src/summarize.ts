@@ -10,7 +10,7 @@ import {
 	resolveModelForTier,
 	type Walkthrough,
 } from "@melian-agent/core";
-import { VerdictDocument } from "./adjudication.ts";
+import { type ReviewOrigin, type StoredVerdictState, VerdictDocument } from "./adjudication.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -97,6 +97,54 @@ type SummaryInput = {
 	paths?: string[];
 };
 type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: ConversationId };
+
+const routeOf = ({ model, thinking }: { model: ModelReference; thinking?: ModelRoute["thinking"] }): string =>
+	`${model.provider}/${model.modelId}@${thinking ?? ""}`;
+
+/**
+ * The walkthrough a publication of `revision` posts: the one a light route of the plan the revision's verdict was
+ * decided under wrote, in the plan's order. A review on another route keeps its walkthrough beside it, so a review that
+ * fails after its lenses start never takes the decided round's. A walkthrough an older Melian stored without its route
+ * posts when no planned route wrote one, and a verdict stored without a plan posts the only walkthrough its revision has.
+ */
+export function publishedWalkthrough(
+	state: Pick<StoredVerdictState, "walkthroughs" | "routedWalkthroughs" | "provenance"> | undefined,
+	revision: string,
+): Walkthrough | undefined {
+	const legacy = state?.walkthroughs?.[revision];
+	const routed = state?.routedWalkthroughs?.[revision] ?? {};
+	const plan = state?.provenance?.[revision]?.plan;
+	if (plan === undefined) {
+		const written = Object.values(routed);
+		return legacy ?? (written.length === 1 ? written[0] : undefined);
+	}
+	const routes = ReviewPlan.from(plan).routes();
+	const light = routes.light;
+	if (light?.model === undefined) return legacy;
+	const route = resolveModelForTier("light", routes);
+	for (const model of [route.model, ...route.fallbacks]) {
+		const written = routed[routeOf({ model, thinking: light.thinking })];
+		if (written !== undefined) return written;
+	}
+	return legacy;
+}
+/**
+ * The note a publication of `revision` posts in place of a walkthrough: none beside a walkthrough it posts, else the
+ * stored note, or a fixed one when only another light route wrote a walkthrough.
+ */
+export function publishedWalkthroughNote(
+	state:
+		| Pick<StoredVerdictState, "walkthroughs" | "walkthroughNotes" | "routedWalkthroughs" | "provenance">
+		| undefined,
+	revision: string,
+): string | undefined {
+	if (publishedWalkthrough(state, revision) !== undefined) return undefined;
+	const note = state?.walkthroughNotes?.[revision];
+	if (note !== undefined) return note;
+	return Object.keys(state?.routedWalkthroughs?.[revision] ?? {}).length > 0
+		? "No walkthrough available. Another light route wrote it."
+		: undefined;
+}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,
@@ -129,14 +177,28 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 			const result = (await runtime.snapshot(SummaryResult, child.id, context))?.walkthrough;
 
 			await runtime.commit(async (tx) => {
+				// A later call replaced this task, so the walkthrough it wrote belongs to no review.
+				if ((await tx.doc(SummaryIndex, task.input.root)).tasks[task.input.revision] !== runtime.taskId)
+					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				const document = await tx.doc(VerdictDocument, task.input.root);
+				const route = routeOf(task.input);
+				// Only the task the summary index names writes or removes a walkthrough, and only its own route's.
+				const others = Object.entries(document.routedWalkthroughs?.[task.input.revision] ?? {}).filter(
+					([written]) => written !== route,
+				);
 				if (result !== undefined && settled.status === "done") {
-					document.walkthroughs = { ...document.walkthroughs, [task.input.revision]: structuredClone(result) };
+					document.routedWalkthroughs = {
+						...document.routedWalkthroughs,
+						[task.input.revision]: Object.fromEntries([...others, [route, structuredClone(result)]]),
+					};
 					if (document.walkthroughNotes !== undefined) delete document.walkthroughNotes[task.input.revision];
 					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
 					await countAttempt(tx, task.input.root, task.input.revision, runtime.taskId);
-					if (document.walkthroughs !== undefined) delete document.walkthroughs[task.input.revision];
+					if (document.routedWalkthroughs?.[task.input.revision] !== undefined) {
+						if (others.length > 0) document.routedWalkthroughs[task.input.revision] = Object.fromEntries(others);
+						else delete document.routedWalkthroughs[task.input.revision];
+					}
 					document.walkthroughNotes = {
 						...document.walkthroughNotes,
 						[task.input.revision]: "No walkthrough available. The summariser returned no summary.",
@@ -254,6 +316,14 @@ export async function summarizeReview(options: {
 	readonly context?: Context;
 	readonly rerun?: boolean;
 	/**
+	 * Where the review's revision came from, standing for the verdict's stored provenance, so the walkthrough can start
+	 * before adjudication records it. Only a `pull-request` origin is summarised. Without it, the stored provenance
+	 * decides.
+	 */
+	readonly origin?: ReviewOrigin;
+	/** The review's plan, which resolves the light model when `origin` is given; without it, the configuration's routes. */
+	readonly plan?: ReviewPlan;
+	/**
 	 * Called once, after the walkthrough is found not to be stored and a light model is known, and before a model is
 	 * asked, only when a task will be attached to or created: not at the attempt cap without `rerun`. The host unlocks credentials there; one that fails leaves the fixed summariser note, which
 	 * names no credential, since the walkthrough is published.
@@ -269,14 +339,16 @@ export async function summarizeReview(options: {
 	try {
 		const conversation = await harness.root(context);
 		root = conversation;
-		const provenance = (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision];
-		if (provenance?.kind !== "pull-request") return;
-		if (
-			!options.rerun &&
-			(await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughs?.[revision] !== undefined
-		)
-			return;
-		const routes = provenance.plan === undefined ? config.models : ReviewPlan.from(provenance.plan).routes();
+		const stored = await harness.snapshot(VerdictDocument, conversation.id, context);
+		const provenance = stored?.provenance?.[revision];
+		if ((options.origin ?? provenance)?.kind !== "pull-request") return;
+		const plan =
+			options.origin === undefined
+				? provenance?.plan === undefined
+					? undefined
+					: ReviewPlan.from(provenance.plan)
+				: options.plan;
+		const routes = plan === undefined ? config.models : plan.routes();
 		const configured = routes.light;
 		const route =
 			configured === undefined ||
@@ -293,6 +365,15 @@ export async function summarizeReview(options: {
 				break;
 			}
 		}
+		const wanted = model === undefined ? undefined : routeOf({ model, thinking: routes.light?.thinking });
+		const rerun = options.rerun === true;
+		const routed = stored?.routedWalkthroughs?.[revision] ?? {};
+		// A walkthrough an older Melian stored without its route stands, and so does any while no light model has
+		// credentials.
+		const kept =
+			stored?.walkthroughs?.[revision] !== undefined ||
+			(wanted === undefined ? Object.keys(routed).length > 0 : routed[wanted] !== undefined);
+		if (!rerun && kept) return;
 		if (model === undefined) {
 			note =
 				route === undefined
@@ -301,36 +382,52 @@ export async function summarizeReview(options: {
 			await conversation.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversation.id);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				if (doc.walkthroughs !== undefined) delete doc.walkthroughs[revision];
 			}, context);
 			return;
 		}
+		const index = await harness.snapshot(SummaryIndex, conversation.id, context);
+		const known = index?.tasks[revision];
+		const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
+		// A task marked for abort, as the harness's open marks every live walkthrough, ends aborted whatever it asks.
+		const onRoute =
+			record !== undefined && !record.abortRequested && routeOf(record.input as unknown as SummaryInput) === wanted;
+		// The commit below refuses a task on another route, and Pi Durable allows no abort inside one.
+		if (record !== undefined && record.state.status !== "terminal" && !onRoute)
+			await harness.abortTask(record.id, context);
 		if (options.unlockModels !== undefined) {
-			// What the commit below decides, read ahead of it: a live task is attached to and will ask its model, and a
-			// new task is created unless the attempts are spent.
-			const index = await harness.snapshot(SummaryIndex, conversation.id, context);
-			const known = index?.tasks[revision];
-			const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
+			// What the commit below decides, read ahead of it: a live task on the wanted route is attached to and will ask
+			// its model, and a new task is created unless the attempts are spent.
 			const attaches =
-				record !== undefined &&
+				onRoute &&
 				(record.state.status !== "terminal" ||
 					![...undecided, "failed", "completed"].includes(record.state.outcome.status));
 			const uncounted =
 				record?.state.status === "terminal" &&
-				["failed", "completed"].includes(record.state.outcome.status) &&
+				record.state.outcome.status !== "aborted" &&
 				index?.counted[revision] !== known;
 			const spent =
 				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ??
 					0) + (uncounted ? 1 : 0);
-			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
+			if (attaches || rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
 		}
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {
 			const index = await tx.doc(SummaryIndex, conversation.id);
 			const known = index.tasks[revision];
 			const document = await tx.doc(VerdictDocument, conversation.id);
-			if (!options.rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
-			if (await attachable(tx, known, [...undecided, "failed", "completed"])) {
+			// Decided again here: another call can store this route's walkthrough after the reads above.
+			if (
+				!rerun &&
+				(document.walkthroughs?.[revision] !== undefined ||
+					document.routedWalkthroughs?.[revision]?.[wanted!] !== undefined)
+			)
+				return undefined;
+			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
+			const onRoute =
+				previous !== undefined &&
+				!previous.abortRequested &&
+				routeOf(previous.input as unknown as SummaryInput) === wanted;
+			if (onRoute && (await attachable(tx, known, [...undecided, "failed", "completed"]))) {
 				if (index.counted[revision] === known) {
 					if (document.walkthroughAttempts !== undefined)
 						document.walkthroughAttempts[revision] = Math.max(
@@ -341,13 +438,11 @@ export async function summarizeReview(options: {
 				}
 				return known as TaskId<string>;
 			}
-			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
-			if (previous?.state.status === "terminal" && ["failed", "completed"].includes(previous.state.outcome.status))
+			// An aborted walkthrough costs no attempt; one that ran to any other end does, before the cap reads the count.
+			if (previous?.state.status === "terminal" && previous.state.outcome.status !== "aborted")
 				await countAttempt(tx, conversation.id, revision, known!);
-			if (!options.rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts)
-				return undefined;
-			if (known !== undefined) await countAttempt(tx, conversation.id, revision, known);
-			if (options.rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
+			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
+			if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,
 				{
@@ -378,7 +473,6 @@ export async function summarizeReview(options: {
 			await root.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, conversationId);
 				doc.walkthroughNotes = { ...doc.walkthroughNotes, [revision]: note };
-				if (doc.walkthroughs !== undefined) delete doc.walkthroughs[revision];
 			}, context);
 		} catch {}
 	}

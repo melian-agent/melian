@@ -684,6 +684,10 @@ export class ReviewHarness {
 		});
 		recorder.attach(harness);
 		await abortReplacedRuns(harness, context);
+		// A walkthrough never outlives its process: a review resolves its light route only later, and any wait before that
+		// would resume one on the old route. The summariser creates its own task.
+		for (const { record } of (await harness.inspect(context)).tasks)
+			if (record.kind === SummaryTask.definition.name) await harness.abortTask(record.id, context);
 		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
@@ -720,9 +724,6 @@ export class ReviewHarness {
 					candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
 				);
 			}
-			if (record.kind === SummaryTask.definition.name) {
-				return [(record.input as unknown as { model: ModelReference }).model.provider];
-			}
 			if (record.kind === decisionTaskName) {
 				const { key } = record.input as unknown as DecisionTaskInput;
 				const { decider } = JSON.parse(key) as { decider: string };
@@ -737,12 +738,7 @@ export class ReviewHarness {
 	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
 		const { tasks } = await this.harness.inspect(context);
 		return tasks.some(({ record }) =>
-			[
-				LensTask.definition.name,
-				VerificationTask.definition.name,
-				decisionTaskName,
-				SummaryTask.definition.name,
-			].includes(record.kind),
+			[LensTask.definition.name, VerificationTask.definition.name, decisionTaskName].includes(record.kind),
 		);
 	}
 
@@ -1031,6 +1027,12 @@ interface ReviewSettings {
 	/** The chosen decider's providers, unlocked only before a triage task that may ask it. */
 	readonly triageProviders?: readonly string[];
 	/**
+	 * Called once the review has recorded its lens run, and aborted any run it replaced, before it waits for that run.
+	 * A host starts work there that needs the change but not the verdict, such as the walkthrough; anything that resumes
+	 * the harness then cannot restart a replaced run. A review that runs no lens, or fails earlier, never calls it.
+	 */
+	readonly lensesStarted?: () => void;
+	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
 	 */
@@ -1131,6 +1133,7 @@ async function runLenses(
 	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
+	started?: () => void,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
@@ -1177,6 +1180,7 @@ async function runLenses(
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
 	}
+	started?.();
 	const forget = (index: ReviewIndexState) => {
 		if (index.reviews[revision]?.task === taskId) index.reviews = omit(index.reviews, revision);
 	};
@@ -2245,6 +2249,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				},
 				unlockModels,
 				verifyAsLensesEnd,
+				request.lensesStarted,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	// Every wave this review started settles before the next step starts, so no step of the host's overlaps its
