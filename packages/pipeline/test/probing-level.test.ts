@@ -39,7 +39,7 @@ import {
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { recordPlan } from "../src/lens-tools.ts";
+import { recordPlan, skipAttack } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry } from "../src/review.ts";
@@ -1907,6 +1907,21 @@ describe("a level that probes", () => {
 		limits.probes = probes - 1;
 		onTestFinished(() => {
 			limits.probes = probes;
+		});
+		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await again.run.catch(() => undefined);
+		expect(again.requests[planner]).toHaveLength(2);
+	});
+
+	it("runs a probing level again when a role tool's contract changes, as a release that rewrites one does", async () => {
+		const fake = createFakeModels();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await first.run.catch(() => undefined);
+		const tool = skipAttack as { description: string };
+		const description = tool.description;
+		tool.description = `${description} Name the attack's number.`;
+		onTestFinished(() => {
+			tool.description = description;
 		});
 		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
 		await again.run.catch(() => undefined);
