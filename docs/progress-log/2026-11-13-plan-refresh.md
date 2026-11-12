@@ -1,0 +1,3 @@
+# Plan refresh, 2026-11-13
+
+The implementation plan now records the week to 2026-11-10. Step 24's storage half is done, with its CLI half in review. Step 34 carries the maintainer's reshaping of `melian mutants verify` and the interim rerun rules. New steps 40 to 45 cover verifying each lens as it ends, dismissal inheritance, the probing level and its live measurement, the walkthrough, and the release-API tool fetch. A new "in flight" section names the two remaining critical paths, and the 2026-10-21 one becomes a dated snapshot. `docs/design.md` needed no change: each decision that merged this week edited it in its own pull request. Docs only, fast-tracked by the maintainer.
