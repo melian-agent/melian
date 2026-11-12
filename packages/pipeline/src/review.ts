@@ -2416,10 +2416,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
 									standardsSource,
 								) +
-								baseline("0".repeat(24)) +
 								// The planner's decisions and earlier findings move between reviews of one head, as caller context
-								// does, so they stay out of the key, and its role, which a Melian release may change, stays in.
-								(probing === undefined ? "" : `\n\n${plannerInstructions([])}`),
+								// does, so they stay out of the key; the probe field below holds its role.
+								baseline("0".repeat(24)),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,
@@ -2430,7 +2429,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							budget: settings.budget,
 							coverage,
 							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
-							probe: probing === undefined ? undefined : { ...probing.run, environment: undefined },
+							probe:
+								probing === undefined
+									? undefined
+									: { ...probing.run, environment: undefined, planner: plannerInstructions([]) },
 						}),
 					)
 					.digest("hex"),
