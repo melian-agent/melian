@@ -32,6 +32,12 @@
 		"postpack": "npm run clean",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/state-git/"
 	},
+	"dependencies": {
+		"@melian-agent/core": "*"
+	},
+	"devDependencies": {
+		"@melian-agent/pipeline": "*"
+	},
 	"engines": {
 		"node": ">=22.19.0"
 	}
