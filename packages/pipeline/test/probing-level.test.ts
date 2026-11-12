@@ -39,10 +39,11 @@ import {
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { recordPlan, skipAttack } from "../src/lens-tools.ts";
+import type { TaskId } from "../src/harness.ts";
+import { type ReviewState, recordPlan, skipAttack } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns, probingLimits } from "../src/probing.ts";
-import { createReviewRegistry } from "../src/review.ts";
+import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
@@ -939,6 +940,31 @@ describe("a level that probes", () => {
 		await Promise.all([first.run, second.run].map((run) => run.catch(() => undefined)));
 		// The prober's probe and one rerun, which the second review attached to.
 		expect(first.heads).toHaveLength(2);
+	});
+
+	it("writes and prunes nothing from a rerun task another review took the revision from", async () => {
+		const { run, changeset } = await review({ planner: plan, prober: probing(failing) });
+		await run;
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!;
+		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
+		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
+		const stored = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
+		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		const task = await root.commit(async (tx) => {
+			const document = await tx.doc(ProbeReruns, root.id);
+			document.tasks = { ...document.tasks, [at]: { task: -1, key: "another review's probes" } };
+			return tx.createTask(
+				probeRerunTask(),
+				{ root: root.id, revision, probes: [{ key: "replaced", script: failing, files: [], environment }] },
+				{ ownership: { kind: "conversation" } },
+			);
+		}, backgroundContext);
+		await reviewer.waitForTask(task, backgroundContext);
+		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
+		expect(Object.keys(runs)).toEqual(stored);
 	});
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
