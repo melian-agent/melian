@@ -1342,6 +1342,8 @@ async function rerunProbes(
 			const probe = candidate.probes?.[probeClaimKey(claim)];
 			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
+			// Claims that cite one probe share its rerun, and this review runs it once, whatever it showed.
+			if (current.has(key)) continue;
 			current.add(key);
 			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
 			if (stored !== undefined && "result" in stored && probeConclusive(stored.result)) continue;

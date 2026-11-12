@@ -900,6 +900,38 @@ describe("a level that probes", () => {
 		expect(heads).toHaveLength(2);
 	});
 
+	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", async () => {
+		let id = "p0";
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					(messages) => {
+						id = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? id;
+						return call("report_finding", finding(id));
+					},
+					() =>
+						call("report_finding", {
+							...finding(id),
+							line: 2,
+							rule: "head-controls-judge",
+							evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+						}),
+					fauxAssistantMessage("Reported 2 findings."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "sleep 10" : command),
+			},
+		);
+		await run.catch(() => undefined);
+		// The prober's probe and one rerun, which timed out, for both claims.
+		expect(heads).toBe(2);
+	});
+
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();
 		let heads = 0;
