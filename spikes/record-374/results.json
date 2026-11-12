@@ -1,0 +1,194 @@
+{
+ "number": 375,
+ "rows": [
+  {
+   "call": "pulls.create",
+   "kind": "REST",
+   "what": "open the scratch draft",
+   "worked": true,
+   "status": 201
+  },
+  {
+   "call": "pulls.get",
+   "kind": "REST",
+   "what": "the pull request and its head",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "users.getAuthenticated",
+   "kind": "REST",
+   "what": "the token's login",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "repos.getCollaboratorPermissionLevel",
+   "kind": "REST",
+   "what": "the author's permission",
+   "worked": false,
+   "status": 403,
+   "message": "Access to this GitHub API path is not permitted through this proxy."
+  },
+  {
+   "call": "repos.listActivities",
+   "kind": "REST",
+   "what": "who pushed the head",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "repos.getBranchRules",
+   "kind": "REST",
+   "what": "the base branch's rules",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "repos.listCommitStatusesForRef",
+   "kind": "REST",
+   "what": "the head's statuses, paginated",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.listReviews",
+   "kind": "REST",
+   "what": "earlier reviews",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.listReviewComments",
+   "kind": "REST",
+   "what": "earlier inline comments",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "issues.listComments",
+   "kind": "REST",
+   "what": "the ledger, paginated",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "graphql query",
+   "kind": "GraphQL",
+   "what": "the review threads and whether each is resolved",
+   "worked": false,
+   "status": 403,
+   "message": "GitHub GraphQL is not available from Claude Code sessions; use the REST API (gh api repos/{owner}/{repo}/...). For revie"
+  },
+  {
+   "call": "repos.createCommitStatus",
+   "kind": "REST",
+   "what": "melian/review on the head",
+   "worked": false,
+   "status": 403,
+   "message": "Write access to this GitHub API path is not permitted through this proxy."
+  },
+  {
+   "call": "pulls.createReview",
+   "kind": "REST",
+   "what": "a review with one inline comment",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.createReview (fallback)",
+   "kind": "REST",
+   "what": "a review whose inline comment GitHub cannot place",
+   "worked": false,
+   "status": 422,
+   "message": "Unprocessable Entity"
+  },
+  {
+   "call": "pulls.getReview",
+   "kind": "REST",
+   "what": "the posted review",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.listCommentsForReview",
+   "kind": "REST",
+   "what": "the review's inline comments",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.getReviewComment",
+   "kind": "REST",
+   "what": "one inline comment",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.updateReviewComment",
+   "kind": "REST",
+   "what": "edit an addressed finding",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "pulls.createReplyForReviewComment",
+   "kind": "REST",
+   "what": "reply with a dismissal's reason",
+   "worked": true,
+   "status": 201
+  },
+  {
+   "call": "graphql resolveReviewThread",
+   "kind": "GraphQL",
+   "what": "resolve an addressed thread",
+   "worked": false,
+   "status": 403,
+   "message": "GitHub GraphQL is not available from Claude Code sessions; use the REST API (gh api repos/{owner}/{repo}/...). For revie"
+  },
+  {
+   "call": "issues.createComment",
+   "kind": "REST",
+   "what": "create the ledger",
+   "worked": true,
+   "status": 201
+  },
+  {
+   "call": "issues.getComment",
+   "kind": "REST",
+   "what": "read the recorded ledger",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "issues.updateComment",
+   "kind": "REST",
+   "what": "edit the ledger",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "repos.createCommitStatus",
+   "kind": "REST",
+   "what": "the final status",
+   "worked": false,
+   "status": 403,
+   "message": "Write access to this GitHub API path is not permitted through this proxy."
+  },
+  {
+   "call": "pulls.update",
+   "kind": "REST",
+   "what": "close the scratch pull request",
+   "worked": true,
+   "status": 200
+  },
+  {
+   "call": "git.deleteRef",
+   "kind": "REST",
+   "what": "delete the scratch branch",
+   "worked": false,
+   "status": 403,
+   "message": "Write access to this GitHub API path is not permitted through this proxy."
+  }
+ ]
+}
