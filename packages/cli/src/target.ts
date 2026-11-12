@@ -69,7 +69,7 @@ export async function gitHubAccess(cwd: string, env: NodeJS.ProcessEnv): Promise
 export async function gitHubFor(
 	cwd: string,
 	env: NodeJS.ProcessEnv,
-	options: { readonly emoji?: boolean } = {},
+	options: { readonly emoji?: boolean; readonly beforeWrite?: () => Promise<void> } = {},
 ): Promise<ReviewProvider> {
 	return createGitHubProvider({ ...(await gitHubAccess(cwd, env)), ...options });
 }

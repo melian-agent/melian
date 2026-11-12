@@ -11,6 +11,7 @@ import {
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
+	WriteRefused,
 } from "@melian-agent/core";
 import { Octokit } from "@octokit/rest";
 import { GitHubError } from "./errors.ts";
@@ -55,6 +56,17 @@ export interface GitHubProviderOptions {
 	readonly fetch?: typeof fetch;
 	/** Show emojis in the comments and review body it posts, as `publish.emoji: on` asks. On by default. */
 	readonly emoji?: boolean;
+	/**
+	 * Runs before every request that writes, a retry's included: any REST method but GET and HEAD, and any GraphQL
+	 * document but a query. A rejection sends nothing and fails the call with {@link WriteRefused}.
+	 */
+	readonly beforeWrite?: () => Promise<void>;
+}
+
+// A GraphQL request reads only when its document is a query; anything else is taken for a write, which fails closed.
+function writes(request: { method: string; url: string; query?: unknown }): boolean {
+	if (request.method === "GET" || request.method === "HEAD") return false;
+	return !(request.url === "/graphql" && typeof request.query === "string" && /^\s*query\b/.test(request.query));
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -77,6 +89,7 @@ async function call<T>(what: string, request: () => Promise<T>): Promise<T> {
 	try {
 		return await request();
 	} catch (error) {
+		if (error instanceof WriteRefused) throw error;
 		throw failure(what, error);
 	}
 }
@@ -151,6 +164,15 @@ export class GitHubProvider implements ReviewProvider {
 		});
 		this.links = { web: `${options.webUrl ?? "https://github.com"}/${options.owner}/${options.repo}` };
 		this.emoji = options.emoji !== false;
+		const { beforeWrite } = options;
+		// Octokit runs this hook before every request it sends, so no write, however reached, goes out unchecked.
+		if (beforeWrite !== undefined)
+			this.octokit.hook.before("request", async (request) => {
+				if (!writes(request)) return;
+				await beforeWrite().catch((error: unknown) => {
+					throw new WriteRefused(error instanceof Error ? error.message : String(error));
+				});
+			});
 	}
 
 	private async mergeGroupRead<T>(what: string, request: (client: Octokit) => Promise<T>): Promise<T> {
@@ -403,13 +425,10 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
-		beforeWrite: () => Promise<void> = async () => {},
 	): Promise<string | undefined> {
 		await this.isThreadOpen(pullRequest, finding.thread);
 		try {
-			if (finding.dismissal === undefined)
-				return await this.address(pullRequest, finding, revision, secret, beforeWrite);
-			await beforeWrite();
+			if (finding.dismissal === undefined) return await this.address(pullRequest, finding, revision, secret);
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 				this.octokit.rest.pulls.createReplyForReviewComment({
 					owner: this.owner,
@@ -560,7 +579,6 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
-		beforeWrite: () => Promise<void>,
 	): Promise<string | undefined> {
 		const { data } = await call("read the finding to address", () =>
 			this.octokit.rest.pulls.getReviewComment({
@@ -574,7 +592,6 @@ export class GitHubProvider implements ReviewProvider {
 		const closed = marker(finding.addressedIn ?? revision, "resolved", finding.id, secret);
 		if (editable && !data.body.split(/\r?\n/).includes(closed)) {
 			const suffix = `\n\nAddressed in commit ${(finding.addressedIn ?? revision).slice(0, 12)}.\n${closed}`;
-			await beforeWrite();
 			await call("edit the addressed finding", () =>
 				this.octokit.rest.pulls.updateReviewComment({
 					owner: this.owner,
@@ -584,7 +601,6 @@ export class GitHubProvider implements ReviewProvider {
 				}),
 			);
 		}
-		await beforeWrite();
 		const resolved = await this.resolveThread(pullRequest, finding.thread);
 		return editable && resolved ? finding.thread : undefined;
 	}

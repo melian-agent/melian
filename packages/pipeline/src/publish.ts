@@ -22,6 +22,7 @@ import {
 	type StoredRunDetails,
 	type StoredVerdict,
 	Verdict,
+	WriteRefused,
 } from "@melian-agent/core";
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { verdictWithLegacyCaveats } from "./caveats.ts";
@@ -563,7 +564,7 @@ const untrustedWriterStatus: ReviewStatus = {
 // Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
-function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
+function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
 		// Version 7 lets the input carry the review's run; an older input has none, and its ledger shows the plan alone.
@@ -637,12 +638,8 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 					return;
 				}
 				const { pullRequest, base, head, revision } = target;
+				// The host's lease is the provider's to check, before each request that writes; this is the target's.
 				const revalidate = async () => {
-					// The host's lease on the changeset, checked before every write, so a run that stalled past it posts nothing
-					// over the run that took it.
-					await fence?.().catch((error: unknown) => {
-						throw new TargetMoved(error instanceof Error ? error.message : String(error));
-					});
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
 				};
@@ -922,12 +919,12 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 							let recorded: string | null;
 							// A resolution marker proves the edit or reply, but an older reply left the thread open.
 							if (found === undefined || found === entry.thread) {
+								await revalidate();
 								const reply = await provider.replyResolved(
 									pullRequest,
 									{ ...entry, thread: entry.thread },
 									head,
 									secret,
-									revalidate,
 								);
 								recorded = reply ?? null;
 								if (reply !== undefined) result.replies++;
@@ -1037,7 +1034,7 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
 					}, context);
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
-					if (error instanceof TargetMoved) {
+					if (error instanceof TargetMoved || error instanceof WriteRefused) {
 						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message, attestations };
 						await runtime.commit(async (tx) => {
 							await timing.end(tx);
@@ -1121,8 +1118,8 @@ function publishTask(provider: ReviewProvider, fence?: () => Promise<void>) {
  * The extension that publishes reviews through `provider`: the publish task. Install it beside the review extension in
  * the harness a host publishes from, and again after a restart, so an interrupted publication resumes.
  */
-export function publishExtension(provider: ReviewProvider, fence?: () => Promise<void>) {
-	return defineExtension({ name: publishTaskName, tasks: [publishTask(provider, fence)] });
+export function publishExtension(provider: ReviewProvider) {
+	return defineExtension({ name: publishTaskName, tasks: [publishTask(provider)] });
 }
 
 /**
@@ -1140,18 +1137,16 @@ export class PublishHarness {
 
 	/**
 	 * Opens one over `storage` that publishes through `provider`, with {@link publishExtension} alone installed. A failed
-	 * open closes `storage`. `fence` runs before every write to the provider; a rejection stops publication, posting
-	 * nothing more.
+	 * open closes `storage`.
 	 */
 	static async open(
 		storage: Storage,
 		models: ReviewModels,
 		provider: ReviewProvider,
 		context: Context = backgroundContext,
-		fence?: () => Promise<void>,
 	): Promise<PublishHarness> {
 		const registry = createRegistry();
-		registry.install(publishExtension(provider, fence));
+		registry.install(publishExtension(provider));
 		const harness = await openHarness(storage, { models: modelsOf(models), registry }, context).catch(
 			async (error: unknown) => {
 				// Pi closes the storage only once it has built a harness; an open refused before that leaves it to us.
@@ -1174,9 +1169,8 @@ export function openPublishHarness(
 	models: ReviewModels,
 	provider: ReviewProvider,
 	context: Context = backgroundContext,
-	fence?: () => Promise<void>,
 ): Promise<PublishHarness> {
-	return PublishHarness.open(storage, models, provider, context, fence);
+	return PublishHarness.open(storage, models, provider, context);
 }
 
 /** What {@link publishReview} publishes. */

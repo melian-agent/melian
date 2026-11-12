@@ -54,8 +54,14 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-function providerFor(state: FakeState) {
-	return createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch: fakeGitHub(state) });
+function providerFor(state: FakeState, beforeWrite?: () => Promise<void>) {
+	return createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "test-token",
+		fetch: fakeGitHub(state),
+		...(beforeWrite === undefined ? {} : { beforeWrite }),
+	});
 }
 
 // Reviews revision 1 and moves a fake pull request to it.
@@ -65,8 +71,8 @@ async function reviewedRevisionOne(
 ) {
 	const fake = scenarioModels();
 	const state = pullRequestState();
-	const github = providerFor(state);
-	harness = await openPublishHarness(createMemoryStorage(), fake, github, fence);
+	const github = providerFor(state, fence);
+	harness = await openPublishHarness(createMemoryStorage(), fake, github);
 	const { changeset, review } = await reviewScenario(repo, harness, fake, script);
 	await review.catch((error: unknown) => {
 		if (!(error instanceof ReviewError)) throw error;
@@ -392,6 +398,26 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toHaveLength(before);
 		expect(again).toMatchObject({ posted: 0, replies: 0, recovered: 0 });
 		expect(state.reviews).toHaveLength(1);
+	});
+
+	it("writes nothing once the lease is lost during the read before a write", async () => {
+		// The lease expires while the status read stalls, so the status post that follows it is another run's to make.
+		let read = -1;
+		const { github, changeset, state } = await reviewedRevisionOne(undefined, async () => {
+			if (read >= 0) throw new Error("another run holds the lease");
+		});
+		state.calls.length = 0;
+		const served = state.calls.push.bind(state.calls);
+		state.calls.push = (...calls) => {
+			for (const call of calls)
+				if (read < 0 && call.method === "GET" && /\/commits\/[0-9a-f]+\/statuses$/.test(call.path))
+					read = state.calls.length;
+			return served(...calls);
+		};
+		await publish(github, changeset).catch(() => undefined);
+		expect(read).toBeGreaterThanOrEqual(0);
+		expect(state.calls.slice(read).filter(({ method, path }) => method !== "GET" && path !== "/graphql")).toEqual([]);
+		expect(state.statuses).toEqual([]);
 	});
 
 	it("resolves no addressed thread once the lease is lost after its comment's edit", async () => {
@@ -1637,16 +1663,15 @@ describe("cross-head answer discovery", () => {
 			let checks = 0;
 			const refusal = new Error("another run holds the lease");
 			await expect(
-				providerFor(state).replyResolved(
+				providerFor(state, async () => {
+					if (++checks === refusedAt) throw refusal;
+				}).replyResolved(
 					7,
 					{ id: "fedcba9876543210", thread: "1", revision: old, ruleId: "rule", path: "src/user.ts", line: 7 },
 					head,
 					secret,
-					async () => {
-						if (++checks === refusedAt) throw refusal;
-					},
 				),
-			).rejects.toBe(refusal);
+			).rejects.toMatchObject({ code: "writeRefused", message: refusal.message });
 			const edits = state.calls.filter(({ method }) => method === "PATCH");
 			expect(edits).toHaveLength(refusedAt - 1);
 			expect(state.resolvedThreads).toEqual([]);
@@ -1683,7 +1708,9 @@ describe("cross-head answer discovery", () => {
 		state.comments.push(root(1));
 		const refusal = new Error("another run holds the lease");
 		await expect(
-			providerFor(state).replyResolved(
+			providerFor(state, async () => {
+				throw refusal;
+			}).replyResolved(
 				7,
 				{
 					id: "fedcba9876543210",
@@ -1696,11 +1723,8 @@ describe("cross-head answer discovery", () => {
 				},
 				head,
 				secret,
-				async () => {
-					throw refusal;
-				},
 			),
-		).rejects.toBe(refusal);
+		).rejects.toMatchObject({ code: "writeRefused", message: refusal.message });
 		expect(state.comments).toHaveLength(1);
 	});
 

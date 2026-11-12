@@ -564,7 +564,6 @@ describe("publication planning recovery", () => {
 				expect.objectContaining({ thread: "1002", dismissal: reasonB }),
 				head,
 				expect.any(String),
-				expect.any(Function),
 			);
 			const stored = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[head]!;
 			expect(Object.hasOwn(stored.resolved, keyA)).toBe(answer !== "unanswered");
@@ -619,7 +618,6 @@ describe("publication planning recovery", () => {
 			expect.objectContaining({ thread: "1002", dismissal: fromB }),
 			head,
 			expect.any(String),
-			expect.any(Function),
 		);
 	});
 
@@ -781,7 +779,6 @@ describe("publication planning recovery", () => {
 			expect.objectContaining({ thread: "1009", dismissal }),
 			state.pull.head.sha,
 			expect.any(String),
-			expect.any(Function),
 		);
 	});
 
@@ -875,7 +872,6 @@ describe("publication planning recovery", () => {
 			expect.objectContaining({ thread: "2", dismissal }),
 			state.pull.head.sha,
 			expect.any(String),
-			expect.any(Function),
 		);
 		const stored = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!;
 		expect(stored.resolved[replyKey(finding.id, "2", dismissalVersion(dismissal))]).toMatchObject({
@@ -937,7 +933,6 @@ describe("publication planning recovery", () => {
 			{ ...entry, dismissal },
 			state.pull.head.sha,
 			expect.any(String),
-			expect.any(Function),
 		);
 	});
 

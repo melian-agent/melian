@@ -200,6 +200,16 @@ export interface PublishedMarkers {
  * idempotency key, so the markers are how a publication interrupted after a post and before its record finds what it
  * already posted, whoever the host says posted it.
  */
+/** A write the provider refused to send because its caller's check before writing, such as a lease's, failed. */
+export class WriteRefused extends Error {
+	readonly code = "writeRefused";
+
+	constructor(message: string) {
+		super(message);
+		this.name = "WriteRefused";
+	}
+}
+
 export interface ReviewProvider {
 	/** The host's name, such as `github`, for messages. */
 	readonly name: string;
@@ -215,15 +225,13 @@ export interface ReviewProvider {
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
 	/**
 	 * Edits an addressed finding and resolves its thread, or replies with a dismissal's reason. Returns the edited
-	 * comment or reply ID, or `undefined` when the thread is gone. `beforeWrite` runs before each write; a rejection
-	 * stops the rest.
+	 * comment or reply ID, or `undefined` when the thread is gone.
 	 */
 	replyResolved(
 		pullRequest: number,
 		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
 		secret: string,
-		beforeWrite?: () => Promise<void>,
 	): Promise<string | undefined>;
 	/** Whether a thread can be reused; resolved or deleted threads return false. Read lazily before reuse. */
 	isThreadOpen(pullRequest: number, comment: string): Promise<boolean>;

@@ -517,15 +517,19 @@ export async function publish(
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
 	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
-	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
-	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
 	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id, undefined, { authoritative: true });
 	const { storage } = store;
+	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read. The lease is
+	// renewed before every request that writes, so a run that stalled past it posts nothing over the run that took it.
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	// The lease is renewed before every post, so a run that stalled past it posts nothing over the run that took it.
-	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider, context, () =>
-		store.checkpoint(),
-	).catch(async (error: unknown) => {
+	const opened = gitHubFor(io.cwd, io.env, {
+		...(config.publish.emoji === "on" ? {} : { emoji: false }),
+		beforeWrite: () => store.checkpoint(),
+	}).then(async (provider) => ({
+		provider,
+		publishHarness: await openPublishHarness(storage, idleModels(io.env), provider, context),
+	}));
+	const { provider, publishHarness } = await opened.catch(async (error: unknown) => {
 		await storage.close(context).catch(() => {});
 		await store.close();
 		throw error;
