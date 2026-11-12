@@ -57,7 +57,7 @@ export interface GitHubProviderOptions {
 	/** Show emojis in the comments and review body it posts, as `publish.emoji: on` asks. On by default. */
 	readonly emoji?: boolean;
 	/**
-	 * Runs before every request that writes, a retry's included: any REST method but GET and HEAD, and any GraphQL
+	 * Runs before every request that writes, a retry's included: any REST method but GET, and any GraphQL
 	 * document but a query. A rejection sends nothing and fails the call with {@link WriteRefused}.
 	 */
 	readonly beforeWrite?: () => Promise<void>;
@@ -65,7 +65,7 @@ export interface GitHubProviderOptions {
 
 // A GraphQL request reads only when its document is a query; anything else is taken for a write, which fails closed.
 function writes(request: { method: string; url: string; query?: unknown }): boolean {
-	if (request.method === "GET" || request.method === "HEAD") return false;
+	if (request.method === "GET") return false;
 	return !(request.url === "/graphql" && typeof request.query === "string" && /^\s*query\b/.test(request.query));
 }
 

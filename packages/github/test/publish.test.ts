@@ -1766,6 +1766,61 @@ describe("cross-head answer discovery", () => {
 	});
 });
 
+describe("the check before every request that writes", () => {
+	const secret = "11".repeat(32);
+	const old = "a".repeat(40);
+	const root = {
+		id: 1,
+		user: { login: "melian-user" },
+		body: marker(old, "finding", "fedcba9876543210", secret),
+		path: "src/user.ts",
+		line: 7,
+		side: "RIGHT",
+		pull_request_review_id: 1,
+	};
+
+	it("sends reads without the check, REST and GraphQL queries alike, while it refuses", async () => {
+		const state = pullRequestState();
+		state.comments.push(root);
+		let checks = 0;
+		const github = providerFor(state, async () => {
+			checks++;
+			throw new Error("another run holds the lease");
+		});
+		await expect(github.pullRequest(7)).resolves.toMatchObject({ number: 7 });
+		await expect(github.isThreadOpen(7, "1")).resolves.toBe(true);
+		expect(state.calls.some(({ path }) => path === "/graphql")).toBe(true);
+		expect(checks).toBe(0);
+	});
+
+	it("refuses a REST write and a GraphQL mutation, sending neither", async () => {
+		const state = pullRequestState();
+		state.comments.push(root);
+		const github = providerFor(state, async () => {
+			throw new Error("another run holds the lease");
+		});
+		const refused = { code: "writeRefused", message: "another run holds the lease" };
+		await expect(github.resolveThread(7, "1")).rejects.toMatchObject(refused);
+		await expect(
+			github.setStatus(state.pull.head.sha, { state: "success", description: "passed" }),
+		).rejects.toMatchObject(refused);
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.statuses).toEqual([]);
+		expect(state.calls.filter(({ method, path }) => method !== "GET" && path !== "/graphql")).toEqual([]);
+	});
+
+	it("names a refusal that is not an error by its text", async () => {
+		const state = pullRequestState();
+		const github = providerFor(state, () => Promise.reject("the lease expired"));
+		await expect(
+			github.setStatus(state.pull.head.sha, { state: "success", description: "passed" }),
+		).rejects.toMatchObject({
+			code: "writeRefused",
+			message: "the lease expired",
+		});
+	});
+});
+
 describe("the hook before posting", () => {
 	const writes = (state: FakeState) => state.calls.filter(({ method }) => method !== "GET");
 
