@@ -36,5 +36,7 @@ The planner reads rulings from the base's decision files, through the same index
 - The planner is reminded once, and so is the prober. A model that ignores both leaves the lens failed or ended. A reminder does not check first whether a later review replaced the run, so a replaced run can ask one more question.
 - A quick run that escalates to a level that probes carries its findings to the planner alone, which may report none, so the probing run neither restates nor refutes them and they count as the quick run reported them. No built-in lens escalates into a level that probes: `trust-boundary`'s `quick` escalates to `careful`.
 - The verifier's prompt renders every claim's probe evidence whole: its plan, script, files and both outputs. A merged defect of several probing claims at their limits can pass the verifier model's context window and leave the review not reviewed. The maintainer accepted that on 2026-11-09, and [issue #357](https://github.com/melian-agent/melian/issues/357) bounds it before a level that probes ships.
+- A lens task that holds a level that probes starts no verification wave, so its other lenses' claims wait for the final step as its probing claims do, which run their probes again first. No shipped level probes yet.
+- [The probe-reruns decision](2026-11-12-probe-reruns.md) records what a rerun stands for, and that a probe reads host inputs as they stand.
 
 Measuring which routes to commit, the goldens from this week's probes and the `needs-execution` misses, is the issue's second part.
