@@ -1469,7 +1469,7 @@ async function runLenses(
 	input: StoredLensTaskInput,
 	rerun: boolean,
 	context: Context,
-	refused: (key: string, model: string) => boolean = () => false,
+	refused: (key: string, model: string, role?: "prober") => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
@@ -1548,7 +1548,7 @@ async function runLenses(
 async function anyLensFailed(
 	tx: Tx,
 	id: number | undefined,
-	refused: (key: string, model: string) => boolean,
+	refused: (key: string, model: string, role?: "prober") => boolean,
 ): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
 	return record !== undefined && lensFailed(record, refused);
@@ -1561,13 +1561,16 @@ function lensFailed(
 			readonly outcome?: { readonly status: string; readonly result?: unknown };
 		};
 	},
-	refused: (key: string, model: string) => boolean,
+	refused: (key: string, model: string, role?: "prober") => boolean,
 ): boolean {
 	const { outcome } = record.state;
 	if (record.state.status !== "terminal" || outcome === undefined) return false;
 	if (outcome.status !== "completed") return true;
 	return Object.entries(outcome.result as LensResult).some(
-		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
+		([key, lens]) =>
+			lens.status !== "done" ||
+			(lens.model !== undefined && refused(key, lens.model)) ||
+			(lens.probing?.model !== undefined && refused(key, lens.probing.model, "prober")),
 	);
 }
 
@@ -2708,8 +2711,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lensInput,
 				options.rerun === true,
 				context,
-				(key, model) => {
+				(key, model, role) => {
 					const run = runsOf(lenses).find((each) => each.key === key);
+					// A prober on a tier of its own is held to that tier by its route, as adjudication judges it.
+					if (role === "prober" && run?.probe?.onLevelTier !== true) return false;
 					const judged =
 						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
 					return judged?.refusal !== undefined;

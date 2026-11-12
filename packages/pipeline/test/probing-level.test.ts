@@ -1547,6 +1547,44 @@ describe("a level that probes", () => {
 		expect(ran.reason).toContain("models.heavy.acceptOverridden is false");
 	});
 
+	it("runs a moved lens again under --rerun when only its prober finished on a model the committed tier refuses", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "backup" }] });
+		const provider = fake.ref("plan").provider;
+		const [accepted, backup] = [`${provider}/plan`, `${provider}/backup`];
+		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
+		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const options = (rerun: boolean): Parameters<typeof review>[1] => ({
+			fake,
+			rerun,
+			config: {
+				lenses: { "trust-boundary": { tier: "light", level: { floor: "deep" } } },
+				models: { heavy: committed, light: { model: accepted, fallbacks: [backup] } },
+			},
+			plan: async (config, lenses, models) => {
+				const { catalog, credentials } = await planInputs(models.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: {
+						committed: { heavy: committed },
+						overridden: { light: "melian.local.yaml" },
+						lensTiers: {},
+						retiered: { "trust-boundary": "melian.local.yaml" },
+					},
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
+			},
+		});
+		const first = await review({ planner: plan, prober: [() => overloaded, ...probing(failing)] }, options(false));
+		await first.run.catch(() => undefined);
+		const again = await review({ planner: plan, prober: probing(failing) }, options(true));
+		await again.run.catch(() => undefined);
+		expect(again.requests[planner]).toHaveLength(2);
+		expect(record((await again.run).verdict)).toMatchObject({ status: "ran" });
+	});
+
 	it("keeps the plan's reason for a moved lens whose planner and prober both left accept", async () => {
 		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "first" }, { id: "second" }] });
 		const provider = fake.ref("plan").provider;
@@ -1597,26 +1635,29 @@ describe("a level that probes", () => {
 		const provider = fake.ref("plan").provider;
 		const accepted = `${provider}/plan`;
 		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
-		const { run } = await review(
-			{ planner: plan, prober: probing(failing) },
-			{
-				fake,
-				lens: probingWith({ prober: "light" }),
-				config: { models: { heavy: committed, light: { model: `${provider}/probe` } } },
-				plan: async (config, lenses, models) => {
-					const { catalog, credentials } = await planInputs(models.review);
-					return ReviewPlan.resolve({
-						config,
-						routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
-						catalog,
-						credentials,
-						lenses,
-						checks: ["lens.trust-boundary"],
-					});
-				},
+		const options = (rerun: boolean): Parameters<typeof review>[1] => ({
+			fake,
+			rerun,
+			lens: probingWith({ prober: "light" }),
+			config: { models: { heavy: committed, light: { model: `${provider}/probe` } } },
+			plan: async (config, lenses, models) => {
+				const { catalog, credentials } = await planInputs(models.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
 			},
-		);
+		});
+		const { run } = await review({ planner: plan, prober: probing(failing) }, options(false));
 		expect(record((await run).verdict)).toMatchObject({ status: "ran", level: "deep" });
+		// --rerun runs again only what failed, and this prober did not.
+		const again = await review({ planner: plan, prober: probing(failing) }, options(true));
+		await again.run;
+		expect(again.requests[planner] ?? []).toHaveLength(0);
 	});
 
 	it("chooses the verifier against the prober's family, which reported the finding, not the planner's", async () => {
