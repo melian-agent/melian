@@ -13,7 +13,7 @@ Amends: [the rounds decision](2026-10-18-compare-rounds-exact-rule.md), a round'
 Amends: [comparisons by round](2026-10-21-comparisons-by-round-as-built.md), the ID a comparison names its round by
 Amends: [run details bound to the round](2026-10-27-run-details-bound-to-round.md), the ID a run snapshot is stored under
 Amends: [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md), its "A round over the ledger" and "Round identity and attachment" sections, where they order rounds by mint
-Amends: [the Actions round's status](2026-11-07-actions-round-sets-melian-review.md), what an Actions round writes and what the merge queue reads
+Amends: [the Actions round's status](2026-11-07-actions-round-sets-melian-review.md), what an Actions round writes, what the merge queue reads, and its exemption for an unresolved acknowledgement once the gate is the required check
 Amends: [dismissal carries to a restatement](2026-11-08-dismissal-carries-to-restatement.md), how an inheritance is held and which dismissals are roots
 Amends: [the finding register](2026-10-24-finding-register.md), where the language line's exclusion from a key is written
 Amends: [owed thread returns](2026-10-18-owed-thread-returns.md), where the reply journal and owed resolutions live
@@ -201,7 +201,7 @@ Each is a projection of the record and none is stored as the authority.
 - The coverage ledger comes from which records cover which lines. It is no second store, so nothing carries it anywhere.
 - The ledger comment renders the record, as it renders the local store today.
 - The gate is a command, `melian gate "#N"`. It lists the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one. Just before it writes that status, or copies an override, the check lists again, and computes again when the set differs from the one it read, as [the coordination decision](2026-11-08-how-melian-coordinates.md) requires of any job that writes from an authority it read earlier.
-- The gate fails as `melian/review` fails today, and no more: a blocking finding or a round not reviewed fails it, and an acknowledge finding does not, by the maintainer's ruling in [the Actions round's status](2026-11-07-actions-round-sets-melian-review.md). The maintainer's read of one is held on the pull request, as now.
+- An unresolved acknowledge finding fails the gate, as a blocking finding does and as [the acknowledge status rule](2026-10-17-acknowledge-status-exact-rule.md) has it for a host's publication. A writer resolves one by recording the read as a dismissal with its reason, from any host, since a dismissal now reaches the record. [The Actions round's status](2026-11-07-actions-round-sets-melian-review.md) exempted an Actions round because a runner could not dismiss; that reason is gone, and so is the exemption once the gate is the required check. The maintainer ruled so on 2026-11-13, in the coordinator's session. Until then the Actions status keeps its own rule, as a display.
 - A round counts for a merge group when its head is the entry's and its reviewed base is an ancestor of the group's base, the test [melian/review on merge groups](2026-10-22-melian-review-on-merge-groups.md) already applies to a head's status. So a round stays good as `main` moves, and a retargeted pull request needs a new one.
 - An Actions round writes records. Its job that runs head code hands its records to the job that runs none, by rule 6, and that job adds them. It still sets `melian/review` on the head, as a display and for a repository that has not yet moved its required check to the gate. This is what lets a builder's round count with no host: the queue reads the store, and the round is in it.
 
@@ -282,7 +282,8 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | With several rounds standing, nothing said which one a publisher binds, so a stale passing round could be posted (`d4be369f97b0b5ac`) | Rule 11: a publisher binds the worst standing round and checks it again before each post |
 | "Worst" picked no round when two shared an outcome (`bb80a02d68de0481`) | Rule 11: the lowest ID among them, which never decides the outcome |
 | The rounds decision's current round, mint order and `r<n>` IDs were replaced with no declared edge (`ee6788044456c49d`, and the sweep) | The header amends it and its dependants; rule 4 says what a round's ID, "current" and "frozen" become |
-| An Actions round's status stopped gating, and nothing said its records reach the store (sweep) | Rule 9: an Actions round writes records, and the gate keeps today's rule for an acknowledge finding |
+| An Actions round's status stopped gating, and nothing said its records reach the store (sweep) | Rule 9: an Actions round writes records |
+| The gate gave every round the Actions status's exemption for an unresolved acknowledgement (`066ca028c0ed560a`) | Rule 9: an unresolved acknowledgement fails the gate, by the maintainer's ruling; a writer records the read as a dismissal |
 | The gate did not say which base a round must match in a merge group (sweep) | Rule 9 keeps the ancestor test |
 | A later dismissal did not replace an earlier one, and `dismiss` had no offline rule (sweep) | Rule 7 |
 | An inheritance's root and the head a dismissal was made at were unstated (sweep) | Rules 5 and 7 |

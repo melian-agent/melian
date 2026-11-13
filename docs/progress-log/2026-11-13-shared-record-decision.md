@@ -27,3 +27,5 @@ An eighth round, on `15b16757`, raised two P1s and a P2, mostly clashes with old
 The maintainer adopted the decision on 2026-11-13, in the coordinator's session. Step 46's six builds are filed as issues.
 
 A host round on the adopted text raised three P1s. Two are answered in the rules: a check's key names its host, and a blocking finding outranks the override whatever its round's label. The third was a writer rewinding the store under `trust.writers: false`; the maintainer ruled on 2026-11-13, in the coordinator's session, that such a repository keeps its record where only the trusted host can write.
+
+Two more rounds on the adopted text each raised one P1. For a fork, the keyed job now signs only what it produced. And the maintainer ruled on 2026-11-13, in the coordinator's session, that an unresolved acknowledge finding fails the gate, resolved by a writer's recorded dismissal from any host.
