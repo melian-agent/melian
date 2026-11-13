@@ -1,0 +1,354 @@
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+	DirectoryRecordStore,
+	MemoryRecordStore,
+	type RecordCell,
+	type RecordEnvelope,
+	RecordError,
+	type RecordStore,
+	SharedRecord,
+} from "@melian-agent/core";
+import {
+	directoryRecordStoreFixture,
+	memoryRecordStoreFixture,
+	type RecordStoreFixture,
+	recordStoreConformance,
+} from "@melian-agent/core/testing";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
+
+const changeset = "pull-0123456789abcdef";
+
+describe.each([
+	["memory", memoryRecordStoreFixture()],
+	["directory", directoryRecordStoreFixture()],
+])("the record store conformance suite on the %s adapter", (_name, fixture) => {
+	it.each(recordStoreConformance.map((each) => [each.name, each] as const))("%s", async (_case, each) => {
+		await each.run(fixture);
+	});
+});
+
+// Each adapter here breaks one promise of the port. The suite proves that promise only if its case then fails.
+class Broken implements RecordStore {
+	readonly inner: RecordStore;
+	readonly breaks: Partial<RecordStore>;
+
+	constructor(inner: RecordStore, breaks: (inner: RecordStore) => Partial<RecordStore>) {
+		this.inner = inner;
+		this.breaks = breaks(inner);
+	}
+
+	add(records: RecordEnvelope[]): Promise<void> {
+		return (this.breaks.add ?? this.inner.add.bind(this.inner))(records);
+	}
+	list(name: string): Promise<RecordEnvelope[]> {
+		return (this.breaks.list ?? this.inner.list.bind(this.inner))(name);
+	}
+	readCell(name: string): Promise<RecordCell> {
+		return (this.breaks.readCell ?? this.inner.readCell.bind(this.inner))(name);
+	}
+	writeCell(name: string, expected: string | undefined, value: string): Promise<boolean> {
+		return (this.breaks.writeCell ?? this.inner.writeCell.bind(this.inner))(name, expected, value);
+	}
+	dispose(name: string): Promise<void> {
+		return (this.breaks.dispose ?? this.inner.dispose.bind(this.inner))(name);
+	}
+	close(): Promise<void> {
+		return this.inner.close();
+	}
+}
+
+function brokenFixture(breaks: (inner: RecordStore) => Partial<RecordStore>): RecordStoreFixture {
+	const healthy = memoryRecordStoreFixture();
+	return async () => {
+		const subject = await healthy();
+		return { ...subject, open: async () => new Broken(await subject.open(), breaks) };
+	};
+}
+
+const cutOffAnswer = <T>(answer: T) =>
+	async function (this: void, call: () => Promise<T>): Promise<T> {
+		try {
+			return await call();
+		} catch (error) {
+			if (error instanceof RecordError && error.code === "unreachable") return answer;
+			throw error;
+		}
+	};
+
+let stale: RecordEnvelope[] | undefined;
+let staleCell: RecordCell | undefined;
+
+const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][] = [
+	[
+		"add keeps a repeated record twice",
+		"add: the same bytes added twice are one record, and a repeat completes a batch",
+		(inner) => {
+			const extra: RecordEnvelope[] = [];
+			return {
+				add: async (records) => {
+					await inner.add(records);
+					extra.push(...records);
+				},
+				list: async (name) => [...(await inner.list(name)), ...extra.filter((each) => each.changeset === name)],
+			};
+		},
+	],
+	[
+		"add keeps one record per slot",
+		"add: two records in one slot are both kept",
+		(inner) => {
+			const slots = new Set<string>();
+			return {
+				add: async (records) => {
+					for (const record of records) {
+						const slot = `${record.kind} ${record.key}`;
+						if (slots.has(slot)) continue;
+						slots.add(slot);
+						await inner.add([record]);
+					}
+				},
+			};
+		},
+	],
+	[
+		"add lands the valid records of a batch before it refuses an invalid one",
+		"add: refuses an invalid record before any of its batch lands",
+		(inner) => ({
+			add: async (records) => {
+				for (const record of records) await inner.add([record]);
+			},
+		}),
+	],
+	[
+		"list answers from the copy it read first",
+		"list: returns every record whose add returned before it, on any handle, and only its changeset's",
+		(inner) => ({
+			list: async (name) => {
+				stale ??= await inner.list(name);
+				return stale;
+			},
+		}),
+	],
+	[
+		"list answers nothing when cut off",
+		"list: fails when the store cannot answer it fresh",
+		(inner) => ({ list: (name) => cutOffAnswer<RecordEnvelope[]>([])(() => inner.list(name)) }),
+	],
+	[
+		"readCell answers from the copy it read first",
+		"readCell: returns the last value a writeCell stored, on any handle",
+		(inner) => ({
+			readCell: async (name) => {
+				const fresh = await inner.readCell(name);
+				if (fresh.value !== undefined) staleCell ??= fresh;
+				return staleCell ?? fresh;
+			},
+		}),
+	],
+	[
+		"readCell answers an empty cell when cut off",
+		"readCell: fails when the store cannot answer it fresh",
+		(inner) => ({ readCell: (name) => cutOffAnswer<RecordCell>({})(() => inner.readCell(name)) }),
+	],
+	[
+		"add swallows a store it cannot reach",
+		"add and writeCell: fail when the store cannot be reached",
+		(inner) => ({ add: (records) => cutOffAnswer<void>(undefined)(() => inner.add(records)) }),
+	],
+	[
+		"writeCell reports a lost write when cut off",
+		"add and writeCell: fail when the store cannot be reached",
+		(inner) => ({
+			writeCell: (name, expected, value) => cutOffAnswer(false)(() => inner.writeCell(name, expected, value)),
+		}),
+	],
+	[
+		"writeCell ignores the expected version",
+		"writeCell: succeeds only while the version is still the expected one",
+		(inner) => ({
+			writeCell: async (name, _expected, value) =>
+				inner.writeCell(name, (await inner.readCell(name)).version, value),
+		}),
+	],
+	...(
+		[
+			"writeCell: every successful write changes the version, the same value included",
+			"writeCell: refuses a version whose value went away and came back",
+		] as const
+	).map(
+		(name) =>
+			[
+				`the version is a hash of the value, under ${name}`,
+				name,
+				(inner: RecordStore) => ({
+					readCell: async (cell: string) => {
+						const read = await inner.readCell(cell);
+						return read.value === undefined ? read : { value: read.value, version: hash(read.value) };
+					},
+					writeCell: async (cell: string, expected: string | undefined, value: string) => {
+						const read = await inner.readCell(cell);
+						const current = read.value === undefined ? undefined : hash(read.value);
+						return current === expected && inner.writeCell(cell, read.version, value);
+					},
+				}),
+			] as [string, string, (inner: RecordStore) => Partial<RecordStore>],
+	),
+	[
+		"writeCell compares and sets in two steps",
+		"writeCell: of two writers racing from one version, exactly one wins",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				const { version } = await inner.readCell(name);
+				if (version !== expected) return false;
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				return inner.writeCell(name, (await inner.readCell(name)).version, value);
+			},
+		}),
+	],
+	[
+		"dispose removes the records and leaves no mark",
+		"dispose: marks the cell, removes the records for good, and leaves other changesets",
+		(inner) => {
+			const gone = new Set<string>();
+			return {
+				dispose: async (name) => {
+					gone.add(name);
+				},
+				list: async (name) => (gone.has(name) ? [] : inner.list(name)),
+			};
+		},
+	],
+	[
+		"a changeset name reaches the adapter unchecked",
+		"every call refuses a changeset name no envelope could hold",
+		() => ({ list: async () => [] }),
+	],
+];
+
+function hash(value: string): string {
+	return createHash("sha256").update(value).digest("hex");
+}
+
+describe("each conformance case fails against an adapter that breaks its promise", () => {
+	beforeEach(() => {
+		stale = undefined;
+		staleCell = undefined;
+	});
+
+	it("names a case of the suite for every breakage, and a breakage for every case", () => {
+		const names = recordStoreConformance.map((each) => each.name);
+		for (const [, name] of breakages) expect(names).toContain(name);
+		expect(new Set(breakages.map(([, name]) => name))).toEqual(new Set(names));
+	});
+
+	it.each(breakages)("%s", async (_breakage, name, breaks) => {
+		const target = recordStoreConformance.find((each) => each.name === name);
+		expect(target).toBeDefined();
+		await expect(target?.run(memoryRecordStoreFixture())).resolves.toBeUndefined();
+		await expect(target?.run(brokenFixture(breaks))).rejects.toThrow();
+	});
+});
+
+describe("MemoryRecordStore", () => {
+	it("hands out copies, so a caller's edit never reaches the store", async () => {
+		const store = new MemoryRecordStore();
+		const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: { n: 1 } };
+		await store.add([envelope]);
+		(envelope.payload as { n: number }).n = 2;
+		const [listed] = await store.list(changeset);
+		(listed?.payload as { n: number }).n = 3;
+		expect((await store.list(changeset))[0]?.payload).toEqual({ n: 1 });
+	});
+
+	it("refuses every call once closed", async () => {
+		const store = new MemoryRecordStore();
+		await store.close();
+		expect((await rejection(store.list(changeset), RecordError)).code).toBe("closed");
+	});
+});
+
+describe("DirectoryRecordStore", () => {
+	let root: string;
+	const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "static.biome", payload: { n: 1 } };
+	const record = SharedRecord.parse(envelope);
+
+	beforeEach(() => {
+		root = temporaryDirectory();
+	});
+
+	afterEach(() => {
+		removeDirectory(root);
+	});
+
+	it("files a record at its path, as its canonical bytes", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.add([envelope]);
+		expect(readFileSync(join(root, record.path), "utf8")).toBe(record.bytes);
+	});
+
+	it.each([
+		[
+			"bytes that do not give their own ID",
+			(path: string) => writeFileSync(path, record.bytes.replace('"n":1', '"n":2')),
+		],
+		["bytes that are not canonical", (path: string) => writeFileSync(path, `${record.bytes}\n`)],
+		[
+			"a record of another changeset",
+			(path: string) => {
+				const moved = SharedRecord.parse({ ...envelope, changeset: "pull-fedcba9876543210" });
+				writeFileSync(join(path, "..", `${moved.id}.json`), moved.bytes);
+			},
+		],
+		["a stray file beside a record", (path: string) => writeFileSync(join(path, "..", "notes.txt"), "x")],
+		["a stray file in a kind", (path: string) => writeFileSync(join(path, "..", "..", "stray.json"), "x")],
+		[
+			"a symbolic link in place of a record",
+			(path: string) => {
+				renameSync(path, `${path}.real`);
+				symlinkSync(`${path}.real`, path);
+			},
+		],
+		[
+			"a stray file in the cell",
+			() => {
+				const cell = join(root, "changesets", changeset, ".cell");
+				mkdirSync(cell, { recursive: true });
+				writeFileSync(join(cell, "notes.txt"), "x");
+			},
+		],
+	])("refuses a listing that holds %s, naming the file", async (_name, tamper) => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.add([envelope]);
+		tamper(join(root, record.path));
+		const error = await rejection(store.list(changeset), RecordError);
+		expect(error.code).toBe("unknownFile");
+		expect(error.path).toMatch(new RegExp(`^${root}/changesets/`));
+	});
+
+	it("is not blocked by a temporary file a writer that died left behind", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		expect(await store.writeCell(changeset, undefined, "lease A")).toBe(true);
+		writeFileSync(join(root, "tmp", "left-by-a-dead-writer"), "x");
+		const { version } = await store.readCell(changeset);
+		expect(await store.writeCell(changeset, version, "lease B")).toBe(true);
+		await store.add([envelope]);
+		expect(await store.list(changeset)).toEqual([envelope]);
+	});
+
+	it("keeps the cell out of the listing", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.writeCell(changeset, undefined, "lease");
+		expect(await store.list(changeset)).toEqual([]);
+		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
+	});
+
+	it("fails rather than answer nothing from a store whose directory has gone", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.add([envelope]);
+		removeDirectory(join(root, "changesets"));
+		expect((await rejection(store.list(changeset), RecordError)).code).toBe("unreachable");
+	});
+});

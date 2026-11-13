@@ -418,6 +418,7 @@ export {
 	TestCoverage,
 	type TestCoverageState,
 } from "./coverage-artifacts.ts";
+export { DirectoryRecordStore } from "./directory-record-store.ts";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
 export {
 	type EnolaFact,
@@ -489,6 +490,7 @@ export {
 	type RoundMembership,
 } from "./pull-request-rounds.ts";
 export { canonicalJson, type RecordEnvelope, type RecordJson, RecordSet, SharedRecord } from "./record.ts";
+export { MemoryRecordSpace, MemoryRecordStore, type RecordCell, type RecordStore } from "./record-store.ts";
 export {
 	costText,
 	durationText,

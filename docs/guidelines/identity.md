@@ -60,6 +60,11 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Mutant `identityHash` | `core/src/mutation-inventory.ts` | treats two inventory rows as one mutant | Nothing |
 | Coverage artefact IDs | `core/src/coverage-artifacts.ts`, `core/src/graph-coverage.ts` | names an artefact by its content | Nothing |
 | Claim identity | `core/src/verification.ts`, `core/src/adjudication.ts`, `core/src/findings.ts` | counts one claim per sighting | Nothing |
+| Record ID, `SharedRecord.id` | `core/src/record.ts` | treats two records as one fact, so `add` keeps one, and lets `supersedes` and a round's `replaces` name it | Nothing: the SHA-256 of the whole envelope's canonical bytes, `signature` included |
+| Canonical bytes, `canonicalJson` | `core/src/record.ts` | gives a record its ID and a signature its bytes | Nothing. RFC 8785 with keys sorted by UTF-16 code units; a missing field is left out, never `null`, and a number is a safe integer or refused |
+| Record key hash, `SharedRecord.keyHash` | `core/src/record.ts` | files a record in its slot's directory | Nothing |
+| Record slot, `SharedRecord.sharesSlot` | `core/src/record.ts` | lets one record supersede another | The revision and the payload, by rule 4 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) |
+| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: it is random on every write, never a hash of the value, so a value that came back never matches a version read before it left |
 
 ### Pipeline
 
@@ -96,7 +101,7 @@ Each is a defect by rule 10, listed so nobody adds a third. Fixing one is a stor
 
 - **Claim identity.** Core hashes `JSON.stringify([id, check, version])`. The pipeline's `claimKey` writes `<id> <check>@<version or "">`. A missing version reads `null` in one and `""` in the other.
 - **Dismissal identity.** Core's `dismissalVersion` covers reason, dismisser and time. The pipeline's `identityOf` also covers severity, sighting and trigger, in another order. One versions replies and the other gates inheritance.
-- **Canonical bytes.** `checks.ts` sorts keys. Every other JSON-hashed key relies on the order its fields are declared.
+- **Canonical bytes.** `checks.ts` sorts keys, and a shared record uses `canonicalJson`, RFC 8785. Every other JSON-hashed key relies on the order its fields are declared.
 - **Length.** Keys are cut to 12, 16 or all 64 hex digits, with no rule for which.
 
 ## What is planned
