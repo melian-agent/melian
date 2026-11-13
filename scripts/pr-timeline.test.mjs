@@ -402,12 +402,12 @@ describe("summary", () => {
 		expect(rows(timeline)).toContain(`| Timing reported | ${reported} |`);
 	});
 
-	it("rounds each summary row to two places, so decimal minutes print no floating-point noise", () => {
+	it("totals decimal minutes exactly, with no floating-point noise", () => {
 		const timelineItems = page([
 			{
 				__typename: "IssueComment",
 				createdAt: "2026-10-01T01:00:00.000Z",
-				body: "Timing: gate 3 × 0.1 min; gate 1.005 min",
+				body: "Timing: gate 3 × 0.1 min; gate 1.01 min",
 				author: { login: "b" },
 			},
 		]);
@@ -416,19 +416,42 @@ describe("summary", () => {
 		expect(rows(timeline)).toContain("| Timing: gate | 1.31 min |");
 	});
 
-	it("sums the rounded per-kind rows into the total, so the printed rows always add up", () => {
+	it("sums the per-kind rows into the total exactly, so the printed rows always add up", () => {
 		const timelineItems = page([
 			{
 				__typename: "IssueComment",
 				createdAt: "2026-10-01T01:00:00.000Z",
-				body: "Timing: gate 0.005 min, $0.005; codex 0.005 min, $0.005",
+				body: "Timing: gate 0.1 min, $0.1; codex 0.2 min, $0.2; codex 1.01 min, $1.01",
 				author: { login: "b" },
 			},
 		]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
-		expect(rows(timeline)).toContain("| Timing: gate | 0.01 min, $0.01 |");
-		expect(rows(timeline)).toContain("| Timing: codex | 0.01 min, $0.01 |");
-		expect(rows(timeline)).toContain("| Timing reported | 0.02 min, $0.02 |");
+		expect(rows(timeline)).toContain("| Timing: gate | 0.1 min, $0.10 |");
+		expect(rows(timeline)).toContain("| Timing: codex | 1.21 min, $1.21 |");
+		expect(rows(timeline)).toContain("| Timing reported | 1.31 min, $1.31 |");
+	});
+
+	it("totals a hundred items of 0.01 exactly, and the largest legal items without losing a hundredth", () => {
+		const comment = (body) => ({
+			__typename: "IssueComment",
+			createdAt: "2026-10-01T01:00:00.000Z",
+			body,
+			author: { login: "b" },
+		});
+		const small = Timeline.from({
+			pull: pull({
+				timelineItems: page([comment(`Timing: ${Array(100).fill("gate 0.01 min, $0.01").join("; ")}`)]),
+			}),
+			runs: [],
+		});
+		expect(rows(small)).toContain("| Timing reported | 1 min, $1.00 |");
+		const large = Timeline.from({
+			pull: pull({
+				timelineItems: page([comment("Timing: gate 999 × 999999.99 min, $999999.99; codex 0.01 min, $0.01")]),
+			}),
+			runs: [],
+		});
+		expect(rows(large)).toContain("| Timing reported | 998999990.02 min, $1000000.00 |");
 	});
 
 	it("prints minutes alone when no Timing item carries a cost", () => {
@@ -872,6 +895,9 @@ describe("parseTiming", () => {
 		["a count with no minutes", "gate 2 ×"],
 		["minutes with no unit", "gate 5"],
 		["about before the minutes", "gate 4 × about 13 min"],
+		["minutes with three decimal places", "gate 1.005 min"],
+		["a cost with three decimal places", "gate 1 min, $1.005"],
+		["a waited item with three decimal places", "waited 1.005 min for CI"],
 		["a range of minutes", "gate 3 × 8 to 40 min"],
 		["a list of minutes", "rounds 42592039166, 42595639774 and 42608746510 at 12, 12 and 10 min"],
 		["two minutes in one item", "mutation runs 25 min and 6 min"],
@@ -886,6 +912,24 @@ describe("parseTiming", () => {
 		["words before the kind", "then gate 5 min"],
 		["free text", "lunch | break"],
 	])("leaves %s unparsed: %s", (_rule, text) => {
+		expect(parseTiming(`Timing: ${text}`)).toEqual([{ text }]);
+	});
+
+	it.each([
+		["two decimal places in minutes", "gate 1.25 min", { kind: "gate", count: 1, minutes: 1.25 }],
+		["two decimal places in the cost", "gate 1 min, $1.25", { kind: "gate", count: 1, minutes: 1, cost: 1.25 }],
+		["six whole digits of minutes", "gate 999999.99 min", { kind: "gate", count: 1, minutes: 999999.99 }],
+		["six whole digits of cost", "gate 1 min, $999999.99", { kind: "gate", count: 1, minutes: 1, cost: 999999.99 }],
+		["a three-digit count", "gate 999 × 1 min", { kind: "gate", count: 999, minutes: 999 }],
+	])("reads %s, at the bound", (_bound, text, item) => {
+		expect(parseTiming(`Timing: ${text}`)).toStrictEqual([{ text, ...item }]);
+	});
+
+	it.each([
+		["seven whole digits of minutes", "gate 1000000 min"],
+		["seven whole digits of cost", "gate 1 min, $1000000"],
+		["a four-digit count", "gate 1000 × 1 min"],
+	])("leaves %s unparsed, one past the bound", (_bound, text) => {
 		expect(parseTiming(`Timing: ${text}`)).toEqual([{ text }]);
 	});
 

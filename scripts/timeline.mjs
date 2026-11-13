@@ -63,9 +63,14 @@ export const KINDS = [
 	"other",
 ];
 
-const NUMBER = String.raw`\d+(?:\.\d+)?`;
+// At most six whole digits and two decimals, read as whole hundredths, so every total is an exact integer sum.
+const NUMBER = String.raw`\d{1,6}(?:\.\d{1,2})?`;
+const hundredths = (text) => {
+	const [whole, fraction = ""] = text.split(".");
+	return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+};
 const ITEM = new RegExp(
-	String.raw`^(?<kind>${KINDS.join("|")}) (?:(?<count>[1-9]\d*) × )?(?<minutes>${NUMBER}) min(?:, \$(?<cost>${NUMBER}))?(?: for (?<cause>[^()]+))?(?: \((?<note>[^()]+)\))?$`,
+	String.raw`^(?<kind>${KINDS.join("|")}) (?:(?<count>[1-9]\d{0,2}) × )?(?<minutes>${NUMBER}) min(?:, \$(?<cost>${NUMBER}))?(?: for (?<cause>[^()]+))?(?: \((?<note>[^()]+)\))?$`,
 );
 // Shapes older reports used, read as the kind they mean; any other free text stays unparsed rather than half-counted.
 const LEGACY_WAIT = new RegExp(String.raw`^waited (?<minutes>${NUMBER}) min for (?<cause>.+)$`);
@@ -86,7 +91,12 @@ const LEGACY_KINDS = new Map([
 function parseItem(text) {
 	const legacyWait = LEGACY_WAIT.exec(text);
 	if (legacyWait)
-		return { kind: "wait", count: 1, minutes: Number(legacyWait.groups.minutes), cause: legacyWait.groups.cause };
+		return {
+			kind: "wait",
+			count: 1,
+			minutes: hundredths(legacyWait.groups.minutes) / 100,
+			cause: legacyWait.groups.cause,
+		};
 	let canonical = text;
 	for (const [alias, kind] of LEGACY_KINDS)
 		if (text.startsWith(`${alias} `)) {
@@ -103,8 +113,8 @@ function parseItem(text) {
 	return {
 		kind,
 		count: Number(count ?? 1),
-		minutes: Number(count ?? 1) * Number(minutes),
-		...(cost === undefined ? {} : { cost: Number(cost) }),
+		minutes: (Number(count ?? 1) * hundredths(minutes)) / 100,
+		...(cost === undefined ? {} : { cost: hundredths(cost) / 100 }),
 		...(cause === undefined ? {} : { cause }),
 		...(note === undefined ? {} : { note }),
 	};
@@ -299,18 +309,18 @@ export class Timeline {
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
 		const timed = this.#events.filter((event) => event.event === "Timing");
-		// Each row is rounded to two places before the total sums them, so the printed rows always add up to the total.
-		const cents = (value) => Math.round(value * 100) / 100;
+		// An item's minutes and cost are whole hundredths over 100, so times 100 recovers the integer, and every sum is exact.
+		const whole = (value) => Math.round(value * 100);
 		const kinds = KINDS.flatMap((kind) => {
 			const items = timed.filter((event) => event.item.kind === kind);
 			if (items.length === 0) return [];
-			const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
-			const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-			return [{ kind, minutes: cents(minutes), cost: cents(cost) }];
+			const minutes = items.reduce((sum, event) => sum + whole(event.item.minutes), 0);
+			const cost = items.reduce((sum, event) => sum + whole(event.item.cost ?? 0), 0);
+			return [{ kind, minutes, cost }];
 		});
-		const minutes = cents(kinds.reduce((sum, kind) => sum + kind.minutes, 0));
-		const cost = cents(kinds.reduce((sum, kind) => sum + kind.cost, 0));
-		const spend = (minutes, cost) => `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		const minutes = kinds.reduce((sum, kind) => sum + kind.minutes, 0);
+		const cost = kinds.reduce((sum, kind) => sum + kind.cost, 0);
+		const spend = (minutes, cost) => `${minutes / 100} min${cost === 0 ? "" : `, $${(cost / 100).toFixed(2)}`}`;
 		lines.push("", "| Summary | Value |", "| --- | --- |");
 		lines.push(row("Timing reported", kinds.length === 0 ? "none" : spend(minutes, cost)));
 		for (const kind of kinds) lines.push(row(`Timing: ${kind.kind}`, spend(kind.minutes, kind.cost)));
