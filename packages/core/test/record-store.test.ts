@@ -220,6 +220,13 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 		}),
 	],
 	[
+		"writeCell stores a lone surrogate it cannot keep",
+		"writeCell: refuses a value no adapter could store unchanged",
+		(inner) => ({
+			writeCell: (name, expected, value) => inner.writeCell(name, expected, value.toWellFormed()),
+		}),
+	],
+	[
 		"dispose removes the records and leaves no mark",
 		"dispose: marks the cell, removes the records for good, and leaves other changesets",
 		(inner) => {
@@ -358,6 +365,21 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("disposed");
 		await store.dispose(changeset);
 		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
+	});
+
+	it("keeps its records, its cell's version and a disposal across a reopen", async () => {
+		const first = await DirectoryRecordStore.open(root);
+		await first.add([envelope]);
+		await first.writeCell(changeset, undefined, "lease A");
+		await first.writeCell(changeset, "1", "lease B");
+		await first.dispose("pull-fedcba9876543210");
+		await first.close();
+		const second = await DirectoryRecordStore.open(root);
+		expect(await second.list(changeset)).toEqual([envelope]);
+		expect(await second.readCell(changeset)).toEqual({ value: "lease B", version: "2" });
+		expect(await second.writeCell(changeset, "1", "lease C")).toBe(false);
+		const disposed = { ...envelope, changeset: "pull-fedcba9876543210" };
+		expect((await rejection(second.add([disposed]), RecordError)).code).toBe("disposed");
 	});
 
 	it("keeps the cell out of the listing", async () => {

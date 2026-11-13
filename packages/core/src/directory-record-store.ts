@@ -4,7 +4,14 @@ import { link, lstat, mkdir, readdir, readFile, rename, rm, stat, unlink, writeF
 import { basename, join, resolve } from "node:path";
 import { RecordError } from "./errors.ts";
 import { type RecordEnvelope, SharedRecord } from "./record.ts";
-import { checkChangeset, disposalMark, disposedError, type RecordCell, type RecordStore } from "./record-store.ts";
+import {
+	checkCellValue,
+	checkChangeset,
+	disposalMark,
+	disposedError,
+	type RecordCell,
+	type RecordStore,
+} from "./record-store.ts";
 
 const cellDirectory = ".cell";
 const cellFile = /^[1-9][0-9]*$/;
@@ -170,7 +177,7 @@ export class DirectoryRecordStore implements RecordStore {
 	}
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
-		if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
+		checkCellValue(value);
 		const directory = await this.#reach(changeset);
 		const cell = await this.#cell(directory);
 		if (cell?.value === disposalMark) throw disposedError(changeset);

@@ -237,6 +237,19 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
+		name: "writeCell: refuses a value no adapter could store unchanged",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const store = await subject.open();
+				const lone = `lease ${String.fromCharCode(0xd800)}`;
+				await assert.rejects(store.writeCell(changeset, undefined, lone), refusal("invalidCell"));
+				assert.deepEqual(await store.readCell(changeset), {});
+				const pair = `lease ${String.fromCharCode(0xd83d, 0xde00)}`;
+				assert.equal(await store.writeCell(changeset, undefined, pair), true);
+				assert.equal((await store.readCell(changeset)).value, pair);
+			}),
+	},
+	{
 		name: "dispose: marks the cell, removes the records for good, and leaves other changesets",
 		run: (fixture) =>
 			using(fixture, async (subject) => {

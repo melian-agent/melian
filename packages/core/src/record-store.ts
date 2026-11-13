@@ -34,6 +34,12 @@ export function checkChangeset(changeset: string): void {
 	}
 }
 
+// A file-backed adapter writes UTF-8, which cannot hold a lone surrogate, so no adapter takes one.
+export function checkCellValue(value: string): void {
+	if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
+	if (!value.isWellFormed()) throw new RecordError("invalidCell", "a cell holds no lone surrogate");
+}
+
 export function disposedError(changeset: string): RecordError {
 	return new RecordError("disposed", `changeset ${changeset} is disposed`);
 }
@@ -98,7 +104,7 @@ export class MemoryRecordStore implements RecordStore {
 	}
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
-		if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
+		checkCellValue(value);
 		const entry = this.#changeset(changeset);
 		if (entry.cell?.value === disposalMark) throw disposedError(changeset);
 		if (entry.cell?.version !== expectedVersion) return false;
