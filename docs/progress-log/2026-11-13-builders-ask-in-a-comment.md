@@ -1,3 +1,3 @@
-# Builders ask the coordinator in a comment
+# A cloud session's messages need the maintainer's approval once
 
-The coordinator-first rule named a session message as its channel, and a cloud session's message can fail without a report. One question waited on [issue #346](https://github.com/melian-agent/melian/issues/346) past its 30 minutes. `AGENTS.md` now names a comment as the channel, and [the decision](../decisions/2026-11-13-builders-ask-in-a-comment.md) says why. Guidance only; no code changed.
+On the coordinator-first rule's first day, 2026-11-13, one cloud builder's messages to the coordinator's session failed, its question waited on [issue #346](https://github.com/melian-agent/melian/issues/346) past its 30 minutes, and others waited on the maintainer. The maintainer ruled that day, in the coordinator's session, to fix the transport and not to make comments the channel. The maintainer approved each session's access on a trusted device, and all four active builders' test messages then arrived. `AGENTS.md` gains a learning: test the transport when a lane opens. Guidance only; no code changed.
