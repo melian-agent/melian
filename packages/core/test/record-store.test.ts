@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	DirectoryRecordStore,
@@ -37,9 +37,9 @@ class Broken implements RecordStore {
 	readonly inner: RecordStore;
 	readonly breaks: Partial<RecordStore>;
 
-	constructor(inner: RecordStore, breaks: (inner: RecordStore) => Partial<RecordStore>) {
+	constructor(inner: RecordStore, breaks: Breaks, shared: Shared) {
 		this.inner = inner;
-		this.breaks = breaks(inner);
+		this.breaks = breaks(inner, shared);
 	}
 
 	add(records: RecordEnvelope[]): Promise<void> {
@@ -62,13 +62,20 @@ class Broken implements RecordStore {
 	}
 }
 
-function brokenFixture(breaks: (inner: RecordStore) => Partial<RecordStore>): RecordStoreFixture {
-	const healthy = memoryRecordStoreFixture();
+// State one broken store keeps across the handles a case opens on it, as one backing store would.
+type Shared = Map<string, unknown>;
+type Breaks = (inner: RecordStore, shared: Shared) => Partial<RecordStore>;
+
+function brokenFixture(breaks: Breaks, healthy = memoryRecordStoreFixture()): RecordStoreFixture {
 	return async () => {
 		const subject = await healthy();
-		return { ...subject, open: async () => new Broken(await subject.open(), breaks) };
+		const shared: Shared = new Map();
+		return { ...subject, open: async () => new Broken(await subject.open(), breaks, shared) };
 	};
 }
+
+const mark = '{"disposed":true}';
+const valid = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 
 const cutOffAnswer = <T>(answer: T, code = "unreachable") =>
 	async function (this: void, call: () => Promise<T>): Promise<T> {
@@ -83,7 +90,7 @@ const cutOffAnswer = <T>(answer: T, code = "unreachable") =>
 let stale: RecordEnvelope[] | undefined;
 let staleCell: RecordCell | undefined;
 
-const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][] = [
+const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 	[
 		"add keeps a repeated record twice",
 		"add: the same bytes added twice are one record, and a repeat completes a batch",
@@ -272,6 +279,173 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 		(inner) => ({ add: (records) => cutOffAnswer<void>(undefined, "unknownFile")(() => inner.add(records)) }),
 	],
 	[
+		"list answers another record in each one's place",
+		"list: returns every record whose add returned before it, on any handle, and only its changeset's",
+		(inner) => ({
+			list: async (name) =>
+				(await inner.list(name)).map((record) => ({ ...record, payload: { swapped: true } }) as RecordEnvelope),
+		}),
+	],
+	[
+		"readCell hands back a version that is no string",
+		"readCell: returns the last value a writeCell stored, on any handle",
+		(inner) => ({
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				return read.version === undefined ? read : { ...read, version: { boxed: read.version } as never };
+			},
+			writeCell: (name, expected, value) =>
+				inner.writeCell(name, (expected as unknown as { boxed?: string } | undefined)?.boxed ?? expected, value),
+		}),
+	],
+	[
+		"readCell shows one changeset's cell for another",
+		"readCell: returns the last value a writeCell stored, on any handle",
+		(inner, shared) => ({
+			writeCell: async (name, expected, value) => {
+				const won = await inner.writeCell(name, expected, value);
+				if (won) shared.set("last", name);
+				return won;
+			},
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				const last = shared.get("last") as string | undefined;
+				return read.value === undefined && last !== undefined ? inner.readCell(last) : read;
+			},
+		}),
+	],
+	[
+		"a writer that lost the race overwrites the winner",
+		"writeCell: of two writers racing from one version, exactly one wins",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				if (await inner.writeCell(name, expected, value)) return true;
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				await inner.writeCell(name, (await inner.readCell(name)).version, value);
+				return false;
+			},
+		}),
+	],
+	[
+		"a refused mark on an empty cell writes the cell first",
+		"writeCell: refuses the disposal mark, which only dispose writes",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				const empty = (await inner.readCell(name)).value === undefined;
+				if (value === mark && empty) await inner.writeCell(name, undefined, "half");
+				return inner.writeCell(name, expected, value);
+			},
+		}),
+	],
+	[
+		"a refused mark overwrites a cell that held a value",
+		"writeCell: refuses the disposal mark, which only dispose writes",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				const read = await inner.readCell(name);
+				if (value === mark && read.value !== undefined) await inner.writeCell(name, read.version, "half");
+				return inner.writeCell(name, expected, value);
+			},
+		}),
+	],
+	[
+		"a refused mark hides the changeset's records",
+		"writeCell: refuses the disposal mark, which only dispose writes",
+		(inner, shared) => ({
+			writeCell: (name, expected, value) => {
+				if (value === mark) shared.set(`marked ${name}`, true);
+				return inner.writeCell(name, expected, value);
+			},
+			list: async (name) => (shared.has(`marked ${name}`) ? [] : inner.list(name)),
+		}),
+	],
+	[
+		"a refused surrogate stores its well-formed copy first",
+		"writeCell: refuses a value no adapter could store unchanged",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				if (!value.isWellFormed()) await inner.writeCell(name, expected, value.toWellFormed());
+				return inner.writeCell(name, expected, value);
+			},
+		}),
+	],
+	[
+		"readCell drops characters outside the basic plane",
+		"writeCell: refuses a value no adapter could store unchanged",
+		(inner) => ({
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				return read.value === undefined
+					? read
+					: { ...read, value: read.value.replace(/[\u{10000}-\u{10ffff}]/gu, "?") };
+			},
+		}),
+	],
+	[
+		"a dispose hides every other changeset's records",
+		"dispose: marks the cell, removes the records for good, and leaves other changesets",
+		(inner, shared) => ({
+			dispose: async (name) => {
+				shared.set("disposed", name);
+				await inner.dispose(name);
+			},
+			list: async (name) => (shared.has("disposed") && shared.get("disposed") !== name ? [] : inner.list(name)),
+		}),
+	],
+	[
+		"a dispose empties every other changeset's cell",
+		"dispose: marks the cell, removes the records for good, and leaves other changesets",
+		(inner, shared) => ({
+			dispose: async (name) => {
+				shared.set("disposed", name);
+				await inner.dispose(name);
+			},
+			readCell: async (name) =>
+				shared.has("disposed") && shared.get("disposed") !== name ? {} : inner.readCell(name),
+		}),
+	],
+	[
+		"an entry it did not write poisons every changeset",
+		"list and add refuse an entry the store did not write, and write nothing through it",
+		(inner, shared) => ({
+			list: async (name) => {
+				if (shared.has("poisoned")) throw new RecordError("unknownFile", "poisoned");
+				return inner.list(name).catch((error: unknown) => {
+					shared.set("poisoned", true);
+					throw error;
+				});
+			},
+		}),
+	],
+	[
+		"a name no envelope could hold reads as an empty changeset",
+		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
+		(inner) => ({
+			list: async (name) => (valid.test(name) ? inner.list(name) : []),
+			readCell: async (name) => (valid.test(name) ? inner.readCell(name) : {}),
+			writeCell: async (name, expected, value) => (valid.test(name) ? inner.writeCell(name, expected, value) : true),
+			dispose: async (name) => (valid.test(name) ? inner.dispose(name) : undefined),
+		}),
+	],
+	[
+		"a dotted changeset name lists nothing",
+		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
+		(inner) => ({ list: async (name) => (name.includes(".") ? [] : inner.list(name)) }),
+	],
+	[
+		"add writes through a link it refuses",
+		"list and add refuse an entry the store did not write, and write nothing through it",
+		(inner) => ({
+			add: (records) =>
+				inner.add(records).catch(async (error: unknown) => {
+					const path = (error as RecordError).path;
+					if (path !== undefined) writeFileSync(join(readlinkSync(path), "escaped.json"), "{}");
+					throw error;
+				}),
+		}),
+		"directory",
+	],
+	[
 		"a changeset name reaches the adapter unchecked",
 		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		() => ({ list: async () => [] }),
@@ -294,11 +468,12 @@ describe("each conformance case fails against an adapter that breaks its promise
 		expect(new Set(breakages.map(([, name]) => name))).toEqual(new Set(names));
 	});
 
-	it.each(breakages)("%s", async (_breakage, name, breaks) => {
+	it.each(breakages)("%s", async (_breakage, name, breaks, adapter) => {
 		const target = recordStoreConformance.find((each) => each.name === name);
 		expect(target).toBeDefined();
-		await expect(target?.run(memoryRecordStoreFixture())).resolves.toBeUndefined();
-		await expect(target?.run(brokenFixture(breaks))).rejects.toThrow();
+		const healthy = adapter === "directory" ? directoryRecordStoreFixture : memoryRecordStoreFixture;
+		await expect(target?.run(healthy())).resolves.toBeUndefined();
+		await expect(target?.run(brokenFixture(breaks, healthy()))).rejects.toThrow();
 	});
 });
 
