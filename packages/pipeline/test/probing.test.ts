@@ -93,16 +93,18 @@ describe("a head's bound", () => {
 		commit(repo, { "src/deep/a": "1234" });
 		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "HEAD")},sub`);
 		gitIn(repo, "commit", "--quiet", "-m", "submodule");
-		const run = (entries: number) =>
+		const run = (entries: number, bytes = 4) =>
 			runHeadProbe(
 				{ script: "process.exit(0);\n" },
 				{ repoRoot: repo, head: "HEAD" },
 				reviewer,
 				unconfinedSandbox(),
-				{ entries, bytes: 4, listing: headTreeLimits.listing },
+				{ entries, bytes, listing: headTreeLimits.listing },
 			);
 		expect(await run(2)).toMatchObject({ result: { exitCode: 0 } });
 		expect(await run(1)).toEqual({ refused: "the head holds more than 1 entries" });
+		// A submodule has no size, so only the file's four bytes count, and one past them is refused.
+		expect(await run(2, 3)).toEqual({ refused: "the head holds more than 3 bytes" });
 	});
 
 	it.each([".git", "..", ".", ".GIT"])("refuses a crafted tree that names %s, and leaves nothing", async (path) => {
