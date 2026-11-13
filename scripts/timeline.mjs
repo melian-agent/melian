@@ -149,8 +149,8 @@ export function parseTiming(body) {
 
 // A round's spend from the comment the melian round workflow posts as melian-status-bot: a line of the comment's first
 // code fence, as round.mjs's spendLine writes it. Every line of that fence that holds a model's or a check's text starts
-// with spaces, so only spendLine starts one with "Spend: ". Undefined for any other comment, or a line it cannot read
-// whole.
+// with spaces, so only spendLine starts one with "Spend: ". Undefined for any other comment. A round comment with no
+// such line, or one it cannot read whole, is still a round, with no spend, so the Rounds row counts it.
 // AGENTS.md recognises the bot by login and account ID together, since a login can pass to another account.
 export function parseRound(body, author) {
 	if (author?.login !== "melian-status-bot" || author.databaseId !== 353727783) return undefined;
@@ -158,14 +158,14 @@ export function parseRound(body, author) {
 	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
 	// A comment edited on GitHub's web page comes back with CRLF line endings, which the code block keeps.
 	const line = fence?.value.split(/\r?\n/).find((each) => each.startsWith("Spend: "));
-	if (line === undefined) return undefined;
+	if (line === undefined) return {};
 	const spend = {};
 	for (const part of line.slice("Spend: ".length).split(", ")) {
 		const [, seconds, tokens, cost] = /^(?:(\d+) s|(\d+) tokens|\$(\d+\.\d{2}))$/.exec(part) ?? [];
 		if (seconds !== undefined) spend.seconds = Number(seconds);
 		else if (tokens !== undefined) spend.tokens = Number(tokens);
 		else if (cost !== undefined) spend.cost = Number(cost);
-		else return undefined;
+		else return {};
 	}
 	return spend;
 }
@@ -175,7 +175,7 @@ const roundDetail = ({ seconds, tokens, cost }) =>
 		...(seconds === undefined ? [] : [`${(seconds / 60).toFixed(1)} min`]),
 		...(tokens === undefined ? [] : [`${tokens} tokens`]),
 		...(cost === undefined ? [] : [`$${cost.toFixed(2)}`]),
-	].join(", ");
+	].join(", ") || "no spend";
 
 const login = (node) => node.author?.login ?? "ghost";
 // toMarkdown ends what it writes with a line ending, and without the table extension it leaves pipes alone.

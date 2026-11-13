@@ -1098,38 +1098,39 @@ describe("rounds", () => {
 		expect(rows(timeline)).toContain("| Timing reported | none |");
 	});
 
-	it("reads no round from a comment without the round's marker, or a spend line outside the fence", () => {
-		const timeline = Timeline.from({
-			pull: pull({
-				timelineItems: page([
-					comment(20, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }).split("\n").slice(1).join("\n")),
-					comment(30, "<!-- melian-round run:1 nonce:00 -->\nSpend: 572 s, 5644300 tokens, $4.44\n"),
-					comment(40, roundBody()),
-				]),
-			}),
-			runs: [],
-		});
+	it("reads no round from a comment without the round's marker", () => {
+		const body = roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }).split("\n").slice(1).join("\n");
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(20, body)]) }), runs: [] });
 		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
 		expect(rows(timeline).some((row) => row.startsWith("| Rounds |"))).toBe(false);
 	});
 
+	const fenced = (line) =>
+		`<!-- melian-round run:1 nonce:00 -->\nMelian round\n\n\`\`\`text\nVerdict: passed\n${line}\n\`\`\`\n`;
 	it.each([
-		["text before a part", "572 s, x12 tokens"],
-		["text after a part", "572 s, 12 tokensx"],
-		["a part it does not know", "572 s, 12 tokens, soon"],
-		["seconds with a fraction, which the comment never writes", "572.5 s"],
-		["a cost without its two decimals", "$4.4"],
-	])("reads no round from a spend line with %s", (_name, spend) => {
-		const body = `<!-- melian-round run:1 nonce:00 -->\nMelian round\n\n\`\`\`text\nVerdict: passed\nSpend: ${spend}\n\`\`\`\n`;
-		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
-		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
-	});
-
-	it("reads no round when the line after the verdict only ends with a spend", () => {
-		const body =
-			"<!-- melian-round run:1 nonce:00 -->\nMelian round\n\n```text\nVerdict: passed\nNot Spend: 572 s\n```\n";
-		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
-		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
+		["no spend line, as a round whose review printed no JSON writes", roundBody()],
+		["a spend line outside the fence", "<!-- melian-round run:1 nonce:00 -->\nSpend: 572 s, 5644300 tokens, $4.44\n"],
+		["a line that only ends with a spend", fenced("Not Spend: 572 s")],
+		["text before a part", fenced("Spend: 572 s, x12 tokens")],
+		["text after a part", fenced("Spend: 572 s, 12 tokensx")],
+		["a part it does not know", fenced("Spend: 572 s, 12 tokens, soon")],
+		["seconds with a fraction, which the comment never writes", fenced("Spend: 572.5 s")],
+		["a cost without its two decimals", fenced("Spend: $4.4")],
+	])("counts a round, with no spend, from the bot's round comment with %s", (_name, body) => {
+		const timeline = Timeline.from({
+			pull: pull({
+				timelineItems: page([
+					comment(10, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 })),
+					comment(20, body),
+				]),
+			}),
+			runs: [],
+		});
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 9.5 min, 5644300 tokens, $4.44 |",
+			"| 2026-10-01 00:20 | 0.33 | round | no spend |",
+		]);
+		expect(rows(timeline)).toContain("| Rounds | 2 rounds, 9.5 min over 1, $4.44 over 1 |");
 	});
 
 	it("reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back", () => {
