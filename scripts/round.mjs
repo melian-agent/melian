@@ -222,10 +222,19 @@ export function publicVerdict(text) {
 const amount = (value) => (Number.isFinite(value) && value >= 0 ? value : undefined);
 const field = (object, key) => (typeof object === "object" && object !== null ? object[key] : undefined);
 
-// A round's duration in whole seconds, its tokens and its cost in dollars: from the telemetry `melian review --json`
-// writes beside the verdict, or from a public verdict's own `spend` on a second pass. A number that is not finite and
-// non-negative is left out, and with none left the spend is left out whole. Tokens and cost are left out too unless
-// the telemetry says every stage's usage was recorded, since a total missing a stage would read as exact.
+// One figure summed across the ledger's run rows. A row that holds it must hold a valid number or the figure is
+// refused, and with no row holding it there is none.
+function sumOf(rows, key) {
+	const held = rows.filter((row) => Object.hasOwn(row, key)).map((row) => amount(row[key]));
+	if (held.length === 0 || held.includes(undefined)) return undefined;
+	return amount(held.reduce((sum, value) => sum + value, 0));
+}
+
+// A round's duration in whole seconds, its tokens and its cost in dollars: from what `melian review --json` writes
+// beside the verdict, or from a public verdict's own `spend` on a second pass. Tokens and cost come from the ledger's
+// run, `telemetry.run`, whose rows count nothing for a stage the review reused, never from the revision's whole total.
+// A number that is not finite and non-negative is left out, and with none left the spend is left out whole. Tokens
+// and cost are left out too when a row says its usage was recorded in part, since the sum would read as exact.
 function spendOf(verdict) {
 	let seconds;
 	let tokens;
@@ -236,14 +245,12 @@ function spendOf(verdict) {
 		const endedAt = amount(field(prepare, "endedAt"));
 		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards.
 		seconds = amount(Math.round((endedAt - startedAt) / 1000));
-		const unavailable = field(verdict.telemetry, "usageUnavailable");
+		const rows = field(field(verdict.telemetry, "run"), "stages");
 		const measured =
-			Array.isArray(unavailable) &&
-			unavailable.length === 0 &&
-			(field(verdict.telemetry, "usageIncomplete") ?? 0) === 0;
-		const total = measured ? field(field(verdict.telemetry, "total"), "total") : undefined;
-		tokens = amount(field(total, "totalTokens"));
-		cost = amount(field(field(total, "cost"), "total"));
+			Array.isArray(rows) &&
+			rows.every((row) => typeof row === "object" && row !== null && row.usageIncomplete !== true);
+		tokens = measured ? sumOf(rows, "tokens") : undefined;
+		cost = measured ? sumOf(rows, "cost") : undefined;
 	} else {
 		const spent = field(verdict, "spend");
 		seconds = amount(field(spent, "seconds"));
