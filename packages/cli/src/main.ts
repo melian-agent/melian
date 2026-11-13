@@ -82,7 +82,7 @@ Options:
   --head, --base <sha>   Confirm the merge_group event SHAs (status merge-group).
   --expect-base, --expect-head <sha>
                          Review the pull request only at this base and head, as the pull request reports them;
-                         refuse before reading any credential if it moved (review).
+                         refuse before reading a model credential if it moved (review).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it

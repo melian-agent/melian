@@ -186,7 +186,7 @@ export async function review(
 		readonly json?: boolean;
 		readonly notes?: boolean;
 		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
-		// since is refused before any credential is read.
+		// since is refused before any model credential is read.
 		readonly expect?: { readonly base: string; readonly head: string };
 	},
 ): Promise<number> {

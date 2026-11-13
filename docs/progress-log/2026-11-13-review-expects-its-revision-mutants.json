@@ -1,11 +1,13 @@
 {
 	"version": 2,
-	"pull_request": null,
+	"pull_request": 387,
 	"ranges": [
-		"origin/main...e5ed56f8",
-		"e5ed56f8...ebf5042e (tests only)"
+		"origin/main...e5ed56f8 (enumerated at e5ed56f8)"
 	],
 	"note": "Each mutant ran against its named test alone, an anchored describe > it pattern collecting exactly one test, which passed unmutated.",
+	"total": 68,
+	"omitted": 0,
+	"unmutated": [],
 	"mutants": [
 		{
 			"file": "packages/cli/src/commands.ts",
