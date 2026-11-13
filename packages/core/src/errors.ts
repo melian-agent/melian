@@ -322,3 +322,36 @@ export class LedgerRefusal extends Error {
 		this.code = code;
 	}
 }
+
+/** Why a shared record or a record store refused. */
+export type RecordErrorCode =
+	| "invalidRecord"
+	| "unknownKind"
+	| "supersedesNotAllowed"
+	| "notCanonical"
+	| "idMismatch"
+	| "invalidChangeset"
+	| "invalidCell"
+	| "disposed"
+	| "unreachable"
+	| "unknownFile"
+	| "closed";
+
+/**
+ * A shared record was refused, or a record store could not answer. `invalidRecord`, `unknownKind` and
+ * `supersedesNotAllowed` refuse an envelope; `notCanonical` and `idMismatch` refuse stored bytes that are not the
+ * canonical bytes of the ID they are stored under. `disposed` refuses a write to a disposed changeset. `unreachable`
+ * means the store cannot answer fresh, and `unknownFile` that it holds something no record or cell explains. `path`
+ * names the offending file or field, where there is one.
+ */
+export class RecordError extends Error {
+	readonly code: RecordErrorCode;
+	readonly path: string | undefined;
+
+	constructor(code: RecordErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "RecordError";
+		this.code = code;
+		this.path = options.path;
+	}
+}

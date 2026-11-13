@@ -162,6 +162,8 @@ export {
 	ModelRoutingError,
 	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
+	RecordError,
+	type RecordErrorCode,
 	RevisionError,
 	type RevisionErrorCode,
 	StandardsError,
@@ -486,6 +488,7 @@ export {
 	type PullRequestRoundHeads,
 	type RoundMembership,
 } from "./pull-request-rounds.ts";
+export { canonicalJson, type RecordEnvelope, type RecordJson, RecordSet, SharedRecord } from "./record.ts";
 export {
 	costText,
 	durationText,
