@@ -342,7 +342,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 8, tokens: 3_000_000, tools: 250 },
+				budget: { findings: 8, tokens: 5_000_000, tools: 400 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);
