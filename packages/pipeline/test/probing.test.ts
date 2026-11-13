@@ -679,6 +679,13 @@ describe("the probing protocol a probing run's fingerprint holds", () => {
 		});
 	});
 
+	it("tells no role to ignore or disregard other instructions", () => {
+		const told = Object.entries({ ...probing.probingWording, ...probing.probeEvidenceWording }).filter(([, text]) =>
+			/\b(ignore|disregard)\b/i.test(text),
+		);
+		expect(told.map(([name]) => name)).toEqual([]);
+	});
+
 	it("holds no wording in probing.ts outside its two tables, but in code that renders no prompt", () => {
 		// The top-level declarations whose literals no planner, prober or verifier reads, each with why.
 		const notPrompts: Record<string, string> = {
