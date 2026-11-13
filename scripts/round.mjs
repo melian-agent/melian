@@ -250,8 +250,10 @@ function spendOf(verdict) {
 			Array.isArray(rows) &&
 			rows.every((row) => typeof row === "object" && row !== null && row.usageIncomplete !== true);
 		// The ledger writes a row's tokens and cost together, for a model stage this run ran. With neither on any row,
-		// every stage was reused or ran no model, so the run spent nothing.
-		const spentNothing = measured && !rows.some((row) => Object.hasOwn(row, "tokens") || Object.hasOwn(row, "cost"));
+		// every stage was reused or ran no model, so the run spent nothing. A run with no row at all is the CLI's
+		// fallback when it cannot read the telemetry, so it proves nothing.
+		const spentNothing =
+			measured && rows.length > 0 && !rows.some((row) => Object.hasOwn(row, "tokens") || Object.hasOwn(row, "cost"));
 		tokens = spentNothing ? 0 : measured ? sumOf(rows, "tokens") : undefined;
 		cost = spentNothing ? 0 : measured ? sumOf(rows, "cost") : undefined;
 	} else {
