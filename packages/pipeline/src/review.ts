@@ -126,6 +126,7 @@ import {
 	reportFinding,
 	reportVerdict,
 	reviewFiles,
+	roleTools,
 	runProbe,
 	runProbeTool,
 	type StoredBudgetEnd,
@@ -1207,8 +1208,10 @@ export function probingProtocol(): string {
 			description,
 			parameters,
 		})),
+		roles: roleTools,
 		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
-		prompts: probingWording(),
+		// The findings a quick run carries reach the planner and the prober too.
+		prompts: [...probingWording(), String(carriedFindings)],
 	});
 }
 

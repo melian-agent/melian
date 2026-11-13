@@ -452,7 +452,7 @@ function ending(result: ToolResult, lens: LensPolicy, spent: Spent | undefined) 
 // What the lens's policy refuses in `call`, or undefined: a tool it does not list, and for `report_finding`, a severity
 // or a rule outside its own. An injection attempt at P1 always passes, because the injection policy orders every lens
 // to report one at P1, whatever severities the lens declares.
-const roleTools: Readonly<Record<NonNullable<LensPolicy["role"]> | "lens", readonly string[]>> = {
+export const roleTools: Readonly<Record<NonNullable<LensPolicy["role"]> | "lens", readonly string[]>> = {
 	lens: ["report_finding"],
 	verifier: ["report_verdict"],
 	planner: ["record_plan", "report_finding"],
