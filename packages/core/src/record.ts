@@ -20,22 +20,9 @@ export type RecordEnvelope = {
 	signature?: string;
 };
 
-// Whether each kind may carry `supersedes`, by rule 4: only what a command writes into a slot of its own.
-const kinds: { readonly [kind: string]: { readonly supersedes: boolean } } = {
-	check: { supersedes: false },
-	lens: { supersedes: false },
-	verification: { supersedes: false },
-	walkthrough: { supersedes: false },
-	round: { supersedes: false },
-	telemetry: { supersedes: false },
-	dismissal: { supersedes: true },
-	marker: { supersedes: false },
-	post: { supersedes: true },
-	status: { supersedes: true },
-	"ledger-comment": { supersedes: true },
-	comparison: { supersedes: true },
-};
-
+const kinds = new Set(["check", "lens", "verification", "walkthrough", "round", "telemetry", "marker"]);
+// Rule 4: only what a command writes into a slot of its own may supersede.
+const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment", "comparison"]);
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
 const dotted = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 const revisionPattern = /^(?:[0-9a-f]{40}\.\.[0-9a-f]{40}|[0-9a-f]{64}\.\.[0-9a-f]{64})$/;
@@ -69,15 +56,13 @@ export function canonicalJson(value: unknown): string {
 	}
 	if (Array.isArray(value)) {
 		const items: string[] = [];
-		for (let index = 0; index < value.length; index++) {
-			if (!(index in value)) throw invalid("a record's arrays hold no hole");
-			items.push(canonicalJson(value[index]));
-		}
+		// A hole reads as undefined, which no record holds.
+		for (let index = 0; index < value.length; index++) items.push(canonicalJson(value[index]));
 		return `[${items.join(",")}]`;
 	}
 	if (typeof value === "object" && plain(value)) {
 		const entries = Object.entries(value);
-		entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		entries.sort(([a], [b]) => (a < b ? -1 : 1));
 		return `{${entries
 			.map(([key, field]) => {
 				if (!key.isWellFormed()) throw invalid("a record's keys hold no lone surrogate");
@@ -164,8 +149,9 @@ export class SharedRecord {
 			throw invalid("a record's changeset is dot-joined segments of [a-z0-9-]");
 		if (typeof envelope.kind !== "string" || !dotted.test(envelope.kind))
 			throw invalid("a record's kind is dot-joined segments of [a-z0-9-]");
-		const kind = Object.hasOwn(kinds, envelope.kind) ? kinds[envelope.kind] : undefined;
-		if (kind === undefined) throw new RecordError("unknownKind", `no record has the kind ${envelope.kind}`);
+		const supersedes = supersedingKinds.has(envelope.kind);
+		if (!supersedes && !kinds.has(envelope.kind))
+			throw new RecordError("unknownKind", `no record has the kind ${envelope.kind}`);
 		if (typeof envelope.key !== "string" || envelope.key === "")
 			throw invalid("a record's key is a non-empty string");
 		if (!("payload" in envelope)) throw invalid("a record has a payload");
@@ -175,9 +161,9 @@ export class SharedRecord {
 			if (envelope.kind === "dismissal") throw invalid("a dismissal carries no revision");
 		}
 		if ("supersedes" in envelope) {
-			const supersedes = idList(envelope.supersedes, "supersedes");
-			if (supersedes.length === 0) throw invalid("supersedes, when present, names at least one record");
-			if (!kind.supersedes)
+			if (idList(envelope.supersedes, "supersedes").length === 0)
+				throw invalid("supersedes, when present, names at least one record");
+			if (!supersedes)
 				throw new RecordError("supersedesNotAllowed", `a ${envelope.kind} record may not supersede another`);
 		}
 		if ("signer" in envelope !== "signature" in envelope)

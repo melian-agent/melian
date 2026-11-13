@@ -490,7 +490,13 @@ export {
 	type RoundMembership,
 } from "./pull-request-rounds.ts";
 export { canonicalJson, type RecordEnvelope, type RecordJson, RecordSet, SharedRecord } from "./record.ts";
-export { MemoryRecordSpace, MemoryRecordStore, type RecordCell, type RecordStore } from "./record-store.ts";
+export {
+	disposalMark,
+	MemoryRecordSpace,
+	MemoryRecordStore,
+	type RecordCell,
+	type RecordStore,
+} from "./record-store.ts";
 export {
 	costText,
 	durationText,

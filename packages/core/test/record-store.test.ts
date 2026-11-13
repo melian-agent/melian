@@ -3,6 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFil
 import { join } from "node:path";
 import {
 	DirectoryRecordStore,
+	MemoryRecordSpace,
 	MemoryRecordStore,
 	type RecordCell,
 	type RecordEnvelope,
@@ -241,7 +242,7 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 	],
 	[
 		"a changeset name reaches the adapter unchecked",
-		"every call refuses a changeset name no envelope could hold",
+		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		() => ({ list: async () => [] }),
 	],
 ];
@@ -284,7 +285,28 @@ describe("MemoryRecordStore", () => {
 	it("refuses every call once closed", async () => {
 		const store = new MemoryRecordStore();
 		await store.close();
-		expect((await rejection(store.list(changeset), RecordError)).code).toBe("closed");
+		const error = await rejection(store.list(changeset), RecordError);
+		expect(error.code).toBe("closed");
+		expect(error.message).toBe("the record store is closed");
+	});
+
+	it("says why it refuses", async () => {
+		const space = new MemoryRecordSpace();
+		const store = new MemoryRecordStore(space);
+		const message = async (call: Promise<unknown>) => (await rejection(call, RecordError)).message;
+		expect(await message(store.list("../x"))).toBe('"../x" is not a changeset name');
+		expect(await message(store.writeCell(changeset, undefined, '{"disposed":true}'))).toBe(
+			"only dispose writes the disposal mark",
+		);
+		expect(await message(store.writeCell(changeset, undefined, String.fromCharCode(0xdc00)))).toBe(
+			"a cell holds no lone surrogate",
+		);
+		await store.dispose(changeset);
+		expect(await message(store.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]))).toBe(
+			`changeset ${changeset} is disposed`,
+		);
+		space.disconnect();
+		expect(await message(store.list(changeset))).toBe("the memory record space is disconnected");
 	});
 });
 
@@ -299,6 +321,14 @@ describe("DirectoryRecordStore", () => {
 
 	afterEach(() => {
 		removeDirectory(root);
+	});
+
+	it("refuses every call once closed", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.close();
+		const error = await rejection(store.readCell(changeset), RecordError);
+		expect(error.code).toBe("closed");
+		expect(error.message).toBe("the record store is closed");
 	});
 
 	it("files a record at its path, as its canonical bytes", async () => {

@@ -358,4 +358,71 @@ describe("SharedRecord", () => {
 			});
 		});
 	});
+
+	describe("saying why", () => {
+		const revision = `${commit("a")}..${commit("b")}`;
+
+		it.each([
+			["a record is a JSON object", "x"],
+			["a record holds no field extra", { ...envelope(), extra: 1 }],
+			["a record's v is 1", { ...envelope(), v: 2 }],
+			["a record's changeset is dot-joined segments of [a-z0-9-]", envelope({ changeset: "A" })],
+			["a record's kind is dot-joined segments of [a-z0-9-]", envelope({ kind: "Check" })],
+			["no record has the kind checks", envelope({ kind: "checks" })],
+			["a record's key is a non-empty string", envelope({ key: "" })],
+			["a record has a payload", (({ payload: _, ...rest }) => rest)(envelope())],
+			["a record's revision is two full lower-case object IDs joined by ..", envelope({ revision: "x" })],
+			["a dismissal carries no revision", envelope({ kind: "dismissal", revision })],
+			["supersedes is a list of record IDs", { ...envelope({ kind: "post" }), supersedes: hex("1") }],
+			["supersedes holds 64-hex record IDs", envelope({ kind: "post", supersedes: ["x"] })],
+			["supersedes is sorted, with no ID twice", envelope({ kind: "post", supersedes: [hex("2"), hex("1")] })],
+			["supersedes, when present, names at least one record", envelope({ kind: "post", supersedes: [] })],
+			["a check record may not supersede another", envelope({ supersedes: [hex("1")] })],
+			["a record's signer and signature appear together or not at all", envelope({ signer: "host" })],
+			["a record's signer is a non-empty string", envelope({ signer: "", signature })],
+			["a record's signature is 64 bytes in canonical base64", envelope({ signer: "host", signature: "x" })],
+			["a round names its revision", envelope({ kind: "round", payload: { replaces: [] } })],
+			["a round's payload is an object", envelope({ kind: "round", revision, payload: [] })],
+			["a round's replaces is a list of record IDs", envelope({ kind: "round", revision, payload: {} })],
+			["a record's numbers are safe integers, not 1.5", envelope({ payload: 1.5 })],
+			["a record's strings hold no lone surrogate", envelope({ payload: String.fromCharCode(0xd800) })],
+			["a record's keys hold no lone surrogate", envelope({ payload: { [String.fromCharCode(0xd800)]: 1 } })],
+			["a record holds JSON only, not a class instance", envelope({ payload: new Date(0) as never })],
+			["a record holds JSON only, not undefined", envelope({ payload: [undefined] as never })],
+			["a record holds JSON only, not bigint", envelope({ payload: 1n as never })],
+		])("refuses with %j", (message, value) => {
+			expect(refusal(value).message).toBe(message);
+		});
+
+		it("says why it refuses stored bytes", () => {
+			const record = SharedRecord.parse(envelope());
+			const read = (bytes: string, id: string) => {
+				try {
+					SharedRecord.read(bytes, id);
+				} catch (error) {
+					return error as RecordError;
+				}
+				throw new Error("expected the bytes to be refused");
+			};
+			const notJson = read("{", sha256("{"));
+			expect(notJson.message).toBe("a stored record is not JSON");
+			expect(notJson.cause).toBeInstanceOf(SyntaxError);
+			expect(read(`${record.bytes} `, sha256(`${record.bytes} `)).message).toBe(
+				"a stored record's bytes are not its canonical form",
+			);
+			expect(read(record.bytes, hex("0")).message).toBe(`a record filed as ${hex("0")} has the ID ${record.id}`);
+		});
+
+		it.each([
+			["an ID one digit too long", ["a".repeat(65)]],
+			["an ID after other text", [`x${hex("a")}`]],
+			["an array that coerces to an ID", [[hex("a")]]],
+		])("refuses supersedes holding %s", (_name, supersedes) => {
+			expect(refusal({ ...envelope({ kind: "post" }), supersedes }).code).toBe("invalidRecord");
+		});
+
+		it("gives a record that names no supersedes an empty list", () => {
+			expect(SharedRecord.parse(envelope()).supersedes).toEqual([]);
+		});
+	});
 });

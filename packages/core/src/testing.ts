@@ -272,15 +272,21 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
-		name: "every call refuses a changeset name no envelope could hold",
+		name: "every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				const outside = "../outside";
-				await assert.rejects(store.list(outside), refusal("invalidChangeset"));
-				await assert.rejects(store.readCell(outside), refusal("invalidChangeset"));
-				await assert.rejects(store.writeCell(outside, undefined, "lease"), refusal("invalidChangeset"));
-				await assert.rejects(store.dispose(outside), refusal("invalidChangeset"));
+				for (const outside of ["../outside", "a/b", "a.", "a..b", "A"]) {
+					await assert.rejects(store.list(outside), refusal("invalidChangeset"));
+					await assert.rejects(store.readCell(outside), refusal("invalidChangeset"));
+					await assert.rejects(store.writeCell(outside, undefined, "lease"), refusal("invalidChangeset"));
+					await assert.rejects(store.dispose(outside), refusal("invalidChangeset"));
+				}
+				const dotted = "github.melian-agent.pull-399";
+				const record = envelope("check", "guardrails", {}, dotted);
+				await store.add([record]);
+				assert.deepEqual(ids(await store.list(dotted)), idsOf(record));
+				assert.equal(await store.writeCell(dotted, undefined, "lease"), true);
 			}),
 	},
 ];
