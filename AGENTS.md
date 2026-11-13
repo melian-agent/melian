@@ -24,6 +24,7 @@ For chat, comments, docs, commit messages, and anything an author will read, fol
 - Explain non-trivial designs and problems as problem, concrete example, then solution. Say why the solution is necessary and separate it from optional complexity.
 - Prose uses Australian English. Code and identifiers use US English, matching the ecosystem.
 - Link every GitHub issue and pull request you mention, in chat and docs. Only GitHub's own UI turns a bare number into a link.
+- Write every issue and pull request text, the title, the description and each comment, simply, for a human reader who has none of your context. Say in plain words what it does and why, before any detail. Name a thing by what it does, with a link; a finding's ID, a commit hash or a label you coined while working may follow that, never stand in for it. [The decision](docs/decisions/2026-11-14-issue-and-pull-request-text-assumes-no-context.md) says why.
 
 ## Code
 
