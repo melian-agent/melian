@@ -10,7 +10,12 @@ import { fakeGitHub, fakeState } from "../../packages/github/test/fixtures/fake-
 import { Crash, envelope, OwnerRefusal, Publisher, standing } from "./rules.mjs";
 import { DirectoryRecordStore, recordId, sha256 } from "./stores.mjs";
 
-const pull = (number) => ({ number, title: "spike", base: { ref: "main", sha: "a".repeat(40) }, head: { ref: "f", sha: "b".repeat(40) } });
+const pull = (number) => ({
+	number,
+	title: "spike",
+	base: { ref: "main", sha: "a".repeat(40) },
+	head: { ref: "f", sha: "b".repeat(40) },
+});
 
 async function world({ number = 7, login = "melian-user", failUser = false } = {}) {
 	const store = await DirectoryRecordStore.open({ root: await mkdtemp(join(tmpdir(), "spike-380-dir-")) });
@@ -19,7 +24,16 @@ async function world({ number = 7, login = "melian-user", failUser = false } = {
 	state.failUser = failUser;
 	const octokit = new Octokit({ auth: "throwaway", request: { fetch: fakeGitHub(state) } });
 	const publisher = (options = {}) =>
-		new Publisher({ store, changeset: `pull-${number}`, octokit, owner: "melian-agent", repo: "melian", number, holder: "host-a", ...options });
+		new Publisher({
+			store,
+			changeset: `pull-${number}`,
+			octokit,
+			owner: "melian-agent",
+			repo: "melian",
+			number,
+			holder: "host-a",
+			...options,
+		});
 	// Another commenter's comment, as GitHub would list it: in creation order.
 	const comment = (user, body) => {
 		const each = { id: state.nextId++, user: { login: user }, body, html_url: "" };
@@ -29,7 +43,11 @@ async function world({ number = 7, login = "melian-user", failUser = false } = {
 	return { store, state, octokit, publisher, comment };
 }
 
-const crashAfterPost = { afterPost: () => { throw new Crash("after post"); } };
+const crashAfterPost = {
+	afterPost: () => {
+		throw new Crash("after post");
+	},
+};
 const ledgerComments = (state) => state.ledgers.filter((each) => each.body.includes("<!-- melian:marker="));
 
 describe("case 1: a copied marker value before the post record lands", () => {
@@ -69,7 +87,16 @@ describe("case 2: a crash on either side of the post", () => {
 		const w = await world();
 		let first;
 		await assert.rejects(
-			w.publisher({ crash: { afterHash: (value) => { first = value; throw new Crash("after hash"); } } }).publish("ledger"),
+			w
+				.publisher({
+					crash: {
+						afterHash: (value) => {
+							first = value;
+							throw new Crash("after hash");
+						},
+					},
+				})
+				.publish("ledger"),
 			Crash,
 		);
 		assert.equal(w.state.ledgers.length, 0);
@@ -96,7 +123,18 @@ describe("case 2: a crash on either side of the post", () => {
 		// comment's hash out of the standing set whenever the unused record has the lower ID.
 		for (;;) {
 			const w = await world();
-			await assert.rejects(w.publisher({ crash: { afterHash: () => { throw new Crash(); } } }).publish("ledger"), Crash);
+			await assert.rejects(
+				w
+					.publisher({
+						crash: {
+							afterHash: () => {
+								throw new Crash();
+							},
+						},
+					})
+					.publish("ledger"),
+				Crash,
+			);
 			await assert.rejects(w.publisher({ crash: crashAfterPost }).publish("ledger"), Crash);
 			const markers = (await w.store.list("pull-7")).filter((record) => record.kind === "marker");
 			const posted = sha256(ledgerComments(w.state)[0].body.split("=")[1].split(" ")[0]);
@@ -150,10 +188,23 @@ describe("case 4: the holder dies", () => {
 		let clock = 1_000_000;
 		const now = () => clock;
 		let wake;
-		const paused = new Promise((resolve) => { wake = resolve; });
+		const paused = new Promise((resolve) => {
+			wake = resolve;
+		});
 		let parked;
-		const parkedAtHash = new Promise((resolve) => { parked = resolve; });
-		const a = w.publisher({ holder: "host-a", now, crash: { afterHash: async () => { parked(); await paused; } } });
+		const parkedAtHash = new Promise((resolve) => {
+			parked = resolve;
+		});
+		const a = w.publisher({
+			holder: "host-a",
+			now,
+			crash: {
+				afterHash: async () => {
+					parked();
+					await paused;
+				},
+			},
+		});
 		const first = a.publish("ledger by a");
 		await parkedAtHash;
 		clock += 60_001;
@@ -175,7 +226,10 @@ describe("case 5: a second login", () => {
 		const w = await world({ login: "alice" });
 		await w.publisher().publish("ledger");
 		w.state.login = "bob";
-		await assert.rejects(w.publisher().publish("ledger"), (error) => error instanceof OwnerRefusal && error.owner === "alice");
+		await assert.rejects(
+			w.publisher().publish("ledger"),
+			(error) => error instanceof OwnerRefusal && error.owner === "alice",
+		);
 	});
 
 	test("5b, a second login whose /user read is refused cannot be told from the owner, and edits as itself", async () => {
@@ -192,8 +246,10 @@ describe("case 5: a second login", () => {
 		await w.store.add([envelope("pull-7", "post", "ledger", { comment: 1, login: "alice" })]);
 		await w.store.add([envelope("pull-7", "post", "ledger", { comment: 2, login: "bob" })]);
 		const owner = standing(await w.store.list("pull-7")).find((record) => record.kind === "post").payload.login;
-		const lower = [envelope("pull-7", "post", "ledger", { comment: 1, login: "alice" }), envelope("pull-7", "post", "ledger", { comment: 2, login: "bob" })]
-			.sort((x, y) => (recordId(x) < recordId(y) ? -1 : 1))[0].payload.login;
+		const lower = [
+			envelope("pull-7", "post", "ledger", { comment: 1, login: "alice" }),
+			envelope("pull-7", "post", "ledger", { comment: 2, login: "bob" }),
+		].sort((x, y) => (recordId(x) < recordId(y) ? -1 : 1))[0].payload.login;
 		assert.equal(owner, lower);
 	});
 });

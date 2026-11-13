@@ -31,7 +31,10 @@ export function checkEnvelope(record) {
 	for (const field of ["changeset", "kind"])
 		if (typeof record[field] !== "string" || !NAME.test(record[field])) throw new Error(`bad ${field}`);
 	if (typeof record.key !== "string") throw new Error("bad key");
-	if (record.supersedes !== undefined && !(Array.isArray(record.supersedes) && record.supersedes.every((id) => /^[0-9a-f]{64}$/.test(id))))
+	if (
+		record.supersedes !== undefined &&
+		!(Array.isArray(record.supersedes) && record.supersedes.every((id) => /^[0-9a-f]{64}$/.test(id)))
+	)
 		throw new Error("bad supersedes");
 	if (record.signature !== undefined) {
 		const bytes = Buffer.from(record.signature, "base64");
@@ -66,7 +69,8 @@ export function git(cwd, args, { input, env, buffer, timeout } = {}) {
 				...(timeout ? { timeout } : {}),
 				...(buffer ? { encoding: "buffer" } : {}),
 			},
-			(error, stdout, stderr) => (error ? reject(Object.assign(error, { stderr: String(stderr) })) : resolve(stdout)),
+			(error, stdout, stderr) =>
+				error ? reject(Object.assign(error, { stderr: String(stderr) })) : resolve(stdout),
 		);
 		if (input !== undefined) child.stdin.end(input);
 	});
@@ -123,7 +127,8 @@ export class GitRecordStore {
 				return { mode, type, blob, path };
 			});
 		for (const entry of entries)
-			if (entry.type !== "blob" || entry.mode !== "100644" || !KNOWN.test(entry.path)) throw new UnknownFile(entry.path);
+			if (entry.type !== "blob" || entry.mode !== "100644" || !KNOWN.test(entry.path))
+				throw new UnknownFile(entry.path);
 		return entries;
 	}
 
@@ -161,9 +166,19 @@ export class GitRecordStore {
 				).trim();
 				this.stats.pushes++;
 				try {
-					await git(this.#dir, ["push", "-q", `--force-with-lease=${this.#ref}:${tip ?? ""}`, this.#remote, `${commit}:${this.#ref}`], {
-						timeout: this.options.deadlineMs,
-					});
+					await git(
+						this.#dir,
+						[
+							"push",
+							"-q",
+							`--force-with-lease=${this.#ref}:${tip ?? ""}`,
+							this.#remote,
+							`${commit}:${this.#ref}`,
+						],
+						{
+							timeout: this.options.deadlineMs,
+						},
+					);
 					return result;
 				} catch (error) {
 					if (error.killed) {
@@ -174,7 +189,8 @@ export class GitRecordStore {
 						}
 					} else if (!/stale info|rejected|failed to push/.test(error.stderr ?? "")) throw error;
 					this.stats.lostRaces++;
-					if (++lost >= this.options.giveUpAfter) throw Object.assign(new Error(`gave up after ${lost} lost races`), { code: "gaveUp" });
+					if (++lost >= this.options.giveUpAfter)
+						throw Object.assign(new Error(`gave up after ${lost} lost races`), { code: "gaveUp" });
 					await sleep(Math.random() * bound);
 					bound = Math.min(bound * 2, 1000);
 				}
@@ -208,7 +224,10 @@ export class GitRecordStore {
 			(entry) => entry.path.startsWith(`changesets/${changeset}/`) && entry.path !== cellPath(changeset),
 		);
 		if (blobs.length === 0) return [];
-		const batch = await git(this.#dir, ["cat-file", "--batch"], { input: blobs.map(({ blob }) => `${blob}\n`).join(""), buffer: true });
+		const batch = await git(this.#dir, ["cat-file", "--batch"], {
+			input: blobs.map(({ blob }) => `${blob}\n`).join(""),
+			buffer: true,
+		});
 		const records = [];
 		let at = 0;
 		for (let i = 0; i < blobs.length; i++) {
@@ -237,7 +256,9 @@ export class GitRecordStore {
 			if (version !== expectedVersion) return { changed: false, result: false };
 			const bytes = JSON.stringify({ version: randomUUID(), value });
 			const blob = (await git(this.#dir, ["hash-object", "-w", "--stdin"], { input: bytes })).trim();
-			await git(this.#dir, ["update-index", "--add", "--cacheinfo", `100644,${blob},${cellPath(changeset)}`], { env });
+			await git(this.#dir, ["update-index", "--add", "--cacheinfo", `100644,${blob},${cellPath(changeset)}`], {
+				env,
+			});
 			return { changed: true, result: true };
 		});
 	}
@@ -247,7 +268,10 @@ export class GitRecordStore {
 			const paths = entries.map((entry) => entry.path).filter((path) => path.startsWith(`changesets/${changeset}/`));
 			if (paths.length === 0) return { changed: false };
 			const zero = "0".repeat(40);
-			await git(this.#dir, ["update-index", "-z", "--index-info"], { env, input: paths.map((path) => `0 ${zero}\t${path}\0`).join("") });
+			await git(this.#dir, ["update-index", "-z", "--index-info"], {
+				env,
+				input: paths.map((path) => `0 ${zero}\t${path}\0`).join(""),
+			});
 			return { changed: true };
 		});
 	}
@@ -341,7 +365,10 @@ export class DirectoryRecordStore {
 		try {
 			const { version } = await this.readCell(changeset);
 			if (version !== expectedVersion) return false;
-			await this.#writeAtomic(join(this.root, cellPath(changeset)), JSON.stringify({ version: randomUUID(), value }));
+			await this.#writeAtomic(
+				join(this.root, cellPath(changeset)),
+				JSON.stringify({ version: randomUUID(), value }),
+			);
 			return true;
 		} finally {
 			await rmdir(lock);
@@ -361,13 +388,18 @@ export async function localRemote() {
 	await git(dir, ["init", "-q", "--bare"]);
 	for (const hook of ["pre-receive", "post-receive"]) {
 		const path = join(dir, "hooks", hook);
-		await writeFile(path, `#!/bin/sh\ncat >/dev/null\nd=$(cat "${join(dir, hook)}.delay" 2>/dev/null || echo 0)\nsleep "$d"\n`, { mode: 0o755 });
+		await writeFile(
+			path,
+			`#!/bin/sh\ncat >/dev/null\nd=$(cat "${join(dir, hook)}.delay" 2>/dev/null || echo 0)\nsleep "$d"\n`,
+			{ mode: 0o755 },
+		);
 	}
 	return {
 		url: `file://${dir}`,
 		dir,
 		delay: (hook, seconds) => writeFile(join(dir, `${hook}.delay`), String(seconds)),
-		tip: async (ref = "refs/heads/melian/state") => (await git(dir, ["rev-parse", ref]).catch(() => "")).trim() || undefined,
+		tip: async (ref = "refs/heads/melian/state") =>
+			(await git(dir, ["rev-parse", ref]).catch(() => "")).trim() || undefined,
 		close: () => rm(dir, { recursive: true, force: true }),
 	};
 }

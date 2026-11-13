@@ -25,7 +25,8 @@ after(async () => {
 	for (const each of opened) await each.close();
 });
 
-const batch = (changeset, n, tag = "") => Array.from({ length: n }, (_, i) => envelope(changeset, "lens", `lens-${tag}${i}`, { i, tag }));
+const batch = (changeset, n, tag = "") =>
+	Array.from({ length: n }, (_, i) => envelope(changeset, "lens", `lens-${tag}${i}`, { i, tag }));
 
 // Commits a tree by hand onto the remote's branch, as a writer who does not use the adapter would.
 async function commitByHand(r, files) {
@@ -39,7 +40,19 @@ async function commitByHand(r, files) {
 		await git(work, ["update-index", "--add", "--cacheinfo", `100644,${blob},${path}`]);
 	}
 	const tree = (await git(work, ["write-tree"])).trim();
-	const commit = (await git(work, ["-c", "user.name=h", "-c", "user.email=h@invalid", "commit-tree", tree, ...(parent ? ["-p", parent] : []), "-m", "by hand"])).trim();
+	const commit = (
+		await git(work, [
+			"-c",
+			"user.name=h",
+			"-c",
+			"user.email=h@invalid",
+			"commit-tree",
+			tree,
+			...(parent ? ["-p", parent] : []),
+			"-m",
+			"by hand",
+		])
+	).trim();
 	await git(work, ["push", "-q", r.url, `${commit}:refs/heads/melian/state`]);
 }
 
@@ -63,7 +76,9 @@ describe("case 4: two publishers race for the cell's lease", () => {
 		const root = await mkdtemp(join(tmpdir(), "spike-380-dir-"));
 		for (let trial = 0; trial < 50; trial++) {
 			const stores = [await DirectoryRecordStore.open({ root }), await DirectoryRecordStore.open({ root })];
-			const results = await Promise.all(stores.map((store, i) => Object.assign(leaseStore(store, `pull-${trial}`), { holder: `host-${i}` }).take()));
+			const results = await Promise.all(
+				stores.map((store, i) => Object.assign(leaseStore(store, `pull-${trial}`), { holder: `host-${i}` }).take()),
+			);
 			assert.equal(results.filter((each) => each.lease).length, 1);
 		}
 	});
@@ -110,7 +125,9 @@ describe("case 7: the git adapter", () => {
 		const store = await gitStore(r);
 		const other = envelope("pull-9", "dismissal", "finding-1", { reason: "written for #9" });
 		const id = recordId(other);
-		await commitByHand(r, { [`changesets/pull-1/dismissal/${"0".repeat(64)}/${"1".repeat(64)}.json`]: JSON.stringify(other) });
+		await commitByHand(r, {
+			[`changesets/pull-1/dismissal/${"0".repeat(64)}/${"1".repeat(64)}.json`]: JSON.stringify(other),
+		});
 		const listed = await store.list("pull-1");
 		// FINDING: the adapter accepts the path; the record names pull-9, another key and another ID than its path says.
 		assert.equal(listed.length, 1);
@@ -147,7 +164,9 @@ describe("case 7: the git adapter", () => {
 			const stores = await Promise.all(Array.from({ length: writers }, () => gitStore(r)));
 			const outcomes = await Promise.allSettled(stores.map((store, i) => store.add(batch(`pull-${i}`, 5, `w${i}`))));
 			const gaveUp = outcomes.filter((each) => each.status === "rejected").map((each) => each.reason.code);
-			console.log(`# 7e: ${writers} writers: gave up ${gaveUp.length}; lost races ${stores.map((s) => s.stats.lostRaces).join(",")}`);
+			console.log(
+				`# 7e: ${writers} writers: gave up ${gaveUp.length}; lost races ${stores.map((s) => s.stats.lostRaces).join(",")}`,
+			);
 			assert.ok(gaveUp.every((code) => code === "gaveUp"));
 			// Each round of pushes lands one writer, and the backoff never outlasts a push, so the rest all lose again.
 			assert.equal(gaveUp.length, Math.max(0, writers - 10));
@@ -190,9 +209,14 @@ describe("case 9: dispose while another host adds", () => {
 		await r.delay("pre-receive", 0.3);
 		const [a, b] = [await gitStore(r), await gitStore(r)];
 		await a.add(batch("pull-1", 3, "round1-"));
-		await Promise.all([a.dispose("pull-1"), new Promise((resolve) => setTimeout(resolve, 50)).then(() => b.add(batch("pull-1", 2, "late-")))]);
+		await Promise.all([
+			a.dispose("pull-1"),
+			new Promise((resolve) => setTimeout(resolve, 50)).then(() => b.add(batch("pull-1", 2, "late-"))),
+		]);
 		const left = await a.list("pull-1");
-		console.log(`# 9a: after dispose and a racing add, ${left.length} records remain: ${left.map((each) => each.payload.tag).join(",")}`);
+		console.log(
+			`# 9a: after dispose and a racing add, ${left.length} records remain: ${left.map((each) => each.payload.tag).join(",")}`,
+		);
 		assert.ok(left.length === 2 || left.length === 0);
 	});
 
@@ -202,11 +226,16 @@ describe("case 9: dispose while another host adds", () => {
 		for (let trial = 0; trial < 200; trial++) {
 			const changeset = `pull-${trial}`;
 			await store.add(batch(changeset, 1, "first-"));
-			const [, added] = await Promise.allSettled([store.dispose(changeset), store.add(batch(changeset, 20, "late-"))]);
+			const [, added] = await Promise.allSettled([
+				store.dispose(changeset),
+				store.add(batch(changeset, 20, "late-")),
+			]);
 			const left = (await store.list(changeset)).length;
 			outcomes.push(added.status === "rejected" ? `add failed (${added.reason.code})` : `${left} left`);
 		}
-		const tally = Object.entries(outcomes.reduce((t, o) => ((t[o] = (t[o] ?? 0) + 1), t), {}));
+		const counts = new Map();
+		for (const outcome of outcomes) counts.set(outcome, (counts.get(outcome) ?? 0) + 1);
+		const tally = [...counts];
 		console.log(`# 9b: ${tally.map(([o, n]) => `${n}× ${o}`).join("; ")}`);
 		assert.ok(tally.length >= 1);
 	});
@@ -216,7 +245,9 @@ describe("case 9: dispose while another host adds", () => {
 		const lenses = batch("pull-1", 3);
 		await store.add(lenses);
 		await store.dispose("pull-1");
-		const closing = envelope("pull-1", "round", "1", { rests: lenses.map((each) => ({ kind: each.kind, key: each.key, id: recordId(each) })) });
+		const closing = envelope("pull-1", "round", "1", {
+			rests: lenses.map((each) => ({ kind: each.kind, key: each.key, id: recordId(each) })),
+		});
 		await store.add([closing]);
 		const present = new Set((await store.list("pull-1")).map(recordId));
 		const missing = closing.payload.rests.filter((each) => !present.has(each.id));

@@ -47,7 +47,12 @@ function git(cwd, args, { input, env, buffer } = {}) {
 		const child = execFile(
 			"git",
 			args,
-			{ cwd, env: { ...process.env, ...env }, maxBuffer: 256 * 1024 * 1024, ...(buffer ? { encoding: "buffer" } : {}) },
+			{
+				cwd,
+				env: { ...process.env, ...env },
+				maxBuffer: 256 * 1024 * 1024,
+				...(buffer ? { encoding: "buffer" } : {}),
+			},
 			(error, stdout, stderr) => (error ? reject(Object.assign(error, { stderr })) : resolve(stdout)),
 		);
 		if (input !== undefined) child.stdin.end(input);

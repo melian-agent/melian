@@ -17,7 +17,14 @@ export function standing(records) {
 	return [...winners.values()].map(({ record }) => record);
 }
 
-export const envelope = (changeset, kind, key, payload, extra = {}) => ({ v: 1, changeset, kind, key, payload, ...extra });
+export const envelope = (changeset, kind, key, payload, extra = {}) => ({
+	v: 1,
+	changeset,
+	kind,
+	key,
+	payload,
+	...extra,
+});
 
 // Rule 6: "the job that runs a head's code hands its records to a job that runs none, which checks their shape and adds
 // them." Reading: the shape is rule 3's envelope shape, which is all the decision names.
@@ -35,11 +42,13 @@ export async function addHandedOverStrict(store, batch, { changeset, revision })
 	for (const record of batch) {
 		checkEnvelope(record);
 		if (record.changeset !== changeset) throw new Error(`a review job wrote into changeset ${record.changeset}`);
-		if (record.revision !== undefined && record.revision !== revision) throw new Error("a review job wrote another revision");
+		if (record.revision !== undefined && record.revision !== revision)
+			throw new Error("a review job wrote another revision");
 		if (!REVIEW_KINDS.has(record.kind)) throw new Error(`a review job may not add a ${record.kind} record`);
 		for (const id of record.supersedes ?? []) {
 			const target = existing.get(id) ?? own.get(id);
-			if (target === undefined || !REVIEW_KINDS.has(target.kind)) throw new Error(`a review job may not supersede ${id}`);
+			if (target === undefined || !REVIEW_KINDS.has(target.kind))
+				throw new Error(`a review job may not supersede ${id}`);
 		}
 	}
 	await store.add(batch);
@@ -59,7 +68,18 @@ export const markerIn = (body) => MARKER.exec(body ?? "")?.[1];
 // Rules 10 and 11 for the ledger comment: a short lease in the cell, a marker hash recorded before the post, the post,
 // a `post` record naming the comment's ID, and the release.
 export class Publisher {
-	constructor({ store, changeset, octokit, owner, repo, number, holder, leaseMs = 60_000, now = () => Date.now(), crash = {} }) {
+	constructor({
+		store,
+		changeset,
+		octokit,
+		owner,
+		repo,
+		number,
+		holder,
+		leaseMs = 60_000,
+		now = () => Date.now(),
+		crash = {},
+	}) {
 		Object.assign(this, { store, changeset, octokit, owner, repo, number, holder, leaseMs, now, crash });
 		this.events = [];
 	}
@@ -75,7 +95,8 @@ export class Publisher {
 	async take() {
 		const { value, version } = await this.store.readCell(this.changeset);
 		const held = value === undefined ? undefined : JSON.parse(value);
-		if (held !== undefined && held.holder !== this.holder && held.expiresAt > this.now()) return { held: held.holder };
+		if (held !== undefined && held.holder !== this.holder && held.expiresAt > this.now())
+			return { held: held.holder };
 		const lease = { holder: this.holder, expiresAt: this.now() + this.leaseMs };
 		if (!(await this.store.writeCell(this.changeset, version, JSON.stringify(lease)))) return { lost: true };
 		return { lease };
@@ -84,7 +105,11 @@ export class Publisher {
 	async release() {
 		const { value, version } = await this.store.readCell(this.changeset);
 		if (value === undefined || JSON.parse(value).holder !== this.holder) return false;
-		return this.store.writeCell(this.changeset, version, JSON.stringify({ holder: this.holder, expiresAt: this.now() }));
+		return this.store.writeCell(
+			this.changeset,
+			version,
+			JSON.stringify({ holder: this.holder, expiresAt: this.now() }),
+		);
 	}
 
 	async publish(text) {
@@ -94,7 +119,8 @@ export class Publisher {
 		const me = await this.login();
 		// Reading: the owner is the login on the standing `post` record, since "first" needs an order the store lacks.
 		const post = standing(records).find((record) => record.kind === "post" && record.key === "ledger");
-		if (post !== undefined && me !== undefined && post.payload.login !== me) throw new OwnerRefusal(post.payload.login);
+		if (post !== undefined && me !== undefined && post.payload.login !== me)
+			throw new OwnerRefusal(post.payload.login);
 		const repo = { owner: this.owner, repo: this.repo };
 		if (post !== undefined) {
 			await this.octokit.rest.issues.updateComment({ ...repo, comment_id: post.payload.comment, body: text });
@@ -104,12 +130,18 @@ export class Publisher {
 		// A marker counts when the store holds its hash for this pull request. Reading: any marker record of the
 		// changeset holds a hash, whatever it is for; the author filters when the login is known.
 		const hashes = new Set(records.filter((record) => record.kind === "marker").map((record) => record.payload.hash));
-		const comments = await this.octokit.paginate(this.octokit.rest.issues.listComments, { ...repo, issue_number: this.number, per_page: 100 });
+		const comments = await this.octokit.paginate(this.octokit.rest.issues.listComments, {
+			...repo,
+			issue_number: this.number,
+			per_page: 100,
+		});
 		for (const comment of comments) {
 			const value = markerIn(comment.body);
 			if (value === undefined || !hashes.has(sha256(value))) continue;
 			if (me !== undefined && comment.user?.login !== me) continue;
-			await this.store.add([envelope(this.changeset, "post", "ledger", { comment: comment.id, login: comment.user?.login })]);
+			await this.store.add([
+				envelope(this.changeset, "post", "ledger", { comment: comment.id, login: comment.user?.login }),
+			]);
 			this.events.push({ adopted: comment.id });
 			await this.release();
 			return { status: "adopted", comment: comment.id };
@@ -123,7 +155,9 @@ export class Publisher {
 			body: `<!-- melian:marker=${value} -->\n${text}`,
 		});
 		await this.crash.afterPost?.(posted.data);
-		await this.store.add([envelope(this.changeset, "post", "ledger", { comment: posted.data.id, login: posted.data.user.login })]);
+		await this.store.add([
+			envelope(this.changeset, "post", "ledger", { comment: posted.data.id, login: posted.data.user.login }),
+		]);
 		await this.release();
 		return { status: "posted", comment: posted.data.id, value };
 	}
