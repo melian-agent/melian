@@ -294,13 +294,19 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 	// The golden as pull request #7 of melian-agent/example: its origin is GitHub's URL, which a stand-in for ssh serves
 	// from a bare repository on disk, and scripted mode answers GitHub from a recording. The base commits a melian.yaml, since a pull
 	// request reads policy from its base.
-	function pullRequest(moved = false) {
+	// With `behind`, main gains a commit after the merge, so the base branch's tip is ahead of the diff's merge base.
+	function pullRequest(moved = false, behind = false) {
 		const { repo, files, env } = checkout();
 		git(repo, "checkout", "--quiet", "main");
 		git(repo, "add", "melian.yaml");
 		git(repo, "commit", "--quiet", "-m", "policy");
 		git(repo, "checkout", "--quiet", "feature");
 		git(repo, "merge", "--quiet", "--no-edit", "main");
+		if (behind) {
+			git(repo, "checkout", "--quiet", "main");
+			git(repo, "commit", "--quiet", "--allow-empty", "-m", "main moves on");
+			git(repo, "checkout", "--quiet", "feature");
+		}
 		const base = git(repo, "rev-parse", "main");
 		const head = git(repo, "rev-parse", "feature");
 		const bare = scratch("melian-compare-origin-");
@@ -406,6 +412,19 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			expect(readdirSync(state)).toEqual([]);
 		},
 	);
+	it("reviews a pull request behind its base branch at the base tip and head it expects", () => {
+		const { repo, env } = pullRequest(false, true);
+		const base = git(repo, "rev-parse", "main");
+		const head = git(repo, "rev-parse", "feature");
+		expect(git(repo, "merge-base", base, head)).not.toBe(base);
+		const review = melian(
+			repo,
+			["review", "#7", "--expect-base", base, "--expect-head", head, "--no-walkthrough"],
+			env,
+		);
+		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });
+		expect(melian(repo, ["findings", "#7"], env).status).toBe(0);
+	});
 	it("reviews a pull request at the base and head it expects", () => {
 		const { repo, env } = pullRequest();
 		const base = git(repo, "rev-parse", "main");

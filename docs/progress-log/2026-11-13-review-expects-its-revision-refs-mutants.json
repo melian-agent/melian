@@ -204,5 +204,20 @@
 			"survivorClasses": [],
 			"run": "killed at ebf48915"
 		}
+	],
+	"handMutants": [
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 216,
+			"column": 21,
+			"endLine": 216,
+			"endColumn": 90,
+			"mutatorName": "HandBaseTip",
+			"replacement": "expect.base",
+			"claim": "new-test",
+			"evidence": "packages/cli/test/compare.test.ts > melian compare \"#N\" > reviews a pull request behind its base branch at the base tip and head it expects",
+			"survivorClasses": [],
+			"run": "killed after the named test passed unmutated; the Actions round at 6ed5ebe6 raised it as finding 93ddf36596aa4b2f"
+		}
 	]
 }

@@ -7,3 +7,5 @@ The `melian round` workflow passes the base and head its gate approved. Before, 
 The mutation inventory, `2026-11-13-review-expects-its-revision-mutants.json`, lists 68 mutants: 60 killed by the tests above, 4 killed by usage tests `ebf5042e` added to `packages/cli/test/main.test.ts`, and 4 equivalent, each with its reason.
 
 The fetched-refs check's own inventory, `2026-11-13-review-expects-its-revision-refs-mutants.json`, lists its 15 mutants, all killed by the two hook tests and the matching review.
+
+A pull request behind its base branch, whose base tip is ahead of its merge base, reviews at the expected revision too. The Actions round at `6ed5ebe6` found, as 93ddf36596aa4b2f, that no test told the tip from the merge base, and the coordinator answered on [pull request #387](https://github.com/melian-agent/melian/pull/387) to add the test there. Comparing against the tip, a hand mutant recorded under `handMutants` in the refs inventory, fails it.
