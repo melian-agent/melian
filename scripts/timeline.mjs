@@ -2,6 +2,8 @@
 // - commits a force-push replaced appear only as the force-push row's tips;
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
 // - a Timing: line counts whoever wrote the comment;
+// - a Timing: line is self-reported, and only its minutes and cost fields are totalled; a cause or a note is commentary,
+//   never read for numbers, so time or money written only there is not counted (the coordinator's answer, 2026-11-13);
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -50,8 +52,75 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   }
 }`;
 
-const WAIT = /^waited (\d+(?:\.\d+)?) min for (.+)$/;
-const WORK = /^(.+?) (?:(\d+) × )?(\d+(?:\.\d+)?) min(?:, \$(\d+(?:\.\d+)?))?$/;
+// The kinds a Timing item may name, in the order the summary totals them; AGENTS.md's Work from issues defines the grammar.
+export const KINDS = [
+	"gate",
+	"round",
+	"own-build round",
+	"host round",
+	"codex",
+	"review of record",
+	"mutants",
+	"wait",
+	"other",
+];
+
+// At most six whole digits and two decimals, read as whole hundredths, so every total is an exact integer sum.
+const NUMBER = String.raw`\d{1,6}(?:\.\d{1,2})?`;
+const hundredths = (text) => {
+	const [whole, fraction = ""] = text.split(".");
+	return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+};
+const ITEM = new RegExp(
+	String.raw`^(?<kind>${KINDS.join("|")}) (?:(?<count>[1-9]\d{0,2}) × )?(?<minutes>${NUMBER}) min(?:, \$(?<cost>${NUMBER}))?(?: for (?<cause>[^()]+))?(?: \((?<note>[^()]+)\))?$`,
+);
+// Shapes older reports used, read as the kind they mean; any other free text stays unparsed rather than half-counted.
+const LEGACY_WAIT = new RegExp(String.raw`^waited (?<minutes>${NUMBER}) min for (?<cause>.+)$`);
+const LEGACY_KINDS = new Map([
+	["gates", "gate"],
+	["rounds", "round"],
+	["Actions round", "round"],
+	["Actions rounds", "round"],
+	["Melian round", "round"],
+	["Melian rounds", "round"],
+	["own-build rounds", "own-build round"],
+	["host rounds", "host round"],
+	["Codex review", "codex"],
+	["Codex reviews", "codex"],
+	["reviews of record", "review of record"],
+]);
+
+function parseItem(text) {
+	const legacyWait = LEGACY_WAIT.exec(text);
+	if (legacyWait)
+		return {
+			kind: "wait",
+			count: 1,
+			minutes: hundredths(legacyWait.groups.minutes) / 100,
+			cause: legacyWait.groups.cause,
+		};
+	let canonical = text;
+	for (const [alias, kind] of LEGACY_KINDS)
+		if (text.startsWith(`${alias} `)) {
+			canonical = `${kind}${text.slice(alias.length)}`;
+			break;
+		}
+	const match = ITEM.exec(canonical);
+	if (!match) return {};
+	const { kind, count, minutes, cost, cause, note } = match.groups;
+	// Only a wait names its cause, and it must; an other must carry a note saying what it was.
+	if ((kind === "wait") !== (cause !== undefined)) return {};
+	if (kind === "other" && note === undefined) return {};
+	if (cause?.trim() === "" || note?.trim() === "") return {};
+	return {
+		kind,
+		count: Number(count ?? 1),
+		minutes: (Number(count ?? 1) * hundredths(minutes)) / 100,
+		...(cost === undefined ? {} : { cost: hundredths(cost) / 100 }),
+		...(cause === undefined ? {} : { cause }),
+		...(note === undefined ? {} : { note }),
+	};
+}
 
 // What a comment says comes from its own top-level paragraphs, never from code, quotes or lists.
 const paragraphLines = (body) =>
@@ -68,16 +137,7 @@ export function parseTiming(body) {
 		for (const raw of match[1].split(";")) {
 			const text = raw.trim().replace(/\.$/, "");
 			if (text === "") continue;
-			const wait = WAIT.exec(text);
-			if (wait) {
-				items.push({ text, minutes: Number(wait[1]) });
-				continue;
-			}
-			const work = WORK.exec(text);
-			if (work) {
-				const minutes = Number(work[2] ?? 1) * Number(work[3]);
-				items.push({ text, minutes, ...(work[4] === undefined ? {} : { cost: Number(work[4]) }) });
-			} else items.push({ text });
+			items.push({ text, ...parseItem(text) });
 		}
 	}
 	return items;
@@ -250,16 +310,32 @@ export class Timeline {
 			latest = Math.max(latest, event.end ?? event.at);
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
-		const items = this.#events.filter((event) => event.item?.minutes !== undefined);
-		const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
-		const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-		const reported = items.length === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
-		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
+		const timed = this.#events.filter((event) => event.event === "Timing");
+		// An item's minutes and cost are whole hundredths over 100, so times 100 recovers the integer, and every sum is exact.
+		const whole = (value) => Math.round(value * 100);
+		const kinds = KINDS.flatMap((kind) => {
+			const items = timed.filter((event) => event.item.kind === kind);
+			if (items.length === 0) return [];
+			const minutes = items.reduce((sum, event) => sum + whole(event.item.minutes), 0);
+			const cost = items.reduce((sum, event) => sum + whole(event.item.cost ?? 0), 0);
+			return [{ kind, minutes, cost }];
+		});
+		const minutes = kinds.reduce((sum, kind) => sum + kind.minutes, 0);
+		const cost = kinds.reduce((sum, kind) => sum + kind.cost, 0);
+		const spend = (minutes, cost) => `${minutes / 100} min${cost === 0 ? "" : `, $${(cost / 100).toFixed(2)}`}`;
+		lines.push("", "| Summary | Value |", "| --- | --- |");
+		lines.push(row("Timing reported", kinds.length === 0 ? "none" : spend(minutes, cost)));
+		for (const kind of kinds) lines.push(row(`Timing: ${kind.kind}`, spend(kind.minutes, kind.cost)));
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
 		const last = this.#merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
 		lines.push(row("CI", `${ciMinutes.toFixed(1)} min over ${ci.length} runs`));
 		lines.push(row("total", `${((last - first) / HOUR).toFixed(2)} h`));
+		const unparsed = timed.filter((event) => event.item.kind === undefined);
+		if (unparsed.length > 0) {
+			lines.push("", "| Timing not parsed | Comment time (UTC) |", "| --- | --- |");
+			for (const event of unparsed) lines.push(row(event.item.text, stamp(event.at)));
+		}
 		return lines.join("\n");
 	}
 }

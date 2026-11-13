@@ -1,0 +1,413 @@
+{
+	"mutants": [
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause is blank unparsed: wait 1 × 10 min for   (note)",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "LogicalOperator",
+			"replacement": "cause?.trim() === \"\" && note?.trim() === \"\"",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause is blank unparsed: wait 1 × 10 min for   (note)",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause is blank unparsed: wait 1 × 10 min for   (note)",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cause?.trim() !== \"\"",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 18,
+			"mutatorName": "MethodExpression",
+			"replacement": "cause",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause is blank unparsed: wait 1 × 10 min for   (note)",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 5,
+			"endLine": 102,
+			"endColumn": 16,
+			"mutatorName": "OptionalChaining",
+			"replacement": "cause.trim",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 23,
+			"endLine": 102,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause is blank unparsed: wait 1 × 10 min for   (note)",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 29,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves an other whose note is blank unparsed: other 5 min ( )",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 29,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "note?.trim() !== \"\"",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 29,
+			"endLine": 102,
+			"endColumn": 41,
+			"mutatorName": "MethodExpression",
+			"replacement": "note",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves an other whose note is blank unparsed: other 5 min ( )",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 29,
+			"endLine": 102,
+			"endColumn": 39,
+			"mutatorName": "OptionalChaining",
+			"replacement": "note.trim",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 102,
+			"column": 46,
+			"endLine": 102,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves an other whose note is blank unparsed: other 5 min ( )",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 312,
+			"column": 16,
+			"endLine": 313,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 3,
+			"endLine": 313,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 6,
+			"endLine": 313,
+			"endColumn": 37,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "Math.round(minutes * 100) * 100",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 17,
+			"endLine": 313,
+			"endColumn": 30,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "minutes / 100",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 44,
+			"endLine": 313,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 44,
+			"endLine": 313,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 44,
+			"endLine": 313,
+			"endColumn": 54,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cost !== 0",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 57,
+			"endLine": 313,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 313,
+			"column": 62,
+			"endLine": 313,
+			"endColumn": 85,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "36ee5c34",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		}
+	],
+	"total": 22,
+	"omitted": 0,
+	"unmutated": []
+}
