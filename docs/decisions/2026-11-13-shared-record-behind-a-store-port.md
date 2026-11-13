@@ -4,6 +4,7 @@ Supersedes: [the state branch decision](2026-11-07-state-branch-storage.md)
 Amends: [the coordination decision](2026-11-08-how-melian-coordinates.md), rule 2's lease on the state branch and rule 3's fence on `melian/review`
 Amends: [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md), its "Sharing, for milestone 3" section
 Amends: [melian/review on merge groups](2026-10-22-melian-review-on-merge-groups.md), what the merge-group check reads
+Amends: [the melian/review outage procedure](2026-10-23-melian-review-outage-procedure.md), when the merge-group check recognises a maintainer's override
 Amends: [marker trust](2026-10-03-marker-trust.md), what proves a marker
 Amends: [dismissal](2026-10-04-dismissal.md), where a dismissal lives and who may write one
 Amends: [Actions complete the manifest](2026-10-04-actions-complete-the-manifest.md), the form a local record takes
@@ -87,13 +88,13 @@ The envelope is strict, because [issue #371](https://github.com/melian-agent/mel
 The store promises this much and no more:
 
 - `add` can be repeated: the same bytes twice are one record. A batch may land in part, and a repeat completes it.
-- `list` may be stale.
+- `list` is fresh: it returns every record whose `add` returned before the call. A store that can only answer from a stale copy fails the call, and is no record store. The first draft let `list` be stale, and each rule built to survive that, a cell naming the rounds, a watermark for publication, was a new thing to forge.
 - `readCell` is fresh: it returns the last value a `writeCell` stored.
 - `writeCell` succeeds only when the cell's version is still `expectedVersion`. A version is opaque and changes on every successful write, never a hash of the value, and a writer that dies leaves nothing that blocks the next. The conformance suite holds the case of a value that went away and came back.
 - `dispose` first writes a disposal mark to the cell, and `add` refuses a changeset whose cell holds one.
 - It promises no ordering of records, no history, no transaction across records, no secrecy, and no identity for a writer.
 
-The cell holds one small JSON value: the standing rounds of each revision, the publication lease, and the disposal mark.
+The cell holds one small JSON value: the publication lease and the disposal mark. No verdict reads it.
 
 ### 4. Nothing a verdict reads is chosen by a hash
 
@@ -101,8 +102,8 @@ The first draft settled two records in one slot by the lowest ID. [Issue #378](h
 
 - **A round names what it rests on.** Its closing record lists the kind, key and ID of every record it read, its walkthrough or that it has none, the earlier rounds of its revision it replaces, and the rounds of the revision before. A record a round names counts for that round. One that does not match the named kind, key and ID together counts as not found, and a round with a record not found reads as not reviewed.
 - **An import keeps every record.** A host that finds several trusted records under the key its own run would use imports all of them, and their sightings merge as two lenses' sightings do. Nothing is dropped.
-- **The cell names the standing rounds.** Closing a round writes its ID to the cell by compare-and-set, in place of the rounds it replaces. A writer that loses the race reads again and adds its round beside the other's.
-- **The gate takes the worst standing round.** It reads the cell, and fails closed when `list` lacks a round the cell names, so a stale list never passes on an older round. Two rounds that stand together, because two hosts reviewed at once, gate by the worse, and not reviewed is worse than blocking.
+- **Standing is computed from the rounds.** A round of a revision stands when no round that counts names it as replaced. Nothing else says which round is current, so there is no pointer for a writer to roll back. Where a key is pinned, only a round that key signed counts, so only the trusted host's round can replace the trusted host's.
+- **The gate takes the worst standing round.** Two rounds that stand together, because two hosts reviewed at once, gate by the worse, and not reviewed is worse than blocking.
 - **`supersedes` is narrow.** Only a dismissal, a post, a status, the ledger comment and a comparison may carry it, and it names only records of its own changeset, kind and key. An entry naming no record has no effect, then or later. Supersession is permanent: a superseded record's own `supersedes` still applies. No record a review writes carries one.
 - **Publication's own slots may tie.** Two posts, statuses or ledger comments that stand in one slot are settled by the lowest ID. That tie decides which comment Melian keeps, never a verdict.
 
@@ -153,15 +154,17 @@ Each is a projection of the record and none is stored as the authority.
 - The verdict comes from a round's records, the dismissals, the base commit's policy, and each revision's hunks from git.
 - The coverage ledger comes from which records cover which lines. It is no second store, so nothing carries it anywhere.
 - The ledger comment renders the record, as it renders the local store today.
-- The gate is a command, `melian gate "#N"`. It reads the cell and the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one.
+- The gate is a command, `melian gate "#N"`. It lists the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one.
 
-The gate fails closed with no standing round for the revision, a round the list lacks, a record not found, a base whose policy it cannot read, or a store it cannot reach. So no status needs fencing: a stale status decides nothing.
+The gate fails closed with no standing round for the revision, a record not found, a base whose policy it cannot read, or a store it cannot reach. So no status needs fencing: a stale status decides nothing.
+
+One status is still read. [The outage procedure](2026-10-23-melian-review-outage-procedure.md) lets the maintainer post an override on one commit when Melian cannot run, and a store that cannot be reached is such an outage. The merge-group check recognises that override by the procedure's own form, and only when the gate failed for want of the store or of any round. A round that stands and blocks outranks it.
 
 ### 10. A marker is proved by a value recorded before the post
 
 Before it posts, the publisher adds a marker record holding the hash of a fresh random value and the login that will post, and puts the value in the comment's marker. A marker counts when the changeset's records hold its hash under the key of that post. Marker records are a set: an unused one from a crash before the post stays and harms nothing.
 
-After the post, a `post` record names the comment's ID, and the ID is the authority from then on, so the marker only covers a crash between the two. In that window the author is the whole defence, since a posted value is public: a resumed publisher takes a comment as its own only when it carries a recorded value and its author is the login the marker record names. A publisher that knows no login takes no comment as its own and posts afresh. That can leave an orphan to delete by hand, as today.
+After the post, a `post` record names the comment's ID, and the ID is the authority from then on, so the marker only covers a crash between the two. In that window the author is the whole defence, since a posted value is public: a resumed publisher takes a comment as its own only when it carries a recorded value and the provider reports its author as the login the marker record names. Recovery reads the login from the record and the author from the provider, never from the token, so it does not depend on the token knowing who it is, as [marker trust](2026-10-03-marker-trust.md) requires. Only a token's first post, made before any response has told it its login, records a marker without one; a crash in that one window posts afresh, and can leave an orphan to delete by hand, as today.
 
 Nothing in the store is secret, and nothing in it needs sealing. A pull request's author cannot write the store, so cannot record a hash.
 
@@ -171,7 +174,7 @@ Publication is the one write that cannot be repeated safely. `melian publish` ta
 
 A provider takes no fence, so a holder paused past its lease can still post after its successor. Two rules narrow that and repair it: a publisher posts only while its lease has more than one post's deadline left, and the next publish deletes a post whose `post` record lost its slot.
 
-The login on the standing `post` record owns a pull request's reviews and its ledger comment. A publish under another login refuses, naming the owner, and a publisher that cannot read its own login refuses to edit. A cloud session cannot set a status, so publication runs on the trusted host or from a maintainer's CLI.
+The login on the standing `post` record owns a pull request's reviews and its ledger comment. A publish that knows its login to be another refuses, naming the owner. Whether a token may edit is the provider's answer, not a guess from its login. A cloud session cannot set a status, so publication runs on the trusted host or from a maintainer's CLI.
 
 ### 12. The git adapter
 
@@ -189,21 +192,28 @@ A record is a plain JSON file at `changesets/<changeset>/<kind>/<hash of key>/<i
 
 ### 13. Retention
 
-Once a changeset's records are in the store, everything local is cache, and [issue #348](https://github.com/melian-agent/melian/issues/348) may prune it. The record is small enough to keep. `dispose` removes a changeset's records; reclaiming a git branch's history is the adapter's own housekeeping.
+Once a changeset's records are in the store, everything local is cache, and [issue #348](https://github.com/melian-agent/melian/issues/348) may prune it. The live record is small enough to keep. `dispose` removes a changeset's records.
+
+A store's own history is its adapter's to bound, and the git adapter does not bound it yet. Each batch is a commit, and a disposed changeset stays in the branch's history, so a fresh runner's fetch grows with every review until it passes the deadline. Plain files delta where sealed ones could not, which slows that and does not stop it. [Issue #361](https://github.com/melian-agent/melian/issues/361) stays open to design the bound, a fetch of the tip alone or a compaction that is safe beside concurrent pushes, and the git adapter's build is not done without it.
 
 ## What the reviews found
 
-Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each:
+Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each. A second round, on the revised text, raised two more, `c97f874268bb2af2` and `fa6fdfb18b069a75`, and three P2s; they are the table's last rows:
 
 | Finding | Answer |
 | --- | --- |
 | Any record could supersede a blocking sighting, a dismissal or a round | Rule 4 limits `supersedes` to five kinds and to one slot; a review's records carry none |
 | The lowest-ID rule and "the worse verdict" contradicted each other for rounds, and a ground ID could pass the gate | Rule 4: nothing a verdict reads is chosen by a hash |
 | Naming a predecessor round had no stated effect | Rule 4: a round replaces the rounds of its revision it names |
-| A stale list passed the gate on an older round | Rules 3 and 4: the cell names the standing rounds, and reading it is fresh |
+| A stale list passed the gate on an older round | Rule 3: `list` is fresh, or the call fails |
 | The computed verdict lacked each revision's hunks, so a dismissal never reopened | Rules 7 and 9 |
 | The fork rule could not be applied without a key | Rule 6: a repository that takes fork pull requests pins the trusted host's key |
 | A head job's dismissal passed the relay's shape check | Rule 6: the relay adds only a review's kinds |
+| With a key pinned, a writer could roll the cell back to an older signed round | Rule 4: no pointer names the standing rounds; they are computed, and only a signed round replaces a signed one |
+| A publisher holding a fresh lease could read a stale list and post twice | Rule 3: `list` is fresh |
+| The gate read no status, so the outage override stopped working | Rule 9 keeps the override, when the store or any round is missing |
+| Recovery of a post depended on the token knowing its login | Rule 10 reads the login from the marker record and the author from the provider |
+| The record's size was measured, the branch's history was not | Rule 13 keeps [issue #361](https://github.com/melian-agent/melian/issues/361) open |
 
 ## What this gives up
 
@@ -222,7 +232,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 
 - `packages/state-git` on `main`, from [pull request #310](https://github.com/melian-agent/melian/pull/310), holds the superseded form until the git adapter replaces it.
 - [Pull request #314](https://github.com/melian-agent/melian/pull/314) is frozen at `92faa656` by the maintainer's ruling of 2026-11-13, and does not land if this is adopted.
-- This closes the need for [issue #317](https://github.com/melian-agent/melian/issues/317), [issue #307](https://github.com/melian-agent/melian/issues/307), [issue #319](https://github.com/melian-agent/melian/issues/319), [issue #340](https://github.com/melian-agent/melian/issues/340) and [issue #361](https://github.com/melian-agent/melian/issues/361), and settles [issue #154](https://github.com/melian-agent/melian/issues/154) by rule 11.
+- This closes the need for [issue #317](https://github.com/melian-agent/melian/issues/317), [issue #307](https://github.com/melian-agent/melian/issues/307), [issue #319](https://github.com/melian-agent/melian/issues/319) and [issue #340](https://github.com/melian-agent/melian/issues/340), and settles [issue #154](https://github.com/melian-agent/melian/issues/154) by rule 11.
 - The coverage drafts, [pull request #216](https://github.com/melian-agent/melian/pull/216), [pull request #218](https://github.com/melian-agent/melian/pull/218) and [pull request #220](https://github.com/melian-agent/melian/pull/220), are replanned as a projection of the record.
 
 ## Still open
