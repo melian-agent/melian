@@ -462,10 +462,15 @@ function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): 
 	const allowed: readonly string[] = [...lens.tools, ...roleTools[lens.role ?? "lens"]];
 	if (!allowed.includes(call.name)) return `lens ${lens.name} may call only ${allowed.join(", ")}`;
 	if (call.name !== "report_finding") return undefined;
-	const { severity, rule, probe } = (call.arguments ?? {}) as { severity?: unknown; rule?: unknown; probe?: unknown };
+	const { severity, rule, probe, refuted } = (call.arguments ?? {}) as {
+		severity?: unknown;
+		rule?: unknown;
+		probe?: unknown;
+		refuted?: unknown;
+	};
 	const injection = rule === injectionAttemptRule.id && severity === injectionSeverity;
-	if (lens.role === "planner" && rule !== injectionAttemptRule.id)
-		return "the planner writes the attack plan and reports no finding but an injection attempt; record the plan with record_plan";
+	if (lens.role === "planner" && (rule !== injectionAttemptRule.id || refuted !== undefined))
+		return "the planner writes the attack plan and reports no finding but an injection attempt, and refutes none; record the plan with record_plan";
 	if (lens.role === "prober" && rule !== injectionAttemptRule.id && probe === undefined)
 		return "a finding of a probing level needs the probe that shows it: pass probe, the ID run_probe returned for a probe that failed";
 	if (lens.role !== "prober" && probe !== undefined) return "probe is only for the prober of a level that runs probes";
