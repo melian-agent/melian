@@ -161,7 +161,7 @@ Each open step of a milestone, or each build part of a step, is a GitHub issue i
   - The line holds items separated by `;`. Each item is `<kind> <count> × <minutes> min`, then optionally `, $<cost>`, then `for <cause>` on a wait alone, then optionally a note in brackets: `gate 4 × 13 min (one failed on the workflow test)`.
   - The kind is one of `gate`, `round`, `own-build round`, `host round`, `codex`, `review of record`, `mutants`, `wait` and `other`. A `wait` must name its cause, and an `other` must carry a note saying what it was.
   - The minutes are for each of the count, so `gate 2 × 14 min` is 28 minutes. The cost is the item's whole cost. A count of one may be left out: `gate 13 min`.
-  - Write one number of minutes: no ranges, no "about", and no lists inside an item. Split two durations into two items, or give their average and say so in the note. A note holds no `;` and no brackets.
+  - Write one number of minutes: no ranges, no "about", and no lists inside an item. Split two durations into two items, or give their average and say so in the note. A cause or note is never blank, and a note holds no `;` and no parentheses.
   - The script lists every item it cannot parse under its own heading, and counts none of it. It still reads the shapes older reports used, such as `waited 40 min for a ruling` and `Codex review 9 min`.
 
 ### Three reviews before ready

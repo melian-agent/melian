@@ -13,7 +13,7 @@ Example: "gate 4 × about 13 min" counted as 13 minutes under the label "gate 4 
 ## Decision
 
 - The line holds items separated by `;`. Each is `<kind> <count> × <minutes> min`, then optionally `, $<cost>`, then `for <cause>` on a wait alone, then optionally a note in brackets. AGENTS.md's Work from issues sets it out.
-- The kinds are a closed list: `gate`, `round`, `own-build round`, `host round`, `codex`, `review of record`, `mutants`, `wait` and `other`. A `wait` must name its cause, and an `other` must carry a note.
+- The kinds are a closed list: `gate`, `round`, `own-build round`, `host round`, `codex`, `review of record`, `mutants`, `wait` and `other`. A `wait` must name its cause, and an `other` must carry a note; neither may be blank.
 - The minutes are for each of the count, and the cost is the item's whole cost. A count of one may be left out.
 - One number of minutes per item: no ranges, no "about", and no lists inside an item.
 - `scripts/timeline.mjs` totals minutes and cost per kind, and sums the summary's total from those rows.

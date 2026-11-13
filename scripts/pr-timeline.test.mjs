@@ -402,6 +402,20 @@ describe("summary", () => {
 		expect(rows(timeline)).toContain(`| Timing reported | ${reported} |`);
 	});
 
+	it("rounds each summary row to two places, so decimal minutes print no floating-point noise", () => {
+		const timelineItems = page([
+			{
+				__typename: "IssueComment",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				body: "Timing: gate 3 × 0.1 min; gate 1.005 min",
+				author: { login: "b" },
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing reported | 1.31 min |");
+		expect(rows(timeline)).toContain("| Timing: gate | 1.31 min |");
+	});
+
 	it("prints minutes alone when no Timing item carries a cost", () => {
 		const timelineItems = page([
 			{
@@ -851,6 +865,8 @@ describe("parseTiming", () => {
 		["a cause on a kind that is not a wait", "gate 5 min for CI"],
 		["a wait with no cause", "wait 3 min"],
 		["an other with no note", "other 3 min"],
+		["a wait whose cause is blank", "wait 1 × 10 min for   (note)"],
+		["an other whose note is blank", "other 5 min ( )"],
 		["a note with a bracket inside it", "gate 1 × 2 min (a (b))"],
 		["words before the kind", "then gate 5 min"],
 		["free text", "lunch | break"],

@@ -99,6 +99,7 @@ function parseItem(text) {
 	// Only a wait names its cause, and it must; an other must carry a note saying what it was.
 	if ((kind === "wait") !== (cause !== undefined)) return {};
 	if (kind === "other" && note === undefined) return {};
+	if (cause?.trim() === "" || note?.trim() === "") return {};
 	return {
 		kind,
 		count: Number(count ?? 1),
@@ -308,7 +309,8 @@ export class Timeline {
 		// The total sums the per-kind rows themselves, so the two can never disagree.
 		const minutes = kinds.reduce((sum, kind) => sum + kind.minutes, 0);
 		const cost = kinds.reduce((sum, kind) => sum + kind.cost, 0);
-		const spend = (minutes, cost) => `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		const spend = (minutes, cost) =>
+			`${Math.round(minutes * 100) / 100} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
 		lines.push("", "| Summary | Value |", "| --- | --- |");
 		lines.push(row("Timing reported", kinds.length === 0 ? "none" : spend(minutes, cost)));
 		for (const kind of kinds) lines.push(row(`Timing: ${kind.kind}`, spend(kind.minutes, kind.cost)));
