@@ -45,7 +45,7 @@ it("shares the git common directory and namespaces an explicit state location", 
 
 it("opens bundled pins without fetching and materialises an injected local archive", async () => {
 	const bundled = await ToolProvisioning.open(repo);
-	expect(bundled.tool("enola").version).toBe("0.4.27");
+	expect(bundled.tool("enola").version).toBe("0.4.40");
 	expect(bundled.cache.root).toBe(join(repo, ".git", "melian"));
 	expect(bundled.platform).toBe(`${process.platform}-${process.arch === "x64" ? "amd64" : process.arch}`);
 	const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]);

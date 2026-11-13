@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 const stored = JSON.parse(
 	JSON.stringify(ToolManifest.parse(readFileSync(new URL("../../../tools.yaml", import.meta.url), "utf8")).toJSON()),
 );
+// The date and exception tests below need a release time and an exception that do not move with the live pin.
+stored.tools.enola.published = "2026-10-05T16:37:02Z";
+stored.tools.enola.exception = { reason: "a young release taken on purpose", added: "2026-10-05T22:03:35Z" };
+const tag: string = stored.tools.enola.source.tag;
 
 describe("ToolManifest", () => {
 	it.each([
@@ -86,9 +90,9 @@ describe("ToolManifest", () => {
 
 	it("reads all four pins and the recorded execution misses", () => {
 		const manifest = ToolManifest.parse(JSON.stringify(stored));
-		expect(manifest.tool("enola").version).toBe("0.4.27");
+		expect(manifest.tool("enola").version).toBe("0.4.40");
 		expect(Object.keys(manifest.tool("enola").platforms)).toHaveLength(4);
-		expect(manifest.artifact("enola", "darwin-arm64").binary).toBe("enola-0.4.27-darwin-arm64");
+		expect(manifest.artifact("enola", "darwin-arm64").binary).toBe("enola-0.4.40-darwin-arm64");
 		expect(manifest.toJSON().misses.map((miss) => miss.finding)).toEqual([
 			"C1",
 			"C2",
@@ -134,18 +138,18 @@ describe("ToolManifest", () => {
 	});
 
 	it.each([
-		{ url: "http://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
-		{ url: "https://github.com/other/repo/releases/download/v0.4.27/enola.tar.gz" },
+		{ url: `http://github.com/enola-labs/enola/releases/download/${tag}/enola.tar.gz` },
+		{ url: `https://github.com/other/repo/releases/download/${tag}/enola.tar.gz` },
 		{ url: "https://github.com/enola-labs/enola/releases/download/v9/enola.tar.gz" },
 		{ binary: "enola\0hidden" },
-		{ url: "https://example.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
-		{ url: "https://github.com:8443/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
+		{ url: `https://example.com/enola-labs/enola/releases/download/${tag}/enola.tar.gz` },
+		{ url: `https://github.com:8443/enola-labs/enola/releases/download/${tag}/enola.tar.gz` },
 		{ sha256: "x" },
 		{ binary: "../enola" },
 		{ binary: "/enola" },
 		{ binary: "dir/../enola" },
-		{ url: "https://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz?x=1" },
-		{ url: "https://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz#x" },
+		{ url: `https://github.com/enola-labs/enola/releases/download/${tag}/enola.tar.gz?x=1` },
+		{ url: `https://github.com/enola-labs/enola/releases/download/${tag}/enola.tar.gz#x` },
 		{ binary: "dir\\enola" },
 		{ binary: "./enola" },
 		{ binary: "a//b" },
@@ -157,7 +161,7 @@ describe("ToolManifest", () => {
 	});
 
 	it("refuses a download URL whose dot-segments resolve outside the declared repository and tag", () => {
-		const base = "https://github.com/enola-labs/enola/releases/download/v0.4.27/";
+		const base = `https://github.com/enola-labs/enola/releases/download/${tag}/`;
 		for (const url of [
 			`${base}../../../../../other/repo/releases/download/v1/x.tar.gz`,
 			`${base}%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/other/repo/releases/download/v1/x.tar.gz`,
