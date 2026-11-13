@@ -1,6 +1,7 @@
 # Working in packages/core
 
 @../../docs/guidelines/core.md
+@../../docs/guidelines/identity.md
 
 ## Rules
 
