@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { roleTools } from "../src/lens-tools.ts";
 import { Probe, probeLimits } from "../src/probe.ts";
+import * as probing from "../src/probing.ts";
 import {
 	type Attack,
 	answerPrompt,
@@ -565,11 +567,43 @@ describe("the evidence a verifier reads, exactly", () => {
 });
 
 describe("the probing protocol a probing run's fingerprint holds", () => {
+	it("hashes every function and string probing.ts exports, unless it renders no prompt wording", () => {
+		const hashed = new Set([...probing.probingWording(), ...probing.verifierProbeWording()]);
+		// The exports that render no wording a planner, a prober or a verifier reads, each with why.
+		const notWording: Record<string, string> = {
+			probeFailed: "judges a probe's result",
+			probeConclusive: "judges a probe's result",
+			headRefusal: "opens a probe on the head and reports why it cannot",
+			runHeadProbe: "runs a probe",
+			probeClaimKey: "names a stored claim",
+			rerunKey: "names a stored rerun",
+			probingWording: "collects the wording the probing protocol hashes",
+			verifierProbeWording: "collects the wording the verifier's version hashes",
+		};
+		const unhashed = Object.entries(probing).filter(
+			([name, value]) =>
+				(typeof value === "function" || typeof value === "string") &&
+				!Object.hasOwn(notWording, name) &&
+				!hashed.has(String(value)),
+		);
+		expect(unhashed.map(([name]) => name)).toEqual([]);
+	});
+
 	it("holds the source of every function that renders the planner's and the prober's fixed wording", () => {
 		const { prompts } = JSON.parse(probingProtocol()) as { prompts: string[] };
 		// Each function's own source holds every branch of its wording, not only the one a sample input would render.
 		for (const render of [answerPrompt, renderPlan, renderEarlierFindings, plannerContext, plannerInstructions])
 			expect(prompts).toContain(String(render));
 		expect(prompts).toContain(recordPlanPrompt);
+	});
+
+	it("holds which tools each role may call, and the findings a quick run carries to the planner and the prober", () => {
+		const protocol = JSON.parse(probingProtocol()) as { roles: unknown; prompts: string[] };
+		expect(protocol.roles).toEqual(roleTools);
+		expect(
+			protocol.prompts.some((prompt) =>
+				prompt.includes("A quicker look at this change reported the findings below"),
+			),
+		).toBe(true);
 	});
 });
