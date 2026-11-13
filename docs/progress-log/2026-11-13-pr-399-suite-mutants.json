@@ -1,7 +1,7 @@
 {
 	"pull_request": 399,
-	"head": "d439a2008c0b5c50eb367c2d01e7fde0902428c0",
-	"ruling": "The maintainer ruled on 2026-11-14, in the coordinator's session, that these conformance-suite mutants are listed by line with a reason under the label \"suite assertion, proved per case\", never as equivalent. They stay unclaimed in 2026-11-13-pr-399-mutants.json, which fails --sample until issue #406 adds a claim for them; they then take \"claim\": \"suite\".",
+	"head": "bbc9bff97e84b8a848275f97a8f594d62e070ab3",
+	"ruling": "The maintainer ruled on 2026-11-14, in the coordinator's session, that these conformance-suite mutants are listed by line with a reason under the label \"suite assertion, proved per case\", never as equivalent. They stay unclaimed in 2026-11-13-pr-399-mutants.json, which fails --sample until issue #406 adds a claim for them; they then take \"claim\": \"suite\". Each row that deletes or changes something inside a case names the line that catches its case's failures under the mutant, as the decision's wording of 2026-11-14 requires.",
 	"mutants": [
 		{
 			"file": "packages/core/src/testing.ts",
@@ -13,7 +13,7 @@
 			"replacement": "{}",
 			"id": "36b743e47a8b75511eed058ff9e3a86ed9508c518caaf85cb3c18bf39e1b66d9",
 			"label": "suite assertion, proved per case",
-			"reason": "Emptying the second record's payload leaves it distinct from the first, so the case checks the same promise."
+			"reason": "Changes only the second record's payload, and the two records stay distinct; every breakage of the case is still caught at line 102, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -25,7 +25,7 @@
 			"replacement": "[]",
 			"id": "5d363e64e7ef117b465f4a6bb3e0053921e260ff9587a3ae81c6d8630d108f99",
 			"label": "suite assertion, proved per case",
-			"reason": "Emptying the first add leaves the third add to land the record; the bytes assertion after it still catches a repeat kept twice."
+			"reason": "Empties the first add, and the later adds still land the record; every breakage of the case is still caught at line 102, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -37,7 +37,7 @@
 			"replacement": "[]",
 			"id": "d2614027f1394698ce423ded6c5498b452d16e2e67b1bcec2123798d541f172f",
 			"label": "suite assertion, proved per case",
-			"reason": "Emptying the reordered repeat leaves the third add to repeat the record; the bytes assertion still catches a repeat kept twice."
+			"reason": "Empties the reordered repeat; every breakage of the case is still caught at the ID assertion, line 102 before the mutant folds the lines away."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -49,7 +49,7 @@
 			"replacement": ";",
 			"id": "2e18c0c8dc2277d426e7eb9f6770f2fbeed81e39bec18fa4e5d1242cfc8da6ea",
 			"label": "suite assertion, proved per case",
-			"reason": "The bytes assertion on the next line catches every breakage this ID assertion does."
+			"reason": "Line 103, the bytes assertion, catches what this ID assertion does: under the mutant the breakage \"add keeps a repeated record twice\" fails there. Line 103 has no deletion mutant of its own."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -61,7 +61,7 @@
 			"replacement": "{}",
 			"id": "db57693f1e2767af7d40fbd0702d30a41aef8264ab4ec31b496f31f46ea41277",
 			"label": "suite assertion, proved per case",
-			"reason": "Emptying one payload leaves the two records distinct, so the case checks the same promise."
+			"reason": "Empties one payload, and the two records stay distinct; every breakage of the case is still caught at line 117, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -73,31 +73,7 @@
 			"replacement": "{}",
 			"id": "3306164b43a8b44848ba5495cbc14d7bd51d40af6f3e386fb2ab9b2ff8bc84c7",
 			"label": "suite assertion, proved per case",
-			"reason": "Emptying one payload leaves the two records distinct, so the case checks the same promise."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 139,
-			"column": 4,
-			"endLine": 139,
-			"endColumn": 70,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "c32dd7180c8f2ad41e6a2eba6e882f82948f106a482d15d8b1e7147eb24e910f",
-			"label": "suite assertion, proved per case",
-			"reason": "The assertion after the second add catches a stale list too."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 142,
-			"column": 4,
-			"endLine": 142,
-			"endColumn": 78,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "8c68384a2019ede48e877618d1ae8d92f2c0b47d48a4c836f1827e6d40ba7077",
-			"label": "suite assertion, proved per case",
-			"reason": "The assertion after the first add catches a stale list too."
+			"reason": "Empties one payload, and the two records stay distinct; every breakage of the case is still caught at line 117, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -109,7 +85,7 @@
 			"replacement": "[]",
 			"id": "0e248c6c64bede2aa0c3de1ccf440956ac4f22792cf2586f0785eb1d89e48272",
 			"label": "suite assertion, proved per case",
-			"reason": "With no add before the cut-off, list must still fail rather than answer nothing, which the next assertion checks."
+			"reason": "Drops the record added before the cut-off; the cut-off list must still fail, and every breakage is still caught at line 152, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -121,79 +97,7 @@
 			"replacement": ";",
 			"id": "bfc43695c6238b486987e383f63cdc959cbaac507d955d80bd37ec1a1a998341",
 			"label": "suite assertion, proved per case",
-			"reason": "The read after the first write catches a stale or wrong cell too."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 164,
-			"column": 4,
-			"endLine": 164,
-			"endColumn": 41,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "172a829bba1afb36929ed25893b699687c69b38e72952bd183009c7eaf000f25",
-			"label": "suite assertion, proved per case",
-			"reason": "The read after the second write catches a stale cell too."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 167,
-			"column": 4,
-			"endLine": 167,
-			"endColumn": 70,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "a541b784f60f98b9af57eca058f263e2075a9fca9a198189a2cc728abad19dd8",
-			"label": "suite assertion, proved per case",
-			"reason": "The read after the first write catches a stale cell too."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 197,
-			"column": 4,
-			"endLine": 197,
-			"endColumn": 58,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "0d809702d6461bf566fcff821bdf9b8fbd4022b4063586b19b3f4953ac7a54a9",
-			"label": "suite assertion, proved per case",
-			"reason": "The return-value assertions around it catch every breakage that would leave the cell written."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 202,
-			"column": 4,
-			"endLine": 202,
-			"endColumn": 69,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "8a33788dc09b086cafe2462c71927e995cfcbb8c4b20866ac71d45045a7c591f",
-			"label": "suite assertion, proved per case",
-			"reason": "The return-value assertions around it catch a write that ignored the expected version."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 205,
-			"column": 4,
-			"endLine": 205,
-			"endColumn": 69,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "8c17f98852d2419a92f0bff86d1b4c732fa4ebbe312948f16e2cb14127ef0351",
-			"label": "suite assertion, proved per case",
-			"reason": "The return-value assertions before it catch a write that ignored the expected version."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 217,
-			"column": 4,
-			"endLine": 217,
-			"endColumn": 39,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "3a0a4a15c54ada75fcccae48ed2d392ec0def23c4dd251dca10df65a667f6dac",
-			"label": "suite assertion, proved per case",
-			"reason": "The version assertion beside it catches a write that kept the version."
+			"reason": "Line 168, a killed assertion, checks the same promise, that a cell no write reached reads as empty, for another changeset."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -205,19 +109,7 @@
 			"replacement": ";",
 			"id": "0e1539efd4f61d876608bd4e87ed1f73850c7a961f8267591b834bd1b688cd41",
 			"label": "suite assertion, proved per case",
-			"reason": "The refused write with the first version, after it, catches a version that did not change."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 232,
-			"column": 4,
-			"endLine": 232,
-			"endColumn": 34,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "4fa3961016afad4a45bcdb13356ec60d44d916a89dfbf4fa723dedf0e3b6d896",
-			"label": "suite assertion, proved per case",
-			"reason": "The version and value assertions after it catch a version reused for the returned value."
+			"reason": "Line 219 refuses a write with the first version, which catches a version that did not change: under the mutant the breakage \"the version is a hash of the value\" fails there."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -229,43 +121,7 @@
 			"replacement": ";",
 			"id": "043bfff989df1592fa1c7e3c68c21f3e843de6b3ca5c8642147304bb8cb2893f",
 			"label": "suite assertion, proved per case",
-			"reason": "The refused write with the stale version, after it, catches a reused version."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 235,
-			"column": 4,
-			"endLine": 235,
-			"endColumn": 63,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "a4d2635690fed73a155626118b4313112a173994ec79f5c89f2a07185aaf99e7",
-			"label": "suite assertion, proved per case",
-			"reason": "The refused write with the stale version, before it, catches a reused version."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 291,
-			"column": 4,
-			"endLine": 291,
-			"endColumn": 43,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "b760022cd4b368386f36468a39a9f07503f8e03c02d05b9f6577f998157e214e",
-			"label": "suite assertion, proved per case",
-			"reason": "The add refused as disposed, after it, catches a dispose that left no mark."
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 296,
-			"column": 4,
-			"endLine": 296,
-			"endColumn": 72,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"id": "11672fb1e9824b1f99268bebc1b7652d025911881939e3e5e11877641a3d20fa",
-			"label": "suite assertion, proved per case",
-			"reason": "The add refused as disposed catches a dispose that left no mark."
+			"reason": "Line 234 refuses a write with the stale version, which catches a reused version: under the mutant the breakage \"the version is a hash of the value\" fails there."
 		},
 		{
 			"file": "packages/core/src/testing.ts",

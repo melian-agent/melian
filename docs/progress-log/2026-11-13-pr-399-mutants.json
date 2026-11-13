@@ -19293,7 +19293,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "c32dd7180c8f2ad41e6a2eba6e882f82948f106a482d15d8b1e7147eb24e910f"
+			"id": "c32dd7180c8f2ad41e6a2eba6e882f82948f106a482d15d8b1e7147eb24e910f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"list misses a changeset's only record"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -19352,7 +19363,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8c68384a2019ede48e877618d1ae8d92f2c0b47d48a4c836f1827e6d40ba7077"
+			"id": "8c68384a2019ede48e877618d1ae8d92f2c0b47d48a4c836f1827e6d40ba7077",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"list keeps showing the first records it found"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -19617,7 +19639,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "172a829bba1afb36929ed25893b699687c69b38e72952bd183009c7eaf000f25"
+			"id": "172a829bba1afb36929ed25893b699687c69b38e72952bd183009c7eaf000f25",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"readCell drops the value of a cell's first write"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -19711,7 +19744,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "a541b784f60f98b9af57eca058f263e2075a9fca9a198189a2cc728abad19dd8"
+			"id": "a541b784f60f98b9af57eca058f263e2075a9fca9a198189a2cc728abad19dd8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"readCell keeps showing a cell's first value"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20155,7 +20199,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "0d809702d6461bf566fcff821bdf9b8fbd4022b4063586b19b3f4953ac7a54a9"
+			"id": "0d809702d6461bf566fcff821bdf9b8fbd4022b4063586b19b3f4953ac7a54a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a write refused on an empty cell shows its value"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20284,7 +20339,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8a33788dc09b086cafe2462c71927e995cfcbb8c4b20866ac71d45045a7c591f"
+			"id": "8a33788dc09b086cafe2462c71927e995cfcbb8c4b20866ac71d45045a7c591f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a write refused for naming no version shows its value"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20378,7 +20444,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8c17f98852d2419a92f0bff86d1b4c732fa4ebbe312948f16e2cb14127ef0351"
+			"id": "8c17f98852d2419a92f0bff86d1b4c732fa4ebbe312948f16e2cb14127ef0351",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a write refused for an old version shows its value"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20529,7 +20606,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "3a0a4a15c54ada75fcccae48ed2d392ec0def23c4dd251dca10df65a667f6dac"
+			"id": "3a0a4a15c54ada75fcccae48ed2d392ec0def23c4dd251dca10df65a667f6dac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a write of the value the cell holds stores it changed"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20717,7 +20805,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "4fa3961016afad4a45bcdb13356ec60d44d916a89dfbf4fa723dedf0e3b6d896"
+			"id": "4fa3961016afad4a45bcdb13356ec60d44d916a89dfbf4fa723dedf0e3b6d896",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"the first read after a value came back shows the value before it"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -20787,7 +20886,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "a4d2635690fed73a155626118b4313112a173994ec79f5c89f2a07185aaf99e7"
+			"id": "a4d2635690fed73a155626118b4313112a173994ec79f5c89f2a07185aaf99e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a write refused for an old version shows its value, after a value came back"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -21660,7 +21770,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "b760022cd4b368386f36468a39a9f07503f8e03c02d05b9f6577f998157e214e"
+			"id": "b760022cd4b368386f36468a39a9f07503f8e03c02d05b9f6577f998157e214e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"the first dispose's mark reads as an empty cell"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
@@ -21780,7 +21901,18 @@
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "11672fb1e9824b1f99268bebc1b7652d025911881939e3e5e11877641a3d20fa"
+			"id": "11672fb1e9824b1f99268bebc1b7652d025911881939e3e5e11877641a3d20fa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"a repeat dispose's mark reads as an empty cell"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
