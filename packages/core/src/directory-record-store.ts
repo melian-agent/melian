@@ -123,6 +123,7 @@ export class DirectoryRecordStore implements RecordStore {
 				await rename(temporary, path);
 			} catch (cause) {
 				await rm(temporary, { force: true });
+				if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 				throw failure("unreachable", path, cause);
 			}
 			if ((await this.#cell(directory))?.value === disposalMark) {
