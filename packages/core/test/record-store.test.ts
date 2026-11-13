@@ -524,11 +524,9 @@ describe("DirectoryRecordStore", () => {
 		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
 	});
 
-	it("leaves no temporary file behind a cell write, won or lost", async () => {
+	it("leaves no temporary file behind a cell write it won", async () => {
 		const store = await DirectoryRecordStore.open(root);
 		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
-		writeFileSync(join(root, "changesets", changeset, ".cell", "2"), "taken");
-		expect(await store.writeCell(changeset, "1", "lease B")).toBe(false);
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
 

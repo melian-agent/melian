@@ -197,4 +197,17 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		expect((await rejection(add, RecordError)).code).toBe("disposed");
 		expect(existsSync(join(root, SharedRecord.parse(envelope).path))).toBe(false);
 	});
+
+	it("leaves no temporary file when it loses a cell write to a writer that read the same version", async () => {
+		const losing = await DirectoryRecordStore.open(root);
+		const winning = await DirectoryRecordStore.open(root);
+		const { reached, release } = pause("writeFile", "/tmp/");
+		const lost = losing.writeCell(changeset, undefined, "lease A");
+		await reached;
+		expect(await winning.writeCell(changeset, undefined, "lease B")).toBe(true);
+		release();
+		expect(await lost).toBe(false);
+		expect(await winning.readCell(changeset)).toEqual({ value: "lease B", version: "1" });
+		expect(readdirSync(join(root, "tmp"))).toEqual([]);
+	});
 });
