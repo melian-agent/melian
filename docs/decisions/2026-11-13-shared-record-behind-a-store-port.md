@@ -167,7 +167,7 @@ Melian cannot see a store's writers. `melian doctor` names the store and says it
 
 The trusted host holds the one key, pinned as `trust.host.key` in the root `melian.yaml` and read from the base commit. Two kinds of repository pin it:
 
-- One that sets `trust.writers: false`. The gate then counts only records that key signed. A record it did not sign is set aside before every other rule: it supersedes nothing and stands nowhere.
+- One that sets `trust.writers: false`. The gate then counts only records that key signed. A record it did not sign is set aside before every other rule: it supersedes nothing and stands nowhere. A signature proves a record genuine and never that none is missing: a writer who can rewind the store can drop the host's later blocking round and leave its earlier passing one. So such a repository keeps its record where only the trusted host can write, a branch its provider protects for the host alone or a store of its own. The store's write access is the trust, and a repository that does not trust its writers does not let them write the store. Melian cannot see who may write a store, so this is a requirement on the repository: the decision states it, `melian doctor` says it whenever `trust.writers` is `false`, and the guide for that setting names it. The maintainer ruled so on 2026-11-13, in the coordinator's session, over a second tally kept by the host, which would be another place to hold state.
 - One that takes pull requests from forks, whatever `trust.writers` says, because without the key the gate cannot tell the trusted host's record of a fork's head from a writer's. For a fork's head the gate counts only records that key signed, so a repository that has not pinned it passes no fork's pull request, and the gate names what to set up. The maintainer ruled so on 2026-11-13, in the coordinator's session, over the alternative of a writer's recorded vouch: the rule's promise is that a fork's head was reviewed where its code could not touch the result, and a vouch promises only that a writer read it.
 
   This changes one clause of the coverage ledger decision's "Fork heads" section, which said no round of a fork's head records coverage, whoever runs it. A round the trusted host ran and signed now does. That section already named this end: in milestone 3 the agent refuses a record "whose head is not a writer's or the App's", and the trusted host is that App. The rest of the section stands. A writer's round of a fork's head records no coverage and reads not reviewed, with `--trust-head` or without it, because a writer's machine ran the fork's code where it could touch the result. A record of a fork's head with no signature, a bad one, or one from a key the base does not pin covers nothing. A repository with no pinned key passes no fork's pull request.
@@ -291,6 +291,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | The override was refused when a round stood that read not reviewed, the very outage it is for (`807a4d728b569993`, and the sweep) | Rule 9: only a standing round that blocks outranks it, by the maintainer's ruling |
 | A round that read not reviewed and also held a block did not outrank the override (`7254f59a03ce32ef`) | Rule 9: a blocking finding outranks it, whatever the round's label |
 | A check's key left out the host facts its tool's answer turns on (`b5c201e39ccbd168`) | Rule 5: platform, architecture, runtime and case folding are in a check's request |
+| With `trust.writers: false`, a writer could rewind the branch and drop the host's blocking round (`26e8879cab5aecc6`) | Rule 6: such a repository keeps its record where only the trusted host can write, by the maintainer's ruling |
 
 ## What this gives up
 
@@ -304,6 +305,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 - Two hosts can give one lens different callers and enclosing functions under one key.
 - One file the adapter does not know stops every gate and publish on the branch until a writer removes it.
 - A repository that takes fork pull requests holds one key, in CI alone.
+- A repository with `trust.writers: false` must protect its store from its own writers, and Melian cannot check that it has.
 - The record is a new stored shape, with versions to migrate and an import path to keep true, about 400 to 550 lines by [issue #372](https://github.com/melian-agent/melian/issues/372)'s estimate.
 - The reopen rule, sighting merge and verifier lowering live in the pipeline, so a gate that is core alone needs them moved.
 - A pull request whose markers were made under the per-changeset secret finishes on its local store.
