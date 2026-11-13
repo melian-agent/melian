@@ -1,0 +1,452 @@
+{
+ "total": 26,
+ "omitted": 0,
+ "base": "0904a938",
+ "head": "c66e3b09",
+ "command": "node scripts/enumerate-mutants.mjs 0904a938...7f233f5c and 9b73369a...644aed85 --json --limit 10000",
+ "note": "Fix pass 16 of pull request #296: a level-tier prober judged in plan.mark, and the probing protocol in the fingerprint. Each claim was run at the head it names against its named test alone. The listing's seven mutants on lensRan are left out: the commit moves main's helper back to where main holds it, unchanged, so it is not this pull request's code. One ignored literal is left out too.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 17,
+   "endLine": 1194,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a prober on a tier of its own by that tier, not its level's",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 17,
+   "endLine": 1194,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 17,
+   "endLine": 1194,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "lens.probe?.onLevelTier !== true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 17,
+   "endLine": 1194,
+   "endColumn": 40,
+   "mutatorName": "OptionalChaining",
+   "replacement": "lens.probe.onLevelTier",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/plan.test.ts > reviewChangeset with a plan > records the fallback a lens finished on, outside accept, when its accepted model failed",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 45,
+   "endLine": 1194,
+   "endColumn": 49,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1194,
+   "column": 52,
+   "endLine": 1194,
+   "endColumn": 74,
+   "mutatorName": "OptionalChaining",
+   "replacement": "outcome.probing.model",
+   "claim": "equivalent",
+   "evidence": "A done run of a level whose probes ran always records its probing, so the chain never meets an absent one.",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "7f233f5c",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 6,
+   "endLine": 1197,
+   "endColumn": 64,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 26,
+   "endLine": 1197,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 26,
+   "endLine": 1197,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "A judgement with no model adds nothing past the planner's: mark takes the first lineage, the planner's, and a level the plan lets run has no refusal without a model.",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 26,
+   "endLine": 1197,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "prober !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 49,
+   "endLine": 1197,
+   "endColumn": 51,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a prober on a tier of its own by that tier, not its level's",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 54,
+   "endLine": 1197,
+   "endColumn": 62,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 69,
+   "endLine": 1202,
+   "endColumn": 5,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 81,
+   "endLine": 1202,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > fails a moved lens when the root's prober alone finished on a model the committed tier refuses",
+   "survivorClasses": [],
+   "run": {
+    "head": "7f233f5c",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1189,
+   "column": 35,
+   "endLine": 1200,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1190,
+   "column": 16,
+   "endLine": 1190,
+   "endColumn": 72,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1191,
+   "column": 23,
+   "endLine": 1199,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1192,
+   "column": 9,
+   "endLine": 1192,
+   "endColumn": 58,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when a role tool's contract changes, as a release that rewrites one does",
+   "survivorClasses": [],
+   "run": {
+    "head": "c66e3b09",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1192,
+   "column": 63,
+   "endLine": 1196,
+   "endColumn": 4,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when a role tool's contract changes, as a release that rewrites one does",
+   "survivorClasses": [],
+   "run": {
+    "head": "c66e3b09",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1192,
+   "column": 103,
+   "endLine": 1196,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when a role tool's contract changes, as a release that rewrites one does",
+   "survivorClasses": [],
+   "run": {
+    "head": "c66e3b09",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1197,
+   "column": 10,
+   "endLine": 1197,
+   "endColumn": 78,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1198,
+   "column": 11,
+   "endLine": 1198,
+   "endColumn": 111,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "equivalent",
+   "evidence": "The prompt list is fixed text and functions this build fixes; another rendering changes the key only across builds, which no test inside one build can show.",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1198,
+   "column": 32,
+   "endLine": 1198,
+   "endColumn": 34,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "The prompt list is fixed text and functions this build fixes; another rendering changes the key only across builds, which no test inside one build can show.",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1198,
+   "column": 48,
+   "endLine": 1198,
+   "endColumn": 56,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "equivalent",
+   "evidence": "The prompt list is fixed text and functions this build fixes; another rendering changes the key only across builds, which no test inside one build can show.",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1198,
+   "column": 106,
+   "endLine": 1198,
+   "endColumn": 109,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "equivalent",
+   "evidence": "The prompt list is fixed text and functions this build fixes; another rendering changes the key only across builds, which no test inside one build can show.",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2466,
+   "column": 11,
+   "endLine": 2466,
+   "endColumn": 82,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does",
+   "survivorClasses": [],
+   "run": {
+    "head": "644aed85",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 20,
+  "equivalent": 6
+ }
+}

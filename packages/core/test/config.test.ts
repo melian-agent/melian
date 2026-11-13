@@ -1208,3 +1208,243 @@ describe("same-family verifier policy", () => {
 		});
 	});
 });
+
+describe("a lens route", () => {
+	let home: string;
+
+	beforeEach(() => {
+		home = temporaryDirectory();
+	});
+
+	afterEach(() => removeDirectory(home));
+
+	const preferences = () => join(home, "config.yaml");
+	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("takes a tier route's keys in the root melian.yaml, and records the committed route", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"lenses:",
+				"  design:",
+				"    route:",
+				"      model: openai-codex/gpt-5.6-sol",
+				"      thinking: high",
+				"      fallbacks: [anthropic/claude-opus-5-5]",
+				"      accept: [openai-codex/gpt-5.6-sol, anthropic/claude-opus-5-5]",
+				"      unavailable: fail",
+				"      acceptOverridden: false",
+			),
+		});
+		const route = {
+			model: "openai-codex/gpt-5.6-sol",
+			thinking: "high",
+			fallbacks: ["anthropic/claude-opus-5-5"],
+			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
+			unavailable: "fail",
+			acceptOverridden: false,
+		};
+		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.lenses.design).toEqual({ route });
+		expect(routes).toEqual({
+			committed: {},
+			overridden: {},
+			lensTiers: {},
+			retiered: {},
+			lensRoutes: { design: route },
+			lensRouteThinking: { design: "melian.yaml" },
+		});
+	});
+
+	it("records the nearest preference file that changes a route's model or fallbacks, and its thinking apart", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model, thinking: high }"),
+			"melian.local.yaml": lines("lenses:", "  design:", "    route: { fallbacks: [clone/fallback] }"),
+		});
+		writeFiles(home, {
+			"config.yaml": lines(
+				"lenses:",
+				"  design:",
+				"    route: { model: user/model, thinking: low }",
+				"  tests:",
+				"    route: { model: user/tests }",
+			),
+		});
+		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.lenses.design?.route).toEqual({
+			model: "user/model",
+			thinking: "low",
+			fallbacks: ["clone/fallback"],
+		});
+		expect(routes.lensRoutes).toEqual({ design: { model: "root/model", thinking: "high" } });
+		expect(routes.lensRouteBy).toEqual({ design: "melian.local.yaml", tests: preferences() });
+		expect(routes.lensRouteThinking).toEqual({ design: preferences() });
+	});
+
+	it("records no lens route lineage when no file routes a lens", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design: { tier: heavy }") });
+		const { routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(routes).toEqual({ committed: {}, overridden: {}, lensTiers: { design: "heavy" }, retiered: {} });
+	});
+
+	it.each([
+		["accept", "accept: [user/model]"],
+		["unavailable", "unavailable: derive"],
+		["acceptOverridden", "acceptOverridden: true"],
+	])("refuses %s in a preference file", async (key, entry) => {
+		writeFiles(home, { "config.yaml": lines("lenses:", "  design:", `    route: { model: user/model, ${entry} }`) });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: preferences(), key: `lenses.design.route.${key}` });
+		expect(error.message).toContain("only a committed melian.yaml sets");
+	});
+
+	it.each([
+		["model", "model: nested/model"],
+		["thinking", "thinking: low"],
+		["fallbacks", "fallbacks: [nested/model]"],
+	])("refuses %s in a nested melian.yaml, which no review would read", async (key, entry) => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model }"),
+			"services/melian.yaml": lines("lenses:", "  design:", `    route: { ${entry} }`),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+		expect(error).toMatchObject({
+			code: "invalidValue",
+			file: "services/melian.yaml",
+			key: `lenses.design.route.${key}`,
+		});
+		expect(error.message).toContain("only the root melian.yaml sets");
+	});
+
+	it("refuses an empty route in a nested melian.yaml", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model }"),
+			"services/melian.yaml": lines("lenses:", "  design:", "    route: {}"),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "services/melian.yaml", key: "lenses.design.route" });
+	});
+
+	it.each([
+		["thinking", "thinking: high"],
+		["fallbacks", "fallbacks: [root/model]"],
+	])("refuses a route that sets only %s, naming the file", async (_, entry) => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", `    route: { ${entry} }`) });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.model" });
+		expect(error.message).toContain("names no model and no accept");
+	});
+
+	it("refuses a preference route that sets only thinking where no committed file routes the lens", async () => {
+		writeFiles(home, { "config.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: preferences(), key: "lenses.design.route.model" });
+	});
+
+	it("refuses a committed route that names no model, though a preference file names one", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+		writeFiles(home, { "config.yaml": lines("lenses:", "  design:", "    route: { model: user/model }") });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.model" });
+	});
+
+	it("accepts a route that names only an accept", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { accept: [root/model] }") });
+		const { config } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.lenses.design?.route).toEqual({ accept: ["root/model"] });
+	});
+
+	it("applies a tier route's checks: an empty accept, and a refusal that accepts nothing", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model, accept: [] }"),
+		});
+		const empty = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(empty).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.accept" });
+		expect(empty.message).toContain("lists no model");
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { acceptOverridden: false }"),
+		});
+		const refusal = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(refusal).toMatchObject({
+			code: "invalidValue",
+			file: "melian.yaml",
+			key: "lenses.design.route.acceptOverridden",
+		});
+	});
+});
+
+describe("a route error beside a nearer file", () => {
+	const local = (text: string[]) => writeFiles(repo, { "melian.local.yaml": lines(...text) });
+
+	it("names the file that set a tier's fallbacks with no model, past a nearer file that routes another tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    fallbacks: [openai/gpt]") });
+		for (const nearer of [
+			["models:", "  light:", "    model: clone/light"],
+			["triage:", "  escalateAt: P2"],
+		]) {
+			local(nearer);
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.model" });
+			expect(error.message).toContain(`"models.heavy.fallbacks" has no model to follow`);
+		}
+	});
+
+	it("names the root that set a lens route with no model, past a nested file that sets none", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.model" });
+		}
+	});
+
+	it("names the preference file that set a lens route with no model, past a nearer one that sets none", async () => {
+		const home = temporaryDirectory();
+		try {
+			const user = join(home, "config.yaml");
+			writeFiles(home, { "config.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+			for (const nearer of [
+				["models:", "  light:", "    model: clone/light"],
+				["lenses:", "  tests: { tier: heavy }"],
+			]) {
+				local(nearer);
+				const error = await rejection(loadConfig(repo, { kind: "worktree", preferences: user }, "a.ts"));
+				expect(error).toMatchObject({ code: "invalidValue", file: user, key: "lenses.design.route.model" });
+			}
+		} finally {
+			removeDirectory(home);
+		}
+	});
+
+	it("names the root that set an empty lens accept, past a nested file that sets no lens", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model, accept: [] }"),
+		});
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.accept" });
+		}
+	});
+
+	it("names the root that refused overrides on a lens route with no model, past a nested file that sets no lens", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { acceptOverridden: false }") });
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({
+				code: "invalidValue",
+				file: "melian.yaml",
+				key: "lenses.design.route.acceptOverridden",
+			});
+		}
+	});
+});

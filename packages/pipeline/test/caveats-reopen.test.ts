@@ -36,7 +36,7 @@ const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf
 
 it.each([
 	["melian.lenses", 4, 6],
-	["melian.adjudication", 5, 6],
+	["melian.adjudication", 5, 7],
 ] as const)("reopens main's version-%s %s input, reading its caller note as a caveat", async (kind, from, to) => {
 	const repo = crashRepository();
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-caveats-reopen-")));
@@ -106,7 +106,7 @@ it.each([
 
 it.each([
 	["melian.reviews", 3, 4],
-	["melian.verdicts", 12, 13],
+	["melian.verdicts", 12, 14],
 ] as const)(
 	"reopens main's version-%s %s document twice, reading its caller note as a caveat",
 	async (kind, from, to) => {

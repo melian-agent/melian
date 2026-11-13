@@ -22,6 +22,7 @@ import {
 	openHarness,
 	planInputs,
 	type Review,
+	ReviewHarness,
 	readFindings,
 	reviewChangeset,
 	type TaskId,
@@ -42,12 +43,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
 import { clearSightings } from "../src/findings.ts";
-import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
+import { LensDocument, lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
-import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
+import { candidateIdentity, startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -128,31 +130,35 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 		})),
 		{
 			match: verifierMarker,
-			replies: [
-				(messages) => {
-					const ids = [...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => match[1]!);
-					return scriptVerifier(
-						messages,
-						Object.fromEntries(
-							ids.map((id) => [
-								id,
-								{
-									verdict,
-									reason: "Traced the code.",
-									correction: "Use the guarded value.",
-									...(verdict === "refuted"
-										? { evidence: [{ file: "src/user.ts", line: 7, role: "context" as const }] }
-										: {}),
-								},
-							]),
-						),
-					);
-				},
-				(messages) => scriptVerifier(messages),
-			],
+			// Every verification gets the same judgement: a wave verifies the first lens's claim alone, and the merged
+			// candidate again with both.
+			replies: Array.from({ length: 12 }, () => (messages: Parameters<typeof systemPromptOf>[0]) => {
+				const ids = [...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => match[1]!);
+				return scriptVerifier(
+					messages,
+					Object.fromEntries(
+						ids.map((id) => [
+							id,
+							{
+								verdict,
+								reason: "Traced the code.",
+								correction: "Use the guarded value.",
+								...(verdict === "refuted"
+									? { evidence: [{ file: "src/user.ts", line: 7, role: "context" as const }] }
+									: {}),
+							},
+						]),
+					),
+				);
+			}),
 		},
 	]);
 }
+
+// The merged candidate's requests. A wave may verify the first lens's claim alone before them, or both lenses may end
+// before any wave starts, so only the merged candidate's conversation is fixed.
+const merged = (requests: ReturnType<typeof scriptConversations>) =>
+	requests[verifierMarker]!.filter((messages) => systemPromptOf(messages).includes("Claim c2 finding"));
 
 describe("finder family notices", () => {
 	beforeEach(async () => {
@@ -202,6 +208,115 @@ describe("finder family notices", () => {
 		});
 		return { config, plan, terra };
 	}
+
+	it("routes the verifier in the plan's family order, not the order the configuration lists", async () => {
+		const ref = (id: string) => `${fake.ref(id).provider}/${id}`;
+		const config = {
+			...defaultConfig,
+			tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+			stages: { "pull-request": "full" },
+			models: {
+				medium: { model: ref("finder") },
+				heavy: { model: ref("finder") },
+				verifier: { model: ref("gpt-5.6-terra"), fallbacks: [ref("claude")] },
+			},
+		};
+		const plan = ReviewPlan.resolve({
+			...(await planInputs(fake.review)),
+			config,
+			lenses,
+			checks: config.tiers.full,
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from(
+					{ length: 4 },
+					() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+				),
+			},
+		]);
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config,
+			plan,
+		});
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!;
+		const task = await root.commit((tx) => tx.task(entry.verification!.task as TaskId), context);
+		expect(
+			(task!.input as unknown as VerificationInput).candidates.map((candidate) =>
+				candidate.route.map(({ modelId }) => modelId),
+			),
+		).toEqual([["claude", "gpt-5.6-terra"]]);
+	});
+
+	it("names each escalated run's own model as finder, beside the carried quick finding's", async () => {
+		const decider = new RecordedDecider({
+			triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+		});
+		registry.install(decisionExtension(decider));
+		const { config, plan } = await routing(true);
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", { ...crashFinding, rule: "wrong-result", severity: "P0" }),
+						{
+							stopReason: "toolUse",
+						},
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from(
+					{ length: 4 },
+					() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+				),
+			},
+		]);
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config,
+			plan,
+			decider,
+		});
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!;
+		const task = await root.commit((tx) => tx.task(entry.verification!.task as TaskId), context);
+		expect(
+			(task!.input as unknown as VerificationInput).candidates.map((candidate) => [
+				candidate.state.claims.map((claim) => claim.source.version),
+				candidate.finder,
+			]),
+		).toEqual([
+			[[`${lenses[0]!.version}@quick`], `${fake.ref("finder").provider}/finder`],
+			[[`${lenses[0]!.version}@careful`], `${fake.ref("claude").provider}/claude`],
+		]);
+	});
 
 	it.each([true, false])("reports a carried quick finder's family after escalation, accepted %s", async (accepted) => {
 		const decider = new RecordedDecider({
@@ -377,9 +492,8 @@ describe("finder family notices", () => {
 					.sort(),
 			).toEqual(["lens.correctness", "lens.unverified"]);
 			expect(speaker.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
-			expect(requests[verifierMarker]).toHaveLength(2);
+			expect(merged(requests)).toHaveLength(2);
 			expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
-			expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
 			const text = accepted
 				? "the verifier shares the finder's family by the maintainer's choice"
 				: "some verification candidates would be judged by their finder's own family";
@@ -472,7 +586,8 @@ describe("the verifier", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")],
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
 			},
 		]);
 		const decisions = vi.spyOn(DecisionFiles, "load");
@@ -494,8 +609,8 @@ describe("the verifier", () => {
 				source: expect.objectContaining({ check: `lens.${name}` }),
 			}),
 		]);
-		expect(requests[verifierMarker]).toHaveLength(2);
-		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
+		expect(merged(requests)).toHaveLength(2);
+		const instructions = systemPromptOf(merged(requests)[0]!);
 		expect(instructions).toContain("## Decisions at base");
 		expect(instructions).toContain(`[ACTIVE] ${decision} — Writer trust`);
 		expect(instructions).not.toContain("Publisher eligibility at head");
@@ -598,8 +713,8 @@ describe("the verifier", () => {
 		const requests = scripts();
 		const result = await review();
 		expect(result.verdict.attention()).toHaveLength(1);
-		expect(requests[verifierMarker]).toHaveLength(2);
-		const messages = requests[verifierMarker]![0]!;
+		expect(merged(requests)).toHaveLength(2);
+		const messages = merged(requests)[0]!;
 		const prompt = messages
 			.filter((message) => message.role === "user")
 			.map(textOf)
@@ -633,7 +748,8 @@ describe("the verifier", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
+				// The same answer for the wave that verifies the first lens's claim alone, and for the merged candidate.
+				replies: [0, 1].flatMap(() => [
 					fauxAssistantMessage(
 						fauxToolCall("report_verdict", {
 							claim: "c1",
@@ -645,7 +761,7 @@ describe("the verifier", () => {
 						{ stopReason: "toolUse" },
 					),
 					fauxAssistantMessage("Done."),
-				],
+				]),
 			},
 		]);
 		await expect(review()).rejects.toMatchObject({
@@ -662,8 +778,7 @@ describe("the verifier", () => {
 				],
 			},
 		});
-		expect(requests[verifierMarker]).toHaveLength(2);
-		expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
+		expect(merged(requests)).toHaveLength(2);
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
 		const findings = await readFindings(harness, root.id, revision, context);
@@ -678,7 +793,8 @@ describe("the verifier", () => {
 				.runDetails()
 				.stages.filter(({ name }) => name.startsWith("verification"))
 				.map(({ name, outcome }) => ({ name, outcome })),
-		).toEqual([{ name: "verification 2 claims", outcome: "failed" }]);
+			// The wave's one claim and the merged candidate's two.
+		).toEqual([{ name: "verification 3 claims", outcome: "failed" }]);
 	});
 	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"stores %s beside the sighting without writing confidence",
@@ -1382,6 +1498,72 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.model).toBe(judge);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it.each([
+		["a guarded route's accepted judge", false, false],
+		["an unguarded route's fallback", true, true],
+	] as const)("reuses a verification that finished on %s when the review reruns", async (_, unguarded, fallsBack) => {
+		const finder = `${fake.ref("finder").provider}/finder`;
+		const judge = `${fake.ref("judge").provider}/judge`;
+		const backup = `${fake.ref("backup").provider}/backup`;
+		const config = {
+			...defaultConfig,
+			models: { heavy: { model: finder }, verifier: { model: judge, fallbacks: [backup] } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const resolved = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		const plan = ReviewPlan.from({
+			...resolved.toJSON(),
+			tiers: resolved.tiers.map((tier) =>
+				tier.tier === "verifier"
+					? { ...tier, accept: [judge], ...(unguarded ? {} : { acceptOverridden: false as const }) }
+					: tier,
+			),
+		});
+		const models: string[] = [];
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					...(fallsBack
+						? [
+								(_messages: unknown, modelId: string) => {
+									models.push(modelId);
+									return fauxAssistantMessage("", {
+										stopReason: "error",
+										errorMessage: "HTTP 503 service unavailable",
+									});
+								},
+							]
+						: []),
+					...Array.from({ length: 4 }, () => (messages: Parameters<typeof scriptVerifier>[0], modelId: string) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					}),
+				],
+			},
+		]);
+		expect((await review(false, plan)).verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		const asked = requests[verifierMarker]!.length;
+		const result = await review(true, plan);
+		expect(requests[verifierMarker]).toHaveLength(asked);
+		expect(models).toEqual(fallsBack ? ["judge", "backup", "backup"] : ["judge", "judge"]);
+		expect(result.findings[0]!.properties.verification?.model).toBe(fallsBack ? backup : judge);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it("refuses a rejected fallback after another candidate finishes on the accepted judge", async () => {
 		const finder = `${fake.ref("finder").provider}/finder`;
 		const judge = `${fake.ref("judge").provider}/judge`;
@@ -1838,11 +2020,15 @@ describe("lowering a severity through report_verdict", () => {
 					fauxAssistantMessage("Done."),
 				],
 			})),
-			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+			{
+				match: verifierMarker,
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
 		]);
 		const { findings } = await review();
 		const bySeverity = Object.fromEntries(findings.map((finding) => [finding.properties.severity, finding.id]));
-		const request = requests[verifierMarker]![0]!;
+		const request = merged(requests)[0]!;
 		const prompt = systemPromptOf(request);
 		expect(prompt).toContain(`Claim c1 finding ${bySeverity.P0}, reported at P0`);
 		expect(prompt).toContain(`Claim c2 finding ${bySeverity.P2}, reported at P2`);
@@ -1965,8 +2151,9 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[lowered]: {
 								verdict: "confirmed",
@@ -1975,8 +2162,8 @@ describe("lowering a severity through report_verdict", () => {
 								lower: { severity: "P3", reason: "The only caller checks for a manager first." },
 							},
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		])[verifierMarker]!;
 		const finder = fake.ref("finder");
@@ -2061,13 +2248,14 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[idOf(high)]: { verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow },
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		]);
 		const once = await review();
@@ -2133,8 +2321,9 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[idOf("refuted-rule")]: {
 								verdict: "refuted",
@@ -2143,8 +2332,8 @@ describe("lowering a severity through report_verdict", () => {
 							},
 							[idOf("standing-rule")]: { verdict: "confirmed", reason: "Traced it." },
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		]);
 		const once = await review();
@@ -2188,7 +2377,8 @@ describe("lowering a severity through report_verdict", () => {
 				],
 			},
 		])[verifierMarker]!;
-		await expect(review()).rejects.toBeDefined();
+		// The wave that asked lost its claim, so nothing is left for the final step to verify.
+		await review().catch(() => undefined);
 		const errors = requests.flatMap((messages) =>
 			messages.filter((message) => message.role === "toolResult" && message.isError),
 		);
@@ -2280,7 +2470,11 @@ describe("verification ownership and budgets", () => {
 		const claim = stored.candidates[0]!.state.claims[0]!;
 		claim.source = { ...claim.source, version: "a-run-that-left-no-sighting" };
 		const requests = scriptConversations(fake, [
-			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+			{
+				match: verifierMarker,
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
 		]);
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
@@ -2449,6 +2643,47 @@ describe("verification ownership and budgets", () => {
 			await harness.waitForTask(first, context);
 		}
 	});
+	it("starts a final verification for a revision the index holds no entry for", async () => {
+		const stored = await input();
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision];
+		}, context);
+		const created = await startVerification(harness, stored, selection, false, context);
+		expect(created).toBeDefined();
+		expect((await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]).toEqual({
+			lenses: selection,
+			verification: { task: created, input: expect.any(String) },
+		});
+	});
+	it("starts fresh when a candidate's claim changes, though its key and its count of claims do not", async () => {
+		const stored = await input();
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		expect(await startVerification(harness, stored, selection, false, context)).toBe(first);
+		const candidate = stored.candidates[0]!;
+		const reworded = {
+			...stored,
+			candidates: [
+				{
+					...candidate,
+					state: {
+						...candidate.state,
+						claims: candidate.state.claims.map((claim) => ({
+							...claim,
+							failureScenario: "A reworded scenario.",
+						})),
+					},
+				},
+			],
+		};
+		expect(await startVerification(harness, reworded, selection, false, context)).not.toBe(first);
+	});
 	it("starts fresh when only the verifier version changes without rerun", async () => {
 		const stored = await input();
 		stored.version = "v1";
@@ -2538,8 +2773,108 @@ describe("verification ownership and budgets", () => {
 			(tx) => tx.createTask(VerificationTask, stored, { ownership: { kind: "conversation" } }),
 			context,
 		);
-		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({ status: "completed", result: {} });
+		expect((await harness.waitForTask(id, context)).state.outcome).toEqual({ status: "completed", result: {} });
 		expect(fake.provider.state.callCount).toBe(calls);
+	});
+	it("unlocks no provider for a candidate a live verification task reuses", async () => {
+		await harness.close(context);
+		const opened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		harness = opened.harness;
+		await harness.root(context, { agent: { model: fake.ref("finder") } });
+		const stored = await input();
+		const elsewhere = createFakeModels({ provider: "verifier-reused", models: [{ id: "reused" }] }, fake.review);
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						entered.resolve();
+						await release.promise;
+						return scriptVerifier(messages);
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const asked = stored.candidates[0]!;
+		const next: VerificationInput = {
+			...stored,
+			version: "reuse",
+			candidates: [{ ...asked, key: "reused", route: [elsewhere.ref("reused")] }, asked],
+			reused: { reused: { status: "done", model: "verifier-reused/reused" } },
+		};
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const indexed = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const selection = indexed.lenses;
+		// A finished wave stands for the reused candidate, as one would that verified it.
+		await root.commit(async (tx) => {
+			const reused = next.candidates[0]!;
+			(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision] = {
+				lensTask: indexed.task!,
+				ended: {},
+				waves: [
+					{
+						task: indexed.verification!.task,
+						version: "reuse",
+						candidates: [
+							{ key: JSON.stringify(candidateIdentity(reused)), claims: reused.state.claims.map(claimKey) },
+						],
+					},
+				],
+			};
+		}, context);
+		const id = (await startVerification(harness, next, selection, false, context))!;
+		const finished = harness.waitForTask(id, context);
+		try {
+			await entered.promise;
+			expect(await opened.resumedProviders(context)).toEqual([asked.route[0]!.provider]);
+		} finally {
+			release.resolve();
+			await finished;
+		}
+	});
+	it("moves a verifier the index no longer names to no fallback model", async () => {
+		const stored = await input();
+		stored.candidates[0]!.route = [fake.ref("judge"), fake.ref("backup")];
+		const key = stored.candidates[0]!.key;
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		let task: TaskId | undefined;
+		let child: number | undefined;
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async () => {
+						const record = await harness.getTask(task!, context);
+						const state = record!.state as unknown as { checkpoint: { children: Record<string, number> } };
+						child = state.checkpoint.children[key];
+						await root.commit(async (tx) => {
+							(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = 999_999;
+						}, context);
+						return fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "HTTP 503 service unavailable",
+						});
+					},
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		task = (await startVerification(harness, stored, selection, false, context))!;
+		expect((await harness.waitForTask(task, context)).state.outcome).toEqual({
+			status: "completed",
+			result: { [key]: { status: "unanswered", reason: "superseded" } },
+		});
+		expect(requests[verifierMarker]).toHaveLength(1);
+		const judge = fake.ref("judge");
+		expect((await harness.snapshot(LensDocument, child as never, context))!.lens!.model).toBe(
+			`${judge.provider}/${judge.modelId}`,
+		);
 	});
 	it("refuses a spawned verifier's report after a second verification replaces it", async () => {
 		const stored = await input();
@@ -2696,5 +3031,259 @@ describe("verification ownership and budgets", () => {
 			status: "completed",
 			result: { [stored.candidates[0]!.key]: { status: "ended", budgetEnded: { budget: "tools", limit: 1 } } },
 		});
+	});
+});
+
+describe("verification candidates", () => {
+	const ref = (id: string) => `${fake.ref(id).provider}/${id}`;
+	const candidatesOf = async () => {
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!;
+		const task = await root.commit((tx) => tx.task(entry.verification!.task as TaskId), context);
+		return (task!.input as unknown as VerificationInput).candidates;
+	};
+
+	it("asks no verifier for a finding that only a lens whose level does not verify reported", async () => {
+		const lens = lenses[0]!;
+		lenses = [Lens.from({ ...lens.toJSON(), levels: { careful: { ...lens.level("careful"), verify: false } } })];
+		const requests = scripts();
+		const result = await review();
+		expect(requests[verifierMarker] ?? []).toEqual([]);
+		expect(result.findings).toHaveLength(1);
+		expect(result.findings[0]!.properties.verification).toBeUndefined();
+	});
+
+	it("names as finder the model that answered the lens, not the first on its route", async () => {
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from(
+					{ length: 4 },
+					() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+				),
+			},
+		]);
+		const route = { model: ref("finder"), fallbacks: [ref("backup")] };
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: { medium: route, heavy: route, verifier: { model: ref("judge"), fallbacks: [] } },
+			},
+		});
+		expect((await candidatesOf()).map((candidate) => candidate.finder)).toEqual([ref("backup")]);
+	});
+
+	const judged = () => ({
+		match: verifierMarker,
+		replies: Array.from(
+			{ length: 4 },
+			() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+		),
+	});
+	const shared = (name: string, tier: "light" | "medium" | "heavy", verify: boolean) => {
+		const lens = lenses[0]!;
+		return Lens.from({
+			...lens.toJSON(),
+			name,
+			version: "shared",
+			instructions: `${name} finder`,
+			rules: [{ id: `${name}-rule`, description: "Same failure." }],
+			levels: { careful: { ...lens.level("careful"), tier, verify } },
+		});
+	};
+	const reporting = (lens: Lens, severity: string) => ({
+		match: lens.instructions,
+		replies: [
+			fauxAssistantMessage(fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id, severity }), {
+				stopReason: "toolUse" as const,
+			}),
+			fauxAssistantMessage("Done."),
+		],
+	});
+	const tiered = () => ({
+		...defaultConfig,
+		tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+		stages: { "pull-request": "full" },
+		models: {
+			medium: { model: ref("finder") },
+			heavy: { model: ref("backup") },
+			verifier: { model: ref("judge"), fallbacks: [] },
+		},
+	});
+
+	it("finds each claim's run by check and version, and names the speaker's model as finder", async () => {
+		lenses = [shared("quiet", "medium", false), shared("zloud", "heavy", true)];
+		scriptConversations(fake, [reporting(lenses[0]!, "P1"), reporting(lenses[1]!, "P0"), judged()]);
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config: tiered(),
+		});
+		const candidates = await candidatesOf();
+		expect(
+			candidates.map((candidate) => [candidate.state.claims.map((claim) => claim.source.check), candidate.finder]),
+		).toEqual([[["lens.zloud", "lens.quiet"], ref("backup")]]);
+	});
+
+	it("names the first model on the lens's route as finder when the lens task ended with no result", async () => {
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					async () => {
+						const root = await harness.root(context);
+						const index = await harness.snapshot(ReviewIndex, root.id, context);
+						await harness.abortTask(index!.reviews[Revision.key(changeset.revision)]!.task as TaskId, context);
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			judged(),
+		]);
+		await expect(review()).rejects.toMatchObject({ code: "lensFailed" });
+		expect((await candidatesOf()).map((candidate) => candidate.finder)).toEqual([ref("finder")]);
+	});
+
+	it("names the first model on the lens's route as finder when the lens never finished", async () => {
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+				],
+			},
+			judged(),
+		]);
+		await expect(review()).rejects.toThrow("every model of a lens's tier failed");
+		expect((await candidatesOf()).map((candidate) => candidate.finder)).toEqual([ref("finder")]);
+	});
+
+	// An older Melian stored no verify setting on a run, so the lens level the review covers decides it.
+	async function reopenedWithoutVerify(quick: boolean, scripted: () => void) {
+		scripted();
+		await review(false, undefined, quick);
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const original = await root.commit((tx) => tx.task(entry.task as TaskId), context);
+		const stored = structuredClone(original!.input) as { lenses: { verify?: boolean }[] };
+		for (const run of stored.lenses) delete run.verify;
+		const definition = lensExtension.tasks!.find((task) => task.definition.name === "melian.lenses")!;
+		await root.commit(async (tx) => {
+			const task = await tx.createTask(
+				{ definition: { ...definition.definition, version: 2 } } as never,
+				stored as never,
+				{
+					ownership: { kind: "conversation" },
+				},
+			);
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision] = { task, lenses: entry.lenses };
+		}, context);
+		scripted();
+		return review(false, undefined, quick);
+	}
+
+	it("leaves unverified an older quick run whose lens level says not to verify", async () => {
+		const lens = lenses[0]!;
+		lenses = [
+			Lens.from({
+				...lens.toJSON(),
+				levels: { careful: lens.level("careful"), quick: { ...lens.level("quick"), verify: false } },
+			}),
+		];
+		let requests: ReturnType<typeof scripts> = {};
+		const result = await reopenedWithoutVerify(true, () => {
+			requests = scripts();
+		});
+		expect(requests[verifierMarker] ?? []).toEqual([]);
+		expect(result.findings[0]!.properties.verification).toBeUndefined();
+	});
+
+	it("reads an older run's verify setting from its own lens, not another of the same version", async () => {
+		lenses = [shared("eager", "medium", true), shared("quiet", "medium", false)];
+		let requests: ReturnType<typeof scriptConversations> = {};
+		const result = await reopenedWithoutVerify(false, () => {
+			requests = scriptConversations(fake, [
+				{ match: lenses[0]!.instructions, replies: [fauxAssistantMessage("Done.")] },
+				reporting(lenses[1]!, "P1"),
+				judged(),
+			]);
+		});
+		expect(requests[verifierMarker] ?? []).toEqual([]);
+		expect(result.findings.map((finding) => finding.properties.verification)).toEqual([undefined]);
+	});
+
+	it("leaves off the verifier route a model the catalogue does not know", async () => {
+		scriptConversations(fake, [reporting(lenses[0]!, "P1"), judged()]);
+		const config = {
+			...tiered(),
+			models: {
+				...tiered().models,
+				verifier: { model: ref("judge"), fallbacks: [`${fake.ref("judge").provider}/missing`] },
+			},
+		};
+		await reviewChangeset({ harness, checks: [], changeset, lenses, standards: [], models: fake.review, config });
+		expect((await candidatesOf()).map((candidate) => candidate.route.map(({ modelId }) => modelId))).toEqual([
+			["judge"],
+		]);
+	});
+
+	it("attaches a repeat review to a verification that refuted the speaker's sighting of a finding another lens also sighted", async () => {
+		lenses = [shared("aloud", "medium", true), shared("quiet", "medium", true)].map((lens) =>
+			Lens.from({ ...lens.toJSON(), rules: [{ id: "shared-rule", description: "Same failure." }] }),
+		);
+		const verdicts = (messages: Parameters<typeof systemPromptOf>[0]) => {
+			const claims = [...systemPromptOf(messages).matchAll(/Claim (c[1-9][0-9]*) finding/g)].map(
+				(match) => match[1]!,
+			);
+			if (messages.some((message) => message.role === "assistant"))
+				return fauxAssistantMessage("Every claim judged.");
+			return fauxAssistantMessage(
+				claims.map((claim) =>
+					fauxToolCall("report_verdict", {
+						claim,
+						answers: { code: "yes", guard: claim === "c1" ? "yes" : "no", base: "no" },
+						verdict: claim === "c1" ? "refuted" : "confirmed",
+						reason: "Traced the code.",
+						...(claim === "c1" ? { evidence: [{ file: "src/user.ts", line: 7, role: "context" }] } : {}),
+					} as Parameters<typeof fauxToolCall>[1]),
+				),
+				{ stopReason: "toolUse" },
+			);
+		};
+		const script = () =>
+			scriptConversations(fake, [
+				reporting(lenses[0]!, "P1"),
+				reporting(lenses[1]!, "P2"),
+				{ match: verifierMarker, replies: Array.from({ length: 8 }, () => verdicts) },
+			]);
+		const requests = script();
+		const once = await review();
+		expect(once.findings.map((finding) => finding.properties.source.check)).toEqual(["lens.quiet"]);
+		const asked = requests[verifierMarker]!.length;
+		await review();
+		expect(requests[verifierMarker]).toHaveLength(asked);
 	});
 });

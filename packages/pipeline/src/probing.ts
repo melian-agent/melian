@@ -82,7 +82,12 @@ export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; t
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
-	return !result.timedOut && !result.truncated && result.exitCode !== null && result.exitCode !== 0;
+	return probeConclusive(result) && result.exitCode !== 0;
+}
+
+/** Whether a probe's result says anything: it exited with a code, within its time limit and its output limit. */
+export function probeConclusive(result: StoredProbeResult): boolean {
+	return !result.timedOut && !result.truncated && result.exitCode !== null;
 }
 
 /** A probe's run, or why it could not run. */
@@ -259,7 +264,10 @@ export type ClaimProbe = {
 };
 
 /** A claim's key among a candidate's probes: its finding ID and its producer. */
-export function claimKey(claim: { readonly id: string; readonly source: { check: string; version?: string } }): string {
+export function probeClaimKey(claim: {
+	readonly id: string;
+	readonly source: { check: string; version?: string };
+}): string {
 	return JSON.stringify([claim.id, claim.source.check, claim.source.version ?? ""]);
 }
 
@@ -322,19 +330,23 @@ function renderedPlan(plan: readonly Attack[]): string {
 		.join("\n");
 }
 
-/** A claim probe's key among a revision's reruns: the claim and the probe's ID, which names one prober's run. */
-export function rerunKey(
-	claim: { readonly id: string; readonly source: { check: string; version?: string } },
-	probe: ClaimProbe,
-): string {
-	return JSON.stringify([claimKey(claim), probe.id]);
+/**
+ * A claim probe's key among a revision's reruns: the claim's lens run and the probe's ID, which names one prober's
+ * probe, so every claim that cites one probe shares its rerun and a run's reruns stay within its probes' limit.
+ */
+export function rerunKey(claim: { readonly source: { check: string; version?: string } }, probe: ClaimProbe): string {
+	return JSON.stringify([claim.source.check, claim.source.version ?? "", probe.id]);
 }
 
 /**
  * Each claim probe a review ran again before its verifier started, by revision and then by {@link rerunKey}, on the
- * root conversation. A repeat review reads the run it stored rather than run the probe again.
+ * root conversation, and the task that owns each revision's reruns with the probes it runs. A repeat review reads the
+ * run it stored rather than run the probe again.
  */
-export const ProbeReruns = defineDoc<{ runs: Record<string, Record<string, ProbeRun>> }>({
+export const ProbeReruns = defineDoc<{
+	runs: Record<string, Record<string, ProbeRun>>;
+	tasks?: Record<string, { task: number; key: string }>;
+}>({
 	kind: "melian.probe-reruns",
 	version: 1,
 	scope: "conversation",

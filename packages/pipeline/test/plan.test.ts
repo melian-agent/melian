@@ -850,3 +850,154 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		expect([...again.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
 	});
 });
+
+describe("reviewChangeset with a lens route", () => {
+	// A review whose committed melian.yaml routes no tier and gives each lens in `routes` its own route; `preferred` is a
+	// route melian.local.yaml gives a lens, over the committed `models`.
+	async function routed(
+		routes: Record<string, ModelRoute>,
+		options: {
+			models?: MelianConfig["models"];
+			preferred?: Record<string, ModelRoute>;
+			plan?: false;
+			planChecks?: string[];
+		} = {},
+	) {
+		const preferred = options.preferred ?? {};
+		const names = [...new Set([...Object.keys(routes), ...Object.keys(preferred)])];
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: twoLensTiers,
+			lenses: Object.fromEntries(names.map((name) => [name, { route: { ...routes[name], ...preferred[name] } }])),
+			models: options.models ?? {},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: options.models ?? {},
+				overridden: {},
+				lensTiers: {},
+				retiered: {},
+				...(Object.keys(routes).length === 0 ? {} : { lensRoutes: routes }),
+				...(Object.keys(preferred).length === 0
+					? {}
+					: {
+							lensRouteBy: Object.fromEntries(Object.keys(preferred).map((name) => [name, "melian.local.yaml"])),
+						}),
+			},
+			catalog,
+			credentials,
+			lenses,
+			checks: options.planChecks ?? ["lens.correctness", "lens.contracts"],
+		});
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const answered: { lens: string; model: string }[] = [];
+		const answer = (lens: string) => (_messages: readonly Message[], modelId: string) => {
+			answered.push({ lens, model: modelId });
+			return fauxAssistantMessage("No findings.");
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [answer("correctness"), answer("correctness")] },
+			{ match: contracts, replies: [answer("contracts"), answer("contracts")] },
+		]);
+		const review = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			...(options.plan === false ? {} : { plan }),
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+				{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+			],
+		});
+		const root = (await harness.root(context)).id;
+		const index = await harness.snapshot(ReviewIndex, root, context);
+		const selection = index?.reviews[Revision.key(changeset.revision)]?.lenses ?? [];
+		return { plan, review, answered, selection };
+	}
+
+	it("runs each lens on its own route though its tiers route nothing, and warns of no tier", async () => {
+		const { plan, review, answered, selection } = await routed({
+			correctness: { model: backup, thinking: "high" },
+			contracts: { model: heavy },
+		});
+		expect(answered.map(({ lens, model }) => `${lens} ${model}`).sort()).toEqual([
+			"contracts heavy",
+			"correctness backup",
+		]);
+		expect(review.verdict.status).toBe("passed");
+		expect(review.verdict.ran?.filter(({ name }) => name.startsWith("lens.")).map(({ lineage }) => lineage)).toEqual([
+			undefined,
+			undefined,
+		]);
+		expect(plan.warnings().filter((text) => text.startsWith("no model for"))).toEqual([]);
+		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`thinking high`);
+		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`on ${backup}`);
+		expect(selection.find((entry) => entry.startsWith("contracts@"))).not.toContain("thinking");
+	});
+
+	it("keeps each lens route's fallbacks in its run's route", async () => {
+		const { selection } = await routed({
+			correctness: { model: backup, fallbacks: [heavy] },
+			contracts: { model: heavy },
+		});
+		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`on ${backup}, ${heavy}`);
+	});
+
+	it("runs a lens the plan did not plan on its tier, not on the route the plan never resolved", async () => {
+		const { answered } = await routed(
+			{ correctness: { model: backup }, contracts: { model: heavy } },
+			{ models: { heavy: { model: heavy } }, planChecks: ["lens.contracts"] },
+		);
+		expect(answered.map(({ lens, model }) => `${lens} ${model}`).sort()).toEqual([
+			"contracts heavy",
+			"correctness heavy",
+		]);
+	});
+
+	it("fails the review without a plan when a lens's configured route reaches no model", async () => {
+		await expect(
+			routed({ correctness: { model: "nowhere/opus" }, contracts: { model: heavy } }, { plan: false }),
+		).rejects.toThrow("none of nowhere/opus is known with credentials");
+	});
+
+	it("runs each lens on its configured route without a plan", async () => {
+		const { answered } = await routed(
+			{ correctness: { model: backup }, contracts: { model: heavy } },
+			{ plan: false },
+		);
+		expect(answered.map(({ lens, model }) => `${lens} ${model}`).sort()).toEqual([
+			"contracts heavy",
+			"correctness backup",
+		]);
+	});
+
+	it("fails a lens a preference route moves off a guarded committed tier, asking it no model", async () => {
+		const { review, answered } = await routed(
+			{ contracts: { model: heavy } },
+			{
+				models: { heavy: { model: heavy, accept: [heavy], acceptOverridden: false } },
+				preferred: { correctness: { model: backup } },
+			},
+		);
+		expect(answered.map(({ lens }) => lens)).toEqual(["contracts"]);
+		expect(review.verdict.notRun.find(({ name }) => name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			reason: `lenses.correctness.route moves it from heavy to its own route, and models.heavy.acceptOverridden is false; the route runs ${backup}, which models.heavy.accept does not list`,
+			lineage: { moved: { by: "melian.local.yaml", from: "heavy", to: "lens route" } },
+		});
+	});
+
+	it("fails the review before any lens runs when a lens route reaches no model with credentials", async () => {
+		await expect(routed({ correctness: { model: "nowhere/opus" }, contracts: { model: heavy } })).rejects.toThrow(
+			"lens correctness may run from quick to deep, and no level there can run: quick runs on medium, and none of nowhere/opus is known with credentials",
+		);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+});

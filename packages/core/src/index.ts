@@ -270,7 +270,13 @@ export {
 	type ScrutinyLevel,
 	scrutinyLevels,
 } from "./lens.ts";
-export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
+export {
+	type ModelReference,
+	parseModelReference,
+	type ResolvedModelRoute,
+	resolveModelForTier,
+	resolveModelRoute,
+} from "./models.ts";
 export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
 export {
@@ -278,7 +284,9 @@ export {
 	type PlanInput,
 	type PlanLine,
 	type PlannedLens,
+	type PlannedLensRoute,
 	type PlannedModel,
+	type PlannedRoute,
 	type PlannedTier,
 	ReviewPlan,
 	type StoredPlan,
@@ -420,7 +428,7 @@ export {
 	type EnolaReference,
 } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitOutput } from "./git.ts";
+export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes } from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -440,6 +448,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
 	type MutationReportInput,

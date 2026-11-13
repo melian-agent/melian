@@ -27,6 +27,7 @@ import {
 } from "@earendil-works/pi-durable";
 import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 
 export type { Context } from "@earendil-works/chord";
@@ -129,6 +130,11 @@ export function openHarness<Tool extends ToolRegistration>(
 /** Durable storage in one SQLite file, created when absent. One process may own it at a time. */
 export function openSqliteStorage(path: string): Promise<Storage> {
 	return openNodeSqliteStorage(path);
+}
+
+/** Durable storage as Pi's JSONL files in one directory, created when absent. One process may own it at a time. */
+export function openJsonlStorage(directory: string, context: Context = backgroundContext): Promise<Storage> {
+	return openNodeJsonlStorage(directory, context);
 }
 
 /**

@@ -247,25 +247,25 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "90f51cb05195",
-			conventions: "c4203808a2da",
-			correctness: "2064c9540c11",
-			design: "9d07ab879ee3",
-			durability: "1df73b5e188a",
-			"removed-behaviour": "85cefc4bc2a7",
-			tests: "885f6b4945f0",
-			"trust-boundary": "4198c99c2f6a",
+			contracts: "ac79e2affc42",
+			conventions: "2192d831f4ed",
+			correctness: "2ada4940e253",
+			design: "9a74abf63df2",
+			durability: "2d013afa303b",
+			"removed-behaviour": "32db6552d78d",
+			tests: "ced1d9dc147a",
+			"trust-boundary": "e78af31b1e01",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "09ededbb98f8",
-			conventions: "e8bbc388d00b",
-			correctness: "b2f45160e156",
-			design: "0bf14d21f254",
-			"removed-behaviour": "1fb60bb9e3c3",
-			tests: "64740d8b10f5",
-			"trust-boundary": "6a213ed7d686",
+			contracts: "acfe949c2b5b",
+			conventions: "4675f03ab583",
+			correctness: "c49c348ce9f1",
+			design: "2e445fdc0850",
+			"removed-behaviour": "0885fd05330f",
+			tests: "a9ed7d3ea22c",
+			"trust-boundary": "7d072a9e5e2c",
 		});
 	});
 
@@ -300,30 +300,46 @@ describe("built-in lenses", () => {
 		expect(unexcluded).toEqual([]);
 	});
 
-	// Until a lens can name its own route, the design lens takes medium to itself: every other quick level moves to light.
-	it("leave the medium tier to Melian's design lens, on Codex's model and effort, and run every quick level on light", async () => {
+	it("run Melian's design lens on its own route, at Codex's model and effort, and every quick level on Terra at low", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		const own = ["melian.yaml", ...melianLensFiles(melian)];
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const sol = {
+			model: "openai-codex/gpt-5.6-sol",
+			thinking: "high",
+			fallbacks: ["anthropic/claude-opus-5-5"],
+			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
+		};
+		expect(Object.entries(config.lenses).flatMap(([name, { route }]) => (route === undefined ? [] : [name]))).toEqual(
+			["design"],
+		);
+		expect(config.lenses.design?.route).toEqual(sol);
 		const levels = lenses.flatMap((lens) =>
 			Object.entries(lens.configured(config.lenses[lens.name]).levels).map(([level, { tier }]) => [
 				`${lens.name}.${level}`,
 				tier,
 			]),
 		);
-		expect(levels.filter(([, tier]) => tier === "medium")).toEqual([["design.careful", "medium"]]);
 		const quick = levels.filter(([level]) => level!.endsWith(".quick"));
 		expect(quick.map(([level]) => level).sort()).toEqual(
 			["contracts", "conventions", "correctness", "durability", "removed-behaviour", "tests", "trust-boundary"].map(
 				(lens) => `${lens}.quick`,
 			),
 		);
-		expect(quick.filter(([, tier]) => tier !== "light")).toEqual([]);
+		const terra = {
+			model: "openai-codex/gpt-5.6-terra",
+			thinking: "low",
+			fallbacks: ["anthropic/claude-sonnet-5-5"],
+			accept: ["openai-codex/gpt-5.6-terra", "anthropic/claude-sonnet-5-5"],
+		};
+		expect(config.models.light).toEqual(terra);
+		expect(config.models.medium).toEqual(terra);
+		expect(quick.filter(([, tier]) => tier !== "light" && tier !== "medium")).toEqual([]);
 		expect(named(lenses, "design")[0]!.levels).toEqual({
 			careful: {
-				tier: "medium",
+				tier: "heavy",
 				reads: "functions",
 				verify: true,
 				budget: { findings: 8, tokens: 3_000_000, tools: 250 },
@@ -333,13 +349,6 @@ describe("built-in lenses", () => {
 		expect(
 			lenses.filter((lens) => lens.tools.some((tool) => tool.startsWith("graph_"))).map((lens) => lens.name),
 		).toEqual(["design"]);
-		expect(config.models.medium).toEqual({
-			model: "openai-codex/gpt-5.6-sol",
-			thinking: "high",
-			fallbacks: ["anthropic/claude-opus-5-5"],
-			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
-		});
-		expect(config.models.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	});
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
@@ -1079,6 +1088,46 @@ describe("Lens.select", () => {
 		expect(retiered!.lens.levels.quick?.tier).toBe("heavy");
 		expect(retiered!.lens.version).not.toBe("000000000000");
 		expect(Lens.select([lens({})], config({ security: { paths: ["docs/**"] } }), ["src/a.ts"])).toEqual([]);
+	});
+
+	it("compares only budgets between the levels of a routed lens, which share its route", () => {
+		const inverted = lens({
+			levels: {
+				quick: { tier: "heavy", reads: "hunks", verify: false, budget: { findings: 2, tokens: 900 } },
+				careful: { tier: "light", reads: "hunks", verify: true, budget: { findings: 5, tokens: 500 } },
+			},
+		});
+		expect(inverted.inversions()).toEqual([
+			"careful runs on light, below quick's heavy",
+			"careful allows 500 tokens, fewer than quick's 900",
+		]);
+		expect(inverted.inversions(true)).toEqual(["careful allows 500 tokens, fewer than quick's 900"]);
+	});
+
+	it("finds no tier inversion where each level runs on the same tier or a heavier one", () => {
+		for (const tiers of [
+			["light", "heavy"],
+			["medium", "medium"],
+		] as const) {
+			const ordered = lens({
+				levels: {
+					quick: { tier: tiers[0], reads: "hunks", verify: false, budget: { findings: 2 } },
+					careful: { tier: tiers[1], reads: "hunks", verify: true, budget: { findings: 5 } },
+				},
+			});
+			expect(ordered.inversions()).toEqual([]);
+		}
+	});
+
+	it("ignores the tier of a lens that names its own route, so neither its levels nor its version move", () => {
+		const route = { model: "faux/routed" };
+		const [routed] = Lens.select([lens({})], config({ security: { tier: "heavy", route } }), ["src/a.ts"]);
+		expect(routed!.lens).toEqual(lens({}));
+		const [narrowed] = Lens.select([lens({})], config({ security: { tier: "heavy", route, paths: ["src/**"] } }), [
+			"src/a.ts",
+		]);
+		expect(narrowed!.lens.levels).toEqual(lens({}).levels);
+		expect(narrowed!.lens.version).toBe(lens({}).configured({ paths: ["src/**"] }).version);
 	});
 });
 

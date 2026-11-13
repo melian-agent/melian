@@ -9,9 +9,10 @@ import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
-	claimKey,
 	headTreeLimits,
 	type ProbingEnvironment,
+	probeClaimKey,
+	probeConclusive,
 	probeFailed,
 	proberInstructions,
 	probingLimits,
@@ -296,6 +297,16 @@ describe("probeFailed", () => {
 	});
 });
 
+describe("probeConclusive", () => {
+	it("holds for a probe that exited with a code within its limits, whether it passed or failed", () => {
+		expect(probeConclusive(result())).toBe(true);
+		expect(probeConclusive(result({ exitCode: 0 }))).toBe(true);
+		expect(probeConclusive(result({ exitCode: null, signal: "SIGTERM" }))).toBe(false);
+		expect(probeConclusive(result({ exitCode: 0, timedOut: true }))).toBe(false);
+		expect(probeConclusive(result({ exitCode: 0, truncated: true }))).toBe(false);
+	});
+});
+
 const attack: Attack = { target: "t\u001b[31m", reason: "r", passing: "p", failing: "f" };
 
 describe("the plan as a prober and a verifier read it", () => {
@@ -314,8 +325,10 @@ describe("the plan as a prober and a verifier read it", () => {
 	});
 
 	it("keys a claim by its finding and its producer, an absent version as empty", () => {
-		expect(claimKey({ id: "a", source: { check: "lens.x", version: "v@deep" } })).toBe('["a","lens.x","v@deep"]');
-		expect(claimKey({ id: "a", source: { check: "lens.x" } })).toBe('["a","lens.x",""]');
+		expect(probeClaimKey({ id: "a", source: { check: "lens.x", version: "v@deep" } })).toBe(
+			'["a","lens.x","v@deep"]',
+		);
+		expect(probeClaimKey({ id: "a", source: { check: "lens.x" } })).toBe('["a","lens.x",""]');
 	});
 
 	it("gives the verifier the plan, the probe, and each run's outcome", () => {
@@ -524,9 +537,14 @@ describe("the evidence a verifier reads, exactly", () => {
 		);
 	});
 
-	it("keys a rerun by its claim and its probe", () => {
+	it("keys a rerun by its claim's lens run and its probe, whichever claim cites it", () => {
+		const probe = { id: "p9" } as ClaimProbe;
 		const claim = { id: "a", source: { check: "lens.x", version: "v" } };
-		expect(rerunKey(claim, { id: "p9" } as ClaimProbe)).toBe(JSON.stringify([claimKey(claim), "p9"]));
+		expect(rerunKey(claim, probe)).toBe('["lens.x","v","p9"]');
+		const other = { id: "b", source: claim.source };
+		expect(rerunKey(other, probe)).toBe(rerunKey(claim, probe));
+		const unversioned = { id: "a", source: { check: "lens.x" } };
+		expect(rerunKey(unversioned, probe)).toBe('["lens.x","","p9"]');
 	});
 
 	it("lists no block when the one finding is too long to fit", () => {

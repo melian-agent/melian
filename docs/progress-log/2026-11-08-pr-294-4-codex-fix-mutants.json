@@ -1,0 +1,536 @@
+{
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 93,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 93,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 93,
+   "mutatorName": "LogicalOperator",
+   "replacement": "candidates.length > 0 || candidates.every(candidate => candidate.route.length > 0)",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "candidates.length >= 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 9,
+   "endLine": 2109,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "candidates.length <= 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 34,
+   "endLine": 2109,
+   "endColumn": 93,
+   "mutatorName": "MethodExpression",
+   "replacement": "candidates.some(candidate => candidate.route.length > 0)",
+   "claim": "equivalent",
+   "evidence": "Every candidate takes the same verifier route under the same credentials, so some and every agree.",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "survived"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 51,
+   "endLine": 2109,
+   "endColumn": 92,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 66,
+   "endLine": 2109,
+   "endColumn": 92,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "A wave over a candidate with no route asks no model, and the final step refuses the unroutable verifier, clears every judgement and deletes the revision's waves in one commit, so nothing it wrote survives.",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "survived"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 66,
+   "endLine": 2109,
+   "endColumn": 92,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 66,
+   "endLine": 2109,
+   "endColumn": 92,
+   "mutatorName": "EqualityOperator",
+   "replacement": "candidate.route.length >= 0",
+   "claim": "equivalent",
+   "evidence": "As for the forced condition: a wave over an empty route asks no model, and the final step's refusal clears it and deletes the revision's waves.",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "survived"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2109,
+   "column": 66,
+   "endLine": 2109,
+   "endColumn": 92,
+   "mutatorName": "EqualityOperator",
+   "replacement": "candidate.route.length <= 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2112,
+   "column": 7,
+   "endLine": 2112,
+   "endColumn": 78,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 352,
+   "column": 33,
+   "endLine": 352,
+   "endColumn": 35,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 6,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 6,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 6,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "LogicalOperator",
+   "replacement": "running !== undefined || (await tx.task(running.task as TaskId))!.state.status !== \"terminal\"",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 6,
+   "endLine": 353,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 6,
+   "endLine": 353,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "running === undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 31,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 31,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(await tx.task(running.task as TaskId))!.state.status === \"terminal\"",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 353,
+   "column": 89,
+   "endLine": 353,
+   "endColumn": 99,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts the next wave once the running one settles, while a slower lens still runs",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 356,
+   "column": 16,
+   "endLine": 363,
+   "endColumn": 3,
+   "mutatorName": "MethodExpression",
+   "replacement": "input.candidates",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 357,
+   "column": 3,
+   "endLine": 362,
+   "endColumn": 19,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 358,
+   "column": 4,
+   "endLine": 362,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 358,
+   "column": 4,
+   "endLine": 362,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 358,
+   "column": 4,
+   "endLine": 362,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "waves.standing(JSON.stringify(candidateIdentity(candidate)), candidate.state.claims.map(claimKey), input.version) !== undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 364,
+   "column": 6,
+   "endLine": 364,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 364,
+   "column": 6,
+   "endLine": 364,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 364,
+   "column": 6,
+   "endLine": 364,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "fresh.length !== 0",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 365,
+   "column": 39,
+   "endLine": 365,
+   "endColumn": 90,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a defect again with every sighting when a later lens joins it, and the last verification decides",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 369,
+   "column": 3,
+   "endLine": 369,
+   "endColumn": 34,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave while an earlier wave still runs",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 370,
+   "column": 3,
+   "endLine": 370,
+   "endColumn": 42,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts one wave for a lens's claim when two reviews watch the same lens task",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 370,
+   "column": 16,
+   "endLine": 370,
+   "endColumn": 40,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "Pi Durable's transaction treats any ownership whose kind is not \"task\" as conversation-owned (session/transaction.js:111), so {} creates the same task.",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "survived"
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 370,
+   "column": 24,
+   "endLine": 370,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "As above: kind \"\" is not \"task\", so the task is conversation-owned.",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": "survived"
+  }
+ ],
+ "total": 35,
+ "omitted": 0,
+ "unmutated": []
+}

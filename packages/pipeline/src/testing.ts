@@ -24,6 +24,8 @@ import { verifierMarker } from "./verification-instructions.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall, normalizeContext } from "@earendil-works/pi-ai";
 export { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+export { createSession } from "@earendil-works/pi-durable";
+export { registerStorageConformance } from "@earendil-works/pi-durable/testing";
 
 /** A scripted model provider for tests, registered in its own model collection. */
 export type FakeModels = {
