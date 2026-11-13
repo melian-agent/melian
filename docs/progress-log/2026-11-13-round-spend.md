@@ -6,7 +6,7 @@ The figures were already in the JSON `melian review --json` writes, as its `tele
 
 `scripts/round-public.test.mjs` and `scripts/pr-timeline.test.mjs` hold the tests; each failed first, before the code it tests. The CRLF test failed at `97e17850` with no round read, and passed at `aecddb86`.
 
-The mutation inventory, `2026-11-13-issue-402-mutants.json`, lists 195 mutants: 155 killed, each by its named test run alone at `aecddb86`; 36 string literals Stryker ignores under the repository's configuration; and 4 equivalent, each with its reason. Two earlier runs found 27 and then 5 survivors, which the tests above, the CRLF fix and two guards removed in favour of `amount` closed. The first round with a cost on its comment comes after merge, since `workflow_dispatch` runs only the default branch's workflow; it is recorded on the issue.
+The mutation inventory, `2026-11-13-issue-402-mutants.json`, lists 230 mutants: 175 killed, each by its named test run alone at `eab2a5bd`; 53 string literals Stryker ignores under the repository's configuration; and 2 equivalent, each with its reason. Earlier runs found 27, 5 and then 6 survivors, which the tests above, the CRLF fix, and code that `amount` and a single parse made unnecessary closed. The first round with a cost on its comment comes after merge, since `workflow_dispatch` runs only the default branch's workflow; it is recorded on the issue.
 
 Codex's adversarial review of `a38a50dc` raised two medium findings, fixed together in one commit, since both change `spendOf` and the comment's body:
 
@@ -14,3 +14,5 @@ Codex's adversarial review of `a38a50dc` raised two medium findings, fixed toget
 - A total missing a stage read as exact. The telemetry lists stages whose usage was not recorded, in `usageUnavailable`, and counts requests recorded in part, in `usageIncomplete`. Tokens and cost now leave only when the first is an empty list and the second is absent or zero; the duration leaves either way. The public copy stays three plain numbers.
 
 The eight tests for them failed first on `a38a50dc`, and the timeline's test for a moved pull request failed against the old parser. The probe's test now expects its public copy to hold its two seconds of spend and nothing else.
+
+The Actions round on `a38a50dc`, [run 43434567608](https://github.com/melian-agent/melian/actions/runs/43434567608), raised the two Codex findings again, and one more: the timeline reads a `Spend:` line from a comment a writer can edit and keep its marker (d8becbfcdee1185d). The coordinator answered on 2026-11-13 that this sits under the limit AGENTS.md already states for a round comment, until [issue #286](https://github.com/melian-agent/melian/issues/286) binds a comment's body to its run, and that reading the round's artefact instead would lose older rounds as artefacts expire and cannot run behind a cloud session's proxy. `scripts/timeline.mjs` names the limit at its head.
