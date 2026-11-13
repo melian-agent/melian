@@ -666,10 +666,17 @@ describe("the fixed wording each role reads", () => {
 });
 
 describe("the probing protocol a probing run's fingerprint holds", () => {
-	it("holds every fixed wording a planner and a prober read, and which tools each role may call", () => {
-		const protocol = JSON.parse(probingProtocol()) as { roles: unknown; wording: unknown };
+	it("holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call", () => {
+		const protocol = JSON.parse(probingProtocol()) as { roles: unknown; wording: unknown; limits: unknown };
 		expect(protocol.roles).toEqual(roleTools);
 		expect(protocol.wording).toEqual(probing.probingWording);
+		// The limits on what a plan reads of earlier findings change the planner's prompt as its wording does.
+		expect(protocol.limits).toEqual({
+			probing: probingLimits,
+			probe: probeLimits,
+			head: headTreeLimits,
+			earlier: { findings: 40, bytes: 8 * 1024 },
+		});
 	});
 
 	it("holds no wording in probing.ts outside its two tables, but in code that renders no prompt", () => {

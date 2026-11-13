@@ -393,8 +393,8 @@ export type EarlierFinding = {
 	readonly message: string;
 };
 
-// The most earlier findings a plan reads, and the bytes of their listing.
-const earlierLimits = { findings: 40, bytes: 8 * 1024 } as const;
+/** The most earlier findings a plan reads, and the bytes of their listing. */
+export const earlierLimits = { findings: 40, bytes: 8 * 1024 } as const;
 
 /**
  * The findings the latest earlier revision of the change was reported with, for a planner: each with its severity,

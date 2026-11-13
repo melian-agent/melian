@@ -140,6 +140,7 @@ import {
 	type ClaimProbe,
 	carriedFindings,
 	type EarlierFinding,
+	earlierLimits,
 	headRefusal,
 	headTreeLimits,
 	ProbeReruns,
@@ -1203,7 +1204,7 @@ export function probingProtocol(): string {
 			parameters,
 		})),
 		roles: roleTools,
-		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
+		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits, earlier: earlierLimits },
 		// The findings a quick run carries reach the planner and the prober too.
 		wording: probingWording,
 	});
