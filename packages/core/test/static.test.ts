@@ -573,6 +573,57 @@ describe("staticFindings", () => {
 		expect(spanned?.locations[0]?.physicalLocation.region).toMatchObject({ startLine: 1, endLine: 3 });
 	});
 
+	// Review of record on pull request #385: the span also reached an introduced result's trigger, so a dismissal reopened
+	// on edits inside the body that left it standing under 0.4.27.
+	it("triggers an introduced Enola result from the line it starts on, so a body edit leaves its dismissal standing", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const at = (endLine?: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: "complexity-outliers",
+									level: "warning",
+									message: { text: "High cyclomatic complexity: quote (41)" },
+									locations: [
+										{
+											physicalLocation: {
+												artifactLocation: { uri: "src/quote.ts" },
+												region: { startLine: 1, ...(endLine === undefined ? {} : { endLine }) },
+											},
+										},
+									],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.40" },
+			);
+		const none: ToolLog = { ...at(), runs: [{ ...at().runs[0]!, results: [] }] };
+		const introduced = async (endLine?: number) =>
+			(
+				await staticFindings({
+					repoRoot: repo,
+					revision,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					base: none,
+					head: at(endLine),
+				})
+			).findings;
+		const [spanned] = await introduced(3);
+		const [line] = await introduced();
+		expect(spanned?.properties.cause).toBe("introduced");
+		expect(line?.properties.trigger).toBeUndefined();
+		expect(spanned?.properties.trigger).toEqual(line?.properties.trigger);
+	});
+
 	it("still identifies a tsc result by every line it spans, so an edit inside the span introduces it", async () => {
 		const base = commit({ "src/quote.ts": quote("\treturn text;") });
 		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });

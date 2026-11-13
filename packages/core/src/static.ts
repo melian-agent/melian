@@ -338,6 +338,12 @@ function decodePath(uri: string): string {
 	return uri.split("/").map(decodeURIComponent).join("/");
 }
 
+// Enola spans a symbol to its closing brace from 0.4.37. An Enola result keeps the identity and trigger of the line it
+// starts on, as under 0.4.27 (issue #346).
+function identityEnd(tool: StaticTool, region: { startLine: number; endLine?: number }): number {
+	return tool === "enola" ? region.startLine : Math.max(region.endLine ?? region.startLine, region.startLine);
+}
+
 // Each result keyed by finding identity in the revision it came from, its file named by `pathAtHead`. Results of one
 // rule on the same lines share an ID, so they merge into one, counted.
 async function identify(
@@ -370,9 +376,7 @@ async function identify(
 		const path = decodePath(artifactLocation.uri);
 		const rule = staticRuleId(tool, result.ruleId);
 		const text = await textOf(path);
-		// Enola spans a symbol to its closing brace from 0.4.37; it keeps the identity of the line it starts on (issue #346).
-		const endLine =
-			tool === "enola" ? region.startLine : Math.max(region.endLine ?? region.startLine, region.startLine);
+		const endLine = identityEnd(tool, region);
 		const snippet = text
 			?.split("\n")
 			.slice(region.startLine - 1, endLine)
@@ -478,7 +482,10 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				occurrence: extra === undefined ? each.occurrence : undefined,
 				discriminator: extra?.discriminator ?? each.discriminator,
 				cause,
-				trigger: cause === "introduced" ? revision.trigger(each.path, region.startLine, endLine) : undefined,
+				trigger:
+					cause === "introduced"
+						? revision.trigger(each.path, region.startLine, identityEnd(tool, region))
+						: undefined,
 				severity,
 				explanation: {
 					what: each.result.message.text,

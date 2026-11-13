@@ -12,7 +12,7 @@ Example: on the range of [pull request #339](https://github.com/melian-agent/mel
 
 ## Decision
 
-`staticFindings` hashes only the line an Enola result starts on, as under 0.4.27. The finding still records Enola's whole span as its region, so a renderer and an introduced finding's trigger see the symbol.
+`staticFindings` hashes only the line an Enola result starts on, as under 0.4.27. An introduced Enola finding's trigger comes from that line too, so a dismissal reopens on the same edits as before. The finding still records Enola's whole span as its region, for display and for placing a comment.
 
 ## Why
 
