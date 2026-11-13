@@ -216,6 +216,8 @@ describe("what of a round leaves the job", () => {
 		expect([published.status, published.stdout, published.stderr]).toEqual([0, '{"spend":{"seconds":2}}\n', ""]);
 		const absent = run("--public", join(tmpdir(), "round-public-absent", "verdict.json"));
 		expect([absent.status, absent.stdout, absent.stderr]).toEqual([0, "null\n", ""]);
+		const failed = run("--public", file("verdict.json", JSON.stringify({ error: { message: token } })));
+		expect([failed.status, failed.stdout, failed.stderr]).toEqual([0, "null\n", ""]);
 	});
 
 	it("keeps the text a static tool printed out of the comment, whatever verdict file it reads", () => {

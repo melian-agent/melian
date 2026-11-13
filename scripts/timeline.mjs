@@ -3,6 +3,8 @@
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
 // - a Timing: line counts whoever wrote the comment;
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
+// Under the limit AGENTS.md states for a round comment, a round's Spend line counts what the comment says now, which a
+// writer can edit, until issue #286 binds a round comment's body to its run.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
@@ -92,10 +94,9 @@ export function parseRound(body, author) {
 	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
 	// A comment edited on GitHub's web page comes back with CRLF line endings, which the code block keeps.
 	const line = fence?.value.split(/\r?\n/).find((each) => each.startsWith("Spend: "));
-	const match = /^Spend: (.+)$/.exec(line ?? "");
-	if (match === null) return undefined;
+	if (line === undefined) return undefined;
 	const spend = {};
-	for (const part of match[1].split(", ")) {
+	for (const part of line.slice("Spend: ".length).split(", ")) {
 		const [, seconds, tokens, cost] = /^(?:(\d+) s|(\d+) tokens|\$(\d+\.\d{2}))$/.exec(part) ?? [];
 		if (seconds !== undefined) spend.seconds = Number(seconds);
 		else if (tokens !== undefined) spend.tokens = Number(tokens);

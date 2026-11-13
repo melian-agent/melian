@@ -166,14 +166,10 @@ function readOr(path, fallback) {
 // They leave even from a review that failed, which spent them all the same, alone in a copy the comment reads as no
 // verdict.
 export function publicVerdict(text) {
-	let verdict;
+	let spend;
 	try {
-		verdict = JSON.parse(text);
-	} catch {
-		return null;
-	}
-	const spend = spendOf(verdict);
-	try {
+		const verdict = JSON.parse(text);
+		spend = spendOf(verdict);
 		const check = ({ name, status, lineage }) => ({ name, status, lineage });
 		const finding = ({ ruleId, message, locations, properties }) => {
 			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
