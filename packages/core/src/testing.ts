@@ -31,6 +31,7 @@ export type RecordStoreCase = { name: string; run(fixture: RecordStoreFixture): 
 /**
  * Payload checks that take any payload of every kind but a round, for tests alone. A kind's real check comes from the
  * build that defines its payload, and core registers none, so without these no record but a round parses.
+ * `packages/core/test/test-payloads-boundary.test.ts` fails the gate when product source names this value.
  */
 export const testPayloads: PayloadChecks = Object.fromEntries(
 	[
