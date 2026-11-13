@@ -2,6 +2,7 @@ import { verificationQuestions } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { reportVerdict } from "../src/lens-tools.ts";
+import { verifierProbeWording } from "../src/probing.ts";
 import {
 	computeVerifierVersion,
 	reportVerdictSchema,
@@ -19,6 +20,19 @@ describe("the production verifier version", () => {
 		);
 		expect(edited).not.toBe(verifierInstructions);
 		expect(computeVerifierVersion(edited)).not.toBe(version);
+	});
+
+	it("changes when the fixed wording a verifier reads of a claim's probe changes, on any branch", () => {
+		const wording = verifierProbeWording();
+		expect(verifierVersion).toBe(
+			computeVerifierVersion(verifierInstructions, reportVerdictSchema, verificationQuestions, wording),
+		);
+		expect(
+			computeVerifierVersion(verifierInstructions, reportVerdictSchema, verificationQuestions, [
+				...wording.slice(1),
+				`${wording[0]} `,
+			]),
+		).not.toBe(verifierVersion);
 	});
 
 	it("judges a re-implemented authority by code that supports a stated gap, never by the head's comment", () => {

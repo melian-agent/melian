@@ -413,3 +413,11 @@ export function probingWording(): string[] {
 		JSON.stringify(earlierLimits),
 	];
 }
+
+/**
+ * Every fixed wording a verifier reads of a claim's probe, as the source of the code that renders it, so the verifier's
+ * version holds every branch of it.
+ */
+export function verifierProbeWording(): string[] {
+	return [renderProbeEvidence, outcome, printed, renderedPlan].map(String);
+}
