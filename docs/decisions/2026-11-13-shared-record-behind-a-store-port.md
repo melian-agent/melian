@@ -91,7 +91,7 @@ The store promises this much and no more:
 - `list` is fresh: it returns every record whose `add` returned before the call. A store that can only answer from a stale copy fails the call, and is no record store. The first draft let `list` be stale, and each rule built to survive that, a cell naming the rounds, a watermark for publication, was a new thing to forge.
 - `readCell` is fresh: it returns the last value a `writeCell` stored.
 - `writeCell` succeeds only when the cell's version is still `expectedVersion`. A version is opaque and changes on every successful write, never a hash of the value, and a writer that dies leaves nothing that blocks the next. The conformance suite holds the case of a value that went away and came back.
-- `dispose` first writes a disposal mark to the cell, and `add` refuses a changeset whose cell holds one.
+- `dispose` first writes a disposal mark to the cell, and `add` refuses a changeset whose cell holds one. Disposal is permanent: the port has no way to recreate a changeset, since one would need an incarnation every record and writer carries.
 - It promises no ordering of records, no history, no transaction across records, no secrecy, and no identity for a writer.
 
 The cell holds one small JSON value: the publication lease and the disposal mark. No verdict reads it.
@@ -131,7 +131,7 @@ Three things stay out, and this list is the only place an exclusion is written:
 - **Best-effort context.** A lens's callers listing and enclosing functions are left out of the instruction fingerprint today, because a host whose graph tool failed would otherwise rerun every lens. They stay out. Two hosts can so give one lens different context under one key.
 - **Who chose and who paid.** The file or flag that set a route, and the credential, stay out, by [the run identity decision](2026-11-08-lens-run-identity.md).
 
-What happened in the run is the payload, never the key: the model it finished on, its attempt, its spend, its time, and its answer. A run that finished on a fallback is reused under the same route, as a local rerun reuses it under that decision, and the lineage names the model that finished.
+What happened in the run is the payload, never the key: the model it finished on, its attempt, its spend, its time, and its answer. A lens run's payload also holds its delivery evidence, the lines the lens received in its prompt and through `read_file` and `search`, with the delivery algorithm's version. [The coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) computes that from the transcript, and the transcript stays local, so the host that ran the lens computes it before it adds the record. A reader whose delivery algorithm differs recomputes it where its own store holds the transcript, and otherwise takes the coverage as void, as that decision rules. A lens record with no delivery evidence covers no line. A run that finished on a fallback is reused under the same route, as a local rerun reuses it under that decision, and the lineage names the model that finished.
 
 A test holds the rule for each producer: it changes each field of the request in turn, the excluded three aside, and the key must change.
 
@@ -216,13 +216,13 @@ A record is a plain JSON file at `changesets/<changeset>/<kind>/<hash of key>/<i
 
 ### 13. Retention
 
-Once a changeset's records are in the store, everything local is cache, and [issue #348](https://github.com/melian-agent/melian/issues/348) may prune it. The live record is small enough to keep. `dispose` removes a changeset's records.
+Once a changeset's records are in the store, everything local is cache, and [issue #348](https://github.com/melian-agent/melian/issues/348) may prune it. The live record is small enough to keep, so closing a pull request disposes nothing: a pull request can be reopened, and its records must still take a review. `dispose` removes a changeset's records for good, and only a writer's own command calls it.
 
 A store's own history is its adapter's to bound, and the git adapter does not bound it yet. Each batch is a commit, and a disposed changeset stays in the branch's history, so a fresh runner's fetch grows with every review until it passes the deadline. Plain files delta where sealed ones could not, which slows that and does not stop it. [Issue #361](https://github.com/melian-agent/melian/issues/361) stays open to design the bound, a fetch of the tip alone or a compaction that is safe beside concurrent pushes, and the git adapter's build is not done without it.
 
 ## What the reviews found
 
-Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each. A second round, on the revised text, raised two more, `c97f874268bb2af2` and `fa6fdfb18b069a75`, and three P2s; they are the table's next rows. A third round raised one P1 and four P2s, the last five rows:
+Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each. A second round, on the revised text, raised two more, `c97f874268bb2af2` and `fa6fdfb18b069a75`, and three P2s; they are the table's next rows. A third round raised one P1 and four P2s, the next five rows, and a fourth raised one P1 and one P2, the last two:
 
 | Finding | Answer |
 | --- | --- |
@@ -243,6 +243,8 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | A store that is no branch was trusted when the setting was left out (`9f15b868be294320`) | Rule 6: only the branch adapter takes the default |
 | An old override counted again when the store dropped out (`112d07cbd2e76a97`) | Rule 9: an unreachable store copies no override from the head |
 | A publisher paused after its lease check posted a stale review (`6f40c2c204f44f8e`) | Rule 11: a publisher that lost its lease deletes its own post |
+| Coverage is proved from transcripts, which no longer leave the host (`e89038cecd83e25c`) | Rule 5: a lens record carries its delivery evidence, and one without it covers no line |
+| A closed pull request was disposed, so a reopened one could record nothing (`d48f504f94e100d3`) | Rule 13: closing disposes nothing |
 
 ## What this gives up
 
