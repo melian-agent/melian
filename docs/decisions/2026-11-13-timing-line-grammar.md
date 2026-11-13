@@ -19,6 +19,7 @@ Example: "gate 4 × about 13 min" counted as 13 minutes under the label "gate 4 
 - One number of minutes per item: no ranges, no "about", and no lists inside an item.
 - `scripts/timeline.mjs` totals minutes and cost per kind, and sums the summary's total from those rows.
 - An item the script cannot parse is listed under its own heading and counted nowhere.
+- Only an item's minutes and cost fields are counted. A cause and a note are commentary, never read for numbers, so time or money written only there is not totalled. The line is self-reported, and the script totals what its fields say. Two Codex passes found a cause and then a note that could hide time; a guard keyed on wording would gain a case every round, and no parser can tell commentary from hidden time.
 - Older lines still count where they begin with a known kind, a plural of one, an alias such as "Codex review" or "Actions round", or `waited <minutes> min for`. Everything else in them is listed as unparsed. Old comments are not rewritten.
 
 ## Why

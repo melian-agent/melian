@@ -2,6 +2,8 @@
 // - commits a force-push replaced appear only as the force-push row's tips;
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
 // - a Timing: line counts whoever wrote the comment;
+// - a Timing: line is self-reported, and only its minutes and cost fields are totalled; a cause or a note is commentary,
+//   never read for numbers, so time or money written only there is not counted (the coordinator's answer, 2026-11-13);
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -88,12 +90,8 @@ const LEGACY_KINDS = new Map([
 	["reviews of record", "review of record"],
 ]);
 
-// A cause holding a duration or a cost would hide time or spend the item does not count.
-const HIDDEN = /\d min\b|\$\d/;
-
 function parseItem(text) {
 	const legacyWait = LEGACY_WAIT.exec(text);
-	if (legacyWait && HIDDEN.test(legacyWait.groups.cause)) return {};
 	if (legacyWait)
 		return {
 			kind: "wait",
@@ -114,7 +112,6 @@ function parseItem(text) {
 	if ((kind === "wait") !== (cause !== undefined)) return {};
 	if (kind === "other" && note === undefined) return {};
 	if (cause?.trim() === "" || note?.trim() === "") return {};
-	if (cause !== undefined && HIDDEN.test(cause)) return {};
 	return {
 		kind,
 		count: Number(count ?? 1),
