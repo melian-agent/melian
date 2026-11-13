@@ -156,6 +156,10 @@ describe("a round's manifest", () => {
 		const message = (payload: unknown) => refusal(() => SharedRecord.parse(round(payload))).message;
 		expect(message({})).toBe("a round's payload holds read, walkthrough, replaces, before and nothing else");
 		expect(message(null)).toBe("a round's payload is an object");
+		expect(message(5)).toBe("a round's payload is an object");
+		expect(message({ read: [], walkthrough: null, replaces: [], verdict: [] })).toBe(
+			"a round's payload holds read, walkthrough, replaces, before and nothing else",
+		);
 		expect(message({ ...manifest, read: {} })).toBe("a round's read is a list");
 		expect(message({ ...manifest, read: [{ ...named, kind: "round" }] })).toBe(
 			"a record a round read has a kind no round reads",
@@ -181,27 +185,34 @@ describe("RecordSet.missing", () => {
 		post: () => undefined,
 	};
 	const parse = (fields: Partial<RecordEnvelope>) => SharedRecord.parse(envelope(fields), payloads);
-	const check = parse({ kind: "check", key: "static.biome" });
-	const lens = parse({ kind: "lens", key: "correctness" });
-	const walkthrough = parse({ kind: "walkthrough", key: "w" });
-	const sorted = [check, lens].sort((a, b) => (a.id < b.id ? -1 : 1));
-	const round = parse({
-		kind: "round",
-		key: "r",
-		revision,
-		payload: {
-			read: sorted.map((record) => ({ kind: record.kind, key: record.key, id: record.id })),
-			walkthrough: { key: "w", id: walkthrough.id },
-			replaces: [],
-			before: [],
-		},
-	});
+
+	// Built inside each test, so a mutant that breaks parsing fails that test rather than the file's collection.
+	function fixture() {
+		const check = parse({ kind: "check", key: "static.biome" });
+		const lens = parse({ kind: "lens", key: "correctness" });
+		const walkthrough = parse({ kind: "walkthrough", key: "w" });
+		const sorted = [check, lens].sort((a, b) => (a.id < b.id ? -1 : 1));
+		const round = parse({
+			kind: "round",
+			key: "r",
+			revision,
+			payload: {
+				read: sorted.map((record) => ({ kind: record.kind, key: record.key, id: record.id })),
+				walkthrough: { key: "w", id: walkthrough.id },
+				replaces: [],
+				before: [],
+			},
+		});
+		return { check, lens, walkthrough, round };
+	}
 
 	it("names nothing when the set holds every record the round names", () => {
+		const { check, lens, walkthrough, round } = fixture();
 		expect(RecordSet.of([round, check, lens, walkthrough]).missing(round)).toEqual([]);
 	});
 
 	it("names each record the set lacks, its walkthrough included", () => {
+		const { check, lens, walkthrough, round } = fixture();
 		expect(RecordSet.of([round, check]).missing(round)).toEqual([
 			{ kind: "lens", key: "correctness", id: lens.id },
 			{ kind: "walkthrough", key: "w", id: walkthrough.id },
@@ -212,12 +223,14 @@ describe("RecordSet.missing", () => {
 		["another kind", { kind: "check", key: "correctness" }],
 		["another key", { kind: "lens", key: "design" }],
 	])("counts a record with the ID but %s as missing", (_name, fields) => {
+		const { lens } = fixture();
 		const named = { ...fields, id: lens.id };
 		const odd = parse({ kind: "round", key: "r2", revision, payload: { ...manifest, read: [named] } });
 		expect(RecordSet.of([odd, lens]).missing(odd)).toEqual([named]);
 	});
 
 	it("counts a record of another changeset as missing", () => {
+		const { lens } = fixture();
 		const elsewhere = SharedRecord.parse({ ...lens.toJSON(), changeset: "pull-fedcba9876543210" }, payloads);
 		const named = { kind: "lens", key: "correctness", id: elsewhere.id };
 		const odd = parse({ kind: "round", key: "r3", revision, payload: { ...manifest, read: [named] } });
@@ -225,6 +238,7 @@ describe("RecordSet.missing", () => {
 	});
 
 	it("names nothing for a record that is no round", () => {
+		const { check } = fixture();
 		expect(RecordSet.of([check]).missing(check)).toEqual([]);
 	});
 });
