@@ -291,15 +291,19 @@ export class Timeline {
 		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
 		const rounds = this.#events.filter((event) => event.round !== undefined);
 		if (rounds.length > 0) {
-			const roundMinutes = rounds.reduce((sum, event) => sum + (event.round.seconds ?? 0) / 60, 0);
-			const priced = rounds.filter((event) => event.round.cost !== undefined);
-			const roundCost = priced.reduce((sum, event) => sum + event.round.cost, 0);
-			lines.push(
-				row(
-					"Rounds",
-					`${rounds.length} round${rounds.length === 1 ? "" : "s"}, ${Number(roundMinutes.toFixed(1))} min${priced.length === 0 ? "" : `, $${roundCost.toFixed(2)}`}`,
-				),
-			);
+			// A sum over fewer rounds than were counted says how many it covers, so it never reads as the whole.
+			const sumOf = (key, format) => {
+				const known = rounds.filter((event) => event.round[key] !== undefined);
+				if (known.length === 0) return [];
+				const total = format(known.reduce((sum, event) => sum + event.round[key], 0));
+				return [known.length === rounds.length ? total : `${total} over ${known.length}`];
+			};
+			const parts = [
+				`${rounds.length} round${rounds.length === 1 ? "" : "s"}`,
+				...sumOf("seconds", (seconds) => `${Number((seconds / 60).toFixed(1))} min`),
+				...sumOf("cost", (cost) => `$${cost.toFixed(2)}`),
+			];
+			lines.push(row("Rounds", parts.join(", ")));
 		}
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);

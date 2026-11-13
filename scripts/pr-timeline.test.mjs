@@ -919,6 +919,20 @@ describe("rounds", () => {
 		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
 			"| 2026-10-01 00:10 | 0.17 | round | 12 tokens |",
 		]);
-		expect(rows(timeline)).toContain("| Rounds | 1 round, 0 min |");
+		expect(rows(timeline)).toContain("| Rounds | 1 round |");
+	});
+
+	it("says how many rounds each sum covers when some rounds lack its figure", () => {
+		const timeline = Timeline.from({
+			pull: pull({
+				timelineItems: page([
+					comment(10, roundBody({ seconds: 60, cost: 1 })),
+					comment(20, roundBody({ seconds: 120 })),
+					comment(30, roundBody({ cost: 0.5 })),
+				]),
+			}),
+			runs: [],
+		});
+		expect(rows(timeline)).toContain("| Rounds | 3 rounds, 3 min over 2, $1.50 over 2 |");
 	});
 });
