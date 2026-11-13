@@ -527,7 +527,8 @@ function renderedPlan(plan: readonly Attack[]): string {
 
 /**
  * A claim probe's key among a revision's reruns: the claim's lens run and the probe's ID, which names one prober's
- * probe, so every claim that cites one probe shares its rerun and a run's reruns stay within its probes' limit.
+ * probe, so every claim that cites one probe shares its rerun and a run's reruns stay within its probes' limit. The ID is
+ * the tool task's, and a store gives every record one ID space, so no two probers' probes share one.
  */
 export function rerunKey(claim: { readonly source: { check: string; version?: string } }, probe: ClaimProbe): string {
 	return JSON.stringify([claim.source.check, claim.source.version ?? "", probe.id]);
