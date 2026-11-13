@@ -1,10 +1,10 @@
 # `melian mutants verify` runs Stryker in sharded Actions jobs, and builders justify only survivors
 
-Amends: [mutation evidence by enumeration and verification](2026-10-24-mutation-evidence-by-enumeration-and-verification.md), sections 1, 3, 5 and 8 on proving kills; sections 4 and 6 on timeouts; section 6 on who settles an equivalent claim
+Amends: [mutation evidence by enumeration and verification](2026-10-24-mutation-evidence-by-enumeration-and-verification.md), sections 1, 3 and 8 on proving kills; sections 4 and 6 on timeouts; section 6 on who settles an equivalent claim
 Amends: [Stryker leaves this repository's review rounds](2026-10-24-stryker-off-the-hot-path.md), the interim rule, which ends when the job lands
 Amends: [a mutation proof runs each claim against its named test alone](2026-11-04-mutation-proof-scope.md), who runs a kill's proof and against which tests
 
-Status: proposed on 2026-11-13 for [issue #240](https://github.com/melian-agent/melian/issues/240), for the maintainer's ruling on its last choice. Not built. The maintainer reshaped step 34 on 2026-11-10, in the coordinator's session, as [the coordinator recorded on the issue](https://github.com/melian-agent/melian/issues/240#issuecomment-6754427946): Stryker proves the kills, with per-test coverage and an incremental cache seeded from `main`, across a matrix of Blacksmith runners, once on the final head beside the round, and builders justify only survivors. The rules below are this decision's own. The maintainer ruled on four of its five choices on 2026-11-13, in the coordinator's session, as the coordinator relayed; choice 4 awaits his answer, and its text stays neutral until then. The section "The maintainer's rulings" records each. An attacking review, seven passes of Codex's adversarial review and a Melian round have each found rules that could pass an unproved kill or leave a stale status, and this revision closes every finding so far. The pull request's reports list each finding and the commit that closed it. Each part is tagged **[Melian's flow]** for the product or **[Building Melian]** for this repository's process.
+Status: proposed on 2026-11-13 for [issue #240](https://github.com/melian-agent/melian/issues/240), and its five choices ruled the same day. Not built; an attacking review of the ruled text comes before the build. The maintainer reshaped step 34 on 2026-11-10, in the coordinator's session, as [the coordinator recorded on the issue](https://github.com/melian-agent/melian/issues/240#issuecomment-6754427946): Stryker proves the kills, with per-test coverage and an incremental cache seeded from `main`, across a matrix of Blacksmith runners, once on the final head beside the round, and builders justify only survivors. The rules below are this decision's own. The maintainer ruled on its five choices on 2026-11-13, in the coordinator's session, as the coordinator relayed. The section "The maintainer's rulings" records each. An attacking review, eight passes of Codex's adversarial review and three Melian rounds have each found rules that could pass an unproved kill or leave a stale status, and this revision closes every finding so far. The pull request's reports list each finding and the commit that closed it. Each part is tagged **[Melian's flow]** for the product or **[Building Melian]** for this repository's process.
 
 ## Problem
 
@@ -63,7 +63,7 @@ When a cached result matches, Melian does not run that mutant again, and counts 
 
 Reuse happens only in jobs that run no head code. Stryker's own incremental mode is never used: every shard runs Stryker with `--force` and no incremental file. Problem: a shard runs the head's Vitest configuration and tests, so anything a shard reads, a seed included, the head's code can replace before Stryker reads it, and Stryker marks no reused result as reused. Example: a head's `vitest.config.ts` rewrites the staged seed to record `Killed` for every mutant, and the merged report would carry those kills as genuine.
 
-An entry is Melian's own record of one run, never Stryker's report. For each mutant the run killed, it holds the mutant's `identityHash`, the head the kill ran at, and the killing test's file and full name. It also holds the run's installation, policy and Melian identities. The report job alone writes it, from the shards' reports, and signs it with an HMAC key its Environment holds. The plan job checks the signature, applies the rules below, and drops each reusable span group from the shards' work: a group is reused only when every one of its members is. The report job counts the reused kills from the signed entry beside the shards' results. A shard can still write the Actions cache, since its token reaches every step, but nothing unsigned is read. Example: pull request A's tests save an entry keyed to pull request M's head, recording `Killed` for M's mutants; M's plan job finds no valid signature and runs them.
+An entry is Melian's own record of one run, never Stryker's report. It is for one head, named in its key. For each mutant the run killed, it holds the mutant's `identityHash` and the killing test's file and full name. It also holds the run's installation, executor, policy and Melian identities. The report job alone writes it, from the shards' reports, and signs it with an HMAC key its Environment holds. The plan job checks the signature, applies the rules below, and drops each reusable span group from the shards' work: a group is reused only when every one of its members is. The report job counts the reused kills from the signed entry beside the shards' results. A shard can still write the Actions cache, since its token reaches every step, but nothing unsigned is read. Example: pull request A's tests save an entry keyed to pull request M's head, recording `Killed` for M's mutants; M's plan job finds no valid signature and runs them.
 
 Only these are reused:
 
@@ -71,9 +71,9 @@ Only these are reused:
 - **The same installation and executor.** The lockfile's digest, the Node version, the versions of Stryker and Vitest each equal the reading run's own, and the executor is the same: the runner image's name and version, by the ruling on choice 5.
 - **The same policy.** The digest of the effective configuration Stryker ran under: the base's `stryker.config.json` and `vitest.stryker.config.ts`, every file either imports such as `scripts/stryker-test-names.mjs`, the head's `vitest.config.ts`, and the options Melian sets, equal the reading run's own.
 - **The same Melian.** The commit of the Melian build that ran, so a later fix to these rules voids every older entry.
-- **The heads choice 4 allows.** Each kill records the head it ran at, and a reused kill keeps that head, never the head that reused it. A kill whose test's file and full name are not unique in its file is never reused from another head, since its test cannot be told from the other.
+- **The same head.** A kill is reused only by a run at the commit that proved it, by the ruling on choice 4. A later commit, a rebase or a merge of `main` starts cold.
 
-Left out of the key, with reasons: the shard plan, because a result belongs to its mutant; the run's times; and the pull request, which only finds an entry and decides no reuse. An entry's name carries the format version, `melian-mutants-v1`; a change to what it holds is a new version, and older entries are never read.
+Left out of the key, with reasons: the shard plan, because a result belongs to its mutant; the run's times; and the pull request, since the head commit already names everything the run read from it. An entry's name carries the format version, `melian-mutants-v1`; a change to what it holds is a new version, and older entries are never read.
 
 ### 4. Survivors and accepted answers **[Building Melian]**
 
@@ -89,7 +89,7 @@ The report job sets `melian/mutants` on the head it verified:
 - `failure` when a survivor or a set-aside file has no accepted answer. The description counts each.
 - `error` when the reports cannot decide.
 
-The pending job sets `pending` straight after the gate, before planning, so a run that dies in planning or in a shard leaves `pending`, never an earlier `success`. Runs of one pull request queue behind one another in a concurrency group, as the round's do. The report publishes only while the status its own pending job set is still the head's latest `melian/mutants`, so a slower earlier run, or a rerun of failed jobs, never overwrites a newer result. The maintainer alone makes the context required, and only once a merge-group step exists. That step may pass a merge group only on evidence for the group's own base and head: a run there, or a kill the cross-head rule of choice 4 would reuse from the reviewed base. Carrying a head's `success` into the group, as `melian/review` does, is not enough, because a later base commit can change what a test reaches. The step is its own decision.
+The pending job sets `pending` straight after the gate, before planning, so a run that dies in planning or in a shard leaves `pending`, never an earlier `success`. Runs of one pull request queue behind one another in a concurrency group, as the round's do. The report publishes only while the status its own pending job set is still the head's latest `melian/mutants`, so a slower earlier run, or a rerun of failed jobs, never overwrites a newer result. The maintainer alone makes the context required, and only once a merge-group step exists. That step may pass a merge group only on evidence for the group's own commit, which is a run there, since a kill is reused only at the commit that proved it. Carrying a head's `success` into the group, as `melian/review` does, is not enough, because a later base commit can change what a test reaches. The step is its own decision.
 
 ### 6. What decides, and what fails closed **[Melian's flow]**
 
@@ -99,15 +99,14 @@ One rule closes the class three reviews met one instance at a time: `success` ne
 
 - a shard's report is missing, does not parse, or names another plan, head, installation, policy or Melian build;
 - the shards' mutants are not the plan's exactly once each;
-- the pull request's head, or its `base.sha`, is not the plan's when the report reads it again before publishing;
-- a shard ran Stryker without per-test coverage, since its differ then reuses every result.
+- the pull request's head, or its `base.sha`, is not the plan's when the report reads it again before publishing.
 
 ### 7. What happens to the decisions it amends
 
 - Enumeration and sampling, section 1 of the 2026-10-24 decision, stand as built in [issue #239](https://github.com/melian-agent/melian/issues/239).
 - That decision's `verify`, and its section 3 classifier, are not built. The classifier would have run seven shared control runs per test, in fresh worktrees. Stryker's in-place build is a switched build: every mutant compiles into the file and is switched on at run time. So a test that reads source text cannot tell a mutant from the original, which was that section's main concern. Its two-failure rule goes, by the ruling on choice 3: one failing run proves a kill.
 - Its section 4 probes and section 6 `mutants` check wait for their own step. When built, they run through this decision's runner. What they say a timeout is gives way to the ruling on choice 2: a timeout is a kill.
-- Its section 5 exact-head rule gives way to section 3 and choice 4.
+- Its section 5 exact-head rule stands: a kill is reused only at the commit that proved it, by the ruling on choice 4.
 - The 2026-11-04 decision's named test alone gives way to Stryker's per-test coverage: a mutant runs against every test that covers it.
 - `static.mutation` keeps every rule of [mutation reruns, as built](2026-10-16-mutation-reruns-later-changes.md), its `provisional` status included, as an opt-in audit. The job is not that check, and its reuse can pass because section 3 says what a match decides.
 - The build's pull request retires [the waiver](2026-11-10-final-rerun-waived-until-mutants-verify.md) with a decision of its own. AGENTS.md then drops the hand proof of kills from Briefs and Validation, keeps it for set-aside files, and shrinks a builder's inventory to its survivors' answers.
@@ -123,7 +122,7 @@ When the build lands, two rows join the pipeline's table in [the identity guidel
 
 ## The maintainer's rulings
 
-The maintainer ruled on 2026-11-13, in the coordinator's session, as the coordinator relayed to this builder. The coordinator put the choices to him lettered A to E in this decision's order, so A is choice 1 and E is choice 5. His words: "A. agree. B. agree C. Yes. D. Without the reuse, why would it take less time than now? explain E. Any runner of the same type." A and B agreed with the coordinator's recommendations. D is a question, so choice 4 stays open.
+The maintainer ruled on 2026-11-13, in the coordinator's session, as the coordinator relayed to this builder. The coordinator put the choices to him lettered A to E in this decision's order, so A is choice 1 and E is choice 5. His words: "A. agree. B. agree C. Yes. D. Without the reuse, why would it take less time than now? explain E. Any runner of the same type." A and B agreed with the coordinator's recommendations. On D he asked a question first, which the section "Where the time comes from" answers, and then ruled the same day: "same commit for now".
 
 ### Choice 1 (A): the coordinator accepts, from a file in the head
 
@@ -141,16 +140,13 @@ A `Timeout` proves a mutant, as Stryker counts it, and the report lists every ti
 
 A `Killed` result from one run proves a mutant. Stryker's dry run is the unmutated control: every covering test passes once before any mutant runs. The lost option ran each shard's kills a second time, cold, at about double the shard time.
 
+### Choice 4 (D): a cached kill comes from the same commit, for now
+
+A run reuses only kills a run at the same head proved. The reshape's seed from `main` is dropped for the first build. "For now" is the maintainer's word: reuse from earlier heads is a later step, with a decision and measurements of its own, not a rejected one. The attacking review's findings are its starting point. An earlier head must be an ancestor and present in the clone, since Vitest's `--changed` diffs from the merge base and lists nothing for a ref it cannot find. The targeted-rerun rule would void most seeds, because every pull request adds a progress-log file. And Vitest's import graph misses what a spawned child imports.
+
 ### Choice 5 (E): any runner of the same type is the same executor
 
 The executor is the runner image, as named and versioned, together with the installation identity, so a second run on any runner of that image reuses kills. This amends the 2026-10-24 decision's rule that a record is reused only on the physical executor that made it. The lost option, the physical runner, would have allowed no reuse in Actions.
-
-## The choice still open
-
-### Choice 4 (D): which heads a cached kill may come from
-
-- **A. The same head only.** A second run at a head reuses every kill from the first. Drops the reshape's seed from `main`. The attacking review found the seed would almost never apply: any changed file Vitest's graph does not track voids it, and every pull request and fix pass adds a progress-log entry.
-- **B. Also earlier heads that are ancestors.** A kill proved at `S` is reused at `H` only when `git merge-base --is-ancestor S H` holds, `S` is in the clone, and [the targeted-rerun rule](2026-11-07-targeted-mutant-rerun.md) selects none of it: its killing test file is not on `vitest list --filesOnly --changed S`, its mutated and test files are unchanged in `git diff --name-status S..H`, and that diff holds no file Vitest's graph does not track and no Vitest configuration, `tsconfig`, `package.json` or lockfile. The ancestry check is required: Vitest's `--changed` compares from the merge base, so after a force-push it misses a change the two-dot diff shows, and it lists nothing for a ref it cannot find. Keeps the reshape's seed. It also trusts Vitest's import graph, which misses what a spawned child imports, a gap the targeted-rerun decision gave up too.
 
 ## Where the time comes from
 
@@ -178,7 +174,7 @@ Each rule is to be broken as written.
 
 1. A shard runs head code only under `static.mutation`'s leave, and the Actions job admits only the round gate's heads, at the SHA the pending job recorded. A shard holds no secret, has `contents: read` and `persist-credentials: false`, and has no cache step.
 2. Stryker runs under the base's configuration with Melian's options over it, on whole span groups, so each mutant runs in exactly one shard. `Killed` and `Timeout` prove a mutant; a mutant whose mutator is in the base's `excludedMutations` is noted; every other status is a survivor.
-3. A cache entry is Melian's own signed record, read and applied only by jobs that run no head code; shards run Stryker cold. Only `Killed` results are reused, under the installation, runner image, policy and Melian identities and choice 4's heads, and a span group is reused only whole.
+3. A cache entry is Melian's own signed record, read and applied only by jobs that run no head code; shards run Stryker cold. Only `Killed` results are reused, only at the commit that proved them, under the installation, runner image, policy and Melian identities, and a span group is reused only whole.
 4. An accepted answer matches a survivor by `identityHash`, or a set-aside file by its path, and the head's tree outside `.melian/mutants/`, and it counts only from `.melian/mutants/answers.yaml` in the head, once the coordinator has accepted it. `success` needs an accepted answer for every survivor and every set-aside file.
-5. `verdict` reads `error` whenever the reports do not cover the plan's mutants exactly once, name another plan, head, installation, policy or build, or come from a run without per-test coverage, and whenever the pull request's head or `base.sha` has moved from the plan's.
+5. `verdict` reads `error` whenever the reports do not cover the plan's mutants exactly once, or name another plan, head, installation, policy or build, and whenever the pull request's head or `base.sha` has moved from the plan's.
 6. A job that runs no head code sets `melian/mutants` to `pending` straight after the gate, before planning, and a report publishes only while that pending status is the head's latest.
