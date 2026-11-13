@@ -220,7 +220,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 - A runner killed in the middle of a lens reruns that lens. Only finished tasks cross hosts.
 - Findings sit in plain text in the store before publication, readable by anyone who can read the repository.
 - A dismisser from the CLI stays self-declared. A repository that must prove who dismissed uses the provider path.
-- A writer can run a round that replaces a blocking one, as a writer can rerun a review or set a status today. [Issue #379](https://github.com/melian-agent/melian/issues/379) proposed counting only rounds the trusted host signed; that puts a key in every repository, which the maintainer's direction on logistics rules out.
+- A writer can run a round that replaces a blocking one, as a writer can rerun a review or set a status today. [Issue #379](https://github.com/melian-agent/melian/issues/379) proposed counting only rounds the trusted host signed; that puts a key in every repository, which the maintainer's direction on logistics rules out. The maintainer agreed on 2026-11-13, in the coordinator's session.
 - A writer can block by adding a second round, since the worse gates.
 - One file the adapter does not know stops every gate and publish on the branch until a writer removes it.
 - A repository that takes fork pull requests holds one key, in CI alone.
