@@ -248,9 +248,9 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "ac79e2affc42",
-			conventions: "2192d831f4ed",
+			conventions: "e5f0c8075927",
 			correctness: "2ada4940e253",
-			design: "9a74abf63df2",
+			design: "b4d0cff4d3d6",
 			durability: "2d013afa303b",
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
