@@ -138,6 +138,7 @@ import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
+	carriedFindings,
 	type EarlierFinding,
 	headRefusal,
 	headTreeLimits,
@@ -325,20 +326,6 @@ type StoredTrigger = { kind: "severity"; severity: Severity } | { kind: "budget"
 
 // Why a run escalated, and the IDs of the findings at or above `escalateAt` it carried to the next run.
 type StoredEscalation = { trigger: StoredTrigger; carried: string[] };
-
-// The findings a quick run carries to the run it escalated to, quoted as the change's data, since a model wrote them
-// after reading the change, with how to confirm or refute each.
-function carriedFindings(findings: readonly SightedFinding[], nonce: string): string {
-	const listed = findings.map(
-		(finding) =>
-			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}-${finding.endLine}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
-	);
-	return [
-		"## Findings a quicker look reported",
-		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if it is a defect, report it with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
-		quoteUntrusted("findings", listed.join("\n"), nonce),
-	].join("\n\n");
-}
 
 // `attempts` is each run's position in its route, committed with the model change, so a resumed review continues on
 // the model it had reached rather than retrying one that already failed. `escalations` names, by the key of the run
@@ -1218,7 +1205,7 @@ export function probingProtocol(): string {
 		roles: roleTools,
 		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
 		// The findings a quick run carries reach the planner and the prober too.
-		prompts: [...probingWording(), String(carriedFindings)],
+		wording: probingWording,
 	});
 }
 
