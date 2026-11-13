@@ -172,6 +172,8 @@ type ProbingState = {
 	attempts?: string[];
 	skips?: Record<string, string>;
 	findings?: Record<string, string>;
+	// Set in the commit that gives the plan to the prober: the planner may no longer replace it, so all hold one plan.
+	frozen?: true;
 };
 
 export const ProbingDocument = defineDoc<ProbingState>({

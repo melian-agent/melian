@@ -605,12 +605,16 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const key = `${lens.key}/prober`;
 				let prober = started.children[key];
 				if (prober === undefined) {
-					const recorded = plan;
 					await runtime.commit(async (tx, current) => {
+						// The plan as this commit reads it is the one the prober gets, and a reminder the planner may still be
+						// answering after a crash can no longer replace it.
+						const planned = await tx.doc(ProbingDocument, planner);
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						prober = checkpoint.children[key];
 						if (prober !== undefined) return undefined;
-						prober = await spawnProber(tx, runtime.taskId, input, lens, recorded);
+						planned.frozen = true;
+						plan = planned.plan!.map((attack) => ({ ...attack }));
+						prober = await spawnProber(tx, runtime.taskId, input, lens, plan);
 						return {
 							status: "running",
 							checkpoint: {

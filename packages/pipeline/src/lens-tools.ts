@@ -1270,7 +1270,12 @@ export const recordPlan = defineLensTool(
 				const problem = refusal(lens, { name: "record_plan", arguments: args });
 				if (problem !== undefined) throw new Error(problem);
 				await api.commit(async (tx) => {
-					(await tx.doc(ProbingDocument, api.conversationId)).plan = args.attacks.map((attack) => ({ ...attack }));
+					const document = await tx.doc(ProbingDocument, api.conversationId);
+					if (document.frozen === true)
+						throw new Error(
+							"the prober already has the plan, so the plan stands as recorded; answer with one line saying how many attacks you planned",
+						);
+					document.plan = args.attacks.map((attack) => ({ ...attack }));
 				}, context);
 				const count = args.attacks.length;
 				return text(`recorded a plan of ${count} ${count === 1 ? "attack" : "attacks"}`);
