@@ -27,6 +27,7 @@ import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
+	fill,
 	headTreeLimits,
 	type ProbingEnvironment,
 	plannerContext,
@@ -580,6 +581,89 @@ describe("the evidence a verifier reads, exactly", () => {
 		);
 		expect(text).toBe(
 			"## Findings earlier reviews reported\n\nThe last earlier revision of this change was reported with these findings. Plan an attack for each that touches a boundary, since the change may not have closed it. 1 more are not listed.",
+		);
+	});
+});
+
+describe("filling a wording", () => {
+	it("puts each named value in once, leaving a name no value has and a name a value holds as written", () => {
+		expect(fill("{a} then {b}, {a}", { a: "{b}", c: 1 })).toBe("{b} then {b}, {b}");
+		expect(fill("{n} {count}", { n: 0, count: "x" })).toBe("0 x");
+	});
+});
+
+// Every fixed wording each role reads, rendered on every branch, as one text with a heading per prompt.
+function renderedPrompts(
+	rendering: Pick<
+		typeof probing,
+		| "plannerInstructions"
+		| "proberInstructions"
+		| "renderPlan"
+		| "recordPlanPrompt"
+		| "answerPrompt"
+		| "plannerContext"
+		| "renderEarlierFindings"
+		| "renderProbeEvidence"
+	>,
+	carried: typeof probing.carriedFindings,
+): string {
+	const earlier = { severity: "P1", rule: "r", path: "a.ts", line: 3, status: "new", message: "m" };
+	const claim: ClaimProbe = {
+		id: "p7",
+		attack: 1,
+		environment: reviewer,
+		plan: [attack, { ...attack, target: "second" }],
+		probe: {
+			attack: 1,
+			script: "S",
+			files: [{ path: "f", text: "F" }],
+			result: result({ output: "O" }),
+			milliseconds: 5,
+		},
+	};
+	const ran = (given: Partial<StoredProbeResult>) => ({ result: result(given), milliseconds: 4 });
+	const prompts: Record<string, string> = {
+		planner: rendering.plannerInstructions(["CONTEXT"]),
+		"prober, one second": rendering.proberInstructions("security", "POLICY", 1000),
+		"prober, seconds": rendering.proberInstructions("security", "POLICY", 30_000),
+		"plan, one attack": rendering.renderPlan([attack], nonce),
+		"plan, attacks": rendering.renderPlan(claim.plan, nonce),
+		"record the plan": rendering.recordPlanPrompt,
+		"one unanswered": rendering.answerPrompt([2]),
+		unanswered: rendering.answerPrompt([1, 3]),
+		"context, no earlier findings": rendering.plannerContext("DECISIONS", [], nonce).join("\n\n"),
+		"context, earlier findings past the limit": rendering
+			.plannerContext(
+				"DECISIONS",
+				Array.from({ length: 41 }, () => earlier),
+				nonce,
+			)
+			.join("\n\n"),
+		carried: carried(
+			[{ id: "f1", severity: "P1", ruleId: "r", path: "a.ts", line: 1, endLine: 2, message: "m\nmore" }],
+			nonce,
+		),
+		"evidence, not run again": rendering.renderProbeEvidence("c1", claim, undefined, nonce),
+		"evidence, refused": rendering.renderProbeEvidence("c1", claim, { refused: "R" }, nonce),
+		"evidence, passed": rendering.renderProbeEvidence("c1", claim, ran({ exitCode: 0, output: "" }), nonce),
+		"evidence, timed out": rendering.renderProbeEvidence("c1", claim, ran({ timedOut: true }), nonce),
+		"evidence, cut": rendering.renderProbeEvidence("c1", claim, ran({ truncated: true }), nonce),
+		"evidence, signalled": rendering.renderProbeEvidence(
+			"c1",
+			claim,
+			ran({ exitCode: null, signal: "SIGKILL" }),
+			nonce,
+		),
+	};
+	return Object.entries(prompts)
+		.map(([name, text]) => `=== ${name} ===\n${text}\n`)
+		.join("\n");
+}
+
+describe("the fixed wording each role reads", () => {
+	it("renders every prompt on every branch as this release words it", async () => {
+		await expect(renderedPrompts(probing, probing.carriedFindings)).toMatchFileSnapshot(
+			"./golden/probing-prompts.txt",
 		);
 	});
 });
