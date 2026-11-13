@@ -45,7 +45,7 @@ Pi's storage, with its checkpoints and transcripts, is local: SQLite in a clone,
 
 ### 2. Hosts share the record
 
-The record is a set of immutable facts, one per record. A review writes six kinds: a check's result, a lens run's sightings, a verification, an inheritance, a walkthrough and a round, with optional telemetry. Five kinds come from a command, never from a review: a dismissal, a marker, a post, a status and the ledger comment, with a comparison beside them. [Issue #369](https://github.com/melian-agent/melian/issues/369)'s table sorts every document Melian stores into a kind or into working state.
+The record is a set of immutable facts, one per record. A review writes five kinds: a check's result, a lens run's sightings, a verification, a walkthrough and a round, with optional telemetry. An inheritance is no kind: rule 9 computes it. Five kinds come from a command, never from a review: a dismissal, a marker, a post, a status and the ledger comment, with a comparison beside them. [Issue #369](https://github.com/melian-agent/melian/issues/369)'s table sorts every document Melian stores into a kind or into working state.
 
 A host adds a review's records in batches as its tasks finish, one batch at a time, and the round's closing record last. So a runner that dies has already shared every lens and check it finished, and its successor reruns only the task that was cut.
 
@@ -107,11 +107,36 @@ The first draft settled two records in one slot by the lowest ID. [Issue #378](h
 - **`supersedes` is narrow.** Only a dismissal, a post, a status, the ledger comment and a comparison may carry it, and it names only records of its own changeset, kind and key. An entry naming no record has no effect, then or later. Supersession is permanent: a superseded record's own `supersedes` still applies. No record a review writes carries one.
 - **Publication's own slots may tie.** Two posts, statuses or ledger comments that stand in one slot are settled by the lowest ID. That tie decides which comment Melian keeps, never a verdict.
 
-### 5. Keys say what ran
+### 5. A result's key is the request that produced it
 
-- A lens run's key is its whole selection line from the review index: name, version and level, thinking, instruction hash, band, escalation and route, each field present with an explicit none. A run is the model and level that ran, by the maintainer's ruling of 2026-11-08 on [issue #243](https://github.com/melian-agent/melian/issues/243#issuecomment-6720816030). Its payload carries the model it finished on, its attempt and its spend.
-- A verification's key is the verifier's version, the IDs of the lens records whose sightings it judged, and its candidate's claim IDs, each list sorted and distinct. A finding's ID does not cover its severity, so the lens records are named.
-- A check's key is its name and policy hash, and its payload carries the tool's version. An import reads its own tool's version from the tool's version command, and takes no check record that lacks one or differs.
+Two rounds each found a key that left out an input: first a lens key without its route, then a verification key without the dismissed findings its verifier was shown. Each key was a list of inputs written by hand, and a list can miss one. So no list is written.
+
+A check, a lens run, a verification and a walkthrough are results, and each has one request: the value Melian builds and hands to the producer. The result's key is the SHA-256 of that value's canonical bytes. The function that builds the request returns the key with it, so the producer cannot be given something the key does not cover.
+
+For a lens run, a verification and a walkthrough, the request holds:
+
+- the changeset's base and head, and the change as the prompt renders it;
+- the instructions as rendered, with the standards, decisions and design sections read at base that they quote;
+- the tools offered with their limits, the budget, the report schema, and the severities and rules the producer may use;
+- the route in order, fallbacks included, and the thinking level;
+- the producer's name and version;
+- for a lens, its level, its band, the severity that escalates it, and the run it escalates to;
+- for a verification, every claim in full with its severity, the fence, and each dismissed finding shown, with the ID of its dismissal record.
+
+For a check, the request is its name, the changeset's base and head, its policy hash, and its tool's version, read from the tool's version command before the run.
+
+Three things stay out, and this list is the only place an exclusion is written:
+
+- **The boundary nonce.** It is random on every run and marks untrusted text. The key is taken over the request rendered with a fixed nonce, as the lens's instruction fingerprint is today.
+- **Best-effort context.** A lens's callers listing and enclosing functions are left out of the instruction fingerprint today, because a host whose graph tool failed would otherwise rerun every lens. They stay out. Two hosts can so give one lens different context under one key.
+- **Who chose and who paid.** The file or flag that set a route, and the credential, stay out, by [the run identity decision](2026-11-08-lens-run-identity.md).
+
+What happened in the run is the payload, never the key: the model it finished on, its attempt, its spend, its time, and its answer. A run that finished on a fallback is reused under the same route, as a local rerun reuses it under that decision, and the lineage names the model that finished.
+
+A test holds the rule for each producer: it changes each field of the request in turn, the excluded three aside, and the key must change.
+
+The other kinds are not results, and keep a named key:
+
 - A dismissal's key is the finding's ID, and it carries no revision. Its payload holds the dismisser, the reason, the time, the severity the verdict showed, the frozen sighting, and the accepted trigger and proof that `dismissFinding` works out. A dismissal missing any of them is refused.
 - A marker's key is the post it is for, the ledger or a revision's review at its round, and its hash.
 
@@ -121,10 +146,8 @@ A record counts because it is in the store, and the store decides who may write.
 
 Melian cannot see a store's writers. `melian doctor` names the store and says its writers are trusted as the repository's. Two conditions make that true, and a deployment keeps both:
 
-- The store's writers are the repository's writers. A branch of the repository has this by construction. A store elsewhere, such as a bucket, sets `trust.writers: false`.
+- The store's writers are the repository's writers. A branch of the repository has this by construction, and only that adapter takes `trust.writers` at its default. Melian treats any other store, such as a bucket, as `trust.writers: false` unless the base's root `melian.yaml` writes `trust.writers: true` out, so a setting left out never trusts a store whose writers Melian cannot see.
 - Code under review never reaches the store. In CI, the job that runs a head's code hands its records to a job that runs none. That job adds only the kinds a review writes, only under that run's changeset and revision, and none with a `supersedes`. A dismissal, marker, post, status, ledger comment or comparison reaches the store only from a job that ran no head code. A head that tampers with its runner can still alter its own run's records, as it can alter its own verdict today. It cannot dismiss, and it cannot reach another round.
-
-An inheritance stays on the relayed list. It is the verifier's judgement, made in the review, and a forged one does what a forged lens record that omits the finding does.
 
 The trusted host holds the one key, pinned as `trust.host.key` in the root `melian.yaml` and read from the base commit. Two kinds of repository pin it:
 
@@ -145,20 +168,21 @@ A reopen is computed, not recorded. A reader walks the revisions from the dismis
 
 ### 8. Another host resumes by completing the manifest
 
-A host imports the records it accepts into a fresh local store and runs only what lacks one. It accepts a record whose key equals the one its own run would use, and whose policy fingerprint it recomputes from the base commit. It recomputes the line mapping and the voids from git, and never trusts a stored claim of coverage at a head it did not map, as [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) rules. A record of a fork's head counts only from the trusted host, by rule 6.
+A host imports the records it accepts into a fresh local store and runs only what lacks one. It builds each request its own run would make, and accepts a record whose key is that request's, by rule 5. So a host that sees a dismissal the first did not builds another verification request, and verifies again. It recomputes the line mapping and the voids from git, and never trusts a stored claim of coverage at a head it did not map, as [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) rules. A record of a fork's head counts only from the trusted host, by rule 6.
 
 ### 9. The verdict, the coverage ledger, the ledger comment and the gate are computed
 
 Each is a projection of the record and none is stored as the authority.
 
 - The verdict comes from a round's records, the dismissals, the base commit's policy, and each revision's hunks from git.
+- An inheritance is computed with it, never stored. A verification's payload holds the verifier's `same` or `different` for each claim against each dismissed finding it was shown, with that dismissal record's ID. The reader applies the other conditions of [the restatement decision](2026-11-08-dismissal-carries-to-restatement.md) itself, from the dismissal records and git, and an inheritance holds only while the dismissal the verifier was shown stands. The maintainer ruled so on 2026-11-13, in the coordinator's session: a head's job relays the judgement alone, so a forged record cannot claim that a trust-floor finding inherits or that a changed region is unchanged.
 - The coverage ledger comes from which records cover which lines. It is no second store, so nothing carries it anywhere.
 - The ledger comment renders the record, as it renders the local store today.
 - The gate is a command, `melian gate "#N"`. It lists the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one.
 
 The gate fails closed with no standing round for the revision, a record not found, a base whose policy it cannot read, or a store it cannot reach. So no status needs fencing: a stale status decides nothing.
 
-One status is still read. [The outage procedure](2026-10-23-melian-review-outage-procedure.md) lets the maintainer post an override on one commit when Melian cannot run, and a store that cannot be reached is such an outage. The merge-group check recognises that override by the procedure's own form, and only when the gate failed for want of the store or of any round. A round that stands and blocks outranks it.
+One status is still read. [The outage procedure](2026-10-23-melian-review-outage-procedure.md) lets the maintainer post an override on one commit when Melian cannot run, and a store that cannot be reached is such an outage. The merge-group check recognises that override on the head by the procedure's own form, and only when it reached the store and found no round for the revision. A round that stands and blocks outranks it. When the check cannot reach the store it cannot know that, so it fails, and copies no override from the head: the maintainer posts the override on the entry's group commit, as the procedure already has them do when the workflow cannot run. That is a fresh act for that entry, so an old override never returns because the store dropped out.
 
 ### 10. A marker is proved by a value recorded before the post
 
@@ -172,7 +196,7 @@ Nothing in the store is secret, and nothing in it needs sealing. A pull request'
 
 Publication is the one write that cannot be repeated safely. `melian publish` takes a short lease in the changeset's cell by compare-and-set, posts, records, and releases it. Core's `Lease` keeps its incarnation and generation for this. Storage takes no lease.
 
-A provider takes no fence, so a holder paused past its lease can still post after its successor. Two rules narrow that and repair it: a publisher posts only while its lease has more than one post's deadline left, and the next publish deletes a post whose `post` record lost its slot.
+A provider takes no fence, so a holder paused past its lease can still post after its successor. A time margin narrows that and cannot close it, so the stale publisher removes its own effect: after each post it reads the cell again, and when the lease is no longer its own it deletes what it posted and records nothing. A publisher posts only while its lease has more than one post's deadline left, which keeps that rare. One that dies between its post and that read leaves a post with a recorded marker and no `post` record, and the next publish deletes it. Until then a stale review can show on the pull request. It gates nothing, since the gate reads no post.
 
 The login on the standing `post` record owns a pull request's reviews and its ledger comment. A publish that knows its login to be another refuses, naming the owner. Whether a token may edit is the provider's answer, not a guess from its login. A cloud session cannot set a status, so publication runs on the trusted host or from a maintainer's CLI.
 
@@ -198,7 +222,7 @@ A store's own history is its adapter's to bound, and the git adapter does not bo
 
 ## What the reviews found
 
-Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each. A second round, on the revised text, raised two more, `c97f874268bb2af2` and `fa6fdfb18b069a75`, and three P2s; they are the table's last rows:
+Three reviews tested the first draft with unit tests, before any ruling: [issue #378](https://github.com/melian-agent/melian/issues/378) on the envelope, replacement and keys, [issue #379](https://github.com/melian-agent/melian/issues/379) on the import and the gate, and [issue #380](https://github.com/melian-agent/melian/issues/380) on trust, markers and publication. Melian's own round on [pull request #377](https://github.com/melian-agent/melian/pull/377) added finding `3045335b9e5de9a9`. Together they raised seven P1s, and the text above answers each. A second round, on the revised text, raised two more, `c97f874268bb2af2` and `fa6fdfb18b069a75`, and three P2s; they are the table's next rows. A third round raised one P1 and four P2s, the last five rows:
 
 | Finding | Answer |
 | --- | --- |
@@ -211,9 +235,14 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | A head job's dismissal passed the relay's shape check | Rule 6: the relay adds only a review's kinds |
 | With a key pinned, a writer could roll the cell back to an older signed round | Rule 4: no pointer names the standing rounds; they are computed, and only a signed round replaces a signed one |
 | A publisher holding a fresh lease could read a stale list and post twice | Rule 3: `list` is fresh |
-| The gate read no status, so the outage override stopped working | Rule 9 keeps the override, when the store or any round is missing |
+| The gate read no status, so the outage override stopped working | Rule 9 keeps the override, when the store holds no round, and on the group commit when the store is missing |
 | Recovery of a post depended on the token knowing its login | Rule 10 reads the login from the marker record and the author from the provider |
 | The record's size was measured, the branch's history was not | Rule 13 keeps [issue #361](https://github.com/melian-agent/melian/issues/361) open |
+| A verification's key left out the dismissed findings its verifier was shown (`84393ef8353d494c`) | Rule 5: a result's key is its whole request |
+| A lens key named the route, not the model that finished (`7fdc214d65fcdd00`) | Rule 5 keeps the route as the key, as the run identity decision rules for a local rerun; the payload names the model |
+| A store that is no branch was trusted when the setting was left out (`9f15b868be294320`) | Rule 6: only the branch adapter takes the default |
+| An old override counted again when the store dropped out (`112d07cbd2e76a97`) | Rule 9: an unreachable store copies no override from the head |
+| A publisher paused after its lease check posted a stale review (`6f40c2c204f44f8e`) | Rule 11: a publisher that lost its lease deletes its own post |
 
 ## What this gives up
 
@@ -222,6 +251,8 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 - A dismisser from the CLI stays self-declared. A repository that must prove who dismissed uses the provider path.
 - A writer can run a round that replaces a blocking one, as a writer can rerun a review or set a status today. [Issue #379](https://github.com/melian-agent/melian/issues/379) proposed counting only rounds the trusted host signed; that puts a key in every repository, which the maintainer's direction on logistics rules out. The maintainer agreed on 2026-11-13, in the coordinator's session.
 - A writer can block by adding a second round, since the worse gates.
+- A stale review can show on a pull request until the next publish, when a publisher dies between its post and its lease check.
+- Two hosts can give one lens different callers and enclosing functions under one key.
 - One file the adapter does not know stops every gate and publish on the branch until a writer removes it.
 - A repository that takes fork pull requests holds one key, in CI alone.
 - The record is a new stored shape, with versions to migrate and an import path to keep true, about 400 to 550 lines by [issue #372](https://github.com/melian-agent/melian/issues/372)'s estimate.
