@@ -1107,7 +1107,12 @@ describe("a level that probes", () => {
 		};
 		const prober = probing(failing);
 		const { run, heads } = await review({ planner: plan, prober: [...prober.slice(0, -1), replaced] }, { fake });
-		await run.catch(() => undefined);
+		// The replaced review may fail as replaced, but never on a reruns document it never wrote.
+		const outcome = await run.then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		expect(outcome).not.toBeInstanceOf(TypeError);
 		// The prober's probe alone: the replaced review runs no probe again.
 		expect(heads).toHaveLength(1);
 	});
