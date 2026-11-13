@@ -314,7 +314,9 @@ jobs:
           unset token CODEX_AUTH_B64
           node packages/cli/bin/melian.js doctor || true
           set +e
-          node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$raw/verdict.json" 2> "$raw/round.err"
+          # Melian refuses, before it reads a login, a pull request that moved after the gate approved this base and head.
+          node packages/cli/bin/melian.js review "#$NUMBER" --expect-base "$BASE" --expect-head "$HEAD" --json --no-walkthrough \
+            > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
           node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
