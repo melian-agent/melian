@@ -213,7 +213,7 @@ export async function review(
 		// The policy and origin come from GitHub's answer, above, and the diff from the refs the fetch wrote, which a second
 		// review of the pull request in this clone can move before they resolve.
 		if (expect !== undefined) {
-			const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]).catch(() => "");
+			const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]);
 			if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
 				throw new CliError(
 					`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so nothing was reviewed`,

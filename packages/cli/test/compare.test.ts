@@ -368,39 +368,47 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			expect(readdirSync(state)).toEqual([]);
 		},
 	);
-	it("refuses, with nothing read or stored, a pull request whose fetched refs moved after GitHub answered", () => {
-		const { repo, files, env: fixture } = pullRequest();
-		const { state, env } = expecting(fixture);
-		const base = git(repo, "rev-parse", "main");
-		const head = git(repo, "rev-parse", "feature");
-		// Stands in for a second review of #7 in this clone: once Melian has pointed the base ref at GitHub's answer, its
-		// last write, the hook moves the head ref to the base commit, before Melian resolves the changeset. Git runs the
-		// hook once per ref the fetch writes, and once per update-ref.
-		const hook = join(repo, ".git", "hooks", "reference-transaction");
-		writeFileSync(
-			hook,
-			[
-				"#!/bin/sh",
-				'[ "$1" = committed ] || exit 0',
-				`[ -e "${files}/moved" ] && exit 0`,
-				'refs=$(cut -d " " -f 3 | tr "\\n" " ")',
-				'[ "$refs" = "refs/melian/pull/7/base " ] || exit 0',
-				// The fetch writes the base ref first, then Melian points it at GitHub's answer.
-				`[ -e "${files}/fetched" ] || { touch "${files}/fetched"; exit 0; }`,
-				`touch "${files}/moved"`,
-				`exec git update-ref refs/melian/pull/7/head ${base}`,
-				"",
-			].join("\n"),
-		);
-		chmodSync(hook, 0o755);
-		const review = melian(repo, ["review", "#7", "--expect-base", base, "--expect-head", head], env);
-		expect(existsSync(join(files, "moved"))).toBe(true);
-		expect(review.status).toBe(2);
-		expect(review.stderr.split("\n").filter((line) => line.startsWith("melian:"))).toEqual([
-			`melian: pull request #7's fetched refs resolve to base ${base} and head ${base}, not the expected base ${base} and head ${head}, so nothing was reviewed`,
-		]);
-		expect(readdirSync(state)).toEqual([]);
-	});
+	it.each([
+		["head", "main"],
+		["base", "feature"],
+	] as const)(
+		"refuses, with nothing read or stored, a pull request whose fetched %s ref moved after GitHub answered",
+		(ref, to) => {
+			const { repo, files, env: fixture } = pullRequest();
+			const { state, env } = expecting(fixture);
+			const base = git(repo, "rev-parse", "main");
+			const head = git(repo, "rev-parse", "feature");
+			const moved = git(repo, "rev-parse", to);
+			// Stands in for a second review of #7 in this clone: once Melian has pointed the base ref at GitHub's answer,
+			// its last write, the hook moves one ref, before Melian resolves the changeset. Git runs the hook once per ref
+			// the fetch writes, and once per update-ref.
+			const hook = join(repo, ".git", "hooks", "reference-transaction");
+			writeFileSync(
+				hook,
+				[
+					"#!/bin/sh",
+					'[ "$1" = committed ] || exit 0',
+					`[ -e "${files}/moved" ] && exit 0`,
+					'refs=$(cut -d " " -f 3 | tr "\\n" " ")',
+					'[ "$refs" = "refs/melian/pull/7/base " ] || exit 0',
+					// The fetch writes the base ref first, then Melian points it at GitHub's answer.
+					`[ -e "${files}/fetched" ] || { touch "${files}/fetched"; exit 0; }`,
+					`touch "${files}/moved"`,
+					`exec git update-ref refs/melian/pull/7/${ref} ${moved}`,
+					"",
+				].join("\n"),
+			);
+			chmodSync(hook, 0o755);
+			const review = melian(repo, ["review", "#7", "--expect-base", base, "--expect-head", head], env);
+			expect(existsSync(join(files, "moved"))).toBe(true);
+			expect(review.status).toBe(2);
+			const resolved = ref === "head" ? { base, head: base } : { base: head, head };
+			expect(review.stderr.split("\n").filter((line) => line.startsWith("melian:"))).toEqual([
+				`melian: pull request #7's fetched refs resolve to base ${resolved.base} and head ${resolved.head}, not the expected base ${base} and head ${head}, so nothing was reviewed`,
+			]);
+			expect(readdirSync(state)).toEqual([]);
+		},
+	);
 	it("reviews a pull request at the base and head it expects", () => {
 		const { repo, env } = pullRequest();
 		const base = git(repo, "rev-parse", "main");
