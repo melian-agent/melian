@@ -143,6 +143,28 @@ describe("SharedRecord", () => {
 		expect(record.signedBytes()).toBe(canonicalJson({ ...envelope(), signer: "host" }));
 	});
 
+	it("is frozen whole, so no caller can change what its ID names", () => {
+		const revision = `${commit("a")}..${commit("b")}`;
+		const round = SharedRecord.parse(
+			envelope({ kind: "round", revision, payload: { replaces: [], note: { n: 1 } } }),
+		);
+		expect(() => (round.replaces() as string[]).push(hex("1"))).toThrow(TypeError);
+		expect(() => {
+			(round.payload as { note: { n: number } }).note.n = 2;
+		}).toThrow(TypeError);
+		const post = SharedRecord.parse(envelope({ kind: "post", supersedes: [hex("1")] }));
+		expect(() => (post.supersedes as string[]).push(hex("2"))).toThrow(TypeError);
+		expect(round.replaces()).toEqual([]);
+		expect(round.toJSON().payload).toEqual({ replaces: [], note: { n: 1 } });
+	});
+
+	it("gives an unfrozen copy from toJSON", () => {
+		const record = SharedRecord.parse(envelope({ payload: { n: 1 } }));
+		const copy = record.toJSON();
+		(copy.payload as { n: number }).n = 2;
+		expect(record.payload).toEqual({ n: 1 });
+	});
+
 	describe("reading stored bytes", () => {
 		it("takes canonical bytes whose hash is the ID they are filed under", () => {
 			const record = SharedRecord.parse(envelope());

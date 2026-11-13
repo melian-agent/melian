@@ -88,6 +88,14 @@ export function canonicalJson(value: unknown): string {
 	throw invalid(`a record holds JSON only, not ${typeof value === "object" ? "a class instance" : typeof value}`);
 }
 
+function frozen<T>(value: T): T {
+	if (typeof value === "object" && value !== null) {
+		for (const field of Object.values(value)) frozen(field);
+		Object.freeze(value);
+	}
+	return value;
+}
+
 function sha256(text: string): string {
 	return createHash("sha256").update(text, "utf8").digest("hex");
 }
@@ -125,13 +133,14 @@ export class SharedRecord {
 	/** The SHA-256 of {@link SharedRecord.bytes}, in lower-case hex. */
 	readonly id: string;
 
-	private constructor(envelope: RecordEnvelope, bytes: string) {
+	private constructor(parsed: RecordEnvelope, bytes: string) {
+		const envelope = frozen(parsed);
 		this.v = envelope.v;
 		this.changeset = envelope.changeset;
 		this.revision = envelope.revision;
 		this.kind = envelope.kind;
 		this.key = envelope.key;
-		this.supersedes = envelope.supersedes ?? [];
+		this.supersedes = envelope.supersedes ?? frozen([]);
 		this.payload = envelope.payload;
 		this.signer = envelope.signer;
 		this.signature = envelope.signature;
