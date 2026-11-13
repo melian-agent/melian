@@ -4,6 +4,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	realpathSync,
 	rmSync,
@@ -340,6 +341,70 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		return { repo, files, env: { ...env, MELIAN_TEST_GITHUB: path, GIT_SSH_COMMAND: ssh } };
 	}
 
+	// A review the workflow's gate did not approve spends no login: the refusal comes before the secrets files are read,
+	// which an unreadable one would show, and before storage opens, so nothing is stored and no model or check is asked.
+	function expecting(env: Record<string, string>) {
+		const state = scratch("melian-expect-state-");
+		const config = scratch("melian-expect-config-");
+		mkdirSync(join(config, "melian"));
+		writeFileSync(join(config, "melian", "secrets.yaml"), "credentials: [\n");
+		return { state, env: { ...env, MELIAN_STATE_DIR: state, XDG_CONFIG_HOME: config } };
+	}
+	it.each([
+		["head", (base: string) => [base, "f".repeat(40)]],
+		["base", (_base: string, head: string) => ["f".repeat(40), head]],
+	] as const)(
+		"refuses, with nothing read or stored, a pull request whose %s is not the one expected",
+		(_, expected) => {
+			const { repo, env: fixture } = pullRequest();
+			const { state, env } = expecting(fixture);
+			const [base, head] = expected(git(repo, "rev-parse", "main"), git(repo, "rev-parse", "feature"));
+			const review = melian(repo, ["review", "#7", "--expect-base", base, "--expect-head", head], env);
+			expect(review.status).toBe(2);
+			// The recording answers no activity read, so Octokit logs a 404 for it as it does for every review of #7 here.
+			expect(review.stderr.split("\n").filter((line) => line.startsWith("melian:"))).toEqual([
+				`melian: pull request #7 is at base ${git(repo, "rev-parse", "main")} and head ${git(repo, "rev-parse", "feature")}, not the expected base ${base} and head ${head}, so nothing was reviewed`,
+			]);
+			expect(readdirSync(state)).toEqual([]);
+		},
+	);
+	it("reviews a pull request at the base and head it expects", () => {
+		const { repo, env } = pullRequest();
+		const base = git(repo, "rev-parse", "main");
+		const head = git(repo, "rev-parse", "feature");
+		const review = melian(
+			repo,
+			["review", "#7", "--expect-base", base, "--expect-head", head, "--no-walkthrough"],
+			env,
+		);
+		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });
+		expect(melian(repo, ["findings", "#7"], env).status).toBe(0);
+	});
+	it.each([
+		[
+			"--expect-head alone",
+			["review", "#7", "--expect-head", "f".repeat(40)],
+			"review takes --expect-base and --expect-head together",
+		],
+		[
+			"--expect-base alone",
+			["review", "#7", "--expect-base", "f".repeat(40)],
+			"review takes --expect-base and --expect-head together",
+		],
+		[
+			"both on a range",
+			["review", range, "--expect-base", "f".repeat(40), "--expect-head", "f".repeat(40)],
+			'--expect-base and --expect-head take a pull request such as "#12", not a range',
+		],
+		[
+			"both on another command",
+			["findings", "#7", "--expect-base", "f".repeat(40), "--expect-head", "f".repeat(40)],
+			"--expect-base and --expect-head are only available for review",
+		],
+	])("exits 64 for %s", (_, args, message) => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, args, env)).toMatchObject({ status: 64, stderr: expect.stringContaining(message) });
+	});
 	it("imports CodeRabbit's threads, matches the resolved one, and counts the review body it skipped", () => {
 		const { repo, env } = pullRequest();
 		const review = melian(repo, ["review", "#7"], env);

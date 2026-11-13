@@ -185,6 +185,9 @@ export async function review(
 		readonly cold?: boolean;
 		readonly json?: boolean;
 		readonly notes?: boolean;
+		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
+		// since is refused before any credential is read.
+		readonly expect?: { readonly base: string; readonly head: string };
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -202,6 +205,11 @@ export async function review(
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
+		const { expect } = options;
+		if (expect !== undefined && (pullRequest.base.sha !== expect.base || pullRequest.head.sha !== expect.head))
+			throw new CliError(
+				`pull request #${pullRequest.number} is at base ${pullRequest.base.sha} and head ${pullRequest.head.sha}, not the expected base ${expect.base} and head ${expect.head}, so nothing was reviewed`,
+			);
 		changeset = fetched;
 		source = { kind: "revision", commit: pullRequest.base.sha };
 		origin = {
