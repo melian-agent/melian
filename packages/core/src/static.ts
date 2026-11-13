@@ -338,8 +338,8 @@ function decodePath(uri: string): string {
 	return uri.split("/").map(decodeURIComponent).join("/");
 }
 
-// Enola spans a symbol to its closing brace from 0.4.37. An Enola result keeps the identity and trigger of the line it
-// starts on, as under 0.4.27 (issue #346).
+// Enola spans a symbol to its closing brace from 0.4.37. An Enola result keeps the identity of the line it starts on, as
+// under 0.4.27, while its trigger takes the whole span (issue #346).
 function identityEnd(tool: StaticTool, region: { startLine: number; endLine?: number }): number {
 	return tool === "enola" ? region.startLine : Math.max(region.endLine ?? region.startLine, region.startLine);
 }
@@ -482,10 +482,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				occurrence: extra === undefined ? each.occurrence : undefined,
 				discriminator: extra?.discriminator ?? each.discriminator,
 				cause,
-				trigger:
-					cause === "introduced"
-						? revision.trigger(each.path, region.startLine, identityEnd(tool, region))
-						: undefined,
+				trigger: cause === "introduced" ? revision.trigger(each.path, region.startLine, endLine) : undefined,
 				severity,
 				explanation: {
 					what: each.result.message.text,

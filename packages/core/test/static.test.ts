@@ -409,6 +409,58 @@ describe("staticFindings", () => {
 		expect(await enolaCauses(["intent A unmet"], ["intent A unmet"])).toEqual([["intent A unmet", "pre-existing"]]);
 	});
 
+	it("triggers an introduced Enola result from its declaration when the change edits that line", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({
+			"src/quote.ts": lines(
+				"export function quote(text: unknown) {",
+				"\treturn text;",
+				"}",
+				"export const other = 1;",
+				"",
+			),
+		});
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const result = normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{
+						results: [
+							{
+								ruleId: "complexity-outliers",
+								level: "warning",
+								message: { text: "High cyclomatic complexity: quote (41)" },
+								locations: [
+									{
+										physicalLocation: {
+											artifactLocation: { uri: "src/quote.ts" },
+											region: { startLine: 1, endLine: 3 },
+										},
+									},
+								],
+							},
+						],
+					},
+				],
+			}),
+			{ root: repo, version: "0.4.40" },
+		);
+		const none: ToolLog = { ...result, runs: [{ ...result.runs[0]!, results: [] }] };
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: none,
+			head: result,
+		});
+		expect(findings.map((finding) => [finding.properties.cause, finding.properties.trigger])).toEqual([
+			["introduced", revision.trigger("src/quote.ts", 1, 1)],
+		]);
+		expect(revision.trigger("src/quote.ts", 1, 1)).toMatchObject({ file: "src/quote.ts" });
+	});
+
 	it("gives a pre-existing result no trigger, though the change edits the line it sits on", async () => {
 		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
 		const head = commit({ "enola-intent.yaml": lines("rules: # edited", "  - a") });
@@ -591,9 +643,9 @@ describe("staticFindings", () => {
 		expect(spanned?.locations[0]?.physicalLocation.region).toMatchObject({ startLine: 1, endLine: 3 });
 	});
 
-	// Review of record on pull request #385: the span also reached an introduced result's trigger, so a dismissal reopened
-	// on edits inside the body that left it standing under 0.4.27.
-	it("triggers an introduced Enola result from the line it starts on, so a body edit leaves its dismissal standing", async () => {
+	// The maintainer ruled on 2026-11-13 that an Enola result's trigger takes its whole span, though its ID keeps one line, so a
+	// dismissal reopens when the body behind it changes. 0.4.27 gave such a result no trigger at all.
+	it("triggers an introduced Enola result from its whole span, so a body edit reopens its dismissal", async () => {
 		const base = commit({ "src/quote.ts": quote("\treturn text;") });
 		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
 		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
@@ -639,7 +691,9 @@ describe("staticFindings", () => {
 		const [line] = await introduced();
 		expect(spanned?.properties.cause).toBe("introduced");
 		expect(line?.properties.trigger).toBeUndefined();
-		expect(spanned?.properties.trigger).toEqual(line?.properties.trigger);
+		expect(spanned?.properties.trigger).toEqual(revision.trigger("src/quote.ts", 1, 3));
+		expect(spanned?.properties.trigger).toMatchObject({ file: "src/quote.ts", snippet: "\treturn text.trim();" });
+		expect(spanned?.properties.id).toBe(line?.properties.id);
 	});
 
 	it("still identifies a tsc result by every line it spans, so an edit inside the span introduces it", async () => {
