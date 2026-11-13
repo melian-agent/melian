@@ -229,6 +229,14 @@ describe("RecordSet.missing", () => {
 		expect(RecordSet.of([odd, lens]).missing(odd)).toEqual([named]);
 	});
 
+	it("counts a record of the same kind and key but another ID as missing", () => {
+		const { check, lens, walkthrough, round } = fixture();
+		const rerun = parse({ kind: "lens", key: "correctness", payload: { again: true } });
+		expect(RecordSet.of([round, check, rerun, walkthrough]).missing(round)).toEqual([
+			{ kind: "lens", key: "correctness", id: lens.id },
+		]);
+	});
+
 	it("counts a record of another changeset as missing", () => {
 		const { lens } = fixture();
 		const elsewhere = SharedRecord.parse({ ...lens.toJSON(), changeset: "pull-fedcba9876543210" }, payloads);
