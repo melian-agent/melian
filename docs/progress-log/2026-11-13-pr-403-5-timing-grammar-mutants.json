@@ -1,0 +1,183 @@
+{
+	"mutants": [
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 92,
+			"column": 15,
+			"endLine": 92,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/\\D min\\b|\\$\\d/",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause hides a second duration unparsed: wait 1 × 10 min for CI and 20 min for the coordinator",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 92,
+			"column": 15,
+			"endLine": 92,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/\\d min\\b|\\$\\D/",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause hides a cost unparsed: wait 10 min for CI, $6.40",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 96,
+			"column": 5,
+			"endLine": 96,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 96,
+			"column": 5,
+			"endLine": 96,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a waited item whose cause hides a second duration unparsed: waited 10 min for CI and 5 min for a ruling",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 96,
+			"column": 5,
+			"endLine": 96,
+			"endColumn": 55,
+			"mutatorName": "LogicalOperator",
+			"replacement": "legacyWait || HIDDEN.test(legacyWait.groups.cause)",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 117,
+			"column": 5,
+			"endLine": 117,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 117,
+			"column": 5,
+			"endLine": 117,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause hides a second duration unparsed: wait 1 × 10 min for CI and 20 min for the coordinator",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 117,
+			"column": 5,
+			"endLine": 117,
+			"endColumn": 46,
+			"mutatorName": "LogicalOperator",
+			"replacement": "cause !== undefined || HIDDEN.test(cause)",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > reads the kind in wait 1 × 10 min for the coordinator's answer, with no key it does not use",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 117,
+			"column": 5,
+			"endLine": 117,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "equivalent",
+			"evidence": "HIDDEN.test(undefined) tests the string \"undefined\", which holds no digit, so forcing cause !== undefined to true never changes the result.",
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "scripts/timeline.mjs",
+			"line": 117,
+			"column": 5,
+			"endLine": 117,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cause === undefined",
+			"claim": "killed",
+			"evidence": "scripts/pr-timeline.test.mjs > parseTiming > leaves a wait whose cause hides a second duration unparsed: wait 1 × 10 min for CI and 20 min for the coordinator",
+			"survivorClasses": [],
+			"run": {
+				"head": "7ae6bcda",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		}
+	],
+	"total": 10,
+	"omitted": 0,
+	"unmutated": []
+}
