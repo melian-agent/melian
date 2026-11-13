@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	DirectoryRecordStore,
@@ -382,6 +382,53 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(second.add([disposed]), RecordError)).code).toBe("disposed");
 	});
 
+	describe("follows no symbolic link out of the store", () => {
+		let outside: string;
+
+		beforeEach(() => {
+			outside = temporaryDirectory();
+		});
+
+		afterEach(() => {
+			removeDirectory(outside);
+		});
+
+		it.each([
+			["the changeset's directory", () => join(root, "changesets", changeset)],
+			["a kind's directory", () => join(root, "changesets", changeset, "check")],
+			["a slot's directory", () => join(root, record.path, "..")],
+		])("refuses to add through a link at %s", async (_name, at) => {
+			const store = await DirectoryRecordStore.open(root);
+			mkdirSync(join(at(), ".."), { recursive: true });
+			symlinkSync(outside, at());
+			const error = await rejection(store.add([envelope]), RecordError);
+			expect(error.code).toBe("unknownFile");
+			expect(error.path).toBe(at());
+			expect(readdirSync(outside)).toEqual([]);
+		});
+
+		it("refuses a link at the cell's directory", async () => {
+			const store = await DirectoryRecordStore.open(root);
+			mkdirSync(join(root, "changesets", changeset));
+			symlinkSync(outside, join(root, "changesets", changeset, ".cell"));
+			expect((await rejection(store.writeCell(changeset, undefined, "lease"), RecordError)).code).toBe(
+				"unknownFile",
+			);
+			expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
+			expect(readdirSync(outside)).toEqual([]);
+		});
+
+		it.each(["changesets", "tmp"])("fails unreachable, writing nothing, when %s is a link", async (name) => {
+			const store = await DirectoryRecordStore.open(root);
+			removeDirectory(join(root, name));
+			symlinkSync(outside, join(root, name));
+			const error = await rejection(store.add([envelope]), RecordError);
+			expect(error.code).toBe("unreachable");
+			expect(error.path).toBe(join(root, name));
+			expect(readdirSync(outside)).toEqual([]);
+		});
+	});
+
 	it("keeps the cell out of the listing", async () => {
 		const store = await DirectoryRecordStore.open(root);
 		await store.writeCell(changeset, undefined, "lease");
@@ -497,16 +544,6 @@ describe("DirectoryRecordStore", () => {
 		expect(error.path).toBe(join(root, "changesets", changeset, ".cell"));
 	});
 
-	it("fails unreachable on a cell it cannot read, with the cause", async () => {
-		const store = await DirectoryRecordStore.open(root);
-		const cell = join(root, "changesets", changeset, ".cell");
-		mkdirSync(join(cell, ".."));
-		symlinkSync(cell, cell);
-		const error = await rejection(store.readCell(changeset), RecordError);
-		expect(error.code).toBe("unreachable");
-		expect((error.cause as { code?: string }).code).toBe("ELOOP");
-	});
-
 	it("refuses a cell value that is not UTF-8", async () => {
 		const store = await DirectoryRecordStore.open(root);
 		await store.writeCell(changeset, undefined, "lease");
@@ -546,27 +583,12 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("unreachable");
 	});
 
-	it("fails unreachable, not with a raw error, when a record's directory cannot be made", async () => {
+	it("refuses to add where a file stands in for a record's directory", async () => {
 		const store = await DirectoryRecordStore.open(root);
 		mkdirSync(join(root, "changesets", changeset));
 		writeFileSync(join(root, "changesets", changeset, "check"), "x");
 		const error = await rejection(store.add([envelope]), RecordError);
-		expect(error.code).toBe("unreachable");
-		expect(error.path).toBe(join(root, record.path));
-	});
-
-	it("fails unreachable when the cell cannot be linked, with the cause", async () => {
-		const store = await DirectoryRecordStore.open(root);
-		const elsewhere = mkdtempSync("/dev/shm/melian-records-");
-		try {
-			removeDirectory(join(root, "tmp"));
-			symlinkSync(elsewhere, join(root, "tmp"));
-			const error = await rejection(store.writeCell(changeset, undefined, "lease"), RecordError);
-			expect(error.code).toBe("unreachable");
-			expect((error.cause as { code?: string }).code).toBe("EXDEV");
-			expect(readdirSync(elsewhere)).toEqual([]);
-		} finally {
-			removeDirectory(elsewhere);
-		}
+		expect(error.code).toBe("unknownFile");
+		expect(error.path).toBe(join(root, "changesets", changeset, "check"));
 	});
 });

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { link, lstat, mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, readdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { RecordError } from "./errors.ts";
 import { type RecordEnvelope, SharedRecord } from "./record.ts";
@@ -57,13 +57,27 @@ export class DirectoryRecordStore implements RecordStore {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
 		checkChangeset(changeset);
 		const changesets = join(this.#root, "changesets");
-		if (!(await stat(changesets).catch(() => undefined))?.isDirectory()) throw failure("unreachable", changesets);
+		if (!(await lstat(changesets).catch(() => undefined))?.isDirectory()) throw failure("unreachable", changesets);
 		const directory = join(changesets, changeset);
-		const found = await lstat(directory).catch((cause: unknown) => {
-			if (errorCode(cause) !== "ENOENT") throw failure("unreachable", directory, cause);
-		});
-		if (found !== undefined && !found.isDirectory()) throw failure("unknownFile", directory);
+		await this.#directory(directory);
 		return directory;
+	}
+
+	// Whether a real directory is at `path`. A link, even to a directory, or a file there is no directory this store made.
+	async #directory(path: string): Promise<boolean> {
+		const found = await lstat(path).catch((cause: unknown) => {
+			if (errorCode(cause) !== "ENOENT") throw failure("unreachable", path, cause);
+		});
+		if (found !== undefined && !found.isDirectory()) throw failure("unknownFile", path);
+		return found !== undefined;
+	}
+
+	async #make(path: string): Promise<void> {
+		if (await this.#directory(path)) return;
+		await mkdir(path).catch((cause: unknown) => {
+			if (errorCode(cause) !== "EEXIST") throw failure("unreachable", path, cause);
+		});
+		await this.#directory(path);
 	}
 
 	async #entries(directory: string): Promise<Dirent[]> {
@@ -88,6 +102,7 @@ export class DirectoryRecordStore implements RecordStore {
 
 	async #cell(directory: string): Promise<Cell | undefined> {
 		const path = join(directory, cellDirectory);
+		if (!(await this.#directory(path))) return undefined;
 		let sequence = 0;
 		for (const entry of await this.#entries(path)) {
 			if (!cellFile.test(entry.name) || !entry.isFile()) throw failure("unknownFile", join(path, entry.name));
@@ -98,7 +113,9 @@ export class DirectoryRecordStore implements RecordStore {
 	}
 
 	async #temporary(bytes: string): Promise<string> {
-		const path = join(this.#root, "tmp", randomUUID());
+		const directory = join(this.#root, "tmp");
+		if (!(await lstat(directory).catch(() => undefined))?.isDirectory()) throw failure("unreachable", directory);
+		const path = join(directory, randomUUID());
 		await writeFile(path, bytes, { flag: "wx" }).catch((cause: unknown) => {
 			throw failure("unreachable", path, cause);
 		});
@@ -106,7 +123,8 @@ export class DirectoryRecordStore implements RecordStore {
 	}
 
 	async #swap(directory: string, cell: Cell | undefined, value: string): Promise<boolean> {
-		await mkdir(join(directory, cellDirectory), { recursive: true });
+		await this.#make(directory);
+		await this.#make(join(directory, cellDirectory));
 		const temporary = await this.#temporary(value);
 		try {
 			await link(temporary, join(directory, cellDirectory, String((cell?.sequence ?? 0) + 1)));
@@ -124,9 +142,10 @@ export class DirectoryRecordStore implements RecordStore {
 			const directory = await this.#reach(record.changeset);
 			if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 			const path = join(this.#root, record.path);
+			const slot = join(path, "..");
+			for (const each of [directory, join(slot, ".."), slot]) await this.#make(each);
 			const temporary = await this.#temporary(record.bytes);
 			try {
-				await mkdir(join(path, ".."), { recursive: true });
 				await rename(temporary, path);
 			} catch (cause) {
 				await rm(temporary, { force: true });
@@ -155,6 +174,8 @@ export class DirectoryRecordStore implements RecordStore {
 					records.push(await this.#record(join(slotPath, file.name), file));
 			}
 		}
+		// A directory that vanished mid-walk read as empty, so the walk counts only if the store is still there after it.
+		if ((await this.#cell(await this.#reach(changeset)))?.value === disposalMark) return [];
 		return records;
 	}
 
@@ -173,6 +194,7 @@ export class DirectoryRecordStore implements RecordStore {
 
 	async readCell(changeset: string): Promise<RecordCell> {
 		const cell = await this.#cell(await this.#reach(changeset));
+		await this.#reach(changeset);
 		return cell === undefined ? {} : { value: cell.value, version: String(cell.sequence) };
 	}
 
