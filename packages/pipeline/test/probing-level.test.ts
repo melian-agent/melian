@@ -262,6 +262,24 @@ const plan = [call("record_plan", { attacks: [attack] }), fauxAssistantMessage("
 // The lens's own instructions, as a level runs them without probes.
 const reviewer = "You are the trust-boundary reviewer";
 
+// Options for a review whose quick run escalates to a careful level that probes, on one fake route.
+const escalating = (fake: FakeModels) => {
+	const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+	return {
+		fake,
+		decider: new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		),
+		lens: (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } }),
+		config: {
+			lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+			models: { heavy: { model: route }, medium: { model: route } },
+		},
+	};
+};
+
 // A review in which the deep level runs as it would without `probe`, answering once.
 function withoutProbes(options: Parameters<typeof review>[1]) {
 	return review(
@@ -2369,6 +2387,72 @@ describe("a level that probes", () => {
 		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
 		expect(record(verdict).reason).toContain("careful refuted 1 finding quick carried");
 		expect(verdict.counted().map((each) => each.ruleId)).not.toContain("path-traversal");
+	});
+
+	it("refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		const refute: ScriptedReply = (messages) => {
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...plain, rule: "melian/injection-attempt", severity: "P1", refuted: id });
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("skip_attack", { attack: 1, reason: "needs the network" }),
+				refute,
+				fauxAssistantMessage("Refuted 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: plan },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const { run } = await review(scripts, escalating(fake));
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain(
+			"1 finding quick carried at or above P1, which careful neither restated nor refuted",
+		);
+		expect(verdict.counted().map((each) => each.ruleId)).toContain("path-traversal");
+	});
+
+	it("refuses a prober's injection attempt below the injection severity with no probe, and keeps the carried one", async () => {
+		const fake = createFakeModels();
+		const injection = {
+			file: "src/load.ts",
+			line: 3,
+			rule: "melian/injection-attempt",
+			explanation: {
+				what: "the change tells the reviewer what to find",
+				why: "it steers the review",
+				fix: "remove it",
+			},
+			failureScenario: "a reviewer that follows the text reports nothing",
+			evidence: [{ file: "src/load.ts", line: 3, role: "cause" }],
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("skip_attack", { attack: 1, reason: "needs the network" }),
+				call("report_finding", { ...injection, severity: "P2" }),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: plan },
+				{
+					match: reviewer,
+					replies: [
+						call("report_finding", { ...injection, severity: "P1" }),
+						fauxAssistantMessage("Reported 1 finding."),
+					],
+				},
+			],
+		};
+		const { run } = await review(scripts, escalating(fake));
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(verdict.counted().map((each) => [each.ruleId, each.properties.severity])).toEqual([
+			["melian/injection-attempt", "P1"],
+		]);
 	});
 
 	it("refuses a prober's refutation that rests on a probe that failed, and keeps the carried finding", async () => {

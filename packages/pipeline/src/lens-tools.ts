@@ -472,8 +472,9 @@ function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): 
 	const injection = rule === injectionAttemptRule.id && severity === injectionSeverity;
 	if (lens.role === "planner" && (rule !== injectionAttemptRule.id || refuted !== undefined))
 		return "the planner writes the attack plan and reports no finding but an injection attempt, and refutes none; record the plan with record_plan";
-	if (lens.role === "prober" && rule !== injectionAttemptRule.id && probe === undefined)
-		return "a finding of a probing level needs the probe that shows it: pass probe, the ID run_probe returned for a probe that failed";
+	// Only a new injection attempt stands without a probe; a refutation, or a lower one, would drop a carried finding.
+	if (lens.role === "prober" && probe === undefined && (!injection || refuted !== undefined))
+		return "a finding of a probing level needs the probe that shows it: pass probe, the ID run_probe returned for a probe that failed, or for a refutation one that passed";
 	if (lens.role !== "prober" && probe !== undefined) return "probe is only for the prober of a level that runs probes";
 	if (!injection && !lens.severities.includes(severity as Severity)) {
 		return `severity ${String(severity)} is outside this lens's severities: ${lens.severities.join(", ")}`;
