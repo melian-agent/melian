@@ -30,7 +30,7 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
               __typename
               ... on LabeledEvent { createdAt label { name } }
               ... on UnlabeledEvent { createdAt label { name } }
-              ... on IssueComment { createdAt body author { login } }
+              ... on IssueComment { createdAt body author { login ... on User { databaseId } } }
             }
           }
         }
@@ -43,7 +43,7 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
         pageInfo { hasNextPage }
         nodes {
           __typename
-          ... on IssueComment { createdAt body author { login } }
+          ... on IssueComment { createdAt body author { login ... on User { databaseId } } }
           ... on PullRequestReview { submittedAt state body author { login } }
           ... on ReadyForReviewEvent { createdAt }
           ... on AddedToMergeQueueEvent { createdAt }
@@ -151,8 +151,10 @@ export function parseTiming(body) {
 // code fence, as round.mjs's spendLine writes it. Every line of that fence that holds a model's or a check's text starts
 // with spaces, so only spendLine starts one with "Spend: ". Undefined for any other comment, or a line it cannot read
 // whole.
+// AGENTS.md recognises the bot by login and account ID together, since a login can pass to another account.
 export function parseRound(body, author) {
-	if (author !== "melian-status-bot" || !body.startsWith("<!-- melian-round run:")) return undefined;
+	if (author?.login !== "melian-status-bot" || author.databaseId !== 353727783) return undefined;
+	if (!body.startsWith("<!-- melian-round run:")) return undefined;
 	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
 	// A comment edited on GitHub's web page comes back with CRLF line endings, which the code block keeps.
 	const line = fence?.value.split(/\r?\n/).find((each) => each.startsWith("Spend: "));
@@ -291,7 +293,7 @@ export class Timeline {
 				case "IssueComment": {
 					add(node.createdAt, "comment", `by ${login(node)}`);
 					timing(node.createdAt, node.body);
-					const round = parseRound(node.body, login(node));
+					const round = parseRound(node.body, node.author);
 					if (round !== undefined)
 						events.push({ at: Date.parse(node.createdAt), event: "round", round, detail: roundDetail(round) });
 					break;

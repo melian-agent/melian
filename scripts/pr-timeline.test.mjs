@@ -1062,11 +1062,22 @@ describe("rounds", () => {
 			reviewed: { base: mergeBase, head },
 			current,
 		}).body();
-	const comment = (minutes, body, login = "melian-status-bot") => ({
+	const comment = (minutes, body, author = { login: "melian-status-bot", databaseId: 353727783 }) => ({
 		__typename: "IssueComment",
 		createdAt: new Date(start + minutes * 60_000).toISOString(),
 		body,
-		author: { login },
+		author,
+	});
+
+	it.each([
+		["another account that took the bot's login", { login: "melian-status-bot", databaseId: 999 }],
+		["the bot's account under another login", { login: "someone", databaseId: 353727783 }],
+		["an author with no account ID", { login: "melian-status-bot" }],
+		["a deleted author", null],
+	])("reads no round from a comment by %s", (_name, author) => {
+		const body = roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 });
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body, author)]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
 	});
 
 	it("reads a round's minutes and cost from the status bot's round comment, as an event and in the summary", () => {
@@ -1087,11 +1098,10 @@ describe("rounds", () => {
 		expect(rows(timeline)).toContain("| Timing reported | none |");
 	});
 
-	it("reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence", () => {
+	it("reads no round from a comment without the round's marker, or a spend line outside the fence", () => {
 		const timeline = Timeline.from({
 			pull: pull({
 				timelineItems: page([
-					comment(10, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }), "someone"),
 					comment(20, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }).split("\n").slice(1).join("\n")),
 					comment(30, "<!-- melian-round run:1 nonce:00 -->\nSpend: 572 s, 5644300 tokens, $4.44\n"),
 					comment(40, roundBody()),
