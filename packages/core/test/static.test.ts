@@ -409,6 +409,24 @@ describe("staticFindings", () => {
 		expect(await enolaCauses(["intent A unmet"], ["intent A unmet"])).toEqual([["intent A unmet", "pre-existing"]]);
 	});
 
+	it("gives a pre-existing result no trigger, though the change edits the line it sits on", async () => {
+		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
+		const head = commit({ "enola-intent.yaml": lines("rules: # edited", "  - a") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: enolaLog("intent A unmet"),
+			head: enolaLog("intent A unmet"),
+		});
+		expect(revision.trigger("enola-intent.yaml", 1, 1)).toBeDefined();
+		expect(findings.map((finding) => [finding.properties.cause, finding.properties.trigger])).toEqual([
+			["pre-existing", undefined],
+		]);
+	});
+
 	it("identifies a located Enola result at the intent file's first line by its code, not its message", async () => {
 		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
 		const head = commit({ "a.ts": lines("2") });
