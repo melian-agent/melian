@@ -163,9 +163,17 @@ function readOr(path, fallback) {
 // tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
 // place but not its text. Null for anything that is not a verdict, which the comment reads as no verdict.
 // A round's duration, tokens and cost leave as numbers alone: Melian computed them, and no tool or model wrote them.
+// They leave even from a review that failed, which spent them all the same, alone in a copy the comment reads as no
+// verdict.
 export function publicVerdict(text) {
+	let verdict;
 	try {
-		const verdict = JSON.parse(text);
+		verdict = JSON.parse(text);
+	} catch {
+		return null;
+	}
+	const spend = spendOf(verdict);
+	try {
 		const check = ({ name, status, lineage }) => ({ name, status, lineage });
 		const finding = ({ ruleId, message, locations, properties }) => {
 			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
@@ -195,7 +203,6 @@ export function publicVerdict(text) {
 			};
 		};
 		const { findings } = verdict;
-		const spend = spendOf(verdict);
 		return {
 			status: Object.hasOwn(statuses, verdict.status) ? verdict.status : undefined,
 			blocking: typeof verdict.blocking === "boolean" ? verdict.blocking : undefined,
@@ -210,7 +217,7 @@ export function publicVerdict(text) {
 			...(spend === undefined ? {} : { spend }),
 		};
 	} catch {
-		return null;
+		return spend === undefined ? null : { spend };
 	}
 }
 
@@ -221,24 +228,31 @@ const field = (object, key) => (typeof object === "object" && object !== null ? 
 
 // A round's duration in whole seconds, its tokens and its cost in dollars: from the telemetry `melian review --json`
 // writes beside the verdict, or from a public verdict's own `spend` on a second pass. A number that is not finite and
-// non-negative is left out, and with none left the spend is left out whole.
+// non-negative is left out, and with none left the spend is left out whole. Tokens and cost are left out too unless
+// the telemetry says every stage's usage was recorded, since a total missing a stage would read as exact.
 function spendOf(verdict) {
 	let seconds;
 	let tokens;
 	let cost;
-	if (Object.hasOwn(verdict, "telemetry")) {
+	if (field(verdict, "telemetry") !== undefined) {
 		const prepare = field(verdict.telemetry, "prepare");
 		const startedAt = amount(field(prepare, "startedAt"));
 		const endedAt = amount(field(prepare, "endedAt"));
-		const total = field(field(verdict.telemetry, "total"), "total");
 		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards.
 		seconds = amount(Math.round((endedAt - startedAt) / 1000));
+		const unavailable = field(verdict.telemetry, "usageUnavailable");
+		const measured =
+			Array.isArray(unavailable) &&
+			unavailable.length === 0 &&
+			(field(verdict.telemetry, "usageIncomplete") ?? 0) === 0;
+		const total = measured ? field(field(verdict.telemetry, "total"), "total") : undefined;
 		tokens = amount(field(total, "totalTokens"));
 		cost = amount(field(field(total, "cost"), "total"));
 	} else {
-		seconds = amount(field(verdict.spend, "seconds"));
-		tokens = amount(field(verdict.spend, "tokens"));
-		cost = amount(field(verdict.spend, "cost"));
+		const spent = field(verdict, "spend");
+		seconds = amount(field(spent, "seconds"));
+		tokens = amount(field(spent, "tokens"));
+		cost = amount(field(spent, "cost"));
 	}
 	const spend = {
 		...(seconds === undefined ? {} : { seconds }),
@@ -305,17 +319,28 @@ export class RoundComment {
 		// The exit code and commits sit outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
 		const header = `${marker(this.runId, this.nonce)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
+		// A round spent its time and tokens whether or not it may post its findings, so every outcome shows the spend.
+		const spent = this.verdict?.spend === undefined ? [] : [spendLine(this.verdict.spend)];
+		const unposted = (why) => `${header}\n\n${why}\n${spent.length === 0 ? "" : `\n${fenced(spent)}`}`;
 		if (this.current === undefined)
-			return `${header}\n\nThe pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				"The pull request could not be read again before posting, so this round posts no findings. Start a new round.",
+			);
 		if (this.current.base !== this.base || this.current.head !== this.head) {
 			const moved = `${commit(this.current.base)}...${commit(this.current.head)}`;
-			return `${header}\n\nThe pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				`The pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.`,
+			);
 		}
 		if (this.reviewed === undefined)
-			return `${header}\n\nThe round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				"The round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.",
+			);
 		if (this.reviewed.head !== this.head || this.reviewed.base !== this.mergeBase) {
 			const other = `${commit(this.reviewed.base)}...${commit(this.reviewed.head)}`;
-			return `${header}\n\nMelian reviewed ${other}, not the pull request the gate approved, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				`Melian reviewed ${other}, not the pull request the gate approved, so this round posts no findings. Start a new round.`,
+			);
 		}
 		const verdict = this.verdict;
 		const problem =
@@ -324,10 +349,9 @@ export class RoundComment {
 				? undefined
 				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
 		if (problem !== undefined) {
-			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`])}`;
+			return `${header}\n\n${fenced(["Verdict: not reviewed", ...spent, "", `${problem}; a local run of melian review says why.`])}`;
 		}
-		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
-		if (verdict.spend !== undefined) quoted.push(spendLine(verdict.spend));
+		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`, ...spent];
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);

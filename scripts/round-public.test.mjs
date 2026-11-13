@@ -210,10 +210,10 @@ describe("what of a round leaves the job", () => {
 		);
 	});
 
-	it("keeps the probe's own output out of the public verdict, and reads it as no verdict", () => {
+	it("keeps the probe's own output out of the public verdict, keeping only its spend, and reads it as no verdict", () => {
 		expect(readFileSync(probe, "utf8")).toContain(token);
 		const published = run("--public", probe);
-		expect([published.status, published.stdout, published.stderr]).toEqual([0, "null\n", ""]);
+		expect([published.status, published.stdout, published.stderr]).toEqual([0, '{"spend":{"seconds":2}}\n', ""]);
 		const absent = run("--public", join(tmpdir(), "round-public-absent", "verdict.json"));
 		expect([absent.status, absent.stdout, absent.stderr]).toEqual([0, "null\n", ""]);
 	});
@@ -243,14 +243,69 @@ describe("a round's spend in the public verdict", () => {
 	const telemetry = (
 		total = { totalTokens: 5644300, cost: { total: 4.44 } },
 		prepare = { startedAt: 1_000, endedAt: 573_400 },
+		usage = { usageUnavailable: [] },
 	) => ({
 		revision: token,
 		stages: [{ id: "s1", name: "melian.lens", subject: token, note: printed, durationMs: 5 }],
 		total: { total, requests: [{ model: token, reasoning: { sent: token } }] },
-		usageUnavailable: [token],
+		...usage,
 		prepare: { ...prepare, spans: [{ name: token, startedAt: 1, endedAt: 2, durationMs: 1 }] },
-		untimed: [],
+		untimed: [{ startedAt: 1, endedAt: 2, durationMs: 1, note: token }],
 	});
+	const spentLine = "Spend: 572 s, 5644300 tokens, $4.44";
+	const outcome = (value, options) =>
+		RoundComment.read({
+			verdict: file("verdict.json", JSON.stringify(value)),
+			rounds: file("rounds.json", JSON.stringify([{ base: mergeBase, head }])),
+			exitCode: "0",
+			runUrl: "https://example.test/run",
+			runId: "1",
+			nonce: "0123456789abcdef0123456789abcdef",
+			base,
+			head,
+			mergeBase,
+			current: { base, head },
+			...options,
+		}).body();
+
+	it.each([
+		["a stage whose usage was not recorded", { usageUnavailable: ["s1"] }],
+		["a stage whose usage was recorded in part", { usageUnavailable: [], usageIncomplete: 1 }],
+		["telemetry that does not say whether every stage was measured", {}],
+	])("leaves out tokens and cost, which would read as exact, for %s, and keeps the duration", (_name, usage) => {
+		expect(JSON.parse(published({ ...passed, telemetry: telemetry(undefined, undefined, usage) }))).toStrictEqual({
+			...passed,
+			spend: { seconds: 572 },
+		});
+	});
+
+	it("keeps tokens and cost when no stage's usage was lost", () => {
+		const usage = { usageUnavailable: [], usageIncomplete: 0 };
+		expect(
+			JSON.parse(published({ ...passed, telemetry: telemetry(undefined, undefined, usage) })).spend,
+		).toStrictEqual({ seconds: 572, tokens: 5644300, cost: 4.44 });
+	});
+
+	it("keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed", () => {
+		const failed = { error: { message: token }, telemetry: telemetry() };
+		const stdout = published(failed);
+		expect(stdout).not.toContain(token);
+		expect(JSON.parse(stdout)).toStrictEqual({ spend: { seconds: 572, tokens: 5644300, cost: 4.44 } });
+		expect(outcome(failed, { exitCode: "2" })).toContain(`\`\`\`text\nVerdict: not reviewed\n${spentLine}\n`);
+	});
+
+	it.each([
+		["the pull request moved during the round", { current: { base, head: "f".repeat(40) } }],
+		["the pull request could not be read again", { current: undefined }],
+		["the round's record names another revision", { rounds: file("rounds.json", JSON.stringify([{ base, head }])) }],
+		["the exit code disagrees with the verdict", { exitCode: "1" }],
+	])(
+		"prints the spend at the start of a fenced line when %s, though the round posts no findings",
+		(_name, options) => {
+			const body = outcome({ ...passed, telemetry: telemetry() }, options);
+			expect(body).toMatch(new RegExp(`\`\`\`text\\n(?:[^\\n]*\\n)*?${spentLine.replace(/[$.]/g, "\\$&")}\\n`));
+		},
+	);
 	const published = (value) => {
 		const result = run("--public", file("verdict.json", JSON.stringify(value)));
 		expect([result.status, result.stderr]).toEqual([0, ""]);

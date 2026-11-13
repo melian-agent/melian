@@ -805,7 +805,7 @@ describe("rounds", () => {
 	const head = "0123456789abcdef0123456789abcdef01234567";
 	const mergeBase = "e".repeat(40);
 	// A round comment as the melian round workflow posts it, from a public verdict that carries the round's spend.
-	const roundBody = (spend) =>
+	const roundBody = (spend, current = { base, head }) =>
 		new RoundComment({
 			verdict: {
 				status: "passed",
@@ -822,7 +822,7 @@ describe("rounds", () => {
 			head,
 			mergeBase,
 			reviewed: { base: mergeBase, head },
-			current: { base, head },
+			current,
 		}).body();
 	const comment = (minutes, body, login = "melian-status-bot") => ({
 		__typename: "IssueComment",
@@ -889,6 +889,15 @@ describe("rounds", () => {
 		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
 		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
 			"| 2026-10-01 00:10 | 0.17 | round | 9.5 min, 5644300 tokens, $12.34 |",
+		]);
+	});
+
+	it("reads the spend of a round that posted no findings because the pull request moved", () => {
+		const body = roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }, { base, head: "f".repeat(40) });
+		expect(body).toContain("so this round posts no findings");
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 9.5 min, 5644300 tokens, $4.44 |",
 		]);
 	});
 

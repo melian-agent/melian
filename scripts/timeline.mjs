@@ -83,15 +83,16 @@ export function parseTiming(body) {
 	return items;
 }
 
-// A round's spend from the comment the melian round workflow posts as melian-status-bot: the line right after the
-// verdict, inside the comment's one code fence, as round.mjs's spendLine writes it. Undefined for any other comment, or
-// a line it cannot read whole.
+// A round's spend from the comment the melian round workflow posts as melian-status-bot: a line of the comment's first
+// code fence, as round.mjs's spendLine writes it. Every line of that fence that holds a model's or a check's text starts
+// with spaces, so only spendLine starts one with "Spend: ". Undefined for any other comment, or a line it cannot read
+// whole.
 export function parseRound(body, author) {
 	if (author !== "melian-status-bot" || !body.startsWith("<!-- melian-round run:")) return undefined;
 	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
 	// A comment edited on GitHub's web page comes back with CRLF line endings, which the code block keeps.
-	const [verdict, line] = fence?.value.split(/\r?\n/) ?? [];
-	const match = verdict?.startsWith("Verdict: ") ? /^Spend: (.+)$/.exec(line ?? "") : null;
+	const line = fence?.value.split(/\r?\n/).find((each) => each.startsWith("Spend: "));
+	const match = /^Spend: (.+)$/.exec(line ?? "");
 	if (match === null) return undefined;
 	const spend = {};
 	for (const part of match[1].split(", ")) {
