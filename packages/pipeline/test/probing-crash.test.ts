@@ -36,8 +36,9 @@ async function crashInProber(
 	log: string,
 	script = crashScript,
 	event = "prober-asked",
+	args: readonly string[] = [],
 ): Promise<void> {
-	const child = spawn(process.execPath, ["--conditions=@melian-agent/source", script, repo, database, log], {
+	const child = spawn(process.execPath, ["--conditions=@melian-agent/source", script, repo, database, log, ...args], {
 		stdio: ["ignore", "ignore", "pipe"],
 	});
 	let stderr = "";
@@ -206,6 +207,57 @@ describe("a level that probes across a crash", { timeout: 60_000 }, () => {
 			// The planner's plan, which the verifier reads, and the prober's copy are one plan.
 			expect(plans[0]).toBeDefined();
 			expect(plans[1]).toBe(plans[0]);
+		} finally {
+			await harness.close(context);
+		}
+	});
+
+	it("counts the attacks of the plan the planner ends with, after a crash inside a reminder that recorded none", async () => {
+		const database = join(dir, "state.sqlite");
+		const log = join(dir, "events.jsonl");
+		await crashInProber(database, log, planReminderCrashScript, "planner-reminded", ["empty"]);
+		const attack = { target: "src/user.ts", reason: "r", passing: "p", failing: "f" };
+		const { harness, review } = await probingReview(repo, database, {
+			first: {
+				planner: [
+					async () => {
+						// Slow enough that the resumed review reads the empty plan the reminder recorded before the crash first.
+						await sleep(1_500);
+						return fauxAssistantMessage(
+							[fauxToolCall("record_plan", { attacks: [attack, { ...attack, target: "src/other.ts" }] })],
+							{ stopReason: "toolUse" },
+						);
+					},
+					fauxAssistantMessage("Planned 2 attacks."),
+				],
+				prober: [
+					fauxAssistantMessage(
+						[1, 2].map((each) => fauxToolCall("skip_attack", { attack: each, reason: "needs the network" })),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Skipped every attack."),
+				],
+			},
+			second: { planner: [], prober: [] },
+		});
+		try {
+			await review().catch(() => undefined);
+			const { revision } = await Changeset.resolve(repo, "main...feature");
+			const root = await harness.harness.root(context);
+			const index = (await harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[
+				Revision.key(revision)
+			]!;
+			const task = await harness.harness.waitForTask(index.task as TaskId, context);
+			const outcome = Object.values(
+				(
+					task.state as {
+						outcome: { result: Record<string, { conversation?: number; probing?: { attacks: number } }> };
+					}
+				).outcome.result,
+			)[0]!;
+			const plan = await harness.harness.snapshot(ProbingDocument, outcome.conversation as ConversationId, context);
+			// The attacks the review counts are the plan the planner ends with, which the verifier reads.
+			expect(outcome.probing?.attacks).toBe(plan?.plan?.length);
 		} finally {
 			await harness.close(context);
 		}

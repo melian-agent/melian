@@ -602,19 +602,19 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					plan = await planOf();
 				}
 				if (plan === undefined) return { status: "unanswered", reason: "the planner recorded no attack plan" };
-				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const key = `${lens.key}/prober`;
 				let prober = started.children[key];
 				if (prober === undefined) {
 					await runtime.commit(async (tx, current) => {
-						// The plan as this commit reads it is the one the prober gets, and a reminder the planner may still be
-						// answering after a crash can no longer replace it.
+						// The plan as this commit reads it is the one the prober gets, or the empty one the level ends with, and a
+						// reminder the planner may still be answering after a crash can no longer replace it.
 						const planned = await tx.doc(ProbingDocument, planner);
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						prober = checkpoint.children[key];
 						if (prober !== undefined) return undefined;
 						planned.frozen = true;
 						plan = planned.plan!.map((attack) => ({ ...attack }));
+						if (plan.length === 0) return undefined;
 						prober = await spawnProber(tx, runtime.taskId, input, lens, plan);
 						return {
 							status: "running",
@@ -626,6 +626,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						};
 					}, context);
 				}
+				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
 				const answered = await converse(
 					key,
