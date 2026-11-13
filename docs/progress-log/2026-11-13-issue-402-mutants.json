@@ -26,7 +26,7 @@
    "evidence": "packages/cli/test/cli.test.ts > melian review and findings > keeps the verdict when telemetry cannot be read: Error: timing\u001b[2J",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "packages/cli/test/cli.test.ts > melian review and findings > keeps the verdict when telemetry cannot be read: Error: timing\u001b[2J",
     "collected": 1,
     "failed": true
@@ -44,7 +44,7 @@
    "evidence": "packages/cli/test/cli.test.ts > melian review and findings > includes durable stage telemetry in review JSON",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "packages/cli/test/cli.test.ts > melian review and findings > includes durable stage telemetry in review JSON",
     "collected": 1,
     "failed": true
@@ -76,7 +76,7 @@
    "evidence": "packages/cli/test/cli.test.ts > melian review and findings > prints one partial review JSON object after storage opens: Error: review\u001b[2J",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "packages/cli/test/cli.test.ts > melian review and findings > prints one partial review JSON object after storage opens: Error: review\u001b[2J",
     "collected": 1,
     "failed": true
@@ -94,7 +94,7 @@
    "evidence": "packages/cli/test/cli.test.ts > melian review and findings > prints one partial review JSON object after storage opens: Error: review\u001b[2J",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "packages/cli/test/cli.test.ts > melian review and findings > prints one partial review JSON object after storage opens: Error: review\u001b[2J",
     "collected": 1,
     "failed": true
@@ -112,7 +112,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -142,7 +142,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -160,7 +160,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -178,7 +178,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -196,7 +196,7 @@
    "evidence": "scripts/round-comment.test.mjs > RoundComment > reads a verdict file that is absent or not JSON as no verdict",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-comment.test.mjs > RoundComment > reads a verdict file that is absent or not JSON as no verdict",
     "collected": 1,
     "failed": true
@@ -214,7 +214,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -232,7 +232,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -250,7 +250,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -268,7 +268,7 @@
    "evidence": "scripts/round-public.test.mjs > what of a round leaves the job > keeps the text a static tool printed out of the public verdict",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > what of a round leaves the job > keeps the text a static tool printed out of the public verdict",
     "collected": 1,
     "failed": true
@@ -286,7 +286,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -304,7 +304,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens as a string and keeps the rest",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens as a string and keeps the rest",
     "collected": 1,
     "failed": true
@@ -322,7 +322,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a negative cost and keeps the rest",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a negative cost and keeps the rest",
     "collected": 1,
     "failed": true
@@ -340,7 +340,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a zero, as a round that ran nothing new costs nothing",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a zero, as a round that ran nothing new costs nothing",
     "collected": 1,
     "failed": true
@@ -358,7 +358,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -376,7 +376,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -394,7 +394,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -412,7 +412,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -430,7 +430,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -448,7 +448,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -466,7 +466,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -498,7 +498,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the verdict and leaves out the spend when telemetry is null",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the verdict and leaves out the spend when telemetry is null",
     "collected": 1,
     "failed": true
@@ -516,7 +516,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -534,7 +534,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -552,7 +552,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -570,7 +570,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -588,7 +588,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -606,7 +606,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -624,7 +624,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
     "collected": 1,
     "failed": true
@@ -642,7 +642,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
     "collected": 1,
     "failed": true
@@ -660,7 +660,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
     "collected": 1,
     "failed": true
@@ -678,7 +678,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -696,7 +696,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -714,7 +714,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -724,7 +724,7 @@
    "file": "scripts/round.mjs",
    "line": 238,
    "column": 26,
-   "endLine": 266,
+   "endLine": 269,
    "endColumn": 1,
    "mutatorName": "BlockStatement",
    "replacement": "{}",
@@ -732,7 +732,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -750,7 +750,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
     "collected": 1,
     "failed": true
@@ -768,7 +768,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -786,7 +786,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -810,7 +810,7 @@
    "file": "scripts/round.mjs",
    "line": 242,
    "column": 48,
-   "endLine": 254,
+   "endLine": 257,
    "endColumn": 2,
    "mutatorName": "BlockStatement",
    "replacement": "{}",
@@ -818,7 +818,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -878,7 +878,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -896,7 +896,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -942,7 +942,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -960,7 +960,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -978,7 +978,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
     "collected": 1,
     "failed": true
@@ -996,7 +996,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1014,7 +1014,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -1032,7 +1032,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1050,7 +1050,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -1068,7 +1068,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1086,7 +1086,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a row that is not an object, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a row that is not an object, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1104,7 +1104,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1134,7 +1134,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -1166,7 +1166,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a row that is not an object, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a row that is not an object, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1184,7 +1184,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -1202,7 +1202,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1220,7 +1220,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
     "collected": 1,
     "failed": true
@@ -1238,7 +1238,7 @@
    "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens and cost, which would read as exact, for a run row whose usage was recorded in part, and keeps the duration",
     "collected": 1,
     "failed": true
@@ -1246,24 +1246,172 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 252,
-   "column": 34,
-   "endLine": 252,
-   "endColumn": 42,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
+   "line": 254,
+   "column": 23,
+   "endLine": 254,
+   "endColumn": 114,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
   },
   {
    "file": "scripts/round.mjs",
-   "line": 253,
-   "column": 32,
-   "endLine": 253,
-   "endColumn": 38,
+   "line": 254,
+   "column": 23,
+   "endLine": 254,
+   "endColumn": 114,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts no tokens and no cost, not unknown ones, for a run of every stage it reused",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts no tokens and no cost, not unknown ones, for a run of every stage it reused",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 23,
+   "endLine": 254,
+   "endColumn": 114,
+   "mutatorName": "LogicalOperator",
+   "replacement": "measured || !rows.some(row => Object.hasOwn(row, \"tokens\") || Object.hasOwn(row, \"cost\"))",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 35,
+   "endLine": 254,
+   "endColumn": 114,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "rows.some(row => Object.hasOwn(row, \"tokens\") || Object.hasOwn(row, \"cost\"))",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 36,
+   "endLine": 254,
+   "endColumn": 114,
+   "mutatorName": "MethodExpression",
+   "replacement": "rows.every(row => Object.hasOwn(row, \"tokens\") || Object.hasOwn(row, \"cost\"))",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 46,
+   "endLine": 254,
+   "endColumn": 113,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 55,
+   "endLine": 254,
+   "endColumn": 113,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts no tokens and no cost, not unknown ones, for a run of every stage it reused",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts no tokens and no cost, not unknown ones, for a run of every stage it reused",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 55,
+   "endLine": 254,
+   "endColumn": 113,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 55,
+   "endLine": 254,
+   "endColumn": 113,
+   "mutatorName": "LogicalOperator",
+   "replacement": "Object.hasOwn(row, \"tokens\") && Object.hasOwn(row, \"cost\")",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a figure no row holds, and keeps one some rows hold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 74,
+   "endLine": 254,
+   "endColumn": 82,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
@@ -1275,27 +1423,23 @@
   {
    "file": "scripts/round.mjs",
    "line": 254,
-   "column": 8,
-   "endLine": 259,
-   "endColumn": 2,
-   "mutatorName": "BlockStatement",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
-    "collected": 1,
-    "failed": true
-   }
+   "column": 106,
+   "endLine": 254,
+   "endColumn": 112,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "scripts/round.mjs",
    "line": 255,
-   "column": 31,
+   "column": 53,
    "endLine": 255,
-   "endColumn": 38,
+   "endColumn": 61,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
@@ -1307,1024 +1451,8 @@
   {
    "file": "scripts/round.mjs",
    "line": 256,
-   "column": 32,
+   "column": 51,
    "endLine": 256,
-   "endColumn": 41,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 257,
-   "column": 31,
-   "endLine": 257,
-   "endColumn": 39,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 258,
-   "column": 29,
-   "endLine": 258,
-   "endColumn": 35,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 260,
-   "column": 15,
-   "endLine": 264,
-   "endColumn": 2,
-   "mutatorName": "ObjectLiteral",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 261,
-   "column": 6,
-   "endLine": 261,
-   "endColumn": 27,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 261,
-   "column": 6,
-   "endLine": 261,
-   "endColumn": 27,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 261,
-   "column": 6,
-   "endLine": 261,
-   "endColumn": 27,
-   "mutatorName": "EqualityOperator",
-   "replacement": "seconds !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 261,
-   "column": 35,
-   "endLine": 261,
-   "endColumn": 46,
-   "mutatorName": "ObjectLiteral",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 262,
-   "column": 6,
-   "endLine": 262,
-   "endColumn": 26,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 262,
-   "column": 6,
-   "endLine": 262,
-   "endColumn": 26,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 262,
-   "column": 6,
-   "endLine": 262,
-   "endColumn": 26,
-   "mutatorName": "EqualityOperator",
-   "replacement": "tokens !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 262,
-   "column": 34,
-   "endLine": 262,
-   "endColumn": 44,
-   "mutatorName": "ObjectLiteral",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 263,
-   "column": 6,
-   "endLine": 263,
-   "endColumn": 24,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 263,
-   "column": 6,
-   "endLine": 263,
-   "endColumn": 24,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 263,
-   "column": 6,
-   "endLine": 263,
-   "endColumn": 24,
-   "mutatorName": "EqualityOperator",
-   "replacement": "cost !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 263,
-   "column": 32,
-   "endLine": 263,
-   "endColumn": 40,
-   "mutatorName": "ObjectLiteral",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 265,
-   "column": 8,
-   "endLine": 265,
-   "endColumn": 39,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 265,
-   "column": 8,
-   "endLine": 265,
-   "endColumn": 39,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 265,
-   "column": 8,
-   "endLine": 265,
-   "endColumn": 39,
-   "mutatorName": "EqualityOperator",
-   "replacement": "Object.keys(spend).length !== 0",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 269,
-   "column": 53,
-   "endLine": 276,
-   "endColumn": 1,
-   "mutatorName": "BlockStatement",
-   "replacement": "{}",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 270,
-   "column": 15,
-   "endLine": 274,
-   "endColumn": 2,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 6,
-   "endLine": 271,
-   "endColumn": 27,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 6,
-   "endLine": 271,
-   "endColumn": 27,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 6,
-   "endLine": 271,
-   "endColumn": 27,
-   "mutatorName": "EqualityOperator",
-   "replacement": "seconds !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 30,
-   "endLine": 271,
-   "endColumn": 32,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[\"Stryker was here\"]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 35,
-   "endLine": 271,
-   "endColumn": 51,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 271,
-   "column": 36,
-   "endLine": 271,
-   "endColumn": 50,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 6,
-   "endLine": 272,
-   "endColumn": 26,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 6,
-   "endLine": 272,
-   "endColumn": 26,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 6,
-   "endLine": 272,
-   "endColumn": 26,
-   "mutatorName": "EqualityOperator",
-   "replacement": "tokens !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 29,
-   "endLine": 272,
-   "endColumn": 31,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[\"Stryker was here\"]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 34,
-   "endLine": 272,
-   "endColumn": 54,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 272,
-   "column": 35,
-   "endLine": 272,
-   "endColumn": 53,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 6,
-   "endLine": 273,
-   "endColumn": 24,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 6,
-   "endLine": 273,
-   "endColumn": 24,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 6,
-   "endLine": 273,
-   "endColumn": 24,
-   "mutatorName": "EqualityOperator",
-   "replacement": "cost !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 27,
-   "endLine": 273,
-   "endColumn": 29,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[\"Stryker was here\"]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 32,
-   "endLine": 273,
-   "endColumn": 55,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 273,
-   "column": 33,
-   "endLine": 273,
-   "endColumn": 54,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 275,
-   "column": 8,
-   "endLine": 275,
-   "endColumn": 36,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 275,
-   "column": 29,
-   "endLine": 275,
-   "endColumn": 33,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 16,
-   "endLine": 326,
-   "endColumn": 49,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 16,
-   "endLine": 326,
-   "endColumn": 49,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 16,
-   "endLine": 326,
-   "endColumn": 49,
-   "mutatorName": "EqualityOperator",
-   "replacement": "this.verdict?.spend !== undefined",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 16,
-   "endLine": 326,
-   "endColumn": 35,
-   "mutatorName": "OptionalChaining",
-   "replacement": "this.verdict.spend",
-   "claim": "killed",
-   "evidence": "scripts/round-comment.test.mjs > RoundComment > reads a missing or malformed verdict as not reviewed, naming what is wrong",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-comment.test.mjs > RoundComment > reads a missing or malformed verdict as not reviewed, naming what is wrong",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 52,
-   "endLine": 326,
-   "endColumn": 54,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[\"Stryker was here\"]",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 326,
-   "column": 57,
-   "endLine": 326,
-   "endColumn": 88,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 19,
-   "endLine": 327,
-   "endColumn": 100,
-   "mutatorName": "ArrowFunction",
-   "replacement": "() => undefined",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 28,
-   "endLine": 327,
-   "endColumn": 100,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 52,
-   "endLine": 327,
-   "endColumn": 70,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "true",
-   "claim": "killed",
-   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend at the start of a fenced line when the pull request moved during the round, though the round posts no findings",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend at the start of a fenced line when the pull request moved during the round, though the round posts no findings",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 52,
-   "endLine": 327,
-   "endColumn": 70,
-   "mutatorName": "ConditionalExpression",
-   "replacement": "false",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 52,
-   "endLine": 327,
-   "endColumn": 70,
-   "mutatorName": "EqualityOperator",
-   "replacement": "spent.length !== 0",
-   "claim": "killed",
-   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 73,
-   "endLine": 327,
-   "endColumn": 75,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"Stryker was here!\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 327,
-   "column": 78,
-   "endLine": 327,
-   "endColumn": 98,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 330,
-   "column": 4,
-   "endLine": 330,
-   "endColumn": 114,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 335,
-   "column": 4,
-   "endLine": 335,
-   "endColumn": 110,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 340,
-   "column": 4,
-   "endLine": 340,
-   "endColumn": 119,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 345,
-   "column": 4,
-   "endLine": 345,
-   "endColumn": 123,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 355,
-   "column": 10,
-   "endLine": 355,
-   "endColumn": 129,
-   "mutatorName": "StringLiteral",
-   "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 355,
-   "column": 33,
-   "endLine": 355,
-   "endColumn": 126,
-   "mutatorName": "ArrayDeclaration",
-   "replacement": "[]",
-   "claim": "killed",
-   "evidence": "scripts/round-comment.test.mjs > RoundComment > reads a verdict whose exit code disagrees with its status as not reviewed",
-   "survivorClasses": [],
-   "run": {
-    "head": "6a07b782",
-    "test": "scripts/round-comment.test.mjs > RoundComment > reads a verdict whose exit code disagrees with its status as not reviewed",
-    "collected": 1,
-    "failed": true
-   }
-  },
-  {
-   "file": "scripts/round.mjs",
-   "line": 355,
-   "column": 34,
-   "endLine": 355,
    "endColumn": 57,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -2336,9 +1464,1071 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 355,
+   "line": 257,
+   "column": 8,
+   "endLine": 262,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 258,
+   "column": 31,
+   "endLine": 258,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 259,
+   "column": 32,
+   "endLine": 259,
+   "endColumn": 41,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 260,
+   "column": 31,
+   "endLine": 260,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 261,
+   "column": 29,
+   "endLine": 261,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 263,
+   "column": 15,
+   "endLine": 267,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 264,
+   "column": 6,
+   "endLine": 264,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 264,
+   "column": 6,
+   "endLine": 264,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 264,
+   "column": 6,
+   "endLine": 264,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 264,
+   "column": 35,
+   "endLine": 264,
+   "endColumn": 46,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 265,
+   "column": 6,
+   "endLine": 265,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 265,
+   "column": 6,
+   "endLine": 265,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 265,
+   "column": 6,
+   "endLine": 265,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 265,
+   "column": 34,
+   "endLine": 265,
+   "endColumn": 44,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 266,
+   "column": 6,
+   "endLine": 266,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 266,
+   "column": 6,
+   "endLine": 266,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 266,
+   "column": 6,
+   "endLine": 266,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 266,
+   "column": 32,
+   "endLine": 266,
+   "endColumn": 40,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > counts nothing for a stage the review reused, so its spend is less than the revision's whole",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 268,
+   "column": 8,
+   "endLine": 268,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 268,
+   "column": 8,
+   "endLine": 268,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 268,
+   "column": 8,
+   "endLine": 268,
+   "endColumn": 39,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Object.keys(spend).length !== 0",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > uploads no file holding what a static tool printed, when Melian's output quotes a login",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 272,
+   "column": 53,
+   "endLine": 279,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 273,
+   "column": 15,
+   "endLine": 277,
+   "endColumn": 2,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 6,
+   "endLine": 274,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 6,
+   "endLine": 274,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 6,
+   "endLine": 274,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 30,
+   "endLine": 274,
+   "endColumn": 32,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 35,
+   "endLine": 274,
+   "endColumn": 51,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 274,
+   "column": 36,
+   "endLine": 274,
+   "endColumn": 50,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 6,
+   "endLine": 275,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 6,
+   "endLine": 275,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 6,
+   "endLine": 275,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 29,
+   "endLine": 275,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 34,
+   "endLine": 275,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 275,
+   "column": 35,
+   "endLine": 275,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 6,
+   "endLine": 276,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 6,
+   "endLine": 276,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 6,
+   "endLine": 276,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 27,
+   "endLine": 276,
+   "endColumn": 29,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 32,
+   "endLine": 276,
+   "endColumn": 55,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 276,
+   "column": 33,
+   "endLine": 276,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 278,
+   "column": 8,
+   "endLine": 278,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 278,
+   "column": 29,
+   "endLine": 278,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 16,
+   "endLine": 329,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 16,
+   "endLine": 329,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 16,
+   "endLine": 329,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.verdict?.spend !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 16,
+   "endLine": 329,
+   "endColumn": 35,
+   "mutatorName": "OptionalChaining",
+   "replacement": "this.verdict.spend",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > reads a missing or malformed verdict as not reviewed, naming what is wrong",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-comment.test.mjs > RoundComment > reads a missing or malformed verdict as not reviewed, naming what is wrong",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 52,
+   "endLine": 329,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 329,
+   "column": 57,
+   "endLine": 329,
+   "endColumn": 88,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 19,
+   "endLine": 330,
+   "endColumn": 100,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 28,
+   "endLine": 330,
+   "endColumn": 100,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 52,
+   "endLine": 330,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend at the start of a fenced line when the pull request moved during the round, though the round posts no findings",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend at the start of a fenced line when the pull request moved during the round, though the round posts no findings",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 52,
+   "endLine": 330,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 52,
+   "endLine": 330,
+   "endColumn": 70,
+   "mutatorName": "EqualityOperator",
+   "replacement": "spent.length !== 0",
+   "claim": "killed",
+   "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 73,
+   "endLine": 330,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 78,
+   "endLine": 330,
+   "endColumn": 98,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 333,
+   "column": 4,
+   "endLine": 333,
+   "endColumn": 114,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 338,
+   "column": 4,
+   "endLine": 338,
+   "endColumn": 110,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 343,
+   "column": 4,
+   "endLine": 343,
+   "endColumn": 119,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 348,
+   "column": 4,
+   "endLine": 348,
+   "endColumn": 123,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 358,
+   "column": 10,
+   "endLine": 358,
+   "endColumn": 129,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 358,
+   "column": 33,
+   "endLine": 358,
+   "endColumn": 126,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > reads a verdict whose exit code disagrees with its status as not reviewed",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/round-comment.test.mjs > RoundComment > reads a verdict whose exit code disagrees with its status as not reviewed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 358,
+   "column": 34,
+   "endLine": 358,
+   "endColumn": 57,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 358,
    "column": 69,
-   "endLine": 355,
+   "endLine": 358,
    "endColumn": 71,
    "mutatorName": "StringLiteral",
    "replacement": "\"Stryker was here!\"",
@@ -2350,9 +2540,9 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 355,
+   "line": 358,
    "column": 73,
-   "endLine": 355,
+   "endLine": 358,
    "endColumn": 125,
    "mutatorName": "StringLiteral",
    "replacement": "``",
@@ -2364,9 +2554,9 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 357,
+   "line": 360,
    "column": 17,
-   "endLine": 357,
+   "endLine": 360,
    "endColumn": 106,
    "mutatorName": "ArrayDeclaration",
    "replacement": "[]",
@@ -2374,7 +2564,7 @@
    "evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
     "collected": 1,
     "failed": true
@@ -2382,9 +2572,9 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 357,
+   "line": 360,
    "column": 18,
-   "endLine": 357,
+   "endLine": 360,
    "endColumn": 95,
    "mutatorName": "StringLiteral",
    "replacement": "``",
@@ -2396,9 +2586,9 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 357,
+   "line": 360,
    "column": 76,
-   "endLine": 357,
+   "endLine": 360,
    "endColumn": 88,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -2410,9 +2600,9 @@
   },
   {
    "file": "scripts/round.mjs",
-   "line": 357,
+   "line": 360,
    "column": 91,
-   "endLine": 357,
+   "endLine": 360,
    "endColumn": 93,
    "mutatorName": "StringLiteral",
    "replacement": "\"Stryker was here!\"",
@@ -2434,7 +2624,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2452,7 +2642,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2470,7 +2660,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
     "collected": 1,
     "failed": true
@@ -2488,7 +2678,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
     "collected": 1,
     "failed": true
@@ -2506,7 +2696,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
     "collected": 1,
     "failed": true
@@ -2524,7 +2714,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
     "collected": 1,
     "failed": true
@@ -2542,7 +2732,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > gaps > never lets a Timing item fill a gap",
     "collected": 1,
     "failed": true
@@ -2574,7 +2764,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
     "collected": 1,
     "failed": true
@@ -2592,7 +2782,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment by another account that took the bot's login",
     "collected": 1,
     "failed": true
@@ -2610,7 +2800,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2628,7 +2818,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2643,11 +2833,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker",
     "collected": 1,
     "failed": true
    }
@@ -2664,7 +2854,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2696,7 +2886,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2714,7 +2904,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2732,7 +2922,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2750,7 +2940,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2779,11 +2969,11 @@
    "mutatorName": "OptionalChaining",
    "replacement": "fence.value",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with a spend line outside the fence",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with a spend line outside the fence",
     "collected": 1,
     "failed": true
    }
@@ -2800,7 +2990,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2818,7 +3008,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2836,7 +3026,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2868,7 +3058,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2883,11 +3073,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a comment without the round's marker, or a spend line outside the fence",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -2904,7 +3094,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2922,7 +3112,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2968,7 +3158,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -2986,7 +3176,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3001,11 +3191,11 @@
    "mutatorName": "Regex",
    "replacement": "/(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))$/",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text before a part",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text before a part",
     "collected": 1,
     "failed": true
    }
@@ -3019,11 +3209,11 @@
    "mutatorName": "Regex",
    "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))/",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text after a part",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text after a part",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text after a part",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text after a part",
     "collected": 1,
     "failed": true
    }
@@ -3040,7 +3230,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3058,7 +3248,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3076,7 +3266,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3094,7 +3284,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3112,7 +3302,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back",
     "collected": 1,
     "failed": true
@@ -3130,7 +3320,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3148,7 +3338,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3166,7 +3356,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3181,7 +3371,7 @@
    "mutatorName": "ArrayDeclaration",
    "replacement": "[\"Stryker was here\"]",
    "claim": "equivalent",
-   "evidence": "With no part matched, destructuring a one-element array leaves seconds, tokens and cost undefined, so the part is refused either way.",
+   "evidence": "With no part matched, destructuring a one-element array leaves seconds, tokens and cost undefined, so the part is refused, and the round read with no spend, either way.",
    "survivorClasses": []
   },
   {
@@ -3196,7 +3386,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3214,7 +3404,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3232,7 +3422,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3250,7 +3440,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3268,7 +3458,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3286,7 +3476,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3301,11 +3491,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text before a part",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with text before a part",
     "collected": 1,
     "failed": true
    }
@@ -3322,7 +3512,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3340,7 +3530,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3351,14 +3541,68 @@
    "line": 173,
    "column": 20,
    "endLine": 178,
-   "endColumn": 13,
+   "endColumn": 27,
    "mutatorName": "ArrowFunction",
    "replacement": "() => undefined",
    "claim": "killed",
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 174,
+   "column": 1,
+   "endLine": 178,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 174,
+   "column": 1,
+   "endLine": 178,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 174,
+   "column": 1,
+   "endLine": 178,
+   "endColumn": 27,
+   "mutatorName": "LogicalOperator",
+   "replacement": "[...(seconds === undefined ? [] : [`${(seconds / 60).toFixed(1)} min`]), ...(tokens === undefined ? [] : [`${tokens} tokens`]), ...(cost === undefined ? [] : [`$${cost.toFixed(2)}`])].join(\", \") && \"no spend\"",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3376,7 +3620,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3394,7 +3638,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3409,11 +3653,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3430,7 +3674,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3445,11 +3689,11 @@
    "mutatorName": "ArrayDeclaration",
    "replacement": "[\"Stryker was here\"]",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3466,7 +3710,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3498,7 +3742,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3516,7 +3760,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3531,11 +3775,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3552,7 +3796,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3567,11 +3811,11 @@
    "mutatorName": "ArrayDeclaration",
    "replacement": "[\"Stryker was here\"]",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3588,7 +3832,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3620,7 +3864,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3635,11 +3879,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3656,7 +3900,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3671,11 +3915,11 @@
    "mutatorName": "ArrayDeclaration",
    "replacement": "[\"Stryker was here\"]",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -3692,7 +3936,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3728,6 +3972,20 @@
   },
   {
    "file": "scripts/timeline.mjs",
+   "line": 178,
+   "column": 17,
+   "endLine": 178,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
    "line": 293,
    "column": 9,
    "endLine": 293,
@@ -3752,7 +4010,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3770,7 +4028,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3788,7 +4046,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3806,7 +4064,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3838,7 +4096,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3856,7 +4114,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3874,7 +4132,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3892,7 +4150,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3910,7 +4168,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3928,7 +4186,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3946,7 +4204,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -3964,7 +4222,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -3982,7 +4240,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
     "collected": 1,
     "failed": true
@@ -4000,7 +4258,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4018,7 +4276,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4033,11 +4291,11 @@
    "mutatorName": "MethodExpression",
    "replacement": "rounds",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -4054,7 +4312,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4069,11 +4327,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -4090,7 +4348,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4108,7 +4366,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4126,7 +4384,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4144,7 +4402,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
     "collected": 1,
     "failed": true
@@ -4162,7 +4420,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4180,7 +4438,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
     "collected": 1,
     "failed": true
@@ -4198,7 +4456,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4216,7 +4474,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4234,7 +4492,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4249,11 +4507,11 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "claim": "killed",
-   "evidence": "scripts/pr-timeline.test.mjs > rounds > says how many rounds each sum covers when some rounds lack its figure",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
-    "test": "scripts/pr-timeline.test.mjs > rounds > says how many rounds each sum covers when some rounds lack its figure",
+    "head": "4f3a988a",
+    "test": "scripts/pr-timeline.test.mjs > rounds > counts a round, with no spend, from the bot's round comment with no spend line, as a round whose review printed no JSON writes",
     "collected": 1,
     "failed": true
    }
@@ -4270,7 +4528,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4288,7 +4546,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4320,7 +4578,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4352,7 +4610,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4370,7 +4628,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
     "collected": 1,
     "failed": true
@@ -4388,7 +4646,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4448,7 +4706,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4480,7 +4738,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4512,7 +4770,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4544,7 +4802,7 @@
    "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
    "survivorClasses": [],
    "run": {
-    "head": "6a07b782",
+    "head": "4f3a988a",
     "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
     "collected": 1,
     "failed": true
@@ -4579,7 +4837,7 @@
    "survivorClasses": []
   }
  ],
- "total": 268,
+ "total": 283,
  "omitted": 0,
  "unmutated": []
 }
