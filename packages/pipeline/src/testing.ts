@@ -341,6 +341,7 @@ export function unconfinedSandbox(
 	return {
 		asked,
 		platform: process.platform === "darwin" ? "darwin" : "linux",
+		kind: "unconfined",
 		unavailable: () => undefined,
 		open: async () => {},
 		wrap: async (command, policy) => {

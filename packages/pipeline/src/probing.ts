@@ -207,7 +207,15 @@ export const probingLimits = {
 
 /** What a probe may run under, as the review's host decided it: whose head this is, and the base policy's word. */
 // `read` is the base policy's `probe.read`.
-export type ProbingEnvironment = { writer: WriterTrust; trustWriters: boolean; timeout?: number; read: string[] };
+export type ProbingEnvironment = {
+	writer: WriterTrust;
+	trustWriters: boolean;
+	timeout?: number;
+	read: string[];
+	// The platform and the sandbox the probes run under, from the sandbox itself, so a run on another host runs again.
+	platform: ProbeSandbox["platform"];
+	sandbox: string;
+};
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
@@ -264,6 +272,11 @@ async function openHeadProbe(
 	limits: { readonly entries: number; readonly bytes: number; readonly listing: number },
 ): Promise<Probe> {
 	const commit = await boundedHead(revision.repoRoot, revision.head, limits);
+	const runs = sandbox ?? Probe.sandbox;
+	if (environment.platform !== runs.platform || environment.sandbox !== runs.kind)
+		throw new Error(
+			`the probe was planned under ${environment.sandbox} on ${environment.platform}, and this host runs ${runs.kind} on ${runs.platform}`,
+		);
 	return Probe.open(input, {
 		head: { checkout: revision.repoRoot, commit, read: environment.read },
 		writer: environment.writer,
@@ -578,7 +591,13 @@ export function probingRenderings(): { readonly prompts: string; readonly eviden
 	const claim: ClaimProbe = {
 		id: "p7",
 		attack: 1,
-		environment: { writer: { trusted: true, by: "reviewer" }, trustWriters: true, read: ["node_modules"] },
+		environment: {
+			writer: { trusted: true, by: "reviewer" },
+			trustWriters: true,
+			read: ["node_modules"],
+			platform: "linux",
+			sandbox: "unconfined",
+		},
 		plan: [attack, { ...attack, target: "second" }],
 		probe: {
 			attack: 1,

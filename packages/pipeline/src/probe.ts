@@ -90,6 +90,8 @@ export interface ProbePolicy {
 export interface ProbeSandbox {
 	/** Which system's programs and libraries a probe reads. */
 	readonly platform: "darwin" | "linux";
+	/** Which sandbox confines a probe, by a name the keys that reuse a probe's results hold. */
+	readonly kind: string;
 	/** Why a probe cannot run here, or `undefined` when it can. */
 	unavailable(): string | undefined;
 	open(): Promise<void>;
@@ -510,6 +512,7 @@ const sessionsOf = new WeakMap<SandboxRuntime, { count: number; queue: Promise<v
 /** sandbox-runtime as a {@link ProbeSandbox}. Its manager is one per process, so one session serves every open probe. */
 export class RuntimeSandbox implements ProbeSandbox {
 	readonly platform: "darwin" | "linux";
+	readonly kind = "sandbox-runtime";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
@@ -693,6 +696,9 @@ export class Probe {
 		}
 		return new Probe(scratch, installs, limits, sandbox);
 	}
+
+	/** The sandbox a probe runs under when its options name none. */
+	static readonly sandbox: ProbeSandbox = runtime;
 
 	/** Whether a probe can run on this machine, by running an empty one. */
 	static async availability(sandbox: ProbeSandbox = runtime): Promise<ProbeAvailability> {

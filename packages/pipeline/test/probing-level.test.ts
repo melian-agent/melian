@@ -1038,7 +1038,13 @@ describe("a level that probes", () => {
 		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
 		const before = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
 		const standing = Object.keys(before);
-		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		const environment = {
+			writer: { trusted: true, by: "reviewer" } as const,
+			trustWriters: true,
+			read: [],
+			platform: unconfinedSandbox().platform,
+			sandbox: unconfinedSandbox().kind,
+		};
 		// New probes it would run, or only the probe whose rerun already stands, which leaves the prune alone to decide.
 		const probes =
 			scripts.length === 0
@@ -1088,7 +1094,13 @@ describe("a level that probes", () => {
 		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
 		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
 		const standing = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
-		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		const environment = {
+			writer: { trusted: true, by: "reviewer" } as const,
+			trustWriters: true,
+			read: [],
+			platform: unconfinedSandbox().platform,
+			sandbox: unconfinedSandbox().kind,
+		};
 		let taken: Promise<void> | undefined;
 		during = () => {
 			taken = root.commit(async (tx) => {

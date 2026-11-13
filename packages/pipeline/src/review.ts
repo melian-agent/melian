@@ -1331,6 +1331,11 @@ export interface Review {
 	readonly verdict: Verdict;
 }
 
+// The sandbox a review's probes run under: its harness's, or the one a probe uses when none is named.
+function probeSandboxOf(request: ReviewOptions): ProbeSandbox {
+	return (request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined) ?? Probe.sandbox;
+}
+
 // Why probes cannot run for this review, or `undefined` when they can: the host has not allowed the head's code to run
 // here, the base policy does not trust writers, or the sandbox cannot run on this machine.
 async function probeRefusal(
@@ -1342,12 +1347,18 @@ async function probeRefusal(
 	if (writer === undefined) return "the host did not say whose head this is";
 	if (!writer.trusted) return writer.detail;
 	if (writer.by === "writer" && !config.trust.writers) return "trust.writers is false in the repository's policy";
-	const sandbox = request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined;
+	const sandbox = probeSandboxOf(request);
 	const available = await Probe.availability(sandbox);
 	if (!available.available) return available.reason;
 	const refused = await headRefusal(
 		revision,
-		{ writer, trustWriters: config.trust.writers, read: [...config.probe.read] },
+		{
+			writer,
+			trustWriters: config.trust.writers,
+			read: [...config.probe.read],
+			platform: sandbox.platform,
+			sandbox: sandbox.kind,
+		},
 		sandbox,
 	);
 	return refused === undefined ? undefined : `the head refuses probes: ${refused}`;
@@ -2505,6 +2516,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						trustWriters: (await baseConfig()).trust.writers,
 						timeout,
 						read: [...(await baseConfig()).probe.read],
+						platform: probeSandboxOf(options).platform,
+						sandbox: probeSandboxOf(options).kind,
 					},
 				},
 				context: (boundary: string) => plannerContext(atBase, earlier, boundary),

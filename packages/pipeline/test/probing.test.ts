@@ -66,6 +66,8 @@ const reviewer: ProbingEnvironment = {
 	writer: { trusted: true, by: "reviewer" },
 	trustWriters: true,
 	read: ["node_modules"],
+	platform: unconfinedSandbox().platform,
+	sandbox: unconfinedSandbox().kind,
 };
 // What a probe left in this test's temporary directory, which nothing else writes.
 const left = () => readdirSync(tmpdir()).length;
@@ -132,6 +134,25 @@ describe("a head's bound", () => {
 		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
 	});
+
+	it.each([
+		["platform", { platform: "elsewhere" }],
+		["sandbox", { sandbox: "another" }],
+	])(
+		"refuses a probe planned under another %s than the one it would run under, and runs nothing",
+		async (_, other) => {
+			commit(repo, { "a.txt": "a\n" });
+			const sandbox = unconfinedSandbox();
+			const run = await runHeadProbe(
+				{ script: "process.exit(1);\n" },
+				{ repoRoot: repo, head: gitIn(repo, "rev-parse", "HEAD") },
+				{ ...reviewer, ...other } as ProbingEnvironment,
+				sandbox,
+			);
+			expect(run).toHaveProperty("refused");
+			expect(sandbox.asked).toEqual([]);
+		},
+	);
 
 	it("refuses a head whose tree git cannot list, saying what git said", async () => {
 		const missing = `tree ${"2".repeat(40)}\nauthor a <a@example.com> 0 +0000\ncommitter a <a@example.com> 0 +0000\n\nm\n`;
@@ -282,7 +303,7 @@ describe("runHeadProbe", () => {
 			await runHeadProbe(
 				{ script: "process.exit(0);\n" },
 				{ repoRoot: repo, head },
-				{ writer: { trusted: false, detail: "a fork's head" }, trustWriters: true, read: ["node_modules"] },
+				{ ...reviewer, writer: { trusted: false, detail: "a fork's head" } },
 				unconfinedSandbox(),
 			),
 		).toEqual({ refused: "the head's code may not run here: a fork's head" });
@@ -634,6 +655,7 @@ describe("the probing protocol a probing run's fingerprint holds", () => {
 			headRefusal: "opens a probe on the head and says why it cannot",
 			runHeadProbe: "runs a probe and says why its cleanup failed",
 			probingRenderings: "renders the prompts over fixed samples for the keys",
+			openHeadProbe: "opens a probe on the head and says why it cannot",
 		};
 		const path = fileURLToPath(new URL("../src/probing.ts", import.meta.url));
 		const program = HeadProgram.open(new Map([["probing.ts", readFileSync(path, "utf8")]]));
