@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -562,6 +562,15 @@ describe("a level that probes", () => {
 		);
 	});
 
+	it("runs a level without probes when the base policy's probe.read leads out of the checkout", async () => {
+		withBasePolicy("probe:\n  read: [outside]\n");
+		symlinkSync(tmpdir(), join(repo, "outside"));
+		const { run } = await withoutProbes({});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: the head refuses probes: probe.read may name only a relative path inside the checkout, not outside",
+		);
+	});
+
 	it("runs no probe where the sandbox cannot run, with the sandbox's reason", async () => {
 		const { run } = await withoutProbes({
 			sandbox: { ...unconfinedSandbox(), unavailable: () => "no seatbelt here" },
@@ -990,6 +999,11 @@ describe("a level that probes", () => {
 		}, backgroundContext);
 		const headsBefore = heads.length;
 		await reviewer.waitForTask(task, backgroundContext);
+		// It ends as it would have finished, so nothing reads its stop as a failure.
+		expect((await reviewer.getTask(task, backgroundContext))!.state).toMatchObject({
+			status: "terminal",
+			outcome: { status: "completed" },
+		});
 		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
 		expect(Object.keys(runs).sort()).toEqual([...standing, "another review's"].sort());
 		expect(heads.length - headsBefore).toBe(ran);
