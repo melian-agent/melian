@@ -10,4 +10,6 @@ The coordinator measured the 67 pull-request stores on its host: record document
 
 After the spikes the maintainer directed, in the same session, that no writer holds a key. The store's write access is the trust, the trusted host holds the one key, and a dismissal counts from a writer by the store's access or by the provider's permission answer.
 
+Three reviews then tested the draft with unit tests: [issue #378](https://github.com/melian-agent/melian/issues/378), [issue #379](https://github.com/melian-agent/melian/issues/379) and [issue #380](https://github.com/melian-agent/melian/issues/380), on scripts under `spike/record-378` to `spike/record-380`. With Melian's round, finding `3045335b9e5de9a9`, they raised seven P1s. The revised text answers each: nothing a verdict reads is chosen by a hash; a round names what it rests on and the cell names the rounds that stand; `supersedes` is limited to five kinds and one slot; the gate reads each revision's hunks; and a job that ran a head's code can add only a review's kinds. One clause, the trusted host's key for a repository that takes fork pull requests, awaits the maintainer's ruling.
+
 [Pull request #314](https://github.com/melian-agent/melian/pull/314) is frozen at `92faa656`. `docs/design.md` and the plan's new step 46 change with the decision. No code changed.
