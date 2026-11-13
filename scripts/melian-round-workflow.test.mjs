@@ -676,7 +676,8 @@ describe("the melian round workflow", () => {
 			const uploaded = readdirSync(join(dir, "public"));
 			expect(uploaded).toContain("verdict.json");
 			expect(uploaded.filter((name) => readFileSync(join(dir, "public", name), "utf8").includes(token))).toEqual([]);
-			expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe("null\n");
+			// The probe's run failed, so its public copy holds its spend and nothing else, which the comment reads as no verdict.
+			expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe('{"spend":{"seconds":2}}\n');
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
