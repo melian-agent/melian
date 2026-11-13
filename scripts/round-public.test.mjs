@@ -210,10 +210,11 @@ describe("what of a round leaves the job", () => {
 		);
 	});
 
-	it("keeps the probe's own output out of the public verdict, keeping only its spend, and reads it as no verdict", () => {
+	it("keeps the probe's own output out of the public verdict, and reads it as no verdict", () => {
 		expect(readFileSync(probe, "utf8")).toContain(token);
+		// The probe's review failed, so its duration is left out, and it recorded no tokens or cost.
 		const published = run("--public", probe);
-		expect([published.status, published.stdout, published.stderr]).toEqual([0, '{"spend":{"seconds":2}}\n', ""]);
+		expect([published.status, published.stdout, published.stderr]).toEqual([0, "null\n", ""]);
 		const absent = run("--public", join(tmpdir(), "round-public-absent", "verdict.json"));
 		expect([absent.status, absent.stdout, absent.stderr]).toEqual([0, "null\n", ""]);
 		const failed = run("--public", file("verdict.json", JSON.stringify({ error: { message: token } })));
@@ -344,12 +345,21 @@ describe("a round's spend in the public verdict", () => {
 		);
 	});
 
-	it("keeps the spend of a review that failed, and nothing else of its error, and reads it as not reviewed", () => {
+	it("keeps the tokens and cost of a review that failed, and nothing else of its error, and reads it as not reviewed", () => {
 		const failed = { error: { message: token }, telemetry: telemetry() };
 		const stdout = published(failed);
 		expect(stdout).not.toContain(token);
-		expect(JSON.parse(stdout)).toStrictEqual({ spend: { seconds: 572, tokens: 5644300, cost: 4.44 } });
-		expect(outcome(failed, { exitCode: "2" })).toContain(`\`\`\`text\nVerdict: not reviewed\n${spentLine}\n`);
+		expect(JSON.parse(stdout)).toStrictEqual({ spend: { tokens: 5644300, cost: 4.44 } });
+		expect(outcome(failed, { exitCode: "2" })).toContain(
+			"```text\nVerdict: not reviewed\nSpend: 5644300 tokens, $4.44\n",
+		);
+	});
+
+	it("publishes no duration for a failed review, whose preparation can be an earlier decided review's", () => {
+		// Review A took ten minutes and decided a verdict; review B failed at once, and the CLI kept A's preparation.
+		const earlier = { startedAt: 1_000, endedAt: 601_000 };
+		const failed = { error: { message: "credential unavailable" }, telemetry: telemetry(undefined, earlier) };
+		expect(JSON.parse(published(failed)).spend).not.toHaveProperty("seconds");
 	});
 
 	it.each([

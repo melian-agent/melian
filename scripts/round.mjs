@@ -243,8 +243,9 @@ function spendOf(verdict) {
 		const prepare = field(verdict.telemetry, "prepare");
 		const startedAt = amount(field(prepare, "startedAt"));
 		const endedAt = amount(field(prepare, "endedAt"));
-		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards.
-		seconds = amount(Math.round((endedAt - startedAt) / 1000));
+		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards. A failed review
+		// reports no duration: the CLI then keeps an earlier decided review's preparation, which is not this round's time.
+		seconds = field(verdict, "error") === undefined ? amount(Math.round((endedAt - startedAt) / 1000)) : undefined;
 		const rows = field(field(verdict.telemetry, "run"), "stages");
 		const measured =
 			Array.isArray(rows) &&
