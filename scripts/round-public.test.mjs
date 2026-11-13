@@ -236,3 +236,109 @@ describe("what of a round leaves the job", () => {
 		expect(body).toContain("A local run of melian review shows why each check did not run.");
 	});
 });
+
+describe("a round's spend in the public verdict", () => {
+	const passed = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] };
+	// Telemetry as `melian review --json` writes it beside the verdict, with text a model or a tool could have shaped.
+	const telemetry = (
+		total = { totalTokens: 5644300, cost: { total: 4.44 } },
+		prepare = { startedAt: 1_000, endedAt: 573_400 },
+	) => ({
+		revision: token,
+		stages: [{ id: "s1", name: "melian.lens", subject: token, note: printed, durationMs: 5 }],
+		total: { total, requests: [{ model: token, reasoning: { sent: token } }] },
+		usageUnavailable: [token],
+		prepare: { ...prepare, spans: [{ name: token, startedAt: 1, endedAt: 2, durationMs: 1 }] },
+		untimed: [],
+	});
+	const published = (value) => {
+		const result = run("--public", file("verdict.json", JSON.stringify(value)));
+		expect([result.status, result.stderr]).toEqual([0, ""]);
+		return result.stdout;
+	};
+
+	it("keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry", () => {
+		const stdout = published({ ...passed, telemetry: telemetry() });
+		expect(stdout).not.toContain(token);
+		expect(stdout).not.toContain(printed);
+		expect(JSON.parse(stdout)).toStrictEqual({ ...passed, spend: { seconds: 572, tokens: 5644300, cost: 4.44 } });
+	});
+
+	it.each([
+		[
+			"tokens as a string",
+			{ totalTokens: "5644300", cost: { total: 4.44 } },
+			undefined,
+			{ seconds: 572, cost: 4.44 },
+		],
+		["a negative cost", { totalTokens: 5644300, cost: { total: -1 } }, undefined, { seconds: 572, tokens: 5644300 }],
+		[
+			"a cost written as null, as JSON writes NaN",
+			{ totalTokens: 5644300, cost: { total: null } },
+			undefined,
+			{ seconds: 572, tokens: 5644300 },
+		],
+		[
+			"tokens past any finite number",
+			{ totalTokens: "1e309", cost: { total: 4.44 } },
+			undefined,
+			{ seconds: 572, cost: 4.44 },
+		],
+		[
+			"a clock that ran backwards",
+			undefined,
+			{ startedAt: 573_400, endedAt: 1_000 },
+			{ tokens: 5644300, cost: 4.44 },
+		],
+		["no start", undefined, { endedAt: 573_400 }, { tokens: 5644300, cost: 4.44 }],
+		["no cost", { totalTokens: 5644300 }, undefined, { seconds: 572, tokens: 5644300 }],
+	])("leaves out %s and keeps the rest", (_name, total, prepare, spend) => {
+		const value = { ...passed, telemetry: telemetry(total, prepare) };
+		const text = JSON.stringify(value).replace('"1e309"', "1e309");
+		const result = run("--public", file("verdict.json", text));
+		expect(JSON.parse(result.stdout)).toStrictEqual({ ...passed, spend });
+	});
+
+	it("leaves out the spend whole when the telemetry holds none of the three", () => {
+		expect(
+			JSON.parse(published({ ...passed, telemetry: { revision: "r", stages: [], usageUnavailable: [] } })),
+		).toStrictEqual(passed);
+		expect(JSON.parse(published(passed))).toStrictEqual(passed);
+	});
+
+	it("keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first", () => {
+		const once = published({ ...passed, telemetry: telemetry() });
+		expect(JSON.parse(published(JSON.parse(once)))).toStrictEqual(JSON.parse(once));
+		expect(
+			JSON.parse(published({ ...passed, spend: { seconds: -5, tokens: "12", cost: 1.5, note: token } })),
+		).toStrictEqual({ ...passed, spend: { cost: 1.5 } });
+	});
+
+	it("prints the spend on one line after the verdict line, and no line when there is none", () => {
+		const comment = (value) =>
+			RoundComment.read({
+				verdict: file("verdict.json", JSON.stringify(value)),
+				rounds: file("rounds.json", JSON.stringify([{ base: mergeBase, head }])),
+				exitCode: "0",
+				runUrl: "https://example.test/run",
+				runId: "1",
+				nonce: "0123456789abcdef0123456789abcdef",
+				base,
+				head,
+				mergeBase,
+				current: { base, head },
+			}).body();
+		const lines = (body) => body.split("\n").slice(4, 7);
+		expect(lines(comment({ ...passed, telemetry: telemetry() }))).toEqual([
+			"Verdict: passed",
+			"Spend: 572 s, 5644300 tokens, $4.44",
+			"",
+		]);
+		expect(lines(comment({ ...passed, telemetry: telemetry({ totalTokens: 12 }) }))).toEqual([
+			"Verdict: passed",
+			"Spend: 572 s, 12 tokens",
+			"",
+		]);
+		expect(lines(comment(passed))).toEqual(["Verdict: passed", "", "No findings above advisory."]);
+	});
+});

@@ -162,6 +162,7 @@ function readOr(path, fallback) {
 // tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
 // tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
 // place but not its text. Null for anything that is not a verdict, which the comment reads as no verdict.
+// A round's duration, tokens and cost leave as numbers alone: Melian computed them, and no tool or model wrote them.
 export function publicVerdict(text) {
 	try {
 		const verdict = JSON.parse(text);
@@ -194,6 +195,7 @@ export function publicVerdict(text) {
 			};
 		};
 		const { findings } = verdict;
+		const spend = spendOf(verdict);
 		return {
 			status: Object.hasOwn(statuses, verdict.status) ? verdict.status : undefined,
 			blocking: typeof verdict.blocking === "boolean" ? verdict.blocking : undefined,
@@ -205,10 +207,56 @@ export function publicVerdict(text) {
 			),
 			notRun: Array.isArray(verdict.notRun) ? verdict.notRun.map(check) : undefined,
 			...(Array.isArray(verdict.ran) ? { ran: verdict.ran.map(check) } : {}),
+			...(spend === undefined ? {} : { spend }),
 		};
 	} catch {
 		return null;
 	}
+}
+
+// A finite, non-negative number, or undefined: anything else is refused.
+const amount = (value) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined);
+const field = (object, key) => (typeof object === "object" && object !== null ? object[key] : undefined);
+
+// A round's duration in whole seconds, its tokens and its cost in dollars: from the telemetry `melian review --json`
+// writes beside the verdict, or from a public verdict's own `spend` on a second pass. A number that is not finite and
+// non-negative is left out, and with none left the spend is left out whole.
+function spendOf(verdict) {
+	let seconds;
+	let tokens;
+	let cost;
+	if (Object.hasOwn(verdict, "telemetry")) {
+		const prepare = field(verdict.telemetry, "prepare");
+		const startedAt = amount(field(prepare, "startedAt"));
+		const endedAt = amount(field(prepare, "endedAt"));
+		const total = field(field(verdict.telemetry, "total"), "total");
+		seconds =
+			startedAt === undefined || endedAt === undefined
+				? undefined
+				: amount(Math.round((endedAt - startedAt) / 1000));
+		tokens = amount(field(total, "totalTokens"));
+		cost = amount(field(field(total, "cost"), "total"));
+	} else {
+		seconds = amount(field(verdict.spend, "seconds"));
+		tokens = amount(field(verdict.spend, "tokens"));
+		cost = amount(field(verdict.spend, "cost"));
+	}
+	const spend = {
+		...(seconds === undefined ? {} : { seconds }),
+		...(tokens === undefined ? {} : { tokens }),
+		...(cost === undefined ? {} : { cost }),
+	};
+	return Object.keys(spend).length === 0 ? undefined : spend;
+}
+
+// The comment's line for a round's spend, which the pull request timeline reads back.
+export function spendLine({ seconds, tokens, cost }) {
+	const parts = [
+		...(seconds === undefined ? [] : [`${seconds} s`]),
+		...(tokens === undefined ? [] : [`${tokens} tokens`]),
+		...(cost === undefined ? [] : [`$${cost.toFixed(2)}`]),
+	];
+	return `Spend: ${parts.join(", ")}`;
 }
 
 const staticText = "A static check's finding; a local run shows its text.";
@@ -280,6 +328,7 @@ export class RoundComment {
 			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`])}`;
 		}
 		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
+		if (verdict.spend !== undefined) quoted.push(spendLine(verdict.spend));
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);
