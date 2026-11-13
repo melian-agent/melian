@@ -26,7 +26,7 @@ export type RecordStoreCase = { name: string; run(fixture: RecordStoreFixture): 
 const changeset = "pull-0123456789abcdef";
 const other = "range-0123456789abcdef";
 
-const revision = `${"a".repeat(40)}..${"b".repeat(40)}`;
+const revision = ["a".repeat(40), "b".repeat(40)].join("..");
 
 function envelope(kind: string, key: string, payload: RecordJson, within = changeset): RecordEnvelope {
 	return { v: 1, changeset: within, kind, key, payload, ...(kind === "round" ? { revision } : {}) };

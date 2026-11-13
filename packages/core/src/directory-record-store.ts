@@ -92,7 +92,9 @@ export class DirectoryRecordStore implements RecordStore {
 
 	async #temporary(bytes: string): Promise<string> {
 		const path = join(this.#root, "tmp", randomUUID());
-		await writeFile(path, bytes, { flag: "wx" });
+		await writeFile(path, bytes, { flag: "wx" }).catch((cause: unknown) => {
+			throw failure("unreachable", path, cause);
+		});
 		return path;
 	}
 
@@ -115,8 +117,14 @@ export class DirectoryRecordStore implements RecordStore {
 			const directory = await this.#reach(record.changeset);
 			if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 			const path = join(this.#root, record.path);
-			await mkdir(join(path, ".."), { recursive: true });
-			await rename(await this.#temporary(record.bytes), path);
+			const temporary = await this.#temporary(record.bytes);
+			try {
+				await mkdir(join(path, ".."), { recursive: true });
+				await rename(temporary, path);
+			} catch (cause) {
+				await rm(temporary, { force: true });
+				throw failure("unreachable", path, cause);
+			}
 			if ((await this.#cell(directory))?.value === disposalMark) {
 				await rm(path, { force: true });
 				throw disposedError(record.changeset);
