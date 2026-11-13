@@ -152,6 +152,7 @@ import {
 	probeConclusive,
 	proberInstructions,
 	probingLimits,
+	probingRenderings,
 	probingWording,
 	recordPlanPrompt,
 	renderPlan,
@@ -1197,8 +1198,9 @@ function planned(options: ReviewOptions): ReviewOptions {
 
 /**
  * Every fixed input a probing run's planner and prober receive, as this build holds them: each role tool's name,
- * description and schema, the fixed limits, and the source of each prompt's code. A release that changes any of them
- * runs the level again; the plan and its earlier findings, which move between reviews of one head, stay out.
+ * description and schema, the fixed limits, the wording table, and each prompt rendered over fixed samples, which holds
+ * how it is put together. A release that changes any of them runs the level again; the plan and its earlier findings,
+ * which move between reviews of one head, stay out.
  */
 export function probingProtocol(): string {
 	return JSON.stringify({
@@ -1209,6 +1211,7 @@ export function probingProtocol(): string {
 		})),
 		roles: roleTools,
 		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits, earlier: earlierLimits },
+		renderings: probingRenderings().prompts,
 		// The findings a quick run carries reach the planner and the prober too.
 		wording: probingWording,
 	});

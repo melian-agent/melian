@@ -552,3 +552,77 @@ export const ProbeReruns = defineDoc<{
 	fork: "current",
 	initial: () => ({ runs: {} }),
 });
+
+let renderings: { readonly prompts: string; readonly evidence: string } | undefined;
+
+/**
+ * Every fixed prompt a probing level's planner and prober read, and every probe evidence a verifier reads, rendered over
+ * fixed sample inputs on each branch the render functions hold, once a process. The probing protocol hashes `prompts`
+ * and the verifier's version `evidence`, beside the wording tables, so a change in how a prompt is put together, its
+ * order, separators or quoting, changes the key as a changed word does. A branch added later counts only once a sample
+ * here renders it, and nothing enforces that.
+ */
+export function probingRenderings(): { readonly prompts: string; readonly evidence: string } {
+	if (renderings !== undefined) return renderings;
+	const nonce = "0123456789abcdef01234567";
+	const attack: Attack = { target: "t\u001b[31m", reason: "r", passing: "p", failing: "f" };
+	const earlier = { severity: "P1", rule: "r", path: "a.ts", line: 3, status: "new", message: "m" };
+	const result = (given: Partial<StoredProbeResult> = {}): StoredProbeResult => ({
+		exitCode: 1,
+		signal: null,
+		output: "",
+		truncated: false,
+		timedOut: false,
+		...given,
+	});
+	const claim: ClaimProbe = {
+		id: "p7",
+		attack: 1,
+		environment: { writer: { trusted: true, by: "reviewer" }, trustWriters: true, read: ["node_modules"] },
+		plan: [attack, { ...attack, target: "second" }],
+		probe: {
+			attack: 1,
+			script: "S",
+			files: [{ path: "f", text: "F" }],
+			result: result({ output: "O" }),
+			milliseconds: 5,
+		},
+	};
+	const ran = (given: Partial<StoredProbeResult>) => ({ result: result(given), milliseconds: 4 });
+	const rendered = (prompts: Record<string, string>) =>
+		Object.entries(prompts)
+			.map(([name, text]) => `=== ${name} ===\n${text}\n`)
+			.join("\n");
+	renderings = {
+		prompts: rendered({
+			planner: plannerInstructions(["CONTEXT"]),
+			"prober, one second": proberInstructions("security", "POLICY", 1000),
+			"prober, seconds": proberInstructions("security", "POLICY", 30_000),
+			"plan, one attack": renderPlan([attack], nonce),
+			"plan, attacks": renderPlan(claim.plan, nonce),
+			"record the plan": recordPlanPrompt,
+			"one unanswered": answerPrompt([2]),
+			unanswered: answerPrompt([1, 3]),
+			"context, no earlier findings": plannerContext("DECISIONS", [], nonce).join("\n\n"),
+			"context, earlier findings that all fit": plannerContext("DECISIONS", [earlier, earlier], nonce).join("\n\n"),
+			"context, earlier findings past the limit": plannerContext(
+				"DECISIONS",
+				Array.from({ length: earlierLimits.findings + 1 }, () => earlier),
+				nonce,
+			).join("\n\n"),
+			carried: carriedFindings(
+				[{ id: "f1", severity: "P1", ruleId: "r", path: "a.ts", line: 1, endLine: 2, message: "m\nmore" }],
+				nonce,
+			),
+		}),
+		evidence: rendered({
+			"evidence, not run again": renderProbeEvidence("c1", claim, undefined, nonce),
+			"evidence, refused": renderProbeEvidence("c1", claim, { refused: "R" }, nonce),
+			"evidence, passed": renderProbeEvidence("c1", claim, ran({ exitCode: 0, output: "" }), nonce),
+			"evidence, timed out": renderProbeEvidence("c1", claim, ran({ timedOut: true }), nonce),
+			"evidence, cut": renderProbeEvidence("c1", claim, ran({ truncated: true }), nonce),
+			"evidence, signalled": renderProbeEvidence("c1", claim, ran({ exitCode: null, signal: "SIGKILL" }), nonce),
+		}),
+	};
+	return renderings;
+}

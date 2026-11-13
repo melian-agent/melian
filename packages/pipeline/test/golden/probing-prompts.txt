@@ -87,6 +87,22 @@ DECISIONS
 
 No earlier review of this change reported a finding.
 
+=== context, earlier findings that all fit ===
+## Decisions at base
+The repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.
+<untrusted-0123456789abcdef01234567 label="listing">
+DECISIONS
+</untrusted-0123456789abcdef01234567>
+
+## Findings earlier reviews reported
+
+The last earlier revision of this change was reported with these findings. Plan an attack for each that touches a boundary, since the change may not have closed it.
+
+<untrusted-0123456789abcdef01234567 label="findings">
+P1 r at a.ts:3, new: m
+P1 r at a.ts:3, new: m
+</untrusted-0123456789abcdef01234567>
+
 === context, earlier findings past the limit ===
 ## Decisions at base
 The repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.
