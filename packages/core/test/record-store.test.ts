@@ -76,6 +76,26 @@ function brokenFixture(breaks: Breaks, healthy = memoryRecordStoreFixture()): Re
 
 const mark = '{"disposed":true}';
 
+// After a lost compare-and-set that `lost` picks, readCell shows the lost value until a write lands.
+function ghostOnLoss(lost: (before: RecordCell, expected: string | undefined, shared: Shared) => boolean): Breaks {
+	return (inner, shared) => ({
+		writeCell: async (name, expected, value) => {
+			const before = await inner.readCell(name);
+			const won = await inner.writeCell(name, expected, value);
+			if (won) shared.delete(`ghost ${name}`);
+			else if (lost(before, expected, shared)) shared.set(`ghost ${name}`, value);
+			if (won) shared.set(`held ${(await inner.readCell(name)).version}`, true);
+			return won;
+		},
+		readCell: async (name) => {
+			const read = await inner.readCell(name);
+			if (read.version !== undefined) shared.set(`held ${read.version}`, true);
+			const ghost = shared.get(`ghost ${name}`) as string | undefined;
+			return ghost === undefined ? read : { ...read, value: ghost };
+		},
+	});
+}
+
 // After a refused write of a value `refused` picks, an empty cell reads as holding that value until a write lands.
 function ghostOnRefusal(refused: (value: string) => boolean): Breaks {
 	return (inner, shared) => ({
@@ -455,6 +475,124 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 		"directory",
 	],
+	[
+		"list misses a changeset's only record",
+		"list: returns every record whose add returned before it, on any handle, and only its changeset's",
+		(inner) => ({ list: async (name) => ((await inner.list(name)).length === 1 ? [] : inner.list(name)) }),
+	],
+	[
+		"list keeps showing the first records it found",
+		"list: returns every record whose add returned before it, on any handle, and only its changeset's",
+		(inner, shared) => ({
+			list: async (name) => {
+				const listed = await inner.list(name);
+				if (listed.length > 0 && !shared.has(`first ${name}`)) shared.set(`first ${name}`, listed);
+				return (shared.get(`first ${name}`) as RecordEnvelope[] | undefined) ?? listed;
+			},
+		}),
+	],
+	[
+		"readCell drops the value of a cell's first write",
+		"readCell: returns the last value a writeCell stored, on any handle",
+		(inner, shared) => ({
+			writeCell: async (name, expected, value) => {
+				const won = await inner.writeCell(name, expected, value);
+				if (won && !shared.has(`first ${name}`)) shared.set(`first ${name}`, (await inner.readCell(name)).version);
+				return won;
+			},
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				return read.version !== undefined && read.version === shared.get(`first ${name}`)
+					? { version: read.version }
+					: read;
+			},
+		}),
+	],
+	[
+		"readCell keeps showing a cell's first value",
+		"readCell: returns the last value a writeCell stored, on any handle",
+		(inner, shared) => ({
+			writeCell: async (name, expected, value) => {
+				const won = await inner.writeCell(name, expected, value);
+				if (won && !shared.has(`first ${name}`)) shared.set(`first ${name}`, value);
+				return won;
+			},
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				const first = shared.get(`first ${name}`) as string | undefined;
+				return read.value === undefined || first === undefined ? read : { ...read, value: first };
+			},
+		}),
+	],
+	[
+		"a write refused on an empty cell shows its value",
+		"writeCell: succeeds only while the version is still the expected one",
+		ghostOnLoss((before) => before.value === undefined),
+	],
+	[
+		"a write refused for naming no version shows its value",
+		"writeCell: succeeds only while the version is still the expected one",
+		ghostOnLoss((before, expected) => before.value !== undefined && expected === undefined),
+	],
+	[
+		"a write refused for an old version shows its value",
+		"writeCell: succeeds only while the version is still the expected one",
+		ghostOnLoss((before, expected, shared) => before.value !== undefined && shared.has(`held ${expected}`)),
+	],
+	[
+		"a write refused for an old version shows its value, after a value came back",
+		"writeCell: refuses a version whose value went away and came back",
+		ghostOnLoss((before, expected, shared) => before.value !== undefined && shared.has(`held ${expected}`)),
+	],
+	[
+		"a write of the value the cell holds stores it changed",
+		"writeCell: every successful write changes the version, the same value included",
+		(inner) => ({
+			writeCell: async (name, expected, value) =>
+				inner.writeCell(name, expected, (await inner.readCell(name)).value === value ? `${value}!` : value),
+		}),
+	],
+	[
+		"the first read after a value came back shows the value before it",
+		"writeCell: refuses a version whose value went away and came back",
+		(inner, shared) => ({
+			writeCell: async (name, expected, value) => {
+				const before = (await inner.readCell(name)).value;
+				const won = await inner.writeCell(name, expected, value);
+				const seen = (shared.get(`seen ${name}`) as string[] | undefined) ?? [];
+				if (won && seen.includes(value) && before !== undefined) shared.set(`back ${name}`, before);
+				if (won) shared.set(`seen ${name}`, [...seen, value]);
+				return won;
+			},
+			readCell: async (name) => {
+				const read = await inner.readCell(name);
+				const before = shared.get(`back ${name}`) as string | undefined;
+				if (before === undefined) return read;
+				shared.delete(`back ${name}`);
+				return { ...read, value: before };
+			},
+		}),
+	],
+	...([1, 2] as const).map(
+		(times) =>
+			[
+				times === 1
+					? "the first dispose's mark reads as an empty cell"
+					: "a repeat dispose's mark reads as an empty cell",
+				"dispose: marks the cell, removes the records for good, and leaves other changesets",
+				(inner: RecordStore, shared: Shared) => ({
+					dispose: async (name: string) => {
+						shared.set(`disposals ${name}`, ((shared.get(`disposals ${name}`) as number | undefined) ?? 0) + 1);
+						await inner.dispose(name);
+					},
+					readCell: async (name: string) => {
+						const read = await inner.readCell(name);
+						const count = (shared.get(`disposals ${name}`) as number | undefined) ?? 0;
+						return read.value === mark && (times === 1 ? count === 1 : count >= 2) ? {} : read;
+					},
+				}),
+			] as [string, string, Breaks],
+	),
 	[
 		"a changeset name reaches the adapter unchecked",
 		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
