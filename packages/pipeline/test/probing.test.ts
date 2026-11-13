@@ -79,7 +79,7 @@ describe("a head's bound", () => {
 		const listing = execFileSync("git", ["-C", repo, "ls-tree", "-r", "-l", "-z", "--full-tree", head]).length;
 		const listed = { entries: 2, bytes: 8, listing };
 		expect(await run(listed)).toMatchObject({ result: { exitCode: 0 } });
-		expect(await run({ ...listed, entries: 1 })).toEqual({ refused: "the head holds more than 1 files" });
+		expect(await run({ ...listed, entries: 1 })).toEqual({ refused: "the head holds more than 1 entries" });
 		expect(await run({ ...listed, bytes: 7 })).toEqual({ refused: "the head holds more than 7 bytes" });
 		expect(await run({ ...listed, listing: listing - 1 })).toEqual({
 			refused: `git's listing of the head passes ${listing - 1} bytes`,
@@ -87,18 +87,20 @@ describe("a head's bound", () => {
 		expect(headTreeLimits).toEqual({ entries: 100_000, bytes: 1024 * 1024 * 1024, listing: 64 * 1024 * 1024 });
 	});
 
-	it("counts a head's blobs only, not its trees or submodules", async () => {
+	it("counts a head's files and submodules toward its entries, not its trees, and only its files' bytes", async () => {
 		commit(repo, { "src/deep/a": "1234" });
 		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "HEAD")},sub`);
 		gitIn(repo, "commit", "--quiet", "-m", "submodule");
-		const run = await runHeadProbe(
-			{ script: "process.exit(0);\n" },
-			{ repoRoot: repo, head: "HEAD" },
-			reviewer,
-			unconfinedSandbox(),
-			{ entries: 1, bytes: 4, listing: headTreeLimits.listing },
-		);
-		expect(run).toMatchObject({ result: { exitCode: 0 } });
+		const run = (entries: number) =>
+			runHeadProbe(
+				{ script: "process.exit(0);\n" },
+				{ repoRoot: repo, head: "HEAD" },
+				reviewer,
+				unconfinedSandbox(),
+				{ entries, bytes: 4, listing: headTreeLimits.listing },
+			);
+		expect(await run(2)).toMatchObject({ result: { exitCode: 0 } });
+		expect(await run(1)).toEqual({ refused: "the head holds more than 1 entries" });
 	});
 
 	it.each([".git", "..", ".", ".GIT"])("refuses a crafted tree that names %s, and leaves nothing", async (path) => {

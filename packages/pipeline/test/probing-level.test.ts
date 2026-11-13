@@ -582,7 +582,7 @@ describe("a level that probes", () => {
 		});
 		const { run } = await withoutProbes({});
 		expect(record((await run).verdict).reason).toContain(
-			"deep ran without probes, which cannot run here: the head refuses probes: the head holds more than 1 files",
+			"deep ran without probes, which cannot run here: the head refuses probes: the head holds more than 1 entries",
 		);
 	});
 
@@ -592,6 +592,24 @@ describe("a level that probes", () => {
 		const { run } = await withoutProbes({});
 		expect(record((await run).verdict).reason).toContain(
 			"deep ran without probes, which cannot run here: the head refuses probes: probe.read may name only a relative path inside the checkout, not outside",
+		);
+	});
+
+	it("counts every entry of the head's tree toward its limit, a gitlink as well as a file", async () => {
+		// Two gitlinks beside the head's three files: within a limit of four files, past one of four entries.
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		for (const path of ["vendor/a", "vendor/b"])
+			gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${commit},${path}`);
+		gitIn(repo, "commit", "-m", "two gitlinks");
+		const limits = headTreeLimits as { entries: number };
+		const entries = limits.entries;
+		limits.entries = 4;
+		onTestFinished(() => {
+			limits.entries = entries;
+		});
+		const { run } = await withoutProbes({});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: the head refuses probes: the head holds more than 4 entries",
 		);
 	});
 

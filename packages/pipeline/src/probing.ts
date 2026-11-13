@@ -114,11 +114,13 @@ async function boundedHead(
 	});
 	if (listed.truncated === true) throw new Error(`git's listing of the head passes ${limits.listing} bytes`);
 	if (listed.code !== 0) throw new Error(`git ls-tree failed: ${listed.stderr.trim()}`);
-	const blobs = listed.stdout
+	// Every entry counts, a gitlink as well as a file, since writing the head's tree makes each one; bytes are blobs'.
+	const entries = listed.stdout
 		.split("\0")
-		.map((line) => line.slice(0, line.indexOf("\t")).split(/ +/))
-		.filter(([, type]) => type === "blob");
-	if (blobs.length > limits.entries) throw new Error(`the head holds more than ${limits.entries} files`);
+		.filter((line) => line !== "")
+		.map((line) => line.slice(0, line.indexOf("\t")).split(/ +/));
+	if (entries.length > limits.entries) throw new Error(`the head holds more than ${limits.entries} entries`);
+	const blobs = entries.filter(([, type]) => type === "blob");
 	const bytes = blobs.reduce((total, [, , , size]) => total + Number(size), 0);
 	if (bytes > limits.bytes) throw new Error(`the head holds more than ${limits.bytes} bytes`);
 	return commit;
