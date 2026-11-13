@@ -884,6 +884,14 @@ describe("rounds", () => {
 		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
 	});
 
+	it("reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back", () => {
+		const body = roundBody({ seconds: 572, tokens: 5644300, cost: 12.34 }).replaceAll("\n", "\r\n");
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 9.5 min, 5644300 tokens, $12.34 |",
+		]);
+	});
+
 	it("reads a round that names its minutes and cost but no tokens", () => {
 		const timeline = Timeline.from({
 			pull: pull({ timelineItems: page([comment(10, roundBody({ seconds: 60, cost: 0.5 }))]) }),

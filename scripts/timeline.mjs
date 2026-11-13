@@ -89,7 +89,8 @@ export function parseTiming(body) {
 export function parseRound(body, author) {
 	if (author !== "melian-status-bot" || !body.startsWith("<!-- melian-round run:")) return undefined;
 	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
-	const [verdict, line] = fence?.value.split("\n") ?? [];
+	// A comment edited on GitHub's web page comes back with CRLF line endings, which the code block keeps.
+	const [verdict, line] = fence?.value.split(/\r?\n/) ?? [];
 	const match = verdict?.startsWith("Verdict: ") ? /^Spend: (.+)$/.exec(line ?? "") : null;
 	if (match === null) return undefined;
 	const spend = {};
