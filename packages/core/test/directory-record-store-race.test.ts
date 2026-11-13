@@ -181,4 +181,20 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		await disposing;
 		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
 	});
+
+	it("still refuses as disposed when a second dispose sweeps the record it is taking back", async () => {
+		const adding = await DirectoryRecordStore.open(root);
+		const disposing = await DirectoryRecordStore.open(root);
+		const first = pause("mkdir", "/check");
+		const add = adding.add([envelope]);
+		await first.reached;
+		await disposing.dispose(changeset);
+		const second = pause("rm", "/check/");
+		first.release();
+		await second.reached;
+		await disposing.dispose(changeset);
+		second.release();
+		expect((await rejection(add, RecordError)).code).toBe("disposed");
+		expect(existsSync(join(root, SharedRecord.parse(envelope).path))).toBe(false);
+	});
 });

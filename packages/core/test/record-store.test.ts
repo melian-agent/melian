@@ -358,6 +358,10 @@ describe("MemoryRecordStore", () => {
 		expect(await message(store.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]))).toBe(
 			`changeset ${changeset} is disposed`,
 		);
+		space.plant("pull-fedcba9876543210", "lens");
+		expect(await message(store.list("pull-fedcba9876543210"))).toBe(
+			"changeset pull-fedcba9876543210 holds a lens entry no handle wrote",
+		);
 		space.disconnect();
 		expect(await message(store.list(changeset))).toBe("the memory record space is disconnected");
 	});
