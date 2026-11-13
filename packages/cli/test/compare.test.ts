@@ -379,22 +379,19 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			const base = git(repo, "rev-parse", "main");
 			const head = git(repo, "rev-parse", "feature");
 			const moved = git(repo, "rev-parse", to);
-			// Stands in for a second review of #7 in this clone: once Melian has pointed the base ref at GitHub's answer,
-			// its last write, the hook moves one ref, before Melian resolves the changeset. Git runs the hook once per ref
-			// the fetch writes, and once per update-ref.
+			// Stands in for a second review of #7 in this clone. Melian's last write points the base ref at GitHub's answer,
+			// so moving one ref after every transaction that writes the base ref moves it after that write too, however
+			// the fetch groups its refs, and before Melian resolves the changeset.
 			const hook = join(repo, ".git", "hooks", "reference-transaction");
 			writeFileSync(
 				hook,
 				[
 					"#!/bin/sh",
 					'[ "$1" = committed ] || exit 0',
-					`[ -e "${files}/moved" ] && exit 0`,
-					'refs=$(cut -d " " -f 3 | tr "\\n" " ")',
-					'[ "$refs" = "refs/melian/pull/7/base " ] || exit 0',
-					// The fetch writes the base ref first, then Melian points it at GitHub's answer.
-					`[ -e "${files}/fetched" ] || { touch "${files}/fetched"; exit 0; }`,
+					'[ -n "$MOVING" ] && exit 0',
+					'grep -q " refs/melian/pull/7/base$" || exit 0',
 					`touch "${files}/moved"`,
-					`exec git update-ref refs/melian/pull/7/${ref} ${moved}`,
+					`MOVING=1 exec git update-ref refs/melian/pull/7/${ref} ${moved}`,
 					"",
 				].join("\n"),
 			);
