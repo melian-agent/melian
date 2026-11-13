@@ -83,6 +83,34 @@ export function parseTiming(body) {
 	return items;
 }
 
+// A round's spend from the comment the melian round workflow posts as melian-status-bot: the line right after the
+// verdict, inside the comment's one code fence, as round.mjs's spendLine writes it. Undefined for any other comment, or
+// a line it cannot read whole.
+export function parseRound(body, author) {
+	if (author !== "melian-status-bot" || !body.startsWith("<!-- melian-round run:")) return undefined;
+	const fence = fromMarkdown(body).children.find((node) => node.type === "code");
+	const [verdict, line] = fence?.value.split("\n") ?? [];
+	const match = verdict?.startsWith("Verdict: ") ? /^Spend: (.+)$/.exec(line ?? "") : null;
+	if (match === null) return undefined;
+	const spend = {};
+	for (const part of match[1].split(", ")) {
+		const [, seconds, tokens, cost] =
+			/^(?:(\d+(?:\.\d+)?) s|(\d+(?:\.\d+)?) tokens|\$(\d+(?:\.\d+)?))$/.exec(part) ?? [];
+		if (seconds !== undefined) spend.seconds = Number(seconds);
+		else if (tokens !== undefined) spend.tokens = Number(tokens);
+		else if (cost !== undefined) spend.cost = Number(cost);
+		else return undefined;
+	}
+	return spend;
+}
+
+const roundDetail = ({ seconds, tokens, cost }) =>
+	[
+		...(seconds === undefined ? [] : [`${(seconds / 60).toFixed(1)} min`]),
+		...(tokens === undefined ? [] : [`${tokens} tokens`]),
+		...(cost === undefined ? [] : [`$${cost.toFixed(2)}`]),
+	].join(", ");
+
 const login = (node) => node.author?.login ?? "ghost";
 // toMarkdown ends what it writes with a line ending, and without the table extension it leaves pipes alone.
 const cell = (text) => visibleText(toMarkdown({ type: "text", value: text }).replace(/\n$/, "")).replaceAll("|", "\\|");
@@ -196,10 +224,14 @@ export class Timeline {
 		}
 		for (const node of pull.timelineItems.nodes) {
 			switch (node.__typename) {
-				case "IssueComment":
+				case "IssueComment": {
 					add(node.createdAt, "comment", `by ${login(node)}`);
 					timing(node.createdAt, node.body);
+					const round = parseRound(node.body, login(node));
+					if (round !== undefined)
+						events.push({ at: Date.parse(node.createdAt), event: "round", round, detail: roundDetail(round) });
 					break;
+				}
 				case "PullRequestReview":
 					add(node.submittedAt, "review", `${node.state.toLowerCase()} by ${login(node)}`);
 					break;
@@ -255,6 +287,18 @@ export class Timeline {
 		const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
 		const reported = items.length === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
 		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
+		const rounds = this.#events.filter((event) => event.round !== undefined);
+		if (rounds.length > 0) {
+			const roundMinutes = rounds.reduce((sum, event) => sum + (event.round.seconds ?? 0) / 60, 0);
+			const priced = rounds.filter((event) => event.round.cost !== undefined);
+			const roundCost = priced.reduce((sum, event) => sum + event.round.cost, 0);
+			lines.push(
+				row(
+					"Rounds",
+					`${rounds.length} round${rounds.length === 1 ? "" : "s"}, ${Number(roundMinutes.toFixed(1))} min${priced.length === 0 ? "" : `, $${roundCost.toFixed(2)}`}`,
+				),
+			);
+		}
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
 		const last = this.#merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { RoundComment } from "./round.mjs";
 import { HOUR, parseTiming, Timeline } from "./timeline.mjs";
 
 const script = fileURLToPath(new URL("./pr-timeline.mjs", import.meta.url));
@@ -796,5 +797,82 @@ describe("parseTiming", () => {
 
 	it("reads no item from a body with no Timing line", () => {
 		expect(parseTiming("Report.\nNothing timed.")).toEqual([]);
+	});
+});
+
+describe("rounds", () => {
+	const base = "b".repeat(40);
+	const head = "0123456789abcdef0123456789abcdef01234567";
+	const mergeBase = "e".repeat(40);
+	// A round comment as the melian round workflow posts it, from a public verdict that carries the round's spend.
+	const roundBody = (spend) =>
+		new RoundComment({
+			verdict: {
+				status: "passed",
+				blocking: false,
+				findings: { block: [], acknowledge: [] },
+				notRun: [],
+				...(spend === undefined ? {} : { spend }),
+			},
+			exitCode: "0",
+			runUrl: "https://example.test/run",
+			runId: "42",
+			nonce: "0123456789abcdef0123456789abcdef",
+			base,
+			head,
+			mergeBase,
+			reviewed: { base: mergeBase, head },
+			current: { base, head },
+		}).body();
+	const comment = (minutes, body, login = "melian-status-bot") => ({
+		__typename: "IssueComment",
+		createdAt: new Date(start + minutes * 60_000).toISOString(),
+		body,
+		author: { login },
+	});
+
+	it("reads a round's minutes and cost from the status bot's round comment, as an event and in the summary", () => {
+		const timeline = Timeline.from({
+			pull: pull({
+				timelineItems: page([
+					comment(10, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 })),
+					comment(40, roundBody({ seconds: 60, tokens: 10, cost: 0.5 })),
+				]),
+			}),
+			runs: [],
+		});
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 9.5 min, 5644300 tokens, $4.44 |",
+			"| 2026-10-01 00:40 | 0.67 | round | 1.0 min, 10 tokens, $0.50 |",
+		]);
+		expect(rows(timeline)).toContain("| Rounds | 2 rounds, 10.5 min, $4.94 |");
+		expect(rows(timeline)).toContain("| Timing reported | none |");
+	});
+
+	it("reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence", () => {
+		const timeline = Timeline.from({
+			pull: pull({
+				timelineItems: page([
+					comment(10, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }), "someone"),
+					comment(20, roundBody({ seconds: 572, tokens: 5644300, cost: 4.44 }).split("\n").slice(1).join("\n")),
+					comment(30, "<!-- melian-round run:1 nonce:00 -->\nSpend: 572 s, 5644300 tokens, $4.44\n"),
+					comment(40, roundBody()),
+				]),
+			}),
+			runs: [],
+		});
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
+		expect(rows(timeline).some((row) => row.startsWith("| Rounds |"))).toBe(false);
+	});
+
+	it("reads a round whose spend names only some of its numbers", () => {
+		const timeline = Timeline.from({
+			pull: pull({ timelineItems: page([comment(10, roundBody({ tokens: 12 }))]) }),
+			runs: [],
+		});
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 12 tokens |",
+		]);
+		expect(rows(timeline)).toContain("| Rounds | 1 round, 0 min |");
 	});
 });
