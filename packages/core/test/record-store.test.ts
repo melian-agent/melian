@@ -75,6 +75,27 @@ function brokenFixture(breaks: Breaks, healthy = memoryRecordStoreFixture()): Re
 }
 
 const mark = '{"disposed":true}';
+
+// After a refused write of a value `refused` picks, an empty cell reads as holding that value until a write lands.
+function ghostOnRefusal(refused: (value: string) => boolean): Breaks {
+	return (inner, shared) => ({
+		writeCell: async (name, expected, value) => {
+			try {
+				const won = await inner.writeCell(name, expected, value);
+				if (won) shared.delete(`ghost ${name}`);
+				return won;
+			} catch (error) {
+				if (refused(value)) shared.set(`ghost ${name}`, value.toWellFormed());
+				throw error;
+			}
+		},
+		readCell: async (name) => {
+			const read = await inner.readCell(name);
+			const ghost = shared.get(`ghost ${name}`) as string | undefined;
+			return read.value === undefined && ghost !== undefined ? { value: ghost, version: "ghost" } : read;
+		},
+	});
+}
 const valid = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 
 const cutOffAnswer = <T>(answer: T, code = "unreachable") =>
@@ -327,15 +348,9 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
-		"a refused mark on an empty cell writes the cell first",
+		"a refused mark on an empty cell shows a value until the next write",
 		"writeCell: refuses the disposal mark, which only dispose writes",
-		(inner) => ({
-			writeCell: async (name, expected, value) => {
-				const empty = (await inner.readCell(name)).value === undefined;
-				if (value === mark && empty) await inner.writeCell(name, undefined, "half");
-				return inner.writeCell(name, expected, value);
-			},
-		}),
+		ghostOnRefusal((value) => value === mark),
 	],
 	[
 		"a refused mark overwrites a cell that held a value",
@@ -360,14 +375,9 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
-		"a refused surrogate stores its well-formed copy first",
+		"a refused surrogate shows its well-formed copy until the next write",
 		"writeCell: refuses a value no adapter could store unchanged",
-		(inner) => ({
-			writeCell: async (name, expected, value) => {
-				if (!value.isWellFormed()) await inner.writeCell(name, expected, value.toWellFormed());
-				return inner.writeCell(name, expected, value);
-			},
-		}),
+		ghostOnRefusal((value) => !value.isWellFormed()),
 	],
 	[
 		"readCell drops characters outside the basic plane",
@@ -430,7 +440,7 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 	[
 		"a dotted changeset name lists nothing",
 		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
-		(inner) => ({ list: async (name) => (name.includes(".") ? [] : inner.list(name)) }),
+		(inner) => ({ list: async (name) => (valid.test(name) && name.includes(".") ? [] : inner.list(name)) }),
 	],
 	[
 		"add writes through a link it refuses",
