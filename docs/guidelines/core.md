@@ -650,7 +650,8 @@ Severity, by default:
 
 `staticFindings` matches results across the two runs by finding identity, not by line, with one exception below. A result's
 snippet is the full text of its lines at that revision, read through git's object store, and its
-occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A
+occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. An Enola
+result's snippet is the line it starts on alone, as the Enola paragraph below says. A
 renamed file's base results are identified under its head path, through `revision.files`; otherwise
 a pure rename would make every old result `introduced` and blocking. A result at head whose ID is
 absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at

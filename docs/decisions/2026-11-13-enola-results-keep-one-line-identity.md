@@ -1,5 +1,7 @@
 # An Enola result keeps the identity of the line it starts on
 
+Amends: [Finding identity](2026-10-03-finding-identity.md), for Enola results alone: the snippet is the line a result starts on, not every line its region spans.
+
 Status: ruled by the maintainer on 2026-11-13, in the builder's session for [issue #346](https://github.com/melian-agent/melian/issues/346), choosing option A of the question on that issue. The coordinator had not answered within 30 minutes; it later agreed.
 
 ## Problem
