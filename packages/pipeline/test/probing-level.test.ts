@@ -956,7 +956,7 @@ describe("a level that probes", () => {
 	});
 
 	it.each([
-		["runs no more probes once another review takes the revision", [failing, failing], 1],
+		["runs no probe once another review has taken the revision", [failing, failing], 0],
 		["prunes nothing when every probe it holds already stands", [], 0],
 	])("writes nothing from a rerun task another review took the revision from: %s", async (_, scripts, ran) => {
 		const { run, changeset, heads } = await review({ planner: plan, prober: probing(failing) });
@@ -993,6 +993,49 @@ describe("a level that probes", () => {
 		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
 		expect(Object.keys(runs).sort()).toEqual([...standing, "another review's"].sort());
 		expect(heads.length - headsBefore).toBe(ran);
+	});
+
+	it("writes no rerun from a task another review takes the revision from while its probe runs", async () => {
+		let during: (() => void) | undefined;
+		const { run, changeset } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				rewrite: (command) => {
+					if (inHeadTree(command)) during?.();
+					return command;
+				},
+			},
+		);
+		await run;
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!;
+		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
+		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
+		const standing = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
+		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		let taken: Promise<void> | undefined;
+		during = () => {
+			taken = root.commit(async (tx) => {
+				(await tx.doc(ProbeReruns, root.id)).tasks![at] = { task: -1, key: "another review's probes" };
+			}, backgroundContext);
+		};
+		const task = await root.commit(async (tx) => {
+			const created = await tx.createTask(
+				probeRerunTask(),
+				{ root: root.id, revision, probes: [{ key: "taken", script: failing, files: [], environment }] },
+				{ ownership: { kind: "conversation" } },
+			);
+			const document = await tx.doc(ProbeReruns, root.id);
+			document.tasks = { ...document.tasks, [at]: { task: created, key: "this task's probes" } };
+			return created;
+		}, backgroundContext);
+		await reviewer.waitForTask(task, backgroundContext);
+		await taken;
+		expect(taken).toBeDefined();
+		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
+		expect(Object.keys(runs)).toEqual(standing);
 	});
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {

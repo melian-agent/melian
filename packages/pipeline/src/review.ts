@@ -1387,7 +1387,13 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 				const at = Revision.key(revision);
 				const done = { status: "terminal", outcome: { status: "completed", result: {} } } as const;
 				for (const probe of probes) {
-					const stored = (await runtime.snapshot(ProbeReruns, root, context))!.runs[at]?.[probe.key];
+					const document = (await runtime.snapshot(ProbeReruns, root, context))!;
+					// A task another review has replaced launches no probe; the fence after the run catches a takeover during it.
+					if (document.tasks![at]!.task !== runtime.taskId) {
+						await runtime.commit(() => done, context);
+						return;
+					}
+					const stored = document.runs[at]?.[probe.key];
 					if (stored !== undefined && "result" in stored && probeConclusive(stored.result)) continue;
 					const run = await runHeadProbe(
 						{ script: probe.script, files: probe.files },
