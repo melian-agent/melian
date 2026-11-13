@@ -1,4 +1,4 @@
-import type { ModelUsage, RequestReasoning } from "@melian-agent/core";
+import { type ModelUsage, type RequestReasoning, RunDetails } from "@melian-agent/core";
 import { expect, it } from "vitest";
 import { type Stage, StageTelemetry } from "../src/telemetry.ts";
 
@@ -229,5 +229,48 @@ it("marks a model stage whose usage was not all measured, and a check that needs
 		undefined,
 		true,
 		undefined,
+	]);
+});
+
+// A lens's check record with no conversation, as the telemetry reader builds it when the lens opened none.
+const unopened = (outcome: string, fields: Partial<Stage> = {}) =>
+	stage({
+		name: "melian.lens",
+		subject: "durability@@careful",
+		outcome,
+		timing: "unavailable",
+		startedAt: undefined,
+		endedAt: undefined,
+		durationMs: undefined,
+		...fields,
+	});
+
+it.each([
+	["skipped, as triage skips it", "skipped", undefined, undefined],
+	["refused by the plan before it opened a conversation, as for a missing credential", "failed", undefined, undefined],
+	["skipped, but with a conversation that left no usage", "skipped", 7, true],
+	["recorded as ran by an older build that left no conversation", "completed", undefined, true],
+])("reads a lens %s as incomplete only when it may have sent a request", (_name, outcome, conversation, incomplete) => {
+	const telemetry = new StageTelemetry("base..head", [
+		unopened(outcome, conversation === undefined ? {} : { conversation }),
+	]);
+	expect(telemetry.runDetails().stages[0]?.usageIncomplete).toBe(incomplete);
+});
+
+it("prints a skipped lens beside a lens that ran with complete usage, and no incomplete total", () => {
+	const telemetry = new StageTelemetry("base..head", [
+		stage({
+			name: "melian.lens",
+			subject: "design@1@careful",
+			conversation: 3,
+			usage: model("openai/gpt-5.6-sol", 2_000, 500, 0.5, reasoning("high")),
+		}),
+		unopened("skipped"),
+	]);
+	const details = RunDetails.from(telemetry.runDetails());
+	expect(details.summary()).not.toContain("incomplete");
+	expect(details.rows().map(({ stage, tokens, outcome }) => ({ stage, tokens, outcome }))).toEqual([
+		{ stage: "lens design", tokens: "2.0k", outcome: "ran" },
+		{ stage: "lens durability", tokens: "—", outcome: "skipped" },
 	]);
 });

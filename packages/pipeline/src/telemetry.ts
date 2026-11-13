@@ -167,8 +167,16 @@ function runStage(name: string, stages: readonly Stage[]): RunStage {
 	const own = stages.filter((stage) => !stage.reused);
 	const usage = own.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
 	const timed = own.filter((stage) => stage.durationMs !== undefined);
+	// A stage that opened no conversation and whose check says it never ran, skipped or refused before its first
+	// request, sent nothing. One whose check says it ran but left no conversation is an older build's record, whose usage
+	// is unknown.
+	const sentNothing = (stage: Stage) =>
+		stage.conversation === undefined && ["skipped", "failed"].includes(stage.checkOutcome ?? stage.outcome);
 	const unmeasured = own.some(
-		(stage) => modelStages.includes(stage.name) && (stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
+		(stage) =>
+			modelStages.includes(stage.name) &&
+			!sentNothing(stage) &&
+			(stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
 	);
 	const outcome =
 		stages.map((stage) => stage.checkOutcome ?? stage.outcome).find((outcome) => outcome !== "completed") ??
