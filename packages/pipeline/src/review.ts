@@ -2315,8 +2315,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// What a probe may read and whether policy trusts writers come from the base, never from the change, whoever vouches
 	// for it: the allowlist decides what of the reviewer's machine a probe reads, by the maintainer's ruling of 2026-11-10.
 	let basePolicy: Promise<MelianConfig> | undefined;
+	// The base is the policy revision the host named, as a pull request's base tip, or the merge base; never a worktree.
+	const policyBase = options.policy?.kind === "revision" ? options.policy.commit : base;
 	const baseConfig = () =>
-		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: base }, ".").then(
+		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: policyBase }, ".").then(
 			({ config: policy }) => policy,
 		));
 	let probesAsked: Promise<string | undefined> | undefined;

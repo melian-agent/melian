@@ -177,6 +177,7 @@ async function review(
 		plan?: (config: MelianConfig, lenses: readonly Lens[], fake: FakeModels) => Promise<ReviewOptions["plan"]>;
 		unlockModels?: ReviewOptions["unlockModels"];
 		rerun?: boolean;
+		policy?: ReviewOptions["policy"];
 	} = {},
 ) {
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -227,6 +228,7 @@ async function review(
 		...(plan === undefined ? {} : { plan }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+		...(options.policy === undefined ? {} : { policy: options.policy }),
 	});
 	return { run, requests, sandbox, heads, changeset };
 }
@@ -541,6 +543,26 @@ describe("a level that probes", () => {
 		if (policy !== undefined) withBasePolicy(policy);
 		const { run } = await withoutProbes({ writer });
 		expect(record((await run).verdict).reason).toContain(`deep ran without probes, which cannot run here: ${reason}`);
+	});
+
+	it("reads probe trust from the policy revision the host names, not the merge base, once the base branch moves", async () => {
+		// The base branch moves past the merge base and stops trusting writers; the host names its new tip as the policy.
+		gitIn(repo, "checkout", "main");
+		writeFiles(repo, {
+			"melian.yaml":
+				"tiers:\n  full: [lens.trust-boundary]\nlenses:\n  trust-boundary:\n    level: { floor: deep }\ntrust:\n  writers: false\n",
+		});
+		gitIn(repo, "add", "-A");
+		gitIn(repo, "commit", "-m", "trust no writer");
+		const tip = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "checkout", "feature");
+		const { run } = await withoutProbes({
+			writer: { trusted: true, by: "writer" },
+			policy: { kind: "revision", commit: tip },
+		});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: trust.writers is false in the repository's policy",
+		);
 	});
 
 	it("probes a writer's head under a policy that trusts writers", async () => {
