@@ -317,6 +317,16 @@ describe("a round's spend in the public verdict", () => {
 		);
 	});
 
+	it.each([
+		["every stage it reused", [{ name: "lens a", models: ["m"], outcome: "reused" }]],
+		["only static checks", [{ name: "check static.tsc", models: [], outcome: "ran", durationMs: 9 }]],
+		["no stage at all", []],
+	])("counts no tokens and no cost, not unknown ones, for a run of %s", (_name, stages) => {
+		expect(
+			JSON.parse(published({ ...passed, telemetry: telemetry(undefined, undefined, { stages }) })).spend,
+		).toStrictEqual({ seconds: 572, tokens: 0, cost: 0 });
+	});
+
 	it("leaves out a figure no row holds, and keeps one some rows hold", () => {
 		const run = {
 			stages: [

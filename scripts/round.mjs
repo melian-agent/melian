@@ -249,8 +249,11 @@ function spendOf(verdict) {
 		const measured =
 			Array.isArray(rows) &&
 			rows.every((row) => typeof row === "object" && row !== null && row.usageIncomplete !== true);
-		tokens = measured ? sumOf(rows, "tokens") : undefined;
-		cost = measured ? sumOf(rows, "cost") : undefined;
+		// The ledger writes a row's tokens and cost together, for a model stage this run ran. With neither on any row,
+		// every stage was reused or ran no model, so the run spent nothing.
+		const spentNothing = measured && !rows.some((row) => Object.hasOwn(row, "tokens") || Object.hasOwn(row, "cost"));
+		tokens = spentNothing ? 0 : measured ? sumOf(rows, "tokens") : undefined;
+		cost = spentNothing ? 0 : measured ? sumOf(rows, "cost") : undefined;
 	} else {
 		const spent = field(verdict, "spend");
 		seconds = amount(field(spent, "seconds"));
