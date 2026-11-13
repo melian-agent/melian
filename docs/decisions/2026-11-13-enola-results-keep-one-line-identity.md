@@ -14,7 +14,7 @@ Example: on the range of [pull request #339](https://github.com/melian-agent/mel
 
 `staticFindings` hashes only the line an Enola result starts on, as under 0.4.27. The finding records Enola's whole span as its region, and an introduced Enola finding takes its trigger from that span, by the maintainer's ruling of 2026-11-13 in the coordinator's session. A dismissal therefore reopens when the code behind the finding changes, its body included.
 
-Under 0.4.27 a finding that a body edit introduced had no trigger, since Enola named the declaration line alone and no hunk touched it. Its dismissal never reopened, however the body changed. The span closes that gap, which predates this upgrade. Dismissed Enola findings will reopen more often than before.
+Under 0.4.27 a finding that a body edit introduced had no trigger, since Enola named the declaration line alone and no hunk touched it. Its dismissal never reopened, however the body changed. The span closes that gap, which predates this upgrade. Dismissed Enola findings will reopen more often than before. A dismissal recorded under 0.4.27 for a finding a body edit introduced stored an empty trigger, so it reopens once after the upgrade, on unchanged code. A trigger covers the first hunk a span overlaps, as it does for every static result today, so an edit to a later hunk of the span alone leaves the dismissal standing.
 
 A dismissal carries across Enola versions, as it does for every static tool, whose finding IDs name no tool version. The maintainer ruled so on 2026-11-13, in the coordinator's session. On the eight past merges compared for [pull request #385](https://github.com/melian-agent/melian/pull/385), every Enola finding was advisory or silent.
 
