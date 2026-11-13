@@ -1,0 +1,3349 @@
+{
+ "mutants": [
+  {
+   "file": "scripts/round.mjs",
+   "line": 210,
+   "column": 7,
+   "endLine": 210,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 210,
+   "column": 7,
+   "endLine": 210,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "The public verdict is written as JSON, which drops a key whose value is undefined, and the comment reads spend as undefined either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 210,
+   "column": 7,
+   "endLine": 210,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "spend !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 210,
+   "column": 34,
+   "endLine": 210,
+   "endColumn": 43,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 15,
+   "endLine": 219,
+   "endColumn": 84,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 27,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > what of a round leaves the job > keeps the text a static tool printed out of the public verdict",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > what of a round leaves the job > keeps the text a static tool printed out of the public verdict",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 27,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 27,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "LogicalOperator",
+   "replacement": "Number.isFinite(value) || value >= 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens as a string and keeps the rest",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out tokens as a string and keeps the rest",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 53,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a negative cost and keeps the rest",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > leaves out a negative cost and keeps the rest",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 53,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "EqualityOperator",
+   "replacement": "value > 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a zero, as a round that ran nothing new costs nothing",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a zero, as a round that ran nothing new costs nothing",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 219,
+   "column": 53,
+   "endLine": 219,
+   "endColumn": 63,
+   "mutatorName": "EqualityOperator",
+   "replacement": "value < 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 14,
+   "endLine": 220,
+   "endColumn": 104,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 32,
+   "endLine": 220,
+   "endColumn": 77,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 32,
+   "endLine": 220,
+   "endColumn": 77,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 32,
+   "endLine": 220,
+   "endColumn": 77,
+   "mutatorName": "LogicalOperator",
+   "replacement": "typeof object === \"object\" || object !== null",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 32,
+   "endLine": 220,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 32,
+   "endLine": 220,
+   "endColumn": 58,
+   "mutatorName": "EqualityOperator",
+   "replacement": "typeof object !== \"object\"",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 50,
+   "endLine": 220,
+   "endColumn": 58,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 62,
+   "endLine": 220,
+   "endColumn": 77,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the verdict and leaves out the spend when telemetry is null",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the verdict and leaves out the spend when telemetry is null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 220,
+   "column": 62,
+   "endLine": 220,
+   "endColumn": 77,
+   "mutatorName": "EqualityOperator",
+   "replacement": "object === null",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 225,
+   "column": 26,
+   "endLine": 249,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 229,
+   "column": 5,
+   "endLine": 229,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 229,
+   "column": 5,
+   "endLine": 229,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 229,
+   "column": 28,
+   "endLine": 229,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 229,
+   "column": 42,
+   "endLine": 238,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 230,
+   "column": 43,
+   "endLine": 230,
+   "endColumn": 52,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 231,
+   "column": 42,
+   "endLine": 231,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 232,
+   "column": 40,
+   "endLine": 232,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 233,
+   "column": 47,
+   "endLine": 233,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 233,
+   "column": 57,
+   "endLine": 233,
+   "endColumn": 64,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 235,
+   "column": 30,
+   "endLine": 235,
+   "endColumn": 58,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "(endedAt - startedAt) * 1000",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 235,
+   "column": 31,
+   "endLine": 235,
+   "endColumn": 50,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "endedAt + startedAt",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 236,
+   "column": 31,
+   "endLine": 236,
+   "endColumn": 44,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 237,
+   "column": 35,
+   "endLine": 237,
+   "endColumn": 41,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 237,
+   "column": 44,
+   "endLine": 237,
+   "endColumn": 51,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 238,
+   "column": 8,
+   "endLine": 242,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps the spend through a second pass over the public verdict, and refuses there what it refuses at first",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 239,
+   "column": 40,
+   "endLine": 239,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 240,
+   "column": 39,
+   "endLine": 240,
+   "endColumn": 47,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 241,
+   "column": 37,
+   "endLine": 241,
+   "endColumn": 43,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 243,
+   "column": 15,
+   "endLine": 247,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 244,
+   "column": 6,
+   "endLine": 244,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 244,
+   "column": 6,
+   "endLine": 244,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 244,
+   "column": 6,
+   "endLine": 244,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 244,
+   "column": 35,
+   "endLine": 244,
+   "endColumn": 46,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 245,
+   "column": 6,
+   "endLine": 245,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 245,
+   "column": 6,
+   "endLine": 245,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 245,
+   "column": 6,
+   "endLine": 245,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 245,
+   "column": 34,
+   "endLine": 245,
+   "endColumn": 44,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 246,
+   "column": 6,
+   "endLine": 246,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 246,
+   "column": 6,
+   "endLine": 246,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 246,
+   "column": 6,
+   "endLine": 246,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 246,
+   "column": 32,
+   "endLine": 246,
+   "endColumn": 40,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 248,
+   "column": 8,
+   "endLine": 248,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > keeps a round's duration, tokens and cost as three numbers, and nothing else of its telemetry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 248,
+   "column": 8,
+   "endLine": 248,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 248,
+   "column": 8,
+   "endLine": 248,
+   "endColumn": 39,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Object.keys(spend).length !== 0",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 252,
+   "column": 53,
+   "endLine": 259,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 253,
+   "column": 15,
+   "endLine": 257,
+   "endColumn": 2,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 6,
+   "endLine": 254,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 6,
+   "endLine": 254,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 6,
+   "endLine": 254,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 30,
+   "endLine": 254,
+   "endColumn": 32,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 35,
+   "endLine": 254,
+   "endColumn": 51,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 254,
+   "column": 36,
+   "endLine": 254,
+   "endColumn": 50,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 6,
+   "endLine": 255,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 6,
+   "endLine": 255,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 6,
+   "endLine": 255,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 29,
+   "endLine": 255,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 34,
+   "endLine": 255,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 255,
+   "column": 35,
+   "endLine": 255,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 6,
+   "endLine": 256,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 6,
+   "endLine": 256,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 6,
+   "endLine": 256,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 27,
+   "endLine": 256,
+   "endColumn": 29,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 32,
+   "endLine": 256,
+   "endColumn": 55,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 256,
+   "column": 33,
+   "endLine": 256,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 258,
+   "column": 8,
+   "endLine": 258,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 258,
+   "column": 29,
+   "endLine": 258,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 6,
+   "endLine": 330,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 6,
+   "endLine": 330,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 6,
+   "endLine": 330,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "verdict.spend === undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-comment.test.mjs > RoundComment > renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/round.mjs",
+   "line": 330,
+   "column": 35,
+   "endLine": 330,
+   "endColumn": 73,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > prints the spend on one line after the verdict line, and no line when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 89,
+   "column": 41,
+   "endLine": 105,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 5,
+   "endLine": 90,
+   "endColumn": 81,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 5,
+   "endLine": 90,
+   "endColumn": 81,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 5,
+   "endLine": 90,
+   "endColumn": 81,
+   "mutatorName": "LogicalOperator",
+   "replacement": "author !== \"melian-status-bot\" && !body.startsWith(\"<!-- melian-round run:\")",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 5,
+   "endLine": 90,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 5,
+   "endLine": 90,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "author === \"melian-status-bot\"",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 16,
+   "endLine": 90,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 39,
+   "endLine": 90,
+   "endColumn": 81,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "body.startsWith(\"<!-- melian-round run:\")",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 40,
+   "endLine": 90,
+   "endColumn": 81,
+   "mutatorName": "MethodExpression",
+   "replacement": "body.endsWith(\"<!-- melian-round run:\")",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 90,
+   "column": 56,
+   "endLine": 90,
+   "endColumn": 80,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 91,
+   "column": 48,
+   "endLine": 91,
+   "endColumn": 78,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 91,
+   "column": 58,
+   "endLine": 91,
+   "endColumn": 78,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 91,
+   "column": 58,
+   "endLine": 91,
+   "endColumn": 78,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 91,
+   "column": 58,
+   "endLine": 91,
+   "endColumn": 78,
+   "mutatorName": "EqualityOperator",
+   "replacement": "node.type !== \"code\"",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 91,
+   "column": 72,
+   "endLine": 91,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 93,
+   "column": 25,
+   "endLine": 93,
+   "endColumn": 58,
+   "mutatorName": "LogicalOperator",
+   "replacement": "fence?.value.split(/\\r?\\n/) && []",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 93,
+   "column": 25,
+   "endLine": 93,
+   "endColumn": 37,
+   "mutatorName": "OptionalChaining",
+   "replacement": "fence.value",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 93,
+   "column": 44,
+   "endLine": 93,
+   "endColumn": 51,
+   "mutatorName": "Regex",
+   "replacement": "/\\r\\n/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 93,
+   "column": 56,
+   "endLine": 93,
+   "endColumn": 58,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "With no code fence, a first line of Stryker was here does not start with Verdict, so no round is read either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 15,
+   "endLine": 94,
+   "endColumn": 47,
+   "mutatorName": "MethodExpression",
+   "replacement": "verdict?.endsWith(\"Verdict: \")",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 15,
+   "endLine": 94,
+   "endColumn": 34,
+   "mutatorName": "OptionalChaining",
+   "replacement": "verdict.startsWith",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 35,
+   "endLine": 94,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 50,
+   "endLine": 94,
+   "endColumn": 65,
+   "mutatorName": "Regex",
+   "replacement": "/Spend: (.+)$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round when the line after the verdict only ends with a spend",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round when the line after the verdict only ends with a spend",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 50,
+   "endLine": 94,
+   "endColumn": 65,
+   "mutatorName": "Regex",
+   "replacement": "/^Spend: (.+)/",
+   "claim": "equivalent",
+   "evidence": "The fence's lines are split on CRLF or LF, so no line holds a line terminator for $ to stop at, and (.+) reads to the line's end either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 50,
+   "endLine": 94,
+   "endColumn": 65,
+   "mutatorName": "Regex",
+   "replacement": "/^Spend: (.)$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 71,
+   "endLine": 94,
+   "endColumn": 81,
+   "mutatorName": "LogicalOperator",
+   "replacement": "line && \"\"",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 94,
+   "column": 79,
+   "endLine": 94,
+   "endColumn": 81,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 95,
+   "column": 5,
+   "endLine": 95,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 95,
+   "column": 5,
+   "endLine": 95,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from another author's comment, a comment without the round's marker, or a spend line outside the fence",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 95,
+   "column": 5,
+   "endLine": 95,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "match !== null",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 97,
+   "column": 35,
+   "endLine": 97,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 97,
+   "column": 42,
+   "endLine": 103,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 96,
+   "mutatorName": "LogicalOperator",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))$/.exec(part) && []",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text after a part",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text after a part",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\D+) s|(\\d+) tokens|\\$(\\d+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d) tokens|\\$(\\d+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\D+) tokens|\\$(\\d+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round from a comment whose lines end in CRLF, as one edited on GitHub's page comes back",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\D+\\.\\d{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\d))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 36,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "Regex",
+   "replacement": "/^(?:(\\d+) s|(\\d+) tokens|\\$(\\d+\\.\\D{2}))$/",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 98,
+   "column": 94,
+   "endLine": 98,
+   "endColumn": 96,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "With no part matched, destructuring a one-element array leaves seconds, tokens and cost undefined, so the part is refused either way.",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 99,
+   "column": 6,
+   "endLine": 99,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 99,
+   "column": 6,
+   "endLine": 99,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 99,
+   "column": 6,
+   "endLine": 99,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 100,
+   "column": 11,
+   "endLine": 100,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 100,
+   "column": 11,
+   "endLine": 100,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 100,
+   "column": 11,
+   "endLine": 100,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 101,
+   "column": 11,
+   "endLine": 101,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads no round from a spend line with text before a part",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 101,
+   "column": 11,
+   "endLine": 101,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 101,
+   "column": 11,
+   "endLine": 101,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 107,
+   "column": 20,
+   "endLine": 112,
+   "endColumn": 13,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 108,
+   "column": 1,
+   "endLine": 112,
+   "endColumn": 2,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 6,
+   "endLine": 109,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 6,
+   "endLine": 109,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 6,
+   "endLine": 109,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "seconds !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 30,
+   "endLine": 109,
+   "endColumn": 32,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 35,
+   "endLine": 109,
+   "endColumn": 71,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 36,
+   "endLine": 109,
+   "endColumn": 70,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 109,
+   "column": 40,
+   "endLine": 109,
+   "endColumn": 52,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "seconds * 60",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 6,
+   "endLine": 110,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 6,
+   "endLine": 110,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 6,
+   "endLine": 110,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tokens !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 29,
+   "endLine": 110,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round that names its minutes and cost but no tokens",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 34,
+   "endLine": 110,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 110,
+   "column": 35,
+   "endLine": 110,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 6,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 6,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 6,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cost !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 27,
+   "endLine": 111,
+   "endColumn": 29,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 32,
+   "endLine": 111,
+   "endColumn": 55,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 111,
+   "column": 33,
+   "endLine": 111,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 112,
+   "column": 8,
+   "endLine": 112,
+   "endColumn": 12,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 227,
+   "column": 9,
+   "endLine": 227,
+   "endColumn": 23,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 231,
+   "column": 9,
+   "endLine": 231,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 231,
+   "column": 9,
+   "endLine": 231,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 231,
+   "column": 9,
+   "endLine": 231,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "round === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 232,
+   "column": 18,
+   "endLine": 232,
+   "endColumn": 103,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 232,
+   "column": 59,
+   "endLine": 232,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 290,
+   "column": 17,
+   "endLine": 290,
+   "endColumn": 74,
+   "mutatorName": "MethodExpression",
+   "replacement": "this.#events",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 290,
+   "column": 37,
+   "endLine": 290,
+   "endColumn": 73,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 290,
+   "column": 48,
+   "endLine": 290,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 290,
+   "column": 48,
+   "endLine": 290,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 290,
+   "column": 48,
+   "endLine": 290,
+   "endColumn": 73,
+   "mutatorName": "EqualityOperator",
+   "replacement": "event.round === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rounds.length >= 0",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rounds.length <= 0",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > pr-timeline > prints a recorded pull request's whole timeline through a fake gh that answers only the expected requests",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 291,
+   "column": 25,
+   "endLine": 301,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 292,
+   "column": 38,
+   "endLine": 292,
+   "endColumn": 91,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 292,
+   "column": 54,
+   "endLine": 292,
+   "endColumn": 91,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "sum - (event.round.seconds ?? 0) / 60",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 292,
+   "column": 60,
+   "endLine": 292,
+   "endColumn": 91,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "(event.round.seconds ?? 0) * 60",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 292,
+   "column": 61,
+   "endLine": 292,
+   "endColumn": 85,
+   "mutatorName": "LogicalOperator",
+   "replacement": "event.round.seconds && 0",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 293,
+   "column": 18,
+   "endLine": 293,
+   "endColumn": 74,
+   "mutatorName": "MethodExpression",
+   "replacement": "rounds",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 293,
+   "column": 32,
+   "endLine": 293,
+   "endColumn": 73,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 293,
+   "column": 43,
+   "endLine": 293,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 293,
+   "column": 43,
+   "endLine": 293,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 293,
+   "column": 43,
+   "endLine": 293,
+   "endColumn": 73,
+   "mutatorName": "EqualityOperator",
+   "replacement": "event.round.cost === undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 294,
+   "column": 35,
+   "endLine": 294,
+   "endColumn": 73,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 294,
+   "column": 51,
+   "endLine": 294,
+   "endColumn": 73,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "sum - event.round.cost",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 297,
+   "column": 5,
+   "endLine": 297,
+   "endColumn": 13,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 5,
+   "endLine": 298,
+   "endColumn": 160,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 30,
+   "endLine": 298,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 30,
+   "endLine": 298,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 30,
+   "endLine": 298,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rounds.length !== 1",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 52,
+   "endLine": 298,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 57,
+   "endLine": 298,
+   "endColumn": 60,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 103,
+   "endLine": 298,
+   "endColumn": 122,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 103,
+   "endLine": 298,
+   "endColumn": 122,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round whose spend names only some of its numbers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 103,
+   "endLine": 298,
+   "endColumn": 122,
+   "mutatorName": "EqualityOperator",
+   "replacement": "priced.length !== 0",
+   "claim": "killed",
+   "evidence": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+   "survivorClasses": [],
+   "run": {
+    "head": "aecddb86",
+    "test": "scripts/pr-timeline.test.mjs > rounds > reads a round's minutes and cost from the status bot's round comment, as an event and in the summary",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 125,
+   "endLine": 298,
+   "endColumn": 127,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/timeline.mjs",
+   "line": 298,
+   "column": 130,
+   "endLine": 298,
+   "endColumn": 158,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 195,
+ "omitted": 0,
+ "unmutated": []
+}
