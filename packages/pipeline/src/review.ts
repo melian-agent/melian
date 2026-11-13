@@ -598,9 +598,11 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 			};
 			// A probing run after its planner finished: the plan it recorded, then the prober's answer to it.
+			// `carried` lists the findings a quick run carried, which the prober may refute with a probe that passes.
 			const probe = async (
 				lens: LensRun,
 				planner: ConversationId,
+				carried: string | undefined,
 			): Promise<ProbingOutcome | Exclude<LensOutcome, { status: "done" }>> => {
 				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				let plan = await planOf();
@@ -629,7 +631,13 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						};
 					}, context);
 				}
-				const answered = await converse(key, lens.probe!.route, prober!, renderPlan(plan, input.revision.nonce));
+				const plain = renderPlan(plan, input.revision.nonce);
+				const answered = await converse(
+					key,
+					lens.probe!.route,
+					prober!,
+					carried === undefined ? plain : `${plain}\n\n${carried}`,
+				);
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
 				if (open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined) {
@@ -652,10 +660,15 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				};
 			};
 			// One run: its conversation, and for a level that probes, its planner's then its prober's.
-			const run = async (lens: LensRun, id: ConversationId, prompt: string): Promise<LensOutcome> => {
+			const run = async (
+				lens: LensRun,
+				id: ConversationId,
+				prompt: string,
+				carried?: string,
+			): Promise<LensOutcome> => {
 				const planned = await converse(lens.key, lens.route, id, prompt);
 				if (planned.status !== "done") return planned;
-				const probed = lens.probe === undefined ? undefined : await probe(lens, id);
+				const probed = lens.probe === undefined ? undefined : await probe(lens, id, carried);
 				if (probed !== undefined && "status" in probed) return probed;
 				const conversations = [id, ...(probed?.prober === undefined ? [] : [probed.prober])];
 				let ended: StoredBudgetEnd | undefined;
@@ -734,18 +747,21 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					}, context);
 				}
 				const carried = (await sighted(first)).filter((finding) => escalation.carried.includes(finding.id));
-				const prompt =
-					carried.length === 0
-						? next.prompt
-						: `${next.prompt}\n\n${carriedFindings(carried, input.revision.nonce)}`;
-				const rerun = await run(next, child!, prompt);
+				const listed = carried.length === 0 ? undefined : carriedFindings(carried, input.revision.nonce);
+				const prompt = listed === undefined ? next.prompt : `${next.prompt}\n\n${listed}`;
+				const rerun = await run(next, child!, prompt, listed);
 				// A restatement is the same finding by its ID, or by its file, rule, and overlapping lines, since a run that
 				// reported other lines of one defect hashes another snippet.
 				const higher = await sighted(next);
 				const restates = (finding: SightedFinding) =>
 					higher.some((each) => each.id === finding.id || overlapsSite(each, finding));
 				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
-				const reported = (await runtime.snapshot(LensDocument, child!, context))?.spend?.refuted ?? [];
+				// A probing level's prober refutes; its planner may not.
+				const prober = rerun.status === "done" ? rerun.probing?.prober : undefined;
+				const refuting = [child!, ...(prober === undefined ? [] : [prober])];
+				const reported: string[] = [];
+				for (const conversation of refuting)
+					reported.push(...((await runtime.snapshot(LensDocument, conversation, context))?.spend?.refuted ?? []));
 				const refuted = reported.filter((id) => escalation.carried.includes(id) && !restated.has(id));
 				const kept = escalation.carried.filter((id) => !restated.has(id) && !refuted.includes(id));
 				const moved = { trigger, to: next.key, carried: escalation.carried, kept, refuted };

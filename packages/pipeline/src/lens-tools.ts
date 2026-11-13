@@ -75,6 +75,7 @@ import {
 	type ProbeRecord,
 	ProbingDocument,
 	type ProbingEnvironment,
+	probeConclusive,
 	probeFailed,
 	probingLimits,
 	runHeadProbe,
@@ -1450,7 +1451,12 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		if (args.probe !== undefined) {
 			const probe = probing?.probes?.[args.probe];
 			if (probe === undefined) throw new Error(`no probe ${args.probe} ran in this conversation`);
-			if (!probeFailed(probe.result))
+			if (refuted !== undefined) {
+				if (!probeConclusive(probe.result) || probe.result.exitCode !== 0)
+					throw new Error(
+						`probe ${args.probe} did not pass, so it shows no finding wrong: refute a finding only with a probe that exited 0`,
+					);
+			} else if (!probeFailed(probe.result))
 				throw new Error(
 					`probe ${args.probe} did not fail, so it shows no defect: report a finding only with a probe that exited non-zero`,
 				);

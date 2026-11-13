@@ -2225,6 +2225,48 @@ describe("a level that probes", () => {
 		expect(verdict.counted().map((each) => each.ruleId)).toContain("path-traversal");
 	});
 
+	it("lets the prober refute a finding a quick run carried, with a probe that passed", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		let probe = "p0";
+		const refute: ScriptedReply = (messages) => {
+			probe = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? probe;
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...finding(probe), refuted: id });
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				refute,
+				fauxAssistantMessage("Refuted 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: plan },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const careful = (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } });
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		);
+		const { run } = await review(scripts, {
+			fake,
+			decider,
+			lens: careful,
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: { heavy: { model: route }, medium: { model: route } },
+			},
+		});
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain("careful refuted 1 finding quick carried");
+		expect(verdict.counted().map((each) => each.ruleId)).not.toContain("path-traversal");
+	});
+
 	it("plans from the findings of the revision before this one, never a later one", async () => {
 		const fake = createFakeModels();
 		const scripts = { planner: plan, prober: probing(failing) };
