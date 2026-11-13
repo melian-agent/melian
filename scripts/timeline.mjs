@@ -5,8 +5,10 @@
 // - a Timing: line is self-reported, and only its minutes and cost fields are totalled; a cause or a note is commentary,
 //   never read for numbers, so time or money written only there is not counted (the coordinator's answer, 2026-11-13);
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
-// Under the limit AGENTS.md states for a round comment, a round's Spend line counts what the comment says now, which a
-// writer can edit, until issue #286 binds a round comment's body to its run.
+//
+// The coordinator answered on 2026-11-13, for issue #402, that a round's Spend line sits under the limit AGENTS.md states
+// for a round comment: it counts what the comment says now, which a writer can edit, until issue #286 binds a round
+// comment's body to its run.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
