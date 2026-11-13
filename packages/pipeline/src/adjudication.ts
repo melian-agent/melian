@@ -105,7 +105,7 @@ type StoredDecision = { task: number; findingsVersion: number };
 
 // Each revision's verdict, keyed by `Revision.key` of its base and head, on the changeset's root conversation, with what
 // it was decided from and the task that decided it under the same key.
-type StoredVerdictState = {
+export type StoredVerdictState = {
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
 	decisions?: Record<string, StoredDecision>;
@@ -114,6 +114,9 @@ type StoredVerdictState = {
 	walkthroughNotes?: Record<string, string>;
 	// Finished or replaced summariser attempts since the last success; pending tasks spend no attempt.
 	walkthroughAttempts?: Record<string, number>;
+	// Each revision's walkthroughs by the light route that wrote them, as `provider/model@thinking`, so a review on one
+	// route never replaces the walkthrough another round's route wrote. `walkthroughs` holds those an older Melian stored.
+	routedWalkthroughs?: Record<string, Record<string, Walkthrough>>;
 };
 
 class VerdictState {
@@ -156,7 +159,9 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 14,
+	version: 15,
+	// Version 15 keeps walkthroughs by the light route that wrote them, so an older build refuses a store this one wrote
+	// rather than write a route-less walkthrough beside them; a version 14 or 13 document reads unchanged.
 	// Version 14 lets a provenance's plan hold lens routes; a version 13 plan has none and reads unchanged.
 	// Version 13 lets a check record carry caveats; a version 12 verdict has none and reads unchanged.
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.

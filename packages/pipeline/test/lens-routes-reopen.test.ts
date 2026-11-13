@@ -58,7 +58,7 @@ it("reopens main's verdicts and rounds twice, reading each stored plan as it did
 	expect(ReviewPlan.from(plan).toJSON()).toEqual(plan);
 	for (const [pass, versions] of [
 		[0, [13, 3]],
-		[1, [14, 4]],
+		[1, [15, 4]],
 	] as const) {
 		const storage = await openSqliteStorage(file);
 		const harness = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });

@@ -98,6 +98,51 @@ it("times steps, nested work and the open step until the record", async () => {
 	});
 });
 
+it("times concurrent work under its own parent, whatever step is open, and leaves it out of the preparation row", async () => {
+	const { clock, now } = clocked(100);
+	const spans = PrepareSpans.start("resolve", 10, now);
+	let release = () => {};
+	const released = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const unlocking = spans.concurrent("walkthrough", "unlock", async () => {
+		await released;
+		return "unlocked";
+	});
+	clock.now = 150;
+	spans.step("lenses.prepare");
+	clock.now = 400;
+	release();
+	expect(await unlocking).toBe("unlocked");
+	clock.now = 500;
+	await expect(
+		spans.concurrent("walkthrough", "unlock", async () => {
+			clock.now = 520;
+			throw new Error("failed");
+		}),
+	).rejects.toThrow("failed");
+	clock.now = 600;
+	harness = await openHarness(createMemoryStorage(), {
+		models: createFakeModels().models,
+		registry: createRegistry(),
+	});
+	const record = await spans.record(harness, "base..head", context);
+	expect(record).toEqual({
+		startedAt: 10,
+		endedAt: 600,
+		spans: [
+			{ name: "resolve", startedAt: 10, endedAt: 150, durationMs: 140 },
+			{ name: "unlock", startedAt: 100, endedAt: 400, durationMs: 300, parent: "walkthrough" },
+			{ name: "unlock", startedAt: 500, endedAt: 520, durationMs: 20, parent: "walkthrough" },
+			{ name: "lenses.prepare", startedAt: 150, endedAt: 600, durationMs: 450 },
+		],
+	});
+	// The review's own steps alone, 140 + 450 ms, never the walkthrough's unlocks that overlapped them.
+	expect(new StageTelemetry("base..head", [], record).runDetails().stages).toEqual([
+		{ name: "preparation", models: [], durationMs: 590, outcome: "ran" },
+	]);
+});
+
 it("stores one record per revision, which the next review replaces, and reads it detached", async () => {
 	const storage = createMemoryStorage();
 	harness = await openHarness(storage, { models: createFakeModels().models, registry: createRegistry() });

@@ -302,6 +302,51 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it.each([
+		["posts the walkthrough the round's own light route wrote", undefined, true],
+		["omits a walkthrough another plan's light model wrote", "faux/other@", false],
+	])("%s", async (_name, route, posted) => {
+		const database = join(repo, "walkthrough-route.sqlite");
+		const { options, fake, harness } = await setup(database);
+		await reviewChangeset(options);
+		await summarizeReview({ ...options, harness });
+		const root = await harness.root(context);
+		const revision = Revision.key(options.changeset.revision);
+		const stored = (await harness.snapshot(VerdictDocument, root.id, context))!;
+		const [written] = Object.entries(stored.routedWalkthroughs?.[revision] ?? {});
+		expect(written?.[0]).toBe("faux/scripted@");
+		// The plan the verdict was decided under routes light to the model that wrote the summary, faux/scripted.
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.provenance![revision]!.plan = {
+				tiers: [{ tier: "light", status: "routed", models: [{ model: "faux/scripted", credential: "test" }] }],
+				lenses: [],
+			};
+			if (route !== undefined) document.routedWalkthroughs = { [revision]: { [route]: written![1] } };
+		}, context);
+		const state = pullRequestState();
+		moveTo(state, options.changeset);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		await options.harness.close();
+		const publication = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
+		opened.push(publication);
+		await publishReview({
+			harness: publication.harness,
+			provider,
+			changeset: options.changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: options.changeset.revision.base,
+			trustedWriters: true,
+		});
+		expect(state.ledgers[0]!.body.includes("Changes manager name lookup.")).toBe(posted);
+		expect(state.ledgers[0]!.body.includes("No walkthrough available. Another light route wrote it.")).toBe(!posted);
+	});
+
 	it("publishes a run table whose every number is what melian telemetry --json reports", async () => {
 		const database = join(repo, "run-details.sqlite");
 		const { options, fake, harness, storage } = await setup(database);

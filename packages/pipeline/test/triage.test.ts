@@ -118,6 +118,7 @@ async function review(
 		origin?: ReviewOrigin;
 		rerun?: boolean;
 		unlockModels?: (providers: readonly string[]) => Promise<void>;
+		lensesStarted?: () => void;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -140,6 +141,7 @@ async function review(
 		...(options.origin === undefined ? {} : { origin: options.origin }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
+		...(options.lensesStarted === undefined ? {} : { lensesStarted: options.lensesStarted }),
 	});
 }
 
@@ -417,6 +419,77 @@ describe("triage", () => {
 		expect(decider.requests).toHaveLength(1);
 		expect(fake.provider.state.callCount).toBe(calls);
 		expect(second.verdict).toEqual(first.verdict);
+	});
+
+	it("tells the host once the lens run is recorded, after triage and before any lens asks a model", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const seen: { asked: number; requests: number }[] = [];
+
+		await review({
+			decider,
+			lensesStarted: () => seen.push({ asked: decider.requests.length, requests: fake.provider.state.callCount }),
+		});
+
+		expect(seen).toEqual([{ asked: 1, requests: 0 }]);
+		expect(fake.provider.state.callCount).toBeGreaterThan(0);
+	});
+
+	it("tells the host once without a decider, before any lens asks a model", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const requests: number[] = [];
+
+		await review({ lensesStarted: () => requests.push(fake.provider.state.callCount) });
+
+		expect(requests).toEqual([0]);
+	});
+
+	it("tells the host only once the index names the run that replaces an earlier one", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+		await review();
+		const root = await harness.root(context);
+		const first = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		const named: unknown[] = [];
+
+		// A changed escalation severity is a new selection, so this review replaces the first one's lens run.
+		await review({
+			config: { ...config, triage: { ...config.triage, escalateAt: "P3" } },
+			lensesStarted: () => {
+				void harness
+					.snapshot(ReviewIndex, root.id, context)
+					.then((index) => named.push(index!.reviews[revision()]!.task));
+			},
+		});
+
+		const replacement = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		expect(replacement).not.toBe(first);
+		expect(named).toEqual([replacement]);
+	});
+
+	it("tells the host only once a live run it replaces is marked aborted", async () => {
+		await open();
+		let release: (reply: typeof done) => void = () => {};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [() => new Promise((resolve) => (release = resolve)), done] },
+		]);
+		const interrupted = review().catch((error: unknown) => error);
+		await vi.waitFor(() => expect(fake.provider.state.callCount).toBe(1));
+		const root = await harness.root(context);
+		const first = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		const marked: Promise<boolean | undefined>[] = [];
+
+		await review({
+			config: { ...config, triage: { ...config.triage, escalateAt: "P3" } },
+			lensesStarted: () =>
+				marked.push(harness.getTask(first as TaskId, context).then((task) => task?.abortRequested)),
+		});
+		release(done);
+		await interrupted;
+
+		expect(await Promise.all(marked)).toEqual([true]);
 	});
 
 	it("runs every lens at careful without a decider, as before triage", async () => {
