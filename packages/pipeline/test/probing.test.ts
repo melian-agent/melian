@@ -11,11 +11,14 @@ import {
 	type ClaimProbe,
 	headTreeLimits,
 	type ProbingEnvironment,
+	plannerContext,
+	plannerInstructions,
 	probeClaimKey,
 	probeConclusive,
 	probeFailed,
 	proberInstructions,
 	probingLimits,
+	recordPlanPrompt,
 	renderEarlierFindings,
 	renderPlan,
 	renderProbeEvidence,
@@ -23,6 +26,7 @@ import {
 	runHeadProbe,
 	type StoredProbeResult,
 } from "../src/probing.ts";
+import { probingProtocol } from "../src/review.ts";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 // Each test's scratch in a directory of its own, so the trees other test files write never count as this one's.
@@ -555,5 +559,15 @@ describe("the evidence a verifier reads, exactly", () => {
 		expect(text).toBe(
 			"## Findings earlier reviews reported\n\nThe last earlier revision of this change was reported with these findings. Plan an attack for each that touches a boundary, since the change may not have closed it. 1 more are not listed.",
 		);
+	});
+});
+
+describe("the probing protocol a probing run's fingerprint holds", () => {
+	it("holds the source of every function that renders the planner's and the prober's fixed wording", () => {
+		const { prompts } = JSON.parse(probingProtocol()) as { prompts: string[] };
+		// Each function's own source holds every branch of its wording, not only the one a sample input would render.
+		for (const render of [answerPrompt, renderPlan, renderEarlierFindings, plannerContext, plannerInstructions])
+			expect(prompts).toContain(String(render));
+		expect(prompts).toContain(recordPlanPrompt);
 	});
 });

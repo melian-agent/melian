@@ -143,13 +143,14 @@ import {
 	ProbeReruns,
 	ProbingDocument,
 	type ProbingEnvironment,
+	plannerContext,
 	plannerInstructions,
 	probeClaimKey,
 	probeConclusive,
 	proberInstructions,
 	probingLimits,
+	probingWording,
 	recordPlanPrompt,
-	renderEarlierFindings,
 	renderPlan,
 	rerunKey,
 	runHeadProbe,
@@ -1194,13 +1195,12 @@ function planned(options: ReviewOptions): ReviewOptions {
 	return { ...options, config: { ...options.config, models: plan.routes() }, checks };
 }
 
-// Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
-// names the model that ran.
-// Every fixed input a probing run's planner and prober receive, as this build renders them: each role tool's name,
-// description and schema, the fixed limits, and each fixed prompt. A release that changes any of them runs the level
-// again; the plan and its earlier findings, which move between reviews of one head, stay out.
-function probingProtocol(): string {
-	const sample = { target: "t", reason: "r", passing: "p", failing: "f" };
+/**
+ * Every fixed input a probing run's planner and prober receive, as this build holds them: each role tool's name,
+ * description and schema, the fixed limits, and the source of each prompt's code. A release that changes any of them
+ * runs the level again; the plan and its earlier findings, which move between reviews of one head, stay out.
+ */
+export function probingProtocol(): string {
 	return JSON.stringify({
 		tools: [recordPlan, runProbe, skipAttack, reportFinding].map(({ name, description, parameters }) => ({
 			name,
@@ -1208,10 +1208,12 @@ function probingProtocol(): string {
 			parameters,
 		})),
 		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
-		prompts: [plannerInstructions([]), renderPlan([sample], "0".repeat(24)), recordPlanPrompt, answerPrompt([1])],
+		prompts: probingWording(),
 	});
 }
 
+// Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
+// names the model that ran.
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
@@ -2493,10 +2495,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						read: [...(await baseConfig()).probe.read],
 					},
 				},
-				context: (boundary: string) => [
-					`## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.\n${quoteUntrusted("listing", atBase, boundary)}`,
-					renderEarlierFindings(earlier, boundary),
-				],
+				context: (boundary: string) => plannerContext(atBase, earlier, boundary),
 			};
 		};
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {

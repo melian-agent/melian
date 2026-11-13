@@ -265,6 +265,14 @@ const earlierLimits = { findings: 40, bytes: 8 * 1024 } as const;
  * rule, place and status, a dismissal being a maintainer's ruling, inside the review's boundary, since lenses wrote them
  * after reading the head. Bounded, with a count of those left out.
  */
+/** The planner's context beside its instructions: the decisions at base, then the earlier revision's findings. */
+export function plannerContext(decisions: string, earlier: readonly EarlierFinding[], nonce: string): string[] {
+	return [
+		`## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.\n${quoteUntrusted("listing", decisions, nonce)}`,
+		renderEarlierFindings(earlier, nonce),
+	];
+}
+
 export function renderEarlierFindings(findings: readonly EarlierFinding[], nonce: string): string {
 	const rows: string[] = [];
 	let bytes = 0;
@@ -385,3 +393,23 @@ export const ProbeReruns = defineDoc<{
 	fork: "current",
 	initial: () => ({ runs: {} }),
 });
+
+/**
+ * Every fixed wording a probing run's planner and prober receive, as the source of the code that renders it, so each
+ * branch of each prompt counts, not only the one a sample input would render. A probing run's fingerprint holds it.
+ */
+export function probingWording(): string[] {
+	return [
+		...[
+			plannerInstructions,
+			plannerContext,
+			renderEarlierFindings,
+			renderPlan,
+			renderedPlan,
+			answerPrompt,
+			proberInstructions,
+		].map(String),
+		recordPlanPrompt,
+		JSON.stringify(earlierLimits),
+	];
+}
