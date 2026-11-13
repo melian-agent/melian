@@ -6,7 +6,7 @@ The figures were already in the JSON `melian review --json` writes, as its `tele
 
 `scripts/round-public.test.mjs` and `scripts/pr-timeline.test.mjs` hold the tests; each failed first, before the code it tests. The CRLF test failed at `97e17850` with no round read, and passed at `aecddb86`.
 
-The mutation inventory, `2026-11-13-issue-402-mutants.json`, lists 230 mutants: 175 killed, each by its named test run alone at `eab2a5bd`; 53 string literals Stryker ignores under the repository's configuration; and 2 equivalent, each with its reason. Earlier runs found 27, 5 and then 6 survivors, which the tests above, the CRLF fix, and code that `amount` and a single parse made unnecessary closed. The first round with a cost on its comment comes after merge, since `workflow_dispatch` runs only the default branch's workflow; it is recorded on the issue.
+The mutation inventory, `2026-11-13-issue-402-mutants.json`, lists 252 mutants: 196 killed, each by its named test run alone at `aebe38ff`; 53 string literals Stryker ignores under the repository's configuration; and 3 equivalent, each with its reason. Earlier runs found 27, 5 and then 6 survivors, which the tests above, the CRLF fix, and code that `amount` and a single parse made unnecessary closed. The first round with a cost on its comment comes after merge, since `workflow_dispatch` runs only the default branch's workflow; it is recorded on the issue.
 
 Codex's adversarial review of `a38a50dc` raised two medium findings, fixed together in one commit, since both change `spendOf` and the comment's body:
 
