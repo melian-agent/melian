@@ -362,11 +362,12 @@ describe("DirectoryRecordStore", () => {
 		],
 		["a stray file beside a record", (path: string) => writeFileSync(join(path, "..", "notes.txt"), "x")],
 		["a stray file in a kind", (path: string) => writeFileSync(join(path, "..", "..", "stray.json"), "x")],
+		["a stray file in a changeset", (path: string) => writeFileSync(join(path, "..", "..", "..", "stray.json"), "x")],
 		[
 			"a symbolic link in place of a record",
 			(path: string) => {
-				renameSync(path, `${path}.real`);
-				symlinkSync(`${path}.real`, path);
+				renameSync(path, join(root, "real.json"));
+				symlinkSync(join(root, "real.json"), path);
 			},
 		],
 		[
@@ -467,6 +468,29 @@ describe("DirectoryRecordStore", () => {
 			expect(error.path).toBe(join(root, name));
 			expect(readdirSync(outside)).toEqual([]);
 		});
+	});
+
+	it("reads an empty cell directory as no cell", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		mkdirSync(join(root, "changesets", changeset, ".cell"), { recursive: true });
+		expect(await store.readCell(changeset)).toEqual({});
+		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
+	});
+
+	it("leaves no temporary file behind a cell write, won or lost", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
+		writeFileSync(join(root, "changesets", changeset, ".cell", "2"), "taken");
+		expect(await store.writeCell(changeset, "1", "lease B")).toBe(false);
+		expect(readdirSync(join(root, "tmp"))).toEqual([]);
+	});
+
+	it("makes nothing for an add to a disposed changeset", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.dispose(changeset);
+		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("disposed");
+		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
+		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
 
 	it("keeps the cell out of the listing", async () => {

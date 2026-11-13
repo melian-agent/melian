@@ -421,6 +421,31 @@ describe("SharedRecord", () => {
 			expect(refusal({ ...envelope({ kind: "post" }), supersedes }).code).toBe("invalidRecord");
 		});
 
+		it.each([
+			["a revision that is no string but coerces to one", { revision: [`${commit("a")}..${commit("b")}`] }],
+			["a signer that is no string", { signer: 1, signature }],
+			["a signature that is no string", { signer: "host", signature: 1 }],
+			["a round whose payload is null", { kind: "round", revision, payload: null }],
+		])("refuses %s as a RecordError", (_name, fields) => {
+			expect(refusal({ ...envelope(), ...fields }).code).toBe("invalidRecord");
+		});
+
+		it("takes a payload that holds null", () => {
+			expect(SharedRecord.parse(envelope({ payload: { a: null, b: [null] } })).payload).toEqual({
+				a: null,
+				b: [null],
+			});
+		});
+
+		it("names its errors as RecordError, and a stored record that is not JSON as invalidRecord", () => {
+			expect(refusal("x").name).toBe("RecordError");
+			try {
+				SharedRecord.read("{", sha256("{"));
+			} catch (error) {
+				expect((error as RecordError).code).toBe("invalidRecord");
+			}
+		});
+
 		it("gives a record that names no supersedes an empty list", () => {
 			expect(SharedRecord.parse(envelope()).supersedes).toEqual([]);
 		});

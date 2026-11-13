@@ -82,7 +82,7 @@ function frozen<T>(value: T): T {
 }
 
 function sha256(text: string): string {
-	return createHash("sha256").update(text, "utf8").digest("hex");
+	return createHash("sha256").update(text).digest("hex");
 }
 
 function idList(value: unknown, name: string): string[] {

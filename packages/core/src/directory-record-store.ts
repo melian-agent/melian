@@ -85,7 +85,7 @@ export class DirectoryRecordStore implements RecordStore {
 			return await readdir(directory, { withFileTypes: true });
 		} catch (cause) {
 			if (errorCode(cause) === "ENOENT") return [];
-			throw failure(errorCode(cause) === "ENOTDIR" ? "unknownFile" : "unreachable", directory, cause);
+			throw failure("unreachable", directory, cause);
 		}
 	}
 
@@ -161,7 +161,6 @@ export class DirectoryRecordStore implements RecordStore {
 
 	async list(changeset: string): Promise<RecordEnvelope[]> {
 		const directory = await this.#reach(changeset);
-		if ((await this.#cell(directory))?.value === disposalMark) return [];
 		const records: RecordEnvelope[] = [];
 		for (const kind of await this.#entries(directory)) {
 			if (kind.name === cellDirectory) continue;
@@ -174,7 +173,8 @@ export class DirectoryRecordStore implements RecordStore {
 					records.push(await this.#record(join(slotPath, file.name), file));
 			}
 		}
-		// A directory that vanished mid-walk read as empty, so the walk counts only if the store is still there after it.
+		// A directory that vanished mid-walk read as empty, so the walk counts only if the store is still there after it,
+		// and a disposed changeset lists nothing, though a dying add left a record after the mark.
 		if ((await this.#cell(await this.#reach(changeset)))?.value === disposalMark) return [];
 		return records;
 	}

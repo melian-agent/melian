@@ -1,30 +1,27 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import type * as fs from "node:fs/promises";
 import { join } from "node:path";
 import { DirectoryRecordStore, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
-// Holds the next call of one fs function on a record's path until the test releases it, so a dispose can land while
-// an add is in flight.
+type Held = "mkdir" | "rename" | "readdir" | "link" | "lstat" | "readFile" | "writeFile" | "rm";
+
+// Holds the next call of one fs function on a matching path until the test releases it, so another handle's call can
+// land while this one is in flight.
 const held: { call?: Held; path?: string; reached?: () => void; release?: Promise<void> } = {};
 
-type Held = "mkdir" | "rename" | "readdir" | "link";
-
-// Makes the next call of one fs function on a path fail with an errno code, as a failing disk would.
+// Makes the next call of one fs function on a matching path fail with an errno code, as a failing disk would.
 const fault: { call?: Held; path?: string; code?: string } = {};
 
-function injected(call: Held, path: string): void {
-	if (fault.call !== call || fault.path === undefined || !path.endsWith(fault.path)) return;
-	const code = fault.code;
-	fault.call = undefined;
-	throw Object.assign(new Error(`${code}: injected`), { code });
-}
-
-async function hold(call: Held, path: string): Promise<void> {
+async function intercept(call: Held, path: string): Promise<void> {
+	if (fault.call === call && fault.path !== undefined && path.includes(fault.path)) {
+		fault.call = undefined;
+		throw Object.assign(new Error(`${fault.code}: injected`), { code: fault.code });
+	}
 	const { reached, release } = held;
-	const target = held.path ?? "/check/";
-	if (held.call !== call || !path.includes(target) || reached === undefined || release === undefined) return;
+	if (held.call !== call || !path.includes(held.path ?? "/check/") || reached === undefined || release === undefined)
+		return;
 	held.call = undefined;
 	reached();
 	await release;
@@ -32,26 +29,23 @@ async function hold(call: Held, path: string): Promise<void> {
 
 vi.mock("node:fs/promises", async (original) => {
 	const real = await original<typeof fs>();
+	// The path an fs call acts on: the destination for link and rename, the first argument for the rest.
+	const wrap =
+		<A extends unknown[], R>(call: Held, run: (...args: A) => Promise<R>, at = 0) =>
+		async (...args: A): Promise<R> => {
+			await intercept(call, String(args[at]));
+			return run(...args);
+		};
 	return {
 		...real,
-		mkdir: async (path: string, options: Parameters<typeof real.mkdir>[1]) => {
-			injected("mkdir", path);
-			await hold("mkdir", path);
-			return real.mkdir(path, options);
-		},
-		readdir: async (path: string, options: Parameters<typeof real.readdir>[1]) => {
-			injected("readdir", path);
-			await hold("readdir", path);
-			return real.readdir(path, options);
-		},
-		link: async (from: string, to: string) => {
-			injected("link", to);
-			return real.link(from, to);
-		},
-		rename: async (from: string, to: string) => {
-			await hold("rename", to);
-			return real.rename(from, to);
-		},
+		mkdir: wrap("mkdir", real.mkdir),
+		readdir: wrap("readdir", real.readdir),
+		link: wrap("link", real.link, 1),
+		rename: wrap("rename", real.rename, 1),
+		lstat: wrap("lstat", real.lstat),
+		readFile: wrap("readFile", real.readFile),
+		writeFile: wrap("writeFile", real.writeFile),
+		rm: wrap("rm", real.rm),
 	};
 });
 
@@ -122,14 +116,69 @@ describe("DirectoryRecordStore with an add in flight", () => {
 			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, "lease"),
 		],
 		["a directory it cannot make", "mkdir", "/check", false, (store: DirectoryRecordStore) => store.add([envelope])],
+		["a cell it cannot stat", "lstat", "/.cell", true, (store: DirectoryRecordStore) => store.readCell(changeset)],
+		[
+			"a cell it cannot read",
+			"readFile",
+			"/.cell/1",
+			true,
+			(store: DirectoryRecordStore) => store.readCell(changeset),
+		],
 	] as const)("fails unreachable on %s, with the cause", async (_name, call, path, seeded, act) => {
 		const store = await DirectoryRecordStore.open(root);
 		if (seeded) await store.writeCell(changeset, undefined, "seed");
 		Object.assign(fault, { call, path, code: "EIO" });
 		const error = await rejection(act(store), RecordError);
 		expect(error.code).toBe("unreachable");
-		expect(error.path).toBe(join(root, "changesets", changeset, path.replace("/1", "").slice(1)));
+		const named = call === "readFile" ? path.slice(1) : path.replace("/1", "").slice(1);
+		expect(error.path).toBe(join(root, "changesets", changeset, named));
 		expect((error.cause as { code?: string }).code).toBe("EIO");
 		expect(fault.call).toBeUndefined();
+	});
+
+	it("fails unreachable when it cannot write a temporary file, and leaves none", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		Object.assign(fault, { call: "writeFile", path: "/tmp/", code: "EIO" });
+		const error = await rejection(store.writeCell(changeset, undefined, "lease"), RecordError);
+		expect(error.code).toBe("unreachable");
+		expect(error.path?.startsWith(join(root, "tmp"))).toBe(true);
+		expect((error.cause as { code?: string }).code).toBe("EIO");
+		expect(readdirSync(join(root, "tmp"))).toEqual([]);
+	});
+
+	it("fails an add unreachable, not disposed, when its rename fails on a live changeset", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		Object.assign(fault, { call: "rename", path: "/check/", code: "EIO" });
+		const error = await rejection(store.add([envelope]), RecordError);
+		expect(error.code).toBe("unreachable");
+		expect(error.path).toBe(join(root, SharedRecord.parse(envelope).path));
+		expect((error.cause as { code?: string }).code).toBe("EIO");
+		expect(readdirSync(join(root, "tmp"))).toEqual([]);
+		expect(await store.list(changeset)).toEqual([]);
+	});
+
+	it("lists nothing when a dispose lands while it walks", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		const disposing = await DirectoryRecordStore.open(root);
+		await store.add([envelope]);
+		const { reached, release } = pause("readdir", "/check/");
+		const listing = store.list(changeset);
+		await reached;
+		await disposing.dispose(changeset);
+		release();
+		expect(await listing).toEqual([]);
+	});
+
+	it("lets two disposes at once both finish", async () => {
+		const first = await DirectoryRecordStore.open(root);
+		const second = await DirectoryRecordStore.open(root);
+		await first.add([envelope]);
+		const { reached, release } = pause("rm", "/check");
+		const disposing = first.dispose(changeset);
+		await reached;
+		await second.dispose(changeset);
+		release();
+		await disposing;
+		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
 	});
 });

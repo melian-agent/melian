@@ -146,6 +146,12 @@ describe("RecordSet", () => {
 			expect(ids(set.standingRounds(changeset, revision))).toEqual([trusted.id]);
 		});
 
+		it("never counts a record of another kind at the revision as a round", () => {
+			const only = round("1");
+			const status = post({ n: 1 }, undefined, { kind: "status", revision });
+			expect(ids(RecordSet.of([only, status]).standingRounds(changeset, revision))).toEqual([only.id]);
+		});
+
 		it("is not changed by a record of another kind that names a round", () => {
 			const first = round("1");
 			const pointer = post({ replaces: [first.id] });
