@@ -15,3 +15,5 @@ Three reviews then tested the draft with unit tests: [issue #378](https://github
 [Pull request #314](https://github.com/melian-agent/melian/pull/314) is frozen at `92faa656`. `docs/design.md` and the plan's new step 46 change with the decision. No code changed.
 
 A third round, on `5a8e91cb`, raised one P1 and four P2s. Two rounds running had found a key that left out an input, so the maintainer ruled on 2026-11-13, in the coordinator's session, that a result's key is the hash of its whole request, and that an inheritance is computed at the gate and is no stored kind. The decision's table names the answer to each finding.
+
+A fifth round, on `f24953fa`, raised one P1 and one P2. The decision now amends the coverage ledger's "Fork heads" section by name, for a record the trusted host signed, which the maintainer's ruling of 2026-11-13 on fork heads required and the header had not declared. Supersession no longer depends on the order records arrived in. Making it a fact about the set is the coordinator's choice.

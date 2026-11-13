@@ -3,6 +3,7 @@
 Supersedes: [the state branch decision](2026-11-07-state-branch-storage.md)
 Amends: [the coordination decision](2026-11-08-how-melian-coordinates.md), rule 2's lease on the state branch and rule 3's fence on `melian/review`
 Amends: [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md), its "Sharing, for milestone 3" section
+Amends: [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md), its "Fork heads" section: a record the trusted host's key signed covers a fork's head
 Amends: [melian/review on merge groups](2026-10-22-melian-review-on-merge-groups.md), what the merge-group check reads
 Amends: [the melian/review outage procedure](2026-10-23-melian-review-outage-procedure.md), when the merge-group check recognises a maintainer's override
 Amends: [marker trust](2026-10-03-marker-trust.md), what proves a marker
@@ -104,7 +105,7 @@ The first draft settled two records in one slot by the lowest ID. [Issue #378](h
 - **An import keeps every record.** A host that finds several trusted records under the key its own run would use imports all of them, and their sightings merge as two lenses' sightings do. Nothing is dropped.
 - **Standing is computed from the rounds.** A round of a revision stands when no round that counts names it as replaced. Nothing else says which round is current, so there is no pointer for a writer to roll back. Where a key is pinned, only a round that key signed counts, so only the trusted host's round can replace the trusted host's.
 - **The gate takes the worst standing round.** Two rounds that stand together, because two hosts reviewed at once, gate by the worse, and not reviewed is worse than blocking.
-- **`supersedes` is narrow.** Only a dismissal, a post, a status, the ledger comment and a comparison may carry it, and it names only records of its own changeset, kind and key. An entry naming no record has no effect, then or later. Supersession is permanent: a superseded record's own `supersedes` still applies. No record a review writes carries one.
+- **`supersedes` is narrow.** Only a dismissal, a post, a status, the ledger comment and a comparison may carry it, and it names only records of its own changeset, kind and key. Supersession is a fact about the set, never about the order records arrived in, which the store does not keep: an entry applies whenever its target is in the set, and has no effect while it is not. A writer can therefore name a record before it lands only by building that exact record first, which the same writer could as well add and then supersede. An ID is a hash of a record's content, its `supersedes` included, so no two records can name each other. Supersession is permanent: a superseded record's own `supersedes` still applies. No record a review writes carries one.
 - **Publication's own slots may tie.** Two posts, statuses or ledger comments that stand in one slot are settled by the lowest ID. That tie decides which comment Melian keeps, never a verdict.
 
 ### 5. A result's key is the request that produced it
@@ -153,6 +154,8 @@ The trusted host holds the one key, pinned as `trust.host.key` in the root `meli
 
 - One that sets `trust.writers: false`. The gate then counts only records that key signed. A record it did not sign is set aside before every other rule: it supersedes nothing and stands nowhere.
 - One that takes pull requests from forks, whatever `trust.writers` says, because without the key the gate cannot tell the trusted host's record of a fork's head from a writer's. For a fork's head the gate counts only records that key signed, so a repository that has not pinned it passes no fork's pull request, and the gate names what to set up. The maintainer ruled so on 2026-11-13, in the coordinator's session, over the alternative of a writer's recorded vouch: the rule's promise is that a fork's head was reviewed where its code could not touch the result, and a vouch promises only that a writer read it.
+
+  This changes one clause of the coverage ledger decision's "Fork heads" section, which said no round of a fork's head records coverage, whoever runs it. A round the trusted host ran and signed now does. That section already named this end: in milestone 3 the agent refuses a record "whose head is not a writer's or the App's", and the trusted host is that App. The rest of the section stands. A writer's round of a fork's head records no coverage and reads not reviewed, with `--trust-head` or without it, because a writer's machine ran the fork's code where it could touch the result. A record of a fork's head with no signature, a bad one, or one from a key the base does not pin covers nothing. A repository with no pinned key passes no fork's pull request.
 
 Every other repository has no key. The envelope keeps `signer` and `signature` so a later decision can add a named identity for each writer without a new format.
 
@@ -245,6 +248,8 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | A publisher paused after its lease check posted a stale review (`6f40c2c204f44f8e`) | Rule 11: a publisher that lost its lease deletes its own post |
 | Coverage is proved from transcripts, which no longer leave the host (`e89038cecd83e25c`) | Rule 5: a lens record carries its delivery evidence, and one without it covers no line |
 | A closed pull request was disposed, so a reopened one could record nothing (`d48f504f94e100d3`) | Rule 13: closing disposes nothing |
+| A signed record let a fork's head count, against the coverage ledger's "Fork heads" section, which this file did not amend (`ab55c8493996ace2`) | Rule 6 and the header: the section is amended for a record the trusted host signed, and every other clause of it stands |
+| Whether a `supersedes` entry applied depended on arrival order, which the store does not keep (`2839409b73dade40`) | Rule 4: an entry applies whenever its target is in the set |
 
 ## What this gives up
 
