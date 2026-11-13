@@ -1,10 +1,10 @@
 # `melian mutants verify` runs Stryker in sharded Actions jobs, and builders justify only survivors
 
-Amends: [mutation evidence by enumeration and verification](2026-10-24-mutation-evidence-by-enumeration-and-verification.md), section 1's `verify` command, section 3's verification as evidence, section 5's stale kills, section 8's changes to this repository, and what sections 4 and 6 say a timeout is, for how a pull request's kills are proved
+Amends: [mutation evidence by enumeration and verification](2026-10-24-mutation-evidence-by-enumeration-and-verification.md), sections 1, 3, 5 and 8 on proving kills; sections 4 and 6 on timeouts; section 6 on who settles an equivalent claim
 Amends: [Stryker leaves this repository's review rounds](2026-10-24-stryker-off-the-hot-path.md), the interim rule, which ends when the job lands
 Amends: [a mutation proof runs each claim against its named test alone](2026-11-04-mutation-proof-scope.md), who runs a kill's proof and against which tests
 
-Status: proposed on 2026-11-13 for [issue #240](https://github.com/melian-agent/melian/issues/240), for the maintainer's ruling. Not built. The maintainer reshaped step 34 on 2026-11-10, in the coordinator's session, as [the coordinator recorded on the issue](https://github.com/melian-agent/melian/issues/240#issuecomment-6754427946): Stryker proves the kills, with per-test coverage and an incremental cache seeded from `main`, across a matrix of Blacksmith runners, once on the final head beside the round, and builders justify only survivors. The rules below are this decision's own. Five choices change what blocks a merge or depart from the reshape, so they are set out as options with their costs, under "Choices for the maintainer", and the ruling settles them. An attacking review, seven passes of Codex's adversarial review and a Melian round have each found rules that could pass an unproved kill or leave a stale status, and this revision closes every finding so far. The pull request's reports list each finding and the commit that closed it. Each part is tagged **[Melian's flow]** for the product or **[Building Melian]** for this repository's process.
+Status: proposed on 2026-11-13 for [issue #240](https://github.com/melian-agent/melian/issues/240), for the maintainer's ruling on its last choice. Not built. The maintainer reshaped step 34 on 2026-11-10, in the coordinator's session, as [the coordinator recorded on the issue](https://github.com/melian-agent/melian/issues/240#issuecomment-6754427946): Stryker proves the kills, with per-test coverage and an incremental cache seeded from `main`, across a matrix of Blacksmith runners, once on the final head beside the round, and builders justify only survivors. The rules below are this decision's own. The maintainer ruled on four of its five choices on 2026-11-13, in the coordinator's session, as the coordinator relayed; choice 4 awaits his answer, and its text stays neutral until then. The section "The maintainer's rulings" records each. An attacking review, seven passes of Codex's adversarial review and a Melian round have each found rules that could pass an unproved kill or leave a stale status, and this revision closes every finding so far. The pull request's reports list each finding and the commit that closed it. Each part is tagged **[Melian's flow]** for the product or **[Building Melian]** for this repository's process.
 
 ## Problem
 
@@ -12,7 +12,7 @@ A builder proves each kill by hand: a scratch script applies one mutant, runs it
 
 The two designs on file are both too slow. [The enumeration and verification decision](2026-10-24-mutation-evidence-by-enumeration-and-verification.md) runs each claim in fresh worktrees, with seven shared control runs per test. By its own measurement, that is up to 204 minutes serial for [pull request #168](https://github.com/melian-agent/melian/pull/168)'s 328 mutants. `static.mutation` ran Stryker cold and unsharded on the host, and took 30 minutes to 2 hours a round.
 
-Example: on #310's 689 mutants, a 16-way split of Stryker's per-test runs, each mutant against only the tests that cover it, would aim at about 13 minutes of wall time.
+Example: on [pull request #310](https://github.com/melian-agent/melian/pull/310)'s 689 mutants, a 16-way split of Stryker's per-test runs, each mutant against only the tests that cover it, would aim at about 13 minutes of wall time.
 
 ## Decision
 
@@ -40,7 +40,7 @@ Stryker's statuses map to three outcomes:
 | Stryker status | Outcome |
 | --- | --- |
 | `Killed` | proved |
-| `Timeout` | by choice 2 |
+| `Timeout` | proved |
 | `Ignored`, when its mutator is in the base's `excludedMutations` | noted |
 | every other status: `Survived`, `NoCoverage`, `RuntimeError`, `CompileError`, `Pending`, and `Ignored` for any other reason | survivor |
 
@@ -68,7 +68,7 @@ An entry is Melian's own record of one run, never Stryker's report. For each mut
 Only these are reused:
 
 - **Kills.** Only `Killed` results are reused; every other status runs again.
-- **The same installation and executor.** The lockfile's digest, the Node version, the versions of Stryker and Vitest each equal the reading run's own, and the executor is the same by choice 5.
+- **The same installation and executor.** The lockfile's digest, the Node version, the versions of Stryker and Vitest each equal the reading run's own, and the executor is the same: the runner image's name and version, by the ruling on choice 5.
 - **The same policy.** The digest of the effective configuration Stryker ran under: the base's `stryker.config.json` and `vitest.stryker.config.ts`, every file either imports such as `scripts/stryker-test-names.mjs`, the head's `vitest.config.ts`, and the options Melian sets, equal the reading run's own.
 - **The same Melian.** The commit of the Melian build that ran, so a later fix to these rules voids every older entry.
 - **The heads choice 4 allows.** Each kill records the head it ran at, and a reused kill keeps that head, never the head that reused it. A kill whose test's file and full name are not unique in its file is never reused from another head, since its test cannot be told from the other.
@@ -77,7 +77,7 @@ Left out of the key, with reasons: the shard plan, because a result belongs to i
 
 ### 4. Survivors and accepted answers **[Building Melian]**
 
-A builder answers each survivor in one of three ways. A new test kills it on the next run. An equivalence reason says why no test can kill it. Or a hand proof, recorded as a builder's run is today, shows a test killing it where Stryker cannot reach it. A file the enumerator can mutate but no test relates to keeps one obligation per mutant, each answered by a hand proof of its own. A file the enumerator cannot mutate, such as configuration or signal-sending code, has no mutants to prove, so it is settled by an accepted answer for the file that says how its changed lines are tested; that settles the file, and proves no mutant. A reason, a hand proof or a settlement counts only once accepted, by choice 1.
+A builder answers each survivor in one of three ways. A new test kills it on the next run. An equivalence reason says why no test can kill it. Or a hand proof, recorded as a builder's run is today, shows a test killing it where Stryker cannot reach it. A file the enumerator can mutate but no test relates to keeps one obligation per mutant, each answered by a hand proof of its own. A file the enumerator cannot mutate, such as configuration or signal-sending code, has no mutants to prove, so it is settled by an accepted answer for the file that says how its changed lines are tested; that settles the file, and proves no mutant. A reason, a hand proof or a settlement counts only once the coordinator accepts it, by the ruling on choice 1.
 
 An answer names a mutant by the `identityHash` core already gives an inventory row, or a set-aside file by its path, with the head's tree, `.melian/mutants/` left out, at the head it was written for. A hand proof also names the policy commit, the test's file and full name, the command and the installation it ran under, and matches only a plan with the same policy commit and installation; under any other, it is a survivor again. An equivalence reason is about the code alone, so the tree is its whole key. Every answer's key also holds the SHA-256 of the answer's own canonical text, and an acceptance names that hash, so a later edit to an accepted answer is an answer nobody accepted. When an accepted answer matches a survivor, Melian does not fail the job for it. Any change to the tree outside that directory voids the answer. Problem: an equivalence argument can rest on a callee, a validator or a configuration the answer never names, so a key on the files an answer cites lets a later change make the mutant observable while the answer still passes it. Example: an answer says `>=` and `>` agree because a caller never passes 0; the caller changes, and the cited file does not. The tree is the one key the answer's author cannot leave something out of. It costs a fresh answer after any later change, and the job runs once, on the final head, so that is rare. `.melian/mutants/` is left out of the tree because adding the answer would otherwise change the tree it names; the answer's own hash covers it instead.
 
@@ -105,8 +105,8 @@ One rule closes the class three reviews met one instance at a time: `success` ne
 ### 7. What happens to the decisions it amends
 
 - Enumeration and sampling, section 1 of the 2026-10-24 decision, stand as built in [issue #239](https://github.com/melian-agent/melian/issues/239).
-- That decision's `verify`, and its section 3 classifier, are not built. The classifier would have run seven shared control runs per test, in fresh worktrees. Stryker's in-place build is a switched build: every mutant compiles into the file and is switched on at run time. So a test that reads source text cannot tell a mutant from the original, which was that section's main concern. Whether its two-failure rule survives is choice 3.
-- Its section 4 probes and section 6 `mutants` check wait for their own step. When built, they run through this decision's runner. What they say a timeout is gives way to choice 2.
+- That decision's `verify`, and its section 3 classifier, are not built. The classifier would have run seven shared control runs per test, in fresh worktrees. Stryker's in-place build is a switched build: every mutant compiles into the file and is switched on at run time. So a test that reads source text cannot tell a mutant from the original, which was that section's main concern. Its two-failure rule goes, by the ruling on choice 3: one failing run proves a kill.
+- Its section 4 probes and section 6 `mutants` check wait for their own step. When built, they run through this decision's runner. What they say a timeout is gives way to the ruling on choice 2: a timeout is a kill.
 - Its section 5 exact-head rule gives way to section 3 and choice 4.
 - The 2026-11-04 decision's named test alone gives way to Stryker's per-test coverage: a mutant runs against every test that covers it.
 - `static.mutation` keeps every rule of [mutation reruns, as built](2026-10-16-mutation-reruns-later-changes.md), its `provisional` status included, as an opt-in audit. The job is not that check, and its reuse can pass because section 3 says what a match decides.
@@ -121,43 +121,54 @@ When the build lands, two rows join the pipeline's table in [the identity guidel
 | Mutants cache entry, and its prune | `pipeline/src/mutants-cache.ts` | reuses a kill without running the mutant | The shard plan, since a result belongs to its mutant. Times. The pull request, which only finds an entry |
 | Accepted survivor answer | `core/src/mutation-inventory.ts`'s `identityHash`, with the head's tree and the answer's own hash, and for a hand proof its policy commit and installation | does not fail the job for that survivor | `.melian/mutants/` from the tree, since adding the answer would change the tree it names; the answer's hash covers it |
 
-## Choices for the maintainer
+## The maintainer's rulings
 
-Each changes what blocks a merge, or departs from the reshape of 2026-11-10. The text above holds for every option.
+The maintainer ruled on 2026-11-13, in the coordinator's session, as the coordinator relayed to this builder. The coordinator put the choices to him lettered A to E in this decision's order, so A is choice 1 and E is choice 5. His words: "A. agree. B. agree C. Yes. D. Without the reuse, why would it take less time than now? explain E. Any runner of the same type." A and B agreed with the coordinator's recommendations. D is a question, so choice 4 stays open.
 
-### Choice 1: who accepts a reason or a hand proof, and where it lives
+### Choice 1 (A): the coordinator accepts, from a file in the head
 
-The maintainer gave the coordinator standing authority on 2026-10-17 to dismiss equivalent mutants with reasons and to read policy notices, reporting each, as the coordinator reported on 2026-11-13 for this decision; no decision file records that grant, so the ruling should. Builders and the maintainer post as one login, so the job cannot tell who wrote an answer: acceptance is enforced by where the answer must live and who reads it.
+Answers live in `.melian/mutants/answers.yaml`, committed in the head. It is a policy file, so each new answer raises an acknowledge finding. The coordinator reads each answer and records its acceptance on the pull request, and the maintainer reads the coordinator's reports. This ruling is where the coordinator's standing authority of 2026-10-17 is written down: to accept equivalent mutants with reasons, hand proofs and file settlements, and to read policy notices, reporting each. No earlier decision file recorded that grant.
 
-- **A. The coordinator, under that authority, from a file in the head.** Answers live in `.melian/mutants/answers.yaml`, committed in the head, a policy file, so each new answer raises an acknowledge finding. The coordinator reads it and records its acceptance, and the maintainer reads the coordinator's reports. Costs the maintainer nothing per answer. Nothing machine-enforced stops the job reading `success` before anyone has read the answer: an acknowledge finding never fails `melian/review`, and the queue rule is the control. This amends the 2026-10-24 decision's rule that an equivalent claim stays unresolved until a maintainer dismisses it. The reader's record names the blob of `answers.yaml` they read, and the queue rule checks that blob is still the file at the queued head, since a later commit could otherwise change an accepted answer without changing its key; the job itself checks none of it.
-- **B. The maintainer, from a file in the head.** As A, but the Ready rule has the builder record the maintainer's read before queueing. Narrows the coordinator's standing authority for this job. Costs the maintainer a read of every answer, and has A's gap before the read and its amendment of the 2026-10-24 rule.
-- **C. Either reader, from the default branch.** `verdict` reads answers from the default branch's tip alone, never the head, so an answer counts only once a pull request of its own has merged it; a head-only answer is a survivor awaiting acceptance. The pull request's own tree does not change when the answers land, so the key still matches. The merge is the machine-enforced acceptance, by whoever the ruling names. Costs a second pull request and its review for each batch of answers, and a rerun after it lands.
+`melian/mutants` reads `success` before the coordinator has read an answer. Builders and the maintainer post as one login, so the job cannot tell who wrote an answer or whether anyone read it. The Ready and queued rule is the gate: a builder queues only after the coordinator has recorded its read. The record names the blob of `answers.yaml` it read, and the builder checks that blob is still the file at the queued head, since a later commit could otherwise change an accepted answer without changing its key. The job checks none of this. The ruling amends the 2026-10-24 decision's rule that an equivalent claim stays unresolved until a maintainer dismisses it, as this decision's first `Amends:` line declares.
 
-### Choice 2: what a timeout is
+Two options lost. The maintainer reading every answer would have narrowed the coordinator's authority and cost him a read per answer. Answers read from the default branch only would have made the merge the acceptance, at the cost of a second pull request for each batch of answers.
 
-- **A. A kill, as Stryker counts it.** An activated infinite loop is caught, and the report lists every timeout by mutant. A timeout from a slow runner can pass a mutant no test detects.
-- **B. A survivor, as the 2026-10-24 decision ruled.** Never passes unproved. Every real timeout needs an accepted answer, which is reading for whoever choice 1 names.
+### Choice 2 (B): a timeout is a kill
 
-### Choice 3: how many failures prove a kill
+A `Timeout` proves a mutant, as Stryker counts it, and the report lists every timeout by mutant. The lost option counted it a survivor, as the 2026-10-24 decision did.
 
-- **A. One, as Stryker runs it.** Stryker's dry run is the unmutated control: every covering test passes once before any mutant runs. An honest test that fails by chance under a mutant still records a kill, and section 3 would reuse it at that head.
-- **B. Two.** After its run, each shard runs Stryker again over the mutants it killed, cold, and a kill counts only when both runs killed it; a kill that does not repeat is a survivor. Costs a second dry run and a second run of every kill, about double the shard time.
+### Choice 3 (C): one failing run proves a kill
 
-### Choice 4: which heads a cached kill may come from
+A `Killed` result from one run proves a mutant. Stryker's dry run is the unmutated control: every covering test passes once before any mutant runs. The lost option ran each shard's kills a second time, cold, at about double the shard time.
+
+### Choice 5 (E): any runner of the same type is the same executor
+
+The executor is the runner image, as named and versioned, together with the installation identity, so a second run on any runner of that image reuses kills. This amends the 2026-10-24 decision's rule that a record is reused only on the physical executor that made it. The lost option, the physical runner, would have allowed no reuse in Actions.
+
+## The choice still open
+
+### Choice 4 (D): which heads a cached kill may come from
 
 - **A. The same head only.** A second run at a head reuses every kill from the first. Drops the reshape's seed from `main`. The attacking review found the seed would almost never apply: any changed file Vitest's graph does not track voids it, and every pull request and fix pass adds a progress-log entry.
 - **B. Also earlier heads that are ancestors.** A kill proved at `S` is reused at `H` only when `git merge-base --is-ancestor S H` holds, `S` is in the clone, and [the targeted-rerun rule](2026-11-07-targeted-mutant-rerun.md) selects none of it: its killing test file is not on `vitest list --filesOnly --changed S`, its mutated and test files are unchanged in `git diff --name-status S..H`, and that diff holds no file Vitest's graph does not track and no Vitest configuration, `tsconfig`, `package.json` or lockfile. The ancestry check is required: Vitest's `--changed` compares from the merge base, so after a force-push it misses a change the two-dot diff shows, and it lists nothing for a ref it cannot find. Keeps the reshape's seed. It also trusts Vitest's import graph, which misses what a spawned child imports, a gap the targeted-rerun decision gave up too.
 
-### Choice 5: what counts as the same executor
+## Where the time comes from
 
-The 2026-10-24 decision reuses a record only on the physical executor that made it, until a hermetic executor image exists. Every Actions runner is new, so under that rule no result is ever reused, and the issue's second-run reuse cannot be met.
+The maintainer asked why the job would be faster than today without reuse. Today a builder runs each mutant by hand against its named test, one at a time: [pull request #310](https://github.com/melian-agent/melian/pull/310)'s 689 took about 3.5 hours, each mutant paying a process start and its test file's load. The job's time has three parts, and none needs reuse:
 
-- **A. The runner image, as named and versioned, with the installation identity.** Lets a second run reuse kills. Two runners of one image can still differ in CPU speed, kernel or mounted services, so a timing-sensitive kill on a slow runner can be reused on a fast one where the mutant survives.
-- **B. The physical runner, as the 2026-10-24 decision has it.** No reuse in Actions, so every run is cold and costs its full time. The issue's done-when list then drops the reuse run, by the maintainer's word.
+1. Checkout and install, about 1 to 2 minutes, paid by every shard at once.
+2. Stryker's dry run: the tests related to the shard's files, once, with per-test coverage. Every shard pays it in parallel, so it does not shrink with more shards. For a file most tests import, it is close to the whole suite: AGENTS.md records 8 minutes for a `static.mutation` dry run on the host, and the gate's tests take about 10 minutes in a cloud container.
+3. The mutants: 689 over 16 shards is about 43 each. Each runs against only the tests that cover it, in Vitest workers that stay up, so no mutant pays a process start. `static.mutation` measured about 20 mutants a minute on 2 workers, so 4 workers take about 2 minutes for 43.
+
+So a shard takes about 11 to 14 minutes, and the dry run is most of it. The 13 minutes of the reshape is 3.5 hours over 16 shards; it lands close for these reasons, not by division. Reuse cuts only part 3, and only on a later run. The build's recorded run is the measure.
 
 ## What this gives up
 
-- Runner time: 16 shards of about 13 minutes are about 3.5 runner-hours on 4-vCPU machines per run, double under choice 3B.
+- Runner time: 16 shards of about 11 to 14 minutes are about 3 to 4 runner-hours on 4-vCPU machines per run.
+- A flaky test can fake a kill, since one failing run proves one, by the ruling on choice 3.
+- A timeout from a slow runner can pass a mutant no test detects, by the ruling on choice 2.
+- A kill reused across runners of one image can hide a timing-sensitive survivor, by the ruling on choice 5.
+- `melian/mutants` can read `success` before the coordinator has read an answer, by the ruling on choice 1; the Ready rule is the gate.
 - Files reached only through a spawned process keep a hand proof.
 - Whatever the chosen options give up, as each says.
 
@@ -166,8 +177,8 @@ The 2026-10-24 decision reuses a record only on the physical executor that made 
 Each rule is to be broken as written.
 
 1. A shard runs head code only under `static.mutation`'s leave, and the Actions job admits only the round gate's heads, at the SHA the pending job recorded. A shard holds no secret, has `contents: read` and `persist-credentials: false`, and has no cache step.
-2. Stryker runs under the base's configuration with Melian's options over it, on whole span groups, so each mutant runs in exactly one shard. `Killed` proves a mutant; a timeout is choice 2's; a mutant whose mutator is in the base's `excludedMutations` is noted; every other status is a survivor.
-3. A cache entry is Melian's own signed record, read and applied only by jobs that run no head code; shards run Stryker cold. Only `Killed` results are reused, under the installation, policy and Melian identities and choice 4's heads, and a span group is reused only whole.
-4. An accepted answer matches a survivor by `identityHash`, or a set-aside file by its path, and the head's tree outside `.melian/mutants/`, and it counts only where choice 1 puts it. `success` needs an accepted answer for every survivor and every set-aside file.
+2. Stryker runs under the base's configuration with Melian's options over it, on whole span groups, so each mutant runs in exactly one shard. `Killed` and `Timeout` prove a mutant; a mutant whose mutator is in the base's `excludedMutations` is noted; every other status is a survivor.
+3. A cache entry is Melian's own signed record, read and applied only by jobs that run no head code; shards run Stryker cold. Only `Killed` results are reused, under the installation, runner image, policy and Melian identities and choice 4's heads, and a span group is reused only whole.
+4. An accepted answer matches a survivor by `identityHash`, or a set-aside file by its path, and the head's tree outside `.melian/mutants/`, and it counts only from `.melian/mutants/answers.yaml` in the head, once the coordinator has accepted it. `success` needs an accepted answer for every survivor and every set-aside file.
 5. `verdict` reads `error` whenever the reports do not cover the plan's mutants exactly once, name another plan, head, installation, policy or build, or come from a run without per-test coverage, and whenever the pull request's head or `base.sha` has moved from the plan's.
 6. A job that runs no head code sets `melian/mutants` to `pending` straight after the gate, before planning, and a report publishes only while that pending status is the head's latest.
