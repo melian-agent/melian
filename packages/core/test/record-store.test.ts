@@ -16,6 +16,7 @@ import {
 	memoryRecordStoreFixture,
 	type RecordStoreFixture,
 	recordStoreConformance,
+	testPayloads,
 } from "@melian-agent/core/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
@@ -326,7 +327,7 @@ describe("the conformance suite's own bookkeeping", () => {
 
 describe("MemoryRecordStore", () => {
 	it("hands out copies, so a caller's edit never reaches the store", async () => {
-		const store = new MemoryRecordStore();
+		const store = new MemoryRecordStore({ payloads: testPayloads });
 		const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: { n: 1 } };
 		await store.add([envelope]);
 		(envelope.payload as { n: number }).n = 2;
@@ -336,7 +337,7 @@ describe("MemoryRecordStore", () => {
 	});
 
 	it("refuses every call once closed", async () => {
-		const store = new MemoryRecordStore();
+		const store = new MemoryRecordStore({ payloads: testPayloads });
 		await store.close();
 		const error = await rejection(store.list(changeset), RecordError);
 		expect(error.code).toBe("closed");
@@ -345,7 +346,7 @@ describe("MemoryRecordStore", () => {
 
 	it("says why it refuses", async () => {
 		const space = new MemoryRecordSpace();
-		const store = new MemoryRecordStore(space);
+		const store = new MemoryRecordStore({ space, payloads: testPayloads });
 		const message = async (call: Promise<unknown>) => (await rejection(call, RecordError)).message;
 		expect(await message(store.list("../x"))).toBe('"../x" is not a changeset name');
 		expect(await message(store.writeCell(changeset, undefined, '{"disposed":true}'))).toBe(
@@ -370,7 +371,7 @@ describe("MemoryRecordStore", () => {
 describe("DirectoryRecordStore", () => {
 	let root: string;
 	const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "static.biome", payload: { n: 1 } };
-	const record = SharedRecord.parse(envelope);
+	const record = SharedRecord.parse(envelope, testPayloads);
 
 	beforeEach(() => {
 		root = temporaryDirectory();
@@ -381,7 +382,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses every call once closed", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.close();
 		const error = await rejection(store.readCell(changeset), RecordError);
 		expect(error.code).toBe("closed");
@@ -389,7 +390,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("files a record at its path, as its canonical bytes", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		expect(readFileSync(join(root, record.path), "utf8")).toBe(record.bytes);
 	});
@@ -403,7 +404,7 @@ describe("DirectoryRecordStore", () => {
 		[
 			"a record of another changeset",
 			(path: string) => {
-				const moved = SharedRecord.parse({ ...envelope, changeset: "pull-fedcba9876543210" });
+				const moved = SharedRecord.parse({ ...envelope, changeset: "pull-fedcba9876543210" }, testPayloads);
 				writeFileSync(join(path, "..", `${moved.id}.json`), moved.bytes);
 			},
 		],
@@ -426,7 +427,7 @@ describe("DirectoryRecordStore", () => {
 			},
 		],
 	])("refuses a listing that holds %s, naming the file", async (_name, tamper) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		tamper(join(root, record.path));
 		const error = await rejection(store.list(changeset), RecordError);
@@ -435,7 +436,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("is not blocked by a temporary file a writer that died left behind", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		expect(await store.writeCell(changeset, undefined, "lease A")).toBe(true);
 		writeFileSync(join(root, "tmp", "left-by-a-dead-writer"), "x");
 		const { version } = await store.readCell(changeset);
@@ -445,7 +446,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("lists nothing for a disposed changeset, though a record a dying add left lands after the mark", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.dispose(changeset);
 		mkdirSync(join(root, record.path, ".."), { recursive: true });
 		writeFileSync(join(root, record.path), record.bytes);
@@ -456,13 +457,13 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("keeps its records, its cell's version and a disposal across a reopen", async () => {
-		const first = await DirectoryRecordStore.open(root);
+		const first = await DirectoryRecordStore.open(root, testPayloads);
 		await first.add([envelope]);
 		await first.writeCell(changeset, undefined, "lease A");
 		await first.writeCell(changeset, "1", "lease B");
 		await first.dispose("pull-fedcba9876543210");
 		await first.close();
-		const second = await DirectoryRecordStore.open(root);
+		const second = await DirectoryRecordStore.open(root, testPayloads);
 		expect(await second.list(changeset)).toEqual([envelope]);
 		expect(await second.readCell(changeset)).toEqual({ value: "lease B", version: "2" });
 		expect(await second.writeCell(changeset, "1", "lease C")).toBe(false);
@@ -486,7 +487,7 @@ describe("DirectoryRecordStore", () => {
 			["a kind's directory", () => join(root, "changesets", changeset, "check")],
 			["a slot's directory", () => join(root, record.path, "..")],
 		])("refuses to add through a link at %s", async (_name, at) => {
-			const store = await DirectoryRecordStore.open(root);
+			const store = await DirectoryRecordStore.open(root, testPayloads);
 			mkdirSync(join(at(), ".."), { recursive: true });
 			symlinkSync(outside, at());
 			const error = await rejection(store.add([envelope]), RecordError);
@@ -496,7 +497,7 @@ describe("DirectoryRecordStore", () => {
 		});
 
 		it("refuses a link at the cell's directory", async () => {
-			const store = await DirectoryRecordStore.open(root);
+			const store = await DirectoryRecordStore.open(root, testPayloads);
 			mkdirSync(join(root, "changesets", changeset));
 			symlinkSync(outside, join(root, "changesets", changeset, ".cell"));
 			expect((await rejection(store.writeCell(changeset, undefined, "lease"), RecordError)).code).toBe(
@@ -507,7 +508,7 @@ describe("DirectoryRecordStore", () => {
 		});
 
 		it.each(["changesets", "tmp"])("fails unreachable, writing nothing, when %s is a link", async (name) => {
-			const store = await DirectoryRecordStore.open(root);
+			const store = await DirectoryRecordStore.open(root, testPayloads);
 			removeDirectory(join(root, name));
 			symlinkSync(outside, join(root, name));
 			const error = await rejection(store.add([envelope]), RecordError);
@@ -518,20 +519,20 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("reads an empty cell directory as no cell", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		mkdirSync(join(root, "changesets", changeset, ".cell"), { recursive: true });
 		expect(await store.readCell(changeset)).toEqual({});
 		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
 	});
 
 	it("leaves no temporary file behind a cell write it won", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
 
 	it("makes nothing for an add to a disposed changeset", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.dispose(changeset);
 		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("disposed");
 		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
@@ -539,21 +540,21 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("keeps the cell out of the listing", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.writeCell(changeset, undefined, "lease");
 		expect(await store.list(changeset)).toEqual([]);
 		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
 	});
 
 	it("fails rather than answer nothing from a store whose directory has gone", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		removeDirectory(join(root, "changesets"));
 		expect((await rejection(store.list(changeset), RecordError)).code).toBe("unreachable");
 	});
 
 	it("fails rather than answer nothing when changesets is a file", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		removeDirectory(join(root, "changesets"));
 		writeFileSync(join(root, "changesets"), "x");
 		const error = await rejection(store.readCell(changeset), RecordError);
@@ -563,7 +564,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("names the file it refuses, and why, in its error", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		const path = join(root, record.path);
 		writeFileSync(path, record.bytes.replace('"n":1', '"n":2'));
@@ -574,8 +575,8 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses a record file whose bytes are not UTF-8, though their lossy decoding gives its name", async () => {
-		const store = await DirectoryRecordStore.open(root);
-		const lossy = SharedRecord.parse({ ...envelope, key: "\ufffd" });
+		const store = await DirectoryRecordStore.open(root, testPayloads);
+		const lossy = SharedRecord.parse({ ...envelope, key: "\ufffd" }, testPayloads);
 		const bytes = Buffer.from(lossy.bytes, "utf8");
 		const at = bytes.indexOf(Buffer.from("\ufffd", "utf8"));
 		const invalid = Buffer.concat([bytes.subarray(0, at), Buffer.from([0xff]), bytes.subarray(at + 3)]);
@@ -590,7 +591,7 @@ describe("DirectoryRecordStore", () => {
 		["no extension", (id: string) => id],
 		["a second extension", (id: string) => `${id}.json.bak`],
 	])("refuses a record file with %s", async (_name, name) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		const path = join(root, record.path);
 		renameSync(path, join(path, "..", name(record.id)));
@@ -598,7 +599,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses a record filed under another key's slot", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		const path = join(root, record.path);
 		const slot = join(path, "..", "..", "0".repeat(64));
@@ -617,7 +618,7 @@ describe("DirectoryRecordStore", () => {
 			},
 		],
 	])("refuses a changeset directory that is %s", async (_name, make) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		const path = join(root, "changesets", changeset);
 		make(path);
 		const error = await rejection(store.list(changeset), RecordError);
@@ -627,7 +628,7 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it.each(["0", "01", "1.json", "x1", "1x", " 1"])("refuses a cell file named %j", async (name) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.writeCell(changeset, undefined, "lease");
 		const cell = join(root, "changesets", changeset, ".cell");
 		writeFileSync(join(cell, name), "x");
@@ -638,14 +639,14 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses a directory in the cell", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.writeCell(changeset, undefined, "lease");
 		mkdirSync(join(root, "changesets", changeset, ".cell", "2"));
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
 	it("refuses a cell that is a file", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		mkdirSync(join(root, "changesets", changeset));
 		writeFileSync(join(root, "changesets", changeset, ".cell"), "x");
 		const error = await rejection(store.readCell(changeset), RecordError);
@@ -654,14 +655,14 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses a cell value that is not UTF-8", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.writeCell(changeset, undefined, "lease");
 		writeFileSync(join(root, "changesets", changeset, ".cell", "1"), Buffer.from([0xff]));
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
 	it("keeps a cell value that starts with a byte order mark", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		expect(await store.writeCell(changeset, undefined, "\ufefflease")).toBe(true);
 		expect((await store.readCell(changeset)).value).toBe("\ufefflease");
 		expect(await store.writeCell(changeset, "1", '\ufeff{"disposed":true}')).toBe(true);
@@ -670,14 +671,14 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("refuses a record file whose bytes start with a byte order mark", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		writeFileSync(join(root, record.path), `\ufeff${record.bytes}`);
 		expect((await rejection(store.list(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
 	it("reads the highest version by number, past nine", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		for (let write = 1; write <= 11; write++) {
 			const { version } = await store.readCell(changeset);
 			expect(await store.writeCell(changeset, version, `lease ${write}`)).toBe(true);
@@ -686,18 +687,59 @@ describe("DirectoryRecordStore", () => {
 	});
 
 	it("fails unreachable, not with a raw error, when it cannot write its temporary file", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		removeDirectory(join(root, "tmp"));
 		expect((await rejection(store.writeCell(changeset, undefined, "lease"), RecordError)).code).toBe("unreachable");
 		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("unreachable");
 	});
 
 	it("refuses to add where a file stands in for a record's directory", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		mkdirSync(join(root, "changesets", changeset));
 		writeFileSync(join(root, "changesets", changeset, "check"), "x");
 		const error = await rejection(store.add([envelope]), RecordError);
 		expect(error.code).toBe("unknownFile");
 		expect(error.path).toBe(join(root, "changesets", changeset, "check"));
+	});
+});
+
+describe("a store with no payload check for a kind", () => {
+	it.each([
+		["memory", async () => new MemoryRecordStore()],
+		["directory", async () => DirectoryRecordStore.open(temporaryDirectory())],
+	])("refuses to add or list it on the %s adapter", async (_name, open) => {
+		const store = await open();
+		const check: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: {} };
+		expect((await rejection(store.add([check]), RecordError)).code).toBe("unvalidatedKind");
+		const round: RecordEnvelope = {
+			v: 1,
+			changeset,
+			kind: "round",
+			key: "r",
+			revision: `${"a".repeat(40)}..${"b".repeat(40)}`,
+			payload: { read: [], walkthrough: null, replaces: [], before: [] },
+		};
+		await store.add([round]);
+		expect(await store.list(changeset)).toEqual([round]);
+	});
+
+	it("refuses to list a record it has no check for on the directory adapter", async () => {
+		const root = temporaryDirectory();
+		const writer = await DirectoryRecordStore.open(root, testPayloads);
+		await writer.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]);
+		const reader = await DirectoryRecordStore.open(root);
+		const error = await rejection(reader.list(changeset), RecordError);
+		expect(error.code).toBe("unknownFile");
+		expect((error.cause as RecordError).code).toBe("unvalidatedKind");
+		removeDirectory(root);
+	});
+
+	it("refuses to list a record it has no check for on the memory adapter", async () => {
+		const space = new MemoryRecordSpace();
+		await new MemoryRecordStore({ space, payloads: testPayloads }).add([
+			{ v: 1, changeset, kind: "check", key: "k", payload: {} },
+		]);
+		const reader = new MemoryRecordStore({ space });
+		expect((await rejection(reader.list(changeset), RecordError)).code).toBe("unvalidatedKind");
 	});
 });

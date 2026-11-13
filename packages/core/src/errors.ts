@@ -331,6 +331,7 @@ export type RecordErrorCode =
 	| "notCanonical"
 	| "idMismatch"
 	| "invalidChangeset"
+	| "unvalidatedKind"
 	| "invalidCell"
 	| "disposed"
 	| "unreachable"

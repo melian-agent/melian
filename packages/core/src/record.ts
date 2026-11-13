@@ -20,6 +20,29 @@ export type RecordEnvelope = {
 	signature?: string;
 };
 
+/**
+ * Checks one kind's payload, and returns why it refuses it, or `undefined` to take it. Core checks a round's payload
+ * itself. Every other kind's check comes from the build that defines that payload, and a kind with none is refused.
+ */
+export type PayloadCheck = (payload: RecordJson) => string | undefined;
+
+/** The payload check for each kind a caller can read. */
+export type PayloadChecks = { readonly [kind: string]: PayloadCheck };
+
+/** A record a round names as one it read: its kind, key and ID together. */
+export type NamedRecord = { kind: string; key: string; id: string };
+
+/**
+ * A round's manifest, by rule 4: every record it read, its walkthrough or `null` for none, the earlier rounds of its
+ * revision it replaces, and the rounds of the revision before.
+ */
+export type RoundManifest = {
+	read: NamedRecord[];
+	walkthrough: { key: string; id: string } | null;
+	replaces: string[];
+	before: string[];
+};
+
 const kinds = new Set(["check", "lens", "verification", "walkthrough", "round", "telemetry", "marker"]);
 // Rule 4: only what a command writes into a slot of its own may supersede.
 const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment", "comparison"]);
@@ -94,6 +117,43 @@ function idList(value: unknown, name: string): string[] {
 	return value;
 }
 
+function fieldsExactly(value: unknown, names: readonly string[], what: string): { [field: string]: unknown } {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) throw invalid(`${what} is an object`);
+	const own = Object.keys(value);
+	if (own.length !== names.length || !names.every((name) => own.includes(name)))
+		throw invalid(`${what} holds ${names.join(", ")} and nothing else`);
+	return value as { [field: string]: unknown };
+}
+
+function key(value: unknown, what: string): void {
+	if (typeof value !== "string" || value === "") throw invalid(`${what} is a non-empty string`);
+}
+
+function manifestOf(payload: unknown): void {
+	const manifest = fieldsExactly(payload, ["read", "walkthrough", "replaces", "before"], "a round's payload");
+	if (!Array.isArray(manifest.read)) throw invalid("a round's read is a list");
+	for (const [index, entry] of manifest.read.entries()) {
+		const named = fieldsExactly(entry, ["kind", "key", "id"], "a record a round read");
+		if (
+			typeof named.kind !== "string" ||
+			named.kind === "round" ||
+			!(kinds.has(named.kind) || supersedingKinds.has(named.kind))
+		)
+			throw invalid("a record a round read has a kind no round reads");
+		key(named.key, "a record a round read's key");
+		idList([named.id], "a round's read");
+		if (index > 0 && (named.id as string) <= (manifest.read[index - 1] as NamedRecord).id)
+			throw invalid("a round's read is sorted by ID, with no ID twice");
+	}
+	if (manifest.walkthrough !== null) {
+		const walkthrough = fieldsExactly(manifest.walkthrough, ["key", "id"], "a round's walkthrough");
+		key(walkthrough.key, "a round's walkthrough's key");
+		idList([walkthrough.id], "a round's walkthrough");
+	}
+	idList(manifest.replaces, "a round's replaces");
+	idList(manifest.before, "a round's before");
+}
+
 function canonicalBase64(value: string): boolean {
 	const bytes = Buffer.from(value, "base64");
 	return bytes.length === signatureBytes && bytes.toString("base64") === value;
@@ -137,7 +197,7 @@ export class SharedRecord {
 	 * Validates `value` as an envelope, by rules 2 to 4 of the shared record decision, and throws a {@link RecordError}
 	 * that names the rule it breaks: `unknownKind`, `supersedesNotAllowed`, or `invalidRecord` for the rest.
 	 */
-	static parse(value: unknown): SharedRecord {
+	static parse(value: unknown, payloads: PayloadChecks = {}): SharedRecord {
 		if (typeof value !== "object" || value === null || Array.isArray(value))
 			throw invalid("a record is a JSON object");
 		const bytes = canonicalJson(value);
@@ -174,10 +234,13 @@ export class SharedRecord {
 			throw invalid(`a record's signature is ${signatureBytes} bytes in canonical base64`);
 		if (envelope.kind === "round") {
 			if (!("revision" in envelope)) throw invalid("a round names its revision");
-			const payload = envelope.payload;
-			if (typeof payload !== "object" || payload === null || Array.isArray(payload))
-				throw invalid("a round's payload is an object");
-			idList((payload as { replaces?: unknown }).replaces, "a round's replaces");
+			manifestOf(envelope.payload);
+		} else {
+			const check = Object.hasOwn(payloads, envelope.kind) ? payloads[envelope.kind] : undefined;
+			if (check === undefined)
+				throw new RecordError("unvalidatedKind", `no payload check is registered for a ${envelope.kind} record`);
+			const refused = check(envelope.payload as RecordJson);
+			if (refused !== undefined) throw invalid(`a ${envelope.kind} record's payload ${refused}`);
 		}
 		return new SharedRecord(envelope as RecordEnvelope, bytes);
 	}
@@ -186,14 +249,14 @@ export class SharedRecord {
 	 * Reads the bytes a store filed under `id`. They must be the record's canonical bytes exactly, `notCanonical`
 	 * otherwise, and hash to `id`, `idMismatch` otherwise, so one fact never takes two IDs.
 	 */
-	static read(bytes: string, id: string): SharedRecord {
+	static read(bytes: string, id: string, payloads: PayloadChecks = {}): SharedRecord {
 		let value: unknown;
 		try {
 			value = JSON.parse(bytes);
 		} catch (error) {
 			throw new RecordError("invalidRecord", "a stored record is not JSON", { cause: error });
 		}
-		const record = SharedRecord.parse(value);
+		const record = SharedRecord.parse(value, payloads);
 		if (record.bytes !== bytes)
 			throw new RecordError("notCanonical", "a stored record's bytes are not its canonical form");
 		if (record.id !== id) throw new RecordError("idMismatch", `a record filed as ${id} has the ID ${record.id}`);
@@ -215,10 +278,14 @@ export class SharedRecord {
 		return this.changeset === other.changeset && this.kind === other.kind && this.key === other.key;
 	}
 
+	/** A round's manifest, or `undefined` for any other kind. */
+	manifest(): Readonly<RoundManifest> | undefined {
+		return this.kind === "round" ? (this.payload as RoundManifest) : undefined;
+	}
+
 	/** The rounds of its revision a round replaces; none for any other kind. */
 	replaces(): readonly string[] {
-		if (this.kind !== "round") return [];
-		return (this.payload as { replaces: string[] }).replaces;
+		return this.manifest()?.replaces ?? [];
 	}
 
 	/** The bytes a signature covers: the canonical bytes of the whole envelope without `signature`. */
@@ -258,11 +325,12 @@ export class RecordSet {
 	 */
 	static of(
 		records: Iterable<SharedRecord | RecordEnvelope>,
-		counts: (record: SharedRecord) => boolean = () => true,
+		options: { counts?: (record: SharedRecord) => boolean; payloads?: PayloadChecks } = {},
 	): RecordSet {
+		const counts = options.counts ?? (() => true);
 		const byId = new Map<string, SharedRecord>();
 		for (const each of records) {
-			const record = each instanceof SharedRecord ? each : SharedRecord.parse(each);
+			const record = each instanceof SharedRecord ? each : SharedRecord.parse(each, options.payloads);
 			if (counts(record)) byId.set(record.id, record);
 		}
 		return new RecordSet([...byId.values()].sort((a, b) => (a.id < b.id ? -1 : 1)));
@@ -290,5 +358,26 @@ export class RecordSet {
 		);
 		const replaced = new Set(rounds.flatMap((round) => round.replaces()));
 		return rounds.filter((round) => !replaced.has(round.id));
+	}
+
+	/**
+	 * The records `round` names, its walkthrough included, that the set holds under no record of the same changeset,
+	 * kind, key and ID together. A round with any is not reviewed, by rule 4; this answers the fact and decides nothing.
+	 */
+	missing(round: SharedRecord): readonly NamedRecord[] {
+		const manifest = round.manifest();
+		if (manifest === undefined) return [];
+		const named = [...manifest.read];
+		if (manifest.walkthrough !== null) named.push({ kind: "walkthrough", ...manifest.walkthrough });
+		return named.filter(
+			(entry) =>
+				!this.#records.some(
+					(record) =>
+						record.id === entry.id &&
+						record.kind === entry.kind &&
+						record.key === entry.key &&
+						record.changeset === round.changeset,
+				),
+		);
 	}
 }

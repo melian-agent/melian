@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import type * as fs from "node:fs/promises";
 import { join } from "node:path";
 import { DirectoryRecordStore, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
+import { testPayloads } from "@melian-agent/core/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
@@ -79,7 +80,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		["list", (store: DirectoryRecordStore) => store.list(changeset), `/${changeset}`],
 		["readCell", (store: DirectoryRecordStore) => store.readCell(changeset), "/.cell"],
 	] as const)("fails %s unreachable when the store vanishes mid-call", async (_name, call, path) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		await store.writeCell(changeset, undefined, "lease");
 		const { reached, release } = pause("readdir", path);
@@ -94,15 +95,15 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		["before it makes the record's directory, so its file lands after dispose's sweep", "mkdir"],
 		["before it renames its file, after dispose swept the directory away", "rename"],
 	] as const)("refuses an add a dispose overtook %s, and leaves no record", async (_name, call) => {
-		const adding = await DirectoryRecordStore.open(root);
-		const disposing = await DirectoryRecordStore.open(root);
+		const adding = await DirectoryRecordStore.open(root, testPayloads);
+		const disposing = await DirectoryRecordStore.open(root, testPayloads);
 		const { reached, release } = pause(call, call === "mkdir" ? "/check" : undefined);
 		const add = adding.add([envelope]);
 		await reached;
 		await disposing.dispose(changeset);
 		release();
 		expect((await rejection(add, RecordError)).code).toBe("disposed");
-		expect(existsSync(join(root, SharedRecord.parse(envelope).path))).toBe(false);
+		expect(existsSync(join(root, SharedRecord.parse(envelope, testPayloads).path))).toBe(false);
 		expect(await disposing.list(changeset)).toEqual([]);
 	});
 
@@ -125,7 +126,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 			(store: DirectoryRecordStore) => store.readCell(changeset),
 		],
 	] as const)("fails unreachable on %s, with the cause", async (_name, call, path, seeded, act) => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		if (seeded) await store.writeCell(changeset, undefined, "seed");
 		Object.assign(fault, { call, path, code: "EIO" });
 		const error = await rejection(act(store), RecordError);
@@ -137,7 +138,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	});
 
 	it("fails unreachable when it cannot write a temporary file, and leaves none", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		Object.assign(fault, { call: "writeFile", path: "/tmp/", code: "EIO" });
 		const error = await rejection(store.writeCell(changeset, undefined, "lease"), RecordError);
 		expect(error.code).toBe("unreachable");
@@ -147,19 +148,19 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	});
 
 	it("fails an add unreachable, not disposed, when its rename fails on a live changeset", async () => {
-		const store = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
 		Object.assign(fault, { call: "rename", path: "/check/", code: "EIO" });
 		const error = await rejection(store.add([envelope]), RecordError);
 		expect(error.code).toBe("unreachable");
-		expect(error.path).toBe(join(root, SharedRecord.parse(envelope).path));
+		expect(error.path).toBe(join(root, SharedRecord.parse(envelope, testPayloads).path));
 		expect((error.cause as { code?: string }).code).toBe("EIO");
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 		expect(await store.list(changeset)).toEqual([]);
 	});
 
 	it("lists nothing when a dispose lands while it walks", async () => {
-		const store = await DirectoryRecordStore.open(root);
-		const disposing = await DirectoryRecordStore.open(root);
+		const store = await DirectoryRecordStore.open(root, testPayloads);
+		const disposing = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
 		const { reached, release } = pause("readdir", "/check/");
 		const listing = store.list(changeset);
@@ -170,8 +171,8 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	});
 
 	it("lets two disposes at once both finish", async () => {
-		const first = await DirectoryRecordStore.open(root);
-		const second = await DirectoryRecordStore.open(root);
+		const first = await DirectoryRecordStore.open(root, testPayloads);
+		const second = await DirectoryRecordStore.open(root, testPayloads);
 		await first.add([envelope]);
 		const { reached, release } = pause("rm", "/check");
 		const disposing = first.dispose(changeset);
@@ -183,8 +184,8 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	});
 
 	it("still refuses as disposed when a second dispose sweeps the record it is taking back", async () => {
-		const adding = await DirectoryRecordStore.open(root);
-		const disposing = await DirectoryRecordStore.open(root);
+		const adding = await DirectoryRecordStore.open(root, testPayloads);
+		const disposing = await DirectoryRecordStore.open(root, testPayloads);
 		const first = pause("mkdir", "/check");
 		const add = adding.add([envelope]);
 		await first.reached;
@@ -195,12 +196,12 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		await disposing.dispose(changeset);
 		second.release();
 		expect((await rejection(add, RecordError)).code).toBe("disposed");
-		expect(existsSync(join(root, SharedRecord.parse(envelope).path))).toBe(false);
+		expect(existsSync(join(root, SharedRecord.parse(envelope, testPayloads).path))).toBe(false);
 	});
 
 	it("leaves no temporary file when it loses a cell write to a writer that read the same version", async () => {
-		const losing = await DirectoryRecordStore.open(root);
-		const winning = await DirectoryRecordStore.open(root);
+		const losing = await DirectoryRecordStore.open(root, testPayloads);
+		const winning = await DirectoryRecordStore.open(root, testPayloads);
 		const { reached, release } = pause("writeFile", "/tmp/");
 		const lost = losing.writeCell(changeset, undefined, "lease A");
 		await reached;

@@ -1,4 +1,5 @@
 import { type RecordEnvelope, type RecordJson, RecordSet, SharedRecord } from "@melian-agent/core";
+import { testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const changeset = "pull-0123456789abcdef";
@@ -6,7 +7,7 @@ const revision = `${"a".repeat(40)}..${"b".repeat(40)}`;
 const later = `${"a".repeat(40)}..${"c".repeat(40)}`;
 
 function record(fields: Partial<RecordEnvelope>): SharedRecord {
-	return SharedRecord.parse({ v: 1, changeset, kind: "post", key: "review", payload: {}, ...fields });
+	return SharedRecord.parse({ v: 1, changeset, kind: "post", key: "review", payload: {}, ...fields }, testPayloads);
 }
 
 function post(payload: RecordJson, supersedes?: SharedRecord[], fields: Partial<RecordEnvelope> = {}): SharedRecord {
@@ -16,7 +17,13 @@ function post(payload: RecordJson, supersedes?: SharedRecord[], fields: Partial<
 
 function round(name: string, replaces: SharedRecord[] = [], at = revision, fields: Partial<RecordEnvelope> = {}) {
 	const ids = replaces.map((target) => target.id).sort();
-	return record({ kind: "round", key: "round", revision: at, payload: { name, replaces: ids }, ...fields });
+	return record({
+		kind: "round",
+		key: name,
+		revision: at,
+		payload: { read: [], walkthrough: null, replaces: ids, before: [] },
+		...fields,
+	});
 }
 
 const ids = (records: readonly SharedRecord[]) => records.map((each) => each.id);
@@ -31,7 +38,7 @@ describe("RecordSet", () => {
 
 	it("reads envelopes as well as records", () => {
 		const a = post({ n: 1 });
-		expect(ids(RecordSet.of([a.toJSON()]).records())).toEqual([a.id]);
+		expect(ids(RecordSet.of([a.toJSON()], { payloads: testPayloads }).records())).toEqual([a.id]);
 	});
 
 	describe("supersession", () => {
@@ -85,7 +92,7 @@ describe("RecordSet", () => {
 		it("lets a record that does not count supersede nothing", () => {
 			const first = post({ n: 1 });
 			const forged = post({ n: 2 }, [first]);
-			const set = RecordSet.of([first, forged], (each) => each.id !== forged.id);
+			const set = RecordSet.of([first, forged], { counts: (each) => each.id !== forged.id });
 			expect(ids(set.unsuperseded())).toEqual([first.id]);
 			expect(ids(set.records())).toEqual([first.id]);
 		});
@@ -142,7 +149,7 @@ describe("RecordSet", () => {
 		it("lets only a round that counts replace another", () => {
 			const trusted = round("trusted");
 			const forged = round("forged", [trusted]);
-			const set = RecordSet.of([trusted, forged], (each) => each.id !== forged.id);
+			const set = RecordSet.of([trusted, forged], { counts: (each) => each.id !== forged.id });
 			expect(ids(set.standingRounds(changeset, revision))).toEqual([trusted.id]);
 		});
 

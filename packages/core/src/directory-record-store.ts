@@ -3,7 +3,7 @@ import type { Dirent } from "node:fs";
 import { link, lstat, mkdir, readdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { RecordError } from "./errors.ts";
-import { type RecordEnvelope, SharedRecord } from "./record.ts";
+import { type PayloadChecks, type RecordEnvelope, SharedRecord } from "./record.ts";
 import {
 	checkCellValue,
 	checkChangeset,
@@ -39,18 +39,20 @@ function errorCode(error: unknown): unknown {
  */
 export class DirectoryRecordStore implements RecordStore {
 	readonly #root: string;
+	readonly #payloads: PayloadChecks;
 	#closed = false;
 
-	private constructor(root: string) {
+	private constructor(root: string, payloads: PayloadChecks) {
 		this.#root = root;
+		this.#payloads = payloads;
 	}
 
-	/** Opens the store at `root`, creating it when it is not there. */
-	static async open(root: string): Promise<DirectoryRecordStore> {
+	/** Opens the store at `root`, creating it when it is not there, to take the kinds `payloads` can check and a round. */
+	static async open(root: string, payloads: PayloadChecks = {}): Promise<DirectoryRecordStore> {
 		const absolute = resolve(root);
 		await mkdir(join(absolute, "changesets"), { recursive: true });
 		await mkdir(join(absolute, "tmp"), { recursive: true });
-		return new DirectoryRecordStore(absolute);
+		return new DirectoryRecordStore(absolute, payloads);
 	}
 
 	async #reach(changeset: string): Promise<string> {
@@ -138,7 +140,7 @@ export class DirectoryRecordStore implements RecordStore {
 	}
 
 	async add(records: RecordEnvelope[]): Promise<void> {
-		for (const record of records.map((envelope) => SharedRecord.parse(envelope))) {
+		for (const record of records.map((envelope) => SharedRecord.parse(envelope, this.#payloads))) {
 			const directory = await this.#reach(record.changeset);
 			if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 			const path = join(this.#root, record.path);
@@ -184,7 +186,7 @@ export class DirectoryRecordStore implements RecordStore {
 		const text = await this.#text(path);
 		let record: SharedRecord;
 		try {
-			record = SharedRecord.read(text, basename(path, ".json"));
+			record = SharedRecord.read(text, basename(path, ".json"), this.#payloads);
 		} catch (cause) {
 			throw failure("unknownFile", path, cause);
 		}

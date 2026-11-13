@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DirectoryRecordStore } from "./directory-record-store.ts";
 import { RecordError, type RecordErrorCode } from "./errors.ts";
-import { type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
+import { type PayloadChecks, type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
 import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } from "./record-store.ts";
 
 /** One store under test, with as many handles on it as a case asks for. */
@@ -28,17 +28,38 @@ export type RecordStoreFixture = () => Promise<RecordStoreSubject>;
 /** One promise of the record store port, and the case that fails when an adapter breaks it. */
 export type RecordStoreCase = { name: string; run(fixture: RecordStoreFixture): Promise<void> };
 
+/**
+ * Payload checks that take any payload of every kind but a round, for tests alone. A kind's real check comes from the
+ * build that defines its payload, and core registers none, so without these no record but a round parses.
+ */
+export const testPayloads: PayloadChecks = Object.fromEntries(
+	[
+		"check",
+		"lens",
+		"verification",
+		"walkthrough",
+		"telemetry",
+		"marker",
+		"dismissal",
+		"post",
+		"status",
+		"ledger-comment",
+		"comparison",
+	].map((kind) => [kind, () => undefined]),
+);
+
 const changeset = "pull-0123456789abcdef";
 const other = "range-0123456789abcdef";
 
 const revision = ["a".repeat(40), "b".repeat(40)].join("..");
 
 function envelope(kind: string, key: string, payload: RecordJson, within = changeset): RecordEnvelope {
+	if (kind === "round") payload = { read: [], walkthrough: null, replaces: [], before: [] };
 	return { v: 1, changeset: within, kind, key, payload, ...(kind === "round" ? { revision } : {}) };
 }
 
 function ids(records: RecordEnvelope[]): string[] {
-	return records.map((record) => SharedRecord.parse(record).id).sort();
+	return records.map((record) => SharedRecord.parse(record, testPayloads).id).sort();
 }
 
 function idsOf(...records: RecordEnvelope[]): string[] {
@@ -79,8 +100,8 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const listed = await store.list(changeset);
 				assert.deepEqual(ids(listed), idsOf(first, second));
 				assert.deepEqual(
-					listed.map((record) => SharedRecord.parse(record).bytes).sort(),
-					[first, second].map((record) => SharedRecord.parse(record).bytes).sort(),
+					listed.map((record) => SharedRecord.parse(record, testPayloads).bytes).sort(),
+					[first, second].map((record) => SharedRecord.parse(record, testPayloads).bytes).sort(),
 				);
 			}),
 	},
@@ -115,7 +136,7 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const first = envelope("check", "guardrails", {});
 				await writer.add([first, envelope("check", "guardrails", {}, other)]);
 				assert.deepEqual(ids(await reader.list(changeset)), idsOf(first));
-				const second = envelope("round", "r", { replaces: [] });
+				const second = envelope("round", "r", {});
 				await writer.add([second]);
 				assert.deepEqual(ids(await reader.list(changeset)), idsOf(first, second));
 			}),
@@ -317,7 +338,7 @@ export function memoryRecordStoreFixture(): RecordStoreFixture {
 		const handles: RecordStore[] = [];
 		return {
 			open: async () => {
-				const store = new MemoryRecordStore(space);
+				const store = new MemoryRecordStore({ space, payloads: testPayloads });
 				handles.push(store);
 				return store;
 			},
@@ -344,7 +365,7 @@ export function directoryRecordStoreFixture(): RecordStoreFixture {
 		const handles: RecordStore[] = [];
 		return {
 			open: async () => {
-				const store = await DirectoryRecordStore.open(root);
+				const store = await DirectoryRecordStore.open(root, testPayloads);
 				handles.push(store);
 				return store;
 			},

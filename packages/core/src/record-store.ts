@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { RecordError } from "./errors.ts";
-import { type RecordEnvelope, SharedRecord } from "./record.ts";
+import { type PayloadChecks, type RecordEnvelope, SharedRecord } from "./record.ts";
 
 /** A changeset's cell as `readCell` returns it: both fields, or neither when nothing was ever written. */
 export type RecordCell = { value?: string; version?: string };
@@ -86,10 +86,13 @@ export class MemoryRecordSpace {
 /** A record store in memory, for tests. Each handle on one `MemoryRecordSpace` sees every other handle's writes at once. */
 export class MemoryRecordStore implements RecordStore {
 	readonly #space: MemoryRecordSpace;
+	readonly #payloads: PayloadChecks;
 	#closed = false;
 
-	constructor(space = new MemoryRecordSpace()) {
-		this.#space = space;
+	/** A handle on `space`, a new one by default, that takes the kinds `payloads` can check, and a round. */
+	constructor(options: { space?: MemoryRecordSpace; payloads?: PayloadChecks } = {}) {
+		this.#space = options.space ?? new MemoryRecordSpace();
+		this.#payloads = options.payloads ?? {};
 	}
 
 	#changeset(name: string): MemoryChangeset {
@@ -99,7 +102,7 @@ export class MemoryRecordStore implements RecordStore {
 	}
 
 	async add(records: RecordEnvelope[]): Promise<void> {
-		const parsed = records.map((record) => SharedRecord.parse(record));
+		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads));
 		for (const record of parsed) {
 			const changeset = this.#changeset(record.changeset);
 			if (changeset.cell?.value === disposalMark) throw disposedError(record.changeset);
@@ -111,7 +114,7 @@ export class MemoryRecordStore implements RecordStore {
 	async list(changeset: string): Promise<RecordEnvelope[]> {
 		const entry = this.#changeset(changeset);
 		for (const kind of entry.stray) throw strayError(changeset, kind);
-		return [...entry.records.values()].map((bytes) => JSON.parse(bytes) as RecordEnvelope);
+		return [...entry.records].map(([id, bytes]) => SharedRecord.read(bytes, id, this.#payloads).toJSON());
 	}
 
 	async readCell(changeset: string): Promise<RecordCell> {

@@ -489,7 +489,17 @@ export {
 	type PullRequestRoundHeads,
 	type RoundMembership,
 } from "./pull-request-rounds.ts";
-export { canonicalJson, type RecordEnvelope, type RecordJson, RecordSet, SharedRecord } from "./record.ts";
+export {
+	canonicalJson,
+	type NamedRecord,
+	type PayloadCheck,
+	type PayloadChecks,
+	type RecordEnvelope,
+	type RecordJson,
+	RecordSet,
+	type RoundManifest,
+	SharedRecord,
+} from "./record.ts";
 export {
 	disposalMark,
 	MemoryRecordSpace,

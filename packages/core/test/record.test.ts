@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalJson, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
+import { testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const hex = (character: string) => character.repeat(64);
@@ -7,13 +8,16 @@ const commit = (character: string) => character.repeat(40);
 const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
 const signature = Buffer.alloc(64, 7).toString("base64");
 
+const parse = (value: unknown) => SharedRecord.parse(value, testPayloads);
+const read = (bytes: string, id: string) => SharedRecord.read(bytes, id, testPayloads);
+
 function envelope(fields: Partial<RecordEnvelope> = {}): RecordEnvelope {
 	return { v: 1, changeset: "pull-0123456789abcdef", kind: "check", key: "static.biome", payload: {}, ...fields };
 }
 
 function refusal(value: unknown): RecordError {
 	try {
-		SharedRecord.parse(value);
+		parse(value);
 	} catch (error) {
 		expect(error).toBeInstanceOf(RecordError);
 		return error as RecordError;
@@ -82,7 +86,7 @@ describe("canonicalJson", () => {
 describe("SharedRecord", () => {
 	it("is named by the SHA-256 of its canonical bytes", () => {
 		const fields = envelope({ payload: { b: 1, a: [2, 3] } });
-		const record = SharedRecord.parse(fields);
+		const record = parse(fields);
 		expect(record.bytes).toBe(
 			'{"changeset":"pull-0123456789abcdef","key":"static.biome","kind":"check","payload":{"a":[2,3],"b":1},"v":1}',
 		);
@@ -91,8 +95,8 @@ describe("SharedRecord", () => {
 	});
 
 	it("gives one ID whatever order the fields were written in", () => {
-		const a = SharedRecord.parse(envelope({ payload: { b: 1, a: 2 } }));
-		const b = SharedRecord.parse({
+		const a = parse(envelope({ payload: { b: 1, a: 2 } }));
+		const b = parse({
 			payload: { a: 2, b: 1 },
 			key: "static.biome",
 			kind: "check",
@@ -122,44 +126,48 @@ describe("SharedRecord", () => {
 			signer: "other",
 			signature: Buffer.alloc(64, 8).toString("base64"),
 		};
-		const id = SharedRecord.parse(base).id;
+		const id = parse(base).id;
 		const ids = new Set([id]);
 		for (const field of Object.keys(changed) as (keyof RecordEnvelope)[]) {
 			if (field === "v") continue;
 			const variant = { ...base, [field]: changed[field] };
-			ids.add(SharedRecord.parse(variant).id);
+			ids.add(parse(variant).id);
 		}
 		expect(ids.size).toBe(Object.keys(changed).length);
 	});
 
 	it("hashes its key for the path its adapter files it under", () => {
-		const record = SharedRecord.parse(envelope({ key: "src/a b/\u00fc.ts:12 ../../etc" }));
+		const record = parse(envelope({ key: "src/a b/\u00fc.ts:12 ../../etc" }));
 		expect(record.keyHash).toBe(sha256("src/a b/\u00fc.ts:12 ../../etc"));
 		expect(record.path).toBe(`changesets/pull-0123456789abcdef/check/${record.keyHash}/${record.id}.json`);
 	});
 
 	it("signs the canonical bytes of the whole envelope without its signature", () => {
-		const record = SharedRecord.parse(envelope({ signer: "host", signature }));
+		const record = parse(envelope({ signer: "host", signature }));
 		expect(record.signedBytes()).toBe(canonicalJson({ ...envelope(), signer: "host" }));
 	});
 
 	it("is frozen whole, so no caller can change what its ID names", () => {
 		const revision = `${commit("a")}..${commit("b")}`;
-		const round = SharedRecord.parse(
-			envelope({ kind: "round", revision, payload: { replaces: [], note: { n: 1 } } }),
+		const round = parse(
+			envelope({
+				kind: "round",
+				revision,
+				payload: { read: [], walkthrough: { key: "w", id: hex("9") }, replaces: [], before: [] },
+			}),
 		);
 		expect(() => (round.replaces() as string[]).push(hex("1"))).toThrow(TypeError);
 		expect(() => {
-			(round.payload as { note: { n: number } }).note.n = 2;
+			(round.payload as { walkthrough: { key: string } }).walkthrough.key = "x";
 		}).toThrow(TypeError);
-		const post = SharedRecord.parse(envelope({ kind: "post", supersedes: [hex("1")] }));
+		const post = parse(envelope({ kind: "post", supersedes: [hex("1")] }));
 		expect(() => (post.supersedes as string[]).push(hex("2"))).toThrow(TypeError);
 		expect(round.replaces()).toEqual([]);
-		expect(round.toJSON().payload).toEqual({ replaces: [], note: { n: 1 } });
+		expect(round.manifest()?.walkthrough).toEqual({ key: "w", id: hex("9") });
 	});
 
 	it("gives an unfrozen copy from toJSON", () => {
-		const record = SharedRecord.parse(envelope({ payload: { n: 1 } }));
+		const record = parse(envelope({ payload: { n: 1 } }));
 		const copy = record.toJSON();
 		(copy.payload as { n: number }).n = 2;
 		expect(record.payload).toEqual({ n: 1 });
@@ -167,15 +175,15 @@ describe("SharedRecord", () => {
 
 	describe("reading stored bytes", () => {
 		it("takes canonical bytes whose hash is the ID they are filed under", () => {
-			const record = SharedRecord.parse(envelope());
-			expect(SharedRecord.read(record.bytes, record.id).toJSON()).toEqual(record.toJSON());
+			const record = parse(envelope());
+			expect(read(record.bytes, record.id).toJSON()).toEqual(record.toJSON());
 		});
 
 		it("refuses bytes that do not give their own ID", () => {
-			const record = SharedRecord.parse(envelope());
+			const record = parse(envelope());
 			const error = (() => {
 				try {
-					SharedRecord.read(record.bytes, hex("0"));
+					read(record.bytes, hex("0"));
 				} catch (error) {
 					return error as RecordError;
 				}
@@ -185,12 +193,12 @@ describe("SharedRecord", () => {
 		});
 
 		it("refuses bytes that parse to the record but are not its canonical form", () => {
-			const record = SharedRecord.parse(envelope());
+			const record = parse(envelope());
 			const spaced = JSON.stringify(JSON.parse(record.bytes), null, 1);
 			for (const bytes of [spaced, `${record.bytes}\n`]) {
 				const error = (() => {
 					try {
-						SharedRecord.read(bytes, sha256(bytes));
+						read(bytes, sha256(bytes));
 					} catch (error) {
 						return error as RecordError;
 					}
@@ -200,13 +208,13 @@ describe("SharedRecord", () => {
 		});
 
 		it("refuses bytes that are not JSON", () => {
-			expect(() => SharedRecord.read("{", sha256("{"))).toThrow(RecordError);
+			expect(() => read("{", sha256("{"))).toThrow(RecordError);
 		});
 
 		it("refuses a duplicated field, which JSON.parse would fold into one", () => {
-			const record = SharedRecord.parse(envelope());
+			const record = parse(envelope());
 			const doubled = record.bytes.replace('"v":1', '"v":1,"v":1');
-			expect(() => SharedRecord.read(doubled, sha256(doubled))).toThrow(RecordError);
+			expect(() => read(doubled, sha256(doubled))).toThrow(RecordError);
 		});
 	});
 
@@ -219,7 +227,7 @@ describe("SharedRecord", () => {
 				signer: "host",
 				signature,
 			});
-			expect(SharedRecord.parse(fields).toJSON()).toEqual(fields);
+			expect(parse(fields).toJSON()).toEqual(fields);
 		});
 
 		it.each([
@@ -239,7 +247,7 @@ describe("SharedRecord", () => {
 		});
 
 		it.each(["a", "a.b", "pull-0123", "a-b.c-d.0"])("takes the changeset %j", (changeset) => {
-			expect(SharedRecord.parse(envelope({ changeset })).changeset).toBe(changeset);
+			expect(parse(envelope({ changeset })).changeset).toBe(changeset);
 		});
 
 		it.each(["", "A", "a..b", ".a", "a.", "a_b", "a/b", "a b", 1])("refuses the changeset %j", (changeset) => {
@@ -260,7 +268,7 @@ describe("SharedRecord", () => {
 		it.each([`${commit("a")}..${commit("b")}`, `${"a".repeat(64)}..${"b".repeat(64)}`])(
 			"takes the revision %s",
 			(revision) => {
-				expect(SharedRecord.parse(envelope({ revision })).revision).toBe(revision);
+				expect(parse(envelope({ revision })).revision).toBe(revision);
 			},
 		);
 
@@ -289,7 +297,7 @@ describe("SharedRecord", () => {
 		});
 
 		it.each(["dismissal", "post", "status", "ledger-comment", "comparison"])("lets a %s supersede", (kind) => {
-			expect(SharedRecord.parse(envelope({ kind, supersedes: [hex("1")] })).supersedes).toEqual([hex("1")]);
+			expect(parse(envelope({ kind, supersedes: [hex("1")] })).supersedes).toEqual([hex("1")]);
 		});
 
 		it.each(["check", "lens", "verification", "walkthrough", "telemetry", "marker"])(
@@ -303,7 +311,7 @@ describe("SharedRecord", () => {
 			const round = envelope({
 				kind: "round",
 				revision: `${commit("a")}..${commit("b")}`,
-				payload: { replaces: [] },
+				payload: { read: [], walkthrough: null, replaces: [], before: [] },
 			});
 			expect(refusal({ ...round, supersedes: [hex("1")] }).code).toBe("supersedesNotAllowed");
 		});
@@ -338,23 +346,53 @@ describe("SharedRecord", () => {
 			const revision = `${commit("a")}..${commit("b")}`;
 
 			it("names the rounds it replaces", () => {
-				const round = SharedRecord.parse(envelope({ kind: "round", revision, payload: { replaces: [hex("1")] } }));
+				const round = parse(
+					envelope({
+						kind: "round",
+						revision,
+						payload: { read: [], walkthrough: null, replaces: [hex("1")], before: [] },
+					}),
+				);
 				expect(round.replaces()).toEqual([hex("1")]);
 			});
 
 			it.each([
-				["no revision", envelope({ kind: "round", payload: { replaces: [] } })],
-				["no list of rounds it replaces", envelope({ kind: "round", revision, payload: {} })],
+				[
+					"no revision",
+					envelope({ kind: "round", payload: { read: [], walkthrough: null, replaces: [], before: [] } }),
+				],
+				["no manifest", envelope({ kind: "round", revision, payload: { replaces: [] } })],
 				["a payload that is not an object", envelope({ kind: "round", revision, payload: [] })],
-				["an unsorted list", envelope({ kind: "round", revision, payload: { replaces: [hex("2"), hex("1")] } })],
-				["a repeated round", envelope({ kind: "round", revision, payload: { replaces: [hex("1"), hex("1")] } })],
-				["an ID that is not one", envelope({ kind: "round", revision, payload: { replaces: ["r1"] } })],
+				[
+					"an unsorted list",
+					envelope({
+						kind: "round",
+						revision,
+						payload: { read: [], walkthrough: null, replaces: [hex("2"), hex("1")], before: [] },
+					}),
+				],
+				[
+					"a repeated round",
+					envelope({
+						kind: "round",
+						revision,
+						payload: { read: [], walkthrough: null, replaces: [hex("1"), hex("1")], before: [] },
+					}),
+				],
+				[
+					"an ID that is not one",
+					envelope({
+						kind: "round",
+						revision,
+						payload: { read: [], walkthrough: null, replaces: ["r1"], before: [] },
+					}),
+				],
 			])("is refused with %s", (_name, value) => {
 				expect(refusal(value).code).toBe("invalidRecord");
 			});
 
 			it("is the only kind that replaces", () => {
-				expect(SharedRecord.parse(envelope({ payload: { replaces: [hex("1")] } })).replaces()).toEqual([]);
+				expect(parse(envelope({ payload: { replaces: [hex("1")] } })).replaces()).toEqual([]);
 			});
 		});
 	});
@@ -381,9 +419,15 @@ describe("SharedRecord", () => {
 			["a record's signer and signature appear together or not at all", envelope({ signer: "host" })],
 			["a record's signer is a non-empty string", envelope({ signer: "", signature })],
 			["a record's signature is 64 bytes in canonical base64", envelope({ signer: "host", signature: "x" })],
-			["a round names its revision", envelope({ kind: "round", payload: { replaces: [] } })],
+			[
+				"a round names its revision",
+				envelope({ kind: "round", payload: { read: [], walkthrough: null, replaces: [], before: [] } }),
+			],
 			["a round's payload is an object", envelope({ kind: "round", revision, payload: [] })],
-			["a round's replaces is a list of record IDs", envelope({ kind: "round", revision, payload: {} })],
+			[
+				"a round's payload holds read, walkthrough, replaces, before and nothing else",
+				envelope({ kind: "round", revision, payload: {} }),
+			],
 			["a record's numbers are safe integers, not 1.5", envelope({ payload: 1.5 })],
 			["a record's strings hold no lone surrogate", envelope({ payload: String.fromCharCode(0xd800) })],
 			["a record's keys hold no lone surrogate", envelope({ payload: { [String.fromCharCode(0xd800)]: 1 } })],
@@ -395,10 +439,10 @@ describe("SharedRecord", () => {
 		});
 
 		it("says why it refuses stored bytes", () => {
-			const record = SharedRecord.parse(envelope());
+			const record = parse(envelope());
 			const read = (bytes: string, id: string) => {
 				try {
-					SharedRecord.read(bytes, id);
+					SharedRecord.read(bytes, id, testPayloads);
 				} catch (error) {
 					return error as RecordError;
 				}
@@ -431,7 +475,7 @@ describe("SharedRecord", () => {
 		});
 
 		it("takes a payload that holds null", () => {
-			expect(SharedRecord.parse(envelope({ payload: { a: null, b: [null] } })).payload).toEqual({
+			expect(parse(envelope({ payload: { a: null, b: [null] } })).payload).toEqual({
 				a: null,
 				b: [null],
 			});
@@ -440,14 +484,14 @@ describe("SharedRecord", () => {
 		it("names its errors as RecordError, and a stored record that is not JSON as invalidRecord", () => {
 			expect(refusal("x").name).toBe("RecordError");
 			try {
-				SharedRecord.read("{", sha256("{"));
+				read("{", sha256("{"));
 			} catch (error) {
 				expect((error as RecordError).code).toBe("invalidRecord");
 			}
 		});
 
 		it("gives a record that names no supersedes an empty list", () => {
-			expect(SharedRecord.parse(envelope()).supersedes).toEqual([]);
+			expect(parse(envelope()).supersedes).toEqual([]);
 		});
 	});
 });
