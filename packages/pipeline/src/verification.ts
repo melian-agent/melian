@@ -94,8 +94,10 @@ async function replaced(
 
 export const VerificationTask = defineTask<VerificationInput, Checkpoint, VerificationResult>({
 	name: "melian.verification",
-	// Version 3 lets a candidate carry its claims' probes and a task reuse a wave's outcomes; an older one has neither.
-	version: 3,
+	// Version 3, on main, lets a task reuse a wave's outcomes. Version 4 lets a candidate carry its claims' probes, so a
+	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
+	// optional, so a version 2 or 3 task reads unchanged.
+	version: 4,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
