@@ -75,6 +75,7 @@ import {
 	type ProbeRecord,
 	ProbingDocument,
 	type ProbingEnvironment,
+	probeConclusive,
 	probeFailed,
 	probingLimits,
 	runHeadProbe,
@@ -462,10 +463,15 @@ function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): 
 	const allowed: readonly string[] = [...lens.tools, ...roleTools[lens.role ?? "lens"]];
 	if (!allowed.includes(call.name)) return `lens ${lens.name} may call only ${allowed.join(", ")}`;
 	if (call.name !== "report_finding") return undefined;
-	const { severity, rule, probe } = (call.arguments ?? {}) as { severity?: unknown; rule?: unknown; probe?: unknown };
+	const { severity, rule, probe, refuted } = (call.arguments ?? {}) as {
+		severity?: unknown;
+		rule?: unknown;
+		probe?: unknown;
+		refuted?: unknown;
+	};
 	const injection = rule === injectionAttemptRule.id && severity === injectionSeverity;
-	if (lens.role === "planner" && rule !== injectionAttemptRule.id)
-		return "the planner writes the attack plan and reports no finding but an injection attempt; record the plan with record_plan";
+	if (lens.role === "planner" && (rule !== injectionAttemptRule.id || refuted !== undefined))
+		return "the planner writes the attack plan and reports no finding but an injection attempt, and refutes none; record the plan with record_plan";
 	if (lens.role === "prober" && rule !== injectionAttemptRule.id && probe === undefined)
 		return "a finding of a probing level needs the probe that shows it: pass probe, the ID run_probe returned for a probe that failed";
 	if (lens.role !== "prober" && probe !== undefined) return "probe is only for the prober of a level that runs probes";
@@ -1445,7 +1451,12 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		if (args.probe !== undefined) {
 			const probe = probing?.probes?.[args.probe];
 			if (probe === undefined) throw new Error(`no probe ${args.probe} ran in this conversation`);
-			if (!probeFailed(probe.result))
+			if (refuted !== undefined) {
+				if (!probeConclusive(probe.result) || probe.result.exitCode !== 0)
+					throw new Error(
+						`probe ${args.probe} did not pass, so it shows no finding wrong: refute a finding only with a probe that exited 0`,
+					);
+			} else if (!probeFailed(probe.result))
 				throw new Error(
 					`probe ${args.probe} did not fail, so it shows no defect: report a finding only with a probe that exited non-zero`,
 				);

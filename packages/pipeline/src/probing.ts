@@ -124,6 +124,45 @@ async function boundedHead(
 	return commit;
 }
 
+// A probe of the head of `revision`, its tree written and its sandbox started, or why it cannot open.
+async function openHeadProbe(
+	input: { readonly script: string; readonly files?: readonly ProbeFile[] },
+	revision: { readonly repoRoot: string; readonly head: string },
+	environment: ProbingEnvironment,
+	sandbox: ProbeSandbox | undefined,
+	limits: { readonly entries: number; readonly bytes: number; readonly listing: number },
+): Promise<Probe> {
+	const commit = await boundedHead(revision.repoRoot, revision.head, limits);
+	return Probe.open(input, {
+		head: { checkout: revision.repoRoot, commit, read: environment.read },
+		writer: environment.writer,
+		trustWriters: environment.trustWriters,
+		timeout: environment.timeout ?? probeLimits.timeout.default,
+		outputLimit: probingLimits.output,
+		...(sandbox === undefined ? {} : { sandbox }),
+	});
+}
+
+/**
+ * Why the head of `revision` would refuse every probe, as one past `limits` or one whose tree holds a link out of it
+ * does, or nothing when a probe may run there. It writes the head's tree as a probe does, and runs nothing in it.
+ */
+export async function headRefusal(
+	revision: { readonly repoRoot: string; readonly head: string },
+	environment: ProbingEnvironment,
+	sandbox?: ProbeSandbox,
+	limits: { readonly entries: number; readonly bytes: number; readonly listing: number } = headTreeLimits,
+): Promise<string | undefined> {
+	try {
+		const cleanup = await (
+			await openHeadProbe({ script: "process.exit(0);\n" }, revision, environment, sandbox, limits)
+		).close();
+		return cleanup.removed ? undefined : `its probe's scratch could not be removed: ${cleanup.reason}`;
+	} catch (error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+}
+
 /**
  * Runs one probe against the head of `revision` under `environment`, in a tree of the head that {@link Probe} writes for
  * it alone, and returns its result, or why it was refused: a head the host does not allow or past `limits`, a probe
@@ -137,15 +176,7 @@ export async function runHeadProbe(
 	limits: { readonly entries: number; readonly bytes: number; readonly listing: number } = headTreeLimits,
 ): Promise<ProbeRun> {
 	try {
-		const commit = await boundedHead(revision.repoRoot, revision.head, limits);
-		const probe = await Probe.open(input, {
-			head: { checkout: revision.repoRoot, commit, read: environment.read },
-			writer: environment.writer,
-			trustWriters: environment.trustWriters,
-			timeout: environment.timeout ?? probeLimits.timeout.default,
-			outputLimit: probingLimits.output,
-			...(sandbox === undefined ? {} : { sandbox }),
-		});
+		const probe = await openHeadProbe(input, revision, environment, sandbox, limits);
 		const started = Date.now();
 		let result: ProbeResult;
 		let cleanup: CleanupOutcome;

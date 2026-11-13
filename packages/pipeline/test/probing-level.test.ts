@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -42,7 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { TaskId } from "../src/harness.ts";
 import { type ReviewState, recordPlan, skipAttack } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { ProbeReruns, probingLimits } from "../src/probing.ts";
+import { headTreeLimits, ProbeReruns, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -296,6 +296,8 @@ describe("a level that probes", () => {
 			.join("\n");
 		expect(input).toContain(attack.failing);
 		expect(input).not.toContain("readFileSync(path");
+		// No quick run carried a finding, so the prober's input lists none.
+		expect(input).not.toMatch(/\bundefined\b|Findings a quicker look reported/);
 		expect(systemPromptOf(probed)).not.toContain("You are the trust-boundary reviewer");
 		const record = verdict.ran!.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record).toMatchObject({ status: "ran", level: "deep" });
@@ -547,6 +549,28 @@ describe("a level that probes", () => {
 			{ writer: { trusted: true, by: "writer" } },
 		);
 		expect((await run).verdict.counted()).toHaveLength(1);
+	});
+
+	it("runs a level without probes when the head itself refuses them, as one past its tree limits does", async () => {
+		const limits = headTreeLimits as { entries: number };
+		const entries = limits.entries;
+		limits.entries = 1;
+		onTestFinished(() => {
+			limits.entries = entries;
+		});
+		const { run } = await withoutProbes({});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: the head refuses probes: the head holds more than 1 files",
+		);
+	});
+
+	it("runs a level without probes when the base policy's probe.read leads out of the checkout", async () => {
+		withBasePolicy("probe:\n  read: [outside]\n");
+		symlinkSync(tmpdir(), join(repo, "outside"));
+		const { run } = await withoutProbes({});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: the head refuses probes: probe.read may name only a relative path inside the checkout, not outside",
+		);
 	});
 
 	it("runs no probe where the sandbox cannot run, with the sandbox's reason", async () => {
@@ -943,7 +967,7 @@ describe("a level that probes", () => {
 	});
 
 	it.each([
-		["runs no more probes once another review takes the revision", [failing, failing], 1],
+		["runs no probe once another review has taken the revision", [failing, failing], 0],
 		["prunes nothing when every probe it holds already stands", [], 0],
 	])("writes nothing from a rerun task another review took the revision from: %s", async (_, scripts, ran) => {
 		const { run, changeset, heads } = await review({ planner: plan, prober: probing(failing) });
@@ -977,9 +1001,75 @@ describe("a level that probes", () => {
 		}, backgroundContext);
 		const headsBefore = heads.length;
 		await reviewer.waitForTask(task, backgroundContext);
+		// It ends as it would have finished, so nothing reads its stop as a failure.
+		expect((await reviewer.getTask(task, backgroundContext))!.state).toMatchObject({
+			status: "terminal",
+			outcome: { status: "completed" },
+		});
 		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
 		expect(Object.keys(runs).sort()).toEqual([...standing, "another review's"].sort());
 		expect(heads.length - headsBefore).toBe(ran);
+	});
+
+	it("writes no rerun from a task another review takes the revision from while its probe runs", async () => {
+		let during: (() => void) | undefined;
+		const { run, changeset } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				rewrite: (command) => {
+					if (inHeadTree(command)) during?.();
+					return command;
+				},
+			},
+		);
+		await run;
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!;
+		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
+		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
+		const standing = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
+		const environment = { writer: { trusted: true, by: "reviewer" } as const, trustWriters: true, read: [] };
+		let taken: Promise<void> | undefined;
+		during = () => {
+			taken = root.commit(async (tx) => {
+				(await tx.doc(ProbeReruns, root.id)).tasks![at] = { task: -1, key: "another review's probes" };
+			}, backgroundContext);
+		};
+		const task = await root.commit(async (tx) => {
+			const created = await tx.createTask(
+				probeRerunTask(),
+				{ root: root.id, revision, probes: [{ key: "taken", script: failing, files: [], environment }] },
+				{ ownership: { kind: "conversation" } },
+			);
+			const document = await tx.doc(ProbeReruns, root.id);
+			document.tasks = { ...document.tasks, [at]: { task: created, key: "this task's probes" } };
+			return created;
+		}, backgroundContext);
+		await reviewer.waitForTask(task, backgroundContext);
+		await taken;
+		expect(taken).toBeDefined();
+		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
+		expect(Object.keys(runs)).toEqual(standing);
+	});
+
+	it("starts no rerun for a review whose lens task another review has replaced", async () => {
+		const fake = createFakeModels();
+		// The prober's last turn stands for the moment another review replaces this one's lens task in the index.
+		const replaced: ScriptedReply = async () => {
+			const root = await harness!.harness.root(backgroundContext);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				for (const key of Object.keys(index.reviews)) index.reviews[key] = { ...index.reviews[key]!, task: -1 };
+			}, backgroundContext);
+			return fauxAssistantMessage("Reported 1 finding.");
+		};
+		const prober = probing(failing);
+		const { run, heads } = await review({ planner: plan, prober: [...prober.slice(0, -1), replaced] }, { fake });
+		await run.catch(() => undefined);
+		// The prober's probe alone: the replaced review runs no probe again.
+		expect(heads).toHaveLength(1);
 	});
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
@@ -2108,6 +2198,143 @@ describe("a level that probes", () => {
 		const again = await review(scripts, at({ trusted: true, by: "writer" }));
 		await again.run;
 		expect(again.requests[planner]).toHaveLength(2);
+	});
+
+	it("keeps a finding a quick run carried when the planner of the level it escalates to calls it refuted", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		// The planner reads the carried finding's ID in its prompt and tries to refute it under the one rule it may report.
+		const refute: ScriptedReply = (messages) => {
+			const id =
+				/([0-9a-f]{16}) P1 path-traversal/.exec(systemPromptOf(messages) + JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", {
+				...plain,
+				rule: "melian/injection-attempt",
+				severity: "P2",
+				refuted: id,
+			});
+		};
+		const scripts = {
+			planner: [],
+			prober: [],
+			others: [
+				{
+					match: planner,
+					replies: [refute, call("record_plan", { attacks: [] }), fauxAssistantMessage("Planned 0 attacks.")],
+				},
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const careful = (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } });
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		);
+		const { run } = await review(scripts, {
+			fake,
+			decider,
+			lens: careful,
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: { heavy: { model: route }, medium: { model: route } },
+			},
+		});
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(verdict.counted().map((each) => each.ruleId)).toContain("path-traversal");
+	});
+
+	it("lets the prober refute a finding a quick run carried, with a probe that passed", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		let probe = "p0";
+		const refute: ScriptedReply = (messages) => {
+			probe = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? probe;
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...finding(probe), refuted: id });
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				refute,
+				fauxAssistantMessage("Refuted 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: plan },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const careful = (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } });
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		);
+		const { run } = await review(scripts, {
+			fake,
+			decider,
+			lens: careful,
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: { heavy: { model: route }, medium: { model: route } },
+			},
+		});
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain("careful refuted 1 finding quick carried");
+		expect(verdict.counted().map((each) => each.ruleId)).not.toContain("path-traversal");
+	});
+
+	it("refuses a prober's refutation that rests on a probe that failed, and keeps the carried finding", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		let probe = "p0";
+		const refute: ScriptedReply = (messages) => {
+			probe = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? probe;
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...finding(probe), refuted: id });
+		};
+		const { run, requests } = await review(
+			{
+				planner: [],
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					refute,
+					fauxAssistantMessage("Refuted 1 finding."),
+				],
+				others: [
+					{ match: planner, replies: plan },
+					{
+						match: reviewer,
+						replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+					},
+				],
+			},
+			{
+				fake,
+				decider: new RecordedDecider(
+					{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+					{ name: "recorded" },
+				),
+				lens: (lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } },
+					}),
+				config: {
+					lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+					models: {
+						heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+						medium: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					},
+				},
+			},
+		);
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(lastResults(requests[prober]![2]!)).toContain("did not pass, so it shows no finding wrong");
+		expect(record(verdict).reason).toContain("which careful neither restated nor refuted, still counts");
 	});
 
 	it("plans from the findings of the revision before this one, never a later one", async () => {
