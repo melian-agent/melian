@@ -14,8 +14,9 @@ Pull request #399's record-store suite had 46 such mutants. Sixteen deleted the 
 
 - An assertion that is a case's only check of a promise is proved as any mutant is: a broken implementation, the named case passing unmutated and failing with the mutant.
 - A mutant that deletes an assertion another assertion in the same case also catches, or that changes fixture housekeeping, is listed in the inventory by line with a one-line reason, under the label "suite assertion, proved per case". It is never claimed as equivalent, because it is not.
+- The reason of a deleted-assertion row names the neighbouring assertion that catches the same promise, by line, and that neighbour is one of the proved ones. A reviewer's sample selects every listed row, so the label is a claim a reviewer reads, never proof.
 - The rule covers only a test suite kept under a source folder for other packages to import. Mutants in any other source file are proved as before.
 
 ## What this gives up
 
-A listed assertion could be deleted and no test would fail. The promise it checks stays covered by its neighbour, which is proved.
+A listed assertion could be deleted and no test would fail. The promise it checks stays covered by its neighbour, which is proved. That the neighbour covers the same promise is the builder's judgement, checked by a reviewer who reads the row, not by a run.
