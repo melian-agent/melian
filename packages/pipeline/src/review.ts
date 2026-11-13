@@ -138,6 +138,7 @@ import {
 	answerPrompt,
 	type ClaimProbe,
 	type EarlierFinding,
+	headRefusal,
 	headTreeLimits,
 	ProbeReruns,
 	ProbingDocument,
@@ -1308,14 +1309,24 @@ export interface Review {
 
 // Why probes cannot run for this review, or `undefined` when they can: the host has not allowed the head's code to run
 // here, the base policy does not trust writers, or the sandbox cannot run on this machine.
-async function probeRefusal(request: ReviewOptions, config: MelianConfig): Promise<string | undefined> {
+async function probeRefusal(
+	request: ReviewOptions,
+	config: MelianConfig,
+	revision: { readonly repoRoot: string; readonly head: string },
+): Promise<string | undefined> {
 	const { writer } = request;
 	if (writer === undefined) return "the host did not say whose head this is";
 	if (!writer.trusted) return writer.detail;
 	if (writer.by === "writer" && !config.trust.writers) return "trust.writers is false in the repository's policy";
 	const sandbox = request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined;
 	const available = await Probe.availability(sandbox);
-	return available.available ? undefined : available.reason;
+	if (!available.available) return available.reason;
+	const refused = await headRefusal(
+		revision,
+		{ writer, trustWriters: config.trust.writers, read: [...config.probe.read] },
+		sandbox,
+	);
+	return refused === undefined ? undefined : `the head refuses probes: ${refused}`;
 }
 
 // The probe each claim of a probing run rests on, read from its planner's and its prober's conversations, with what its
@@ -2282,7 +2293,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			({ config: policy }) => policy,
 		));
 	let probesAsked: Promise<string | undefined> | undefined;
-	const probeRefused = () => (probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy)));
+	const probeRefused = () =>
+		(probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy, { repoRoot, head })));
 	// Why a level that probes runs without them here: probes may not run, or its prober's tier reaches no model, or the
 	// plan refuses that tier. It then runs as it would without `probe`, and its record says why.
 	const withoutProbes = async (lens: Lens, level: ScrutinyLevel, settings: LensLevel): Promise<string | undefined> => {

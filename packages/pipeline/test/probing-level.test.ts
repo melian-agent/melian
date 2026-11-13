@@ -42,7 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { TaskId } from "../src/harness.ts";
 import { type ReviewState, recordPlan, skipAttack } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { ProbeReruns, probingLimits } from "../src/probing.ts";
+import { headTreeLimits, ProbeReruns, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -547,6 +547,19 @@ describe("a level that probes", () => {
 			{ writer: { trusted: true, by: "writer" } },
 		);
 		expect((await run).verdict.counted()).toHaveLength(1);
+	});
+
+	it("runs a level without probes when the head itself refuses them, as one past its tree limits does", async () => {
+		const limits = headTreeLimits as { entries: number };
+		const entries = limits.entries;
+		limits.entries = 1;
+		onTestFinished(() => {
+			limits.entries = entries;
+		});
+		const { run } = await withoutProbes({});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: the head refuses probes: the head holds more than 1 files",
+		);
 	});
 
 	it("runs no probe where the sandbox cannot run, with the sandbox's reason", async () => {
