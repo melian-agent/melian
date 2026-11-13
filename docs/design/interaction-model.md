@@ -10,7 +10,7 @@ On a pull request, Melian posts one review per revision with inline comments, a 
 - focus on a path for the rest of this review
 - remember this
 
-Each command is a submission into the changeset's conversation. Commands arriving mid-review steer it rather than restarting it. Dismissal with a reason is the most valuable input: it feeds the calibration store and the decision-model dataset. Learning from dismissals therefore leads milestone 4. A history source for lenses follows it: blame, and earlier review threads on the files a change touches.
+Each command reads the changeset's shared record, never a session, as [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) proposes: an explanation is a fresh request over the finding, its evidence and the verifier's reason. A command steers a running review only on the host running it; elsewhere it is input to the next round. Dismissal with a reason is the most valuable input: it feeds the calibration store and the decision-model dataset. Learning from dismissals therefore leads milestone 4. A history source for lenses follows it: blame, and earlier review threads on the files a change touches.
 
 ### The ledger
 

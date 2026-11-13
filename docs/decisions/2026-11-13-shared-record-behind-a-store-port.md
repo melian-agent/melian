@@ -44,6 +44,8 @@ The spikes ran small scripted reviews on the fake model, and their builders repo
 
 Pi's storage, with its checkpoints and transcripts, is local: SQLite in a clone, thrown away on a runner. A crash resumes from Pi's checkpoints on the same host, as today. No host ships it to another.
 
+So a comment command reads the record, never a session. The interaction model called each command "a submission into the changeset's conversation", and on another host that conversation is gone. Resolving a thread, dismissing from one and re-reviewing need only records, git and the provider. "Explain this finding" is a fresh request over the finding, its evidence, the verifier's reason and the code; it cannot say what the lens read and ruled out. "Focus on a path" and any other steer reach a running review only on the host running it, and elsewhere they are input to the next round. The maintainer ruled so on 2026-11-13, in the coordinator's session. When milestone 4 builds "explain", a lens record may gain a bounded trace of what the lens read, beside its delivery evidence; that is a later decision.
+
 ### 2. Hosts share the record
 
 The record is a set of immutable facts, one per record. A review writes five kinds: a check's result, a lens run's sightings, a verification, a walkthrough and a round, with optional telemetry. An inheritance is no kind: rule 9 computes it. Five kinds come from a command, never from a review: a dismissal, a marker, a post, a status and the ledger comment, with a comparison beside them. [Issue #369](https://github.com/melian-agent/melian/issues/369)'s table sorts every document Melian stores into a kind or into working state.
@@ -102,11 +104,11 @@ The cell holds one small JSON value: the publication lease and the disposal mark
 The first draft settled two records in one slot by the lowest ID. [Issue #378](https://github.com/melian-agent/melian/issues/378) showed a writer could grind an ID to win a slot, and Melian's own design lens showed two honest hosts losing a blocking sighting that way, since two runs of one lens can differ. So:
 
 - **A round names what it rests on.** Its closing record lists the kind, key and ID of every record it read, its walkthrough or that it has none, the earlier rounds of its revision it replaces, and the rounds of the revision before. A record a round names counts for that round. One that does not match the named kind, key and ID together counts as not found, and a round with a record not found reads as not reviewed.
-- **An import keeps every record.** A host that finds several trusted records under the key its own run would use imports all of them, and their sightings merge as two lenses' sightings do. Nothing is dropped.
+- **An import keeps every record.** A host that finds several trusted records under the key its own run would use imports all of them, and their sightings merge as two lenses' sightings do. Nothing is dropped. Two runs of one lens tie on lens name, so the merge orders records by ID first, keeps every claim, and counts the highest severity among them. The order decides which prose speaks, and never whether a claim or a severity counts.
 - **Standing is computed from the rounds.** A round of a revision stands when no round that counts names it as replaced. Nothing else says which round is current, so there is no pointer for a writer to roll back. Where a key is pinned, only a round that key signed counts, so only the trusted host's round can replace the trusted host's.
 - **The gate takes the worst standing round.** Two rounds that stand together, because two hosts reviewed at once, gate by the worse, and not reviewed is worse than blocking.
 - **`supersedes` is narrow.** Only a dismissal, a post, a status, the ledger comment and a comparison may carry it, and it names only records of its own changeset, kind and key. Supersession is a fact about the set, never about the order records arrived in, which the store does not keep: an entry applies whenever its target is in the set, and has no effect while it is not. A writer can therefore name a record before it lands only by building that exact record first, which the same writer could as well add and then supersede. An ID is a hash of a record's content, its `supersedes` included, so no two records can name each other. Supersession is permanent: a superseded record's own `supersedes` still applies. No record a review writes carries one.
-- **Publication's own slots may tie.** Two posts, statuses or ledger comments that stand in one slot are settled by the lowest ID. That tie decides which comment Melian keeps, never a verdict.
+- **Publication's own slots may tie.** A post, status or ledger comment record carries the generation of the lease it was made under, and the one of the highest generation stands in its slot. Two of one generation are settled by the lowest ID. That tie decides which comment Melian keeps, never a verdict.
 
 ### 5. A result's key is the request that produced it
 
@@ -124,7 +126,7 @@ For a lens run, a verification and a walkthrough, the request holds:
 - for a lens, its level, its band, the severity that escalates it, and the run it escalates to;
 - for a verification, every claim in full with its severity, the fence, and each dismissed finding shown, with the ID of its dismissal record.
 
-For a check, the request is its name, the changeset's base and head, its policy hash, and its tool's version, read from the tool's version command before the run.
+A check's request is built the same way, by one function that returns the key: its name, the changeset's base and head, its policy hash, the version of Melian's own implementation of the check, its tool's version where it has a tool, read from the tool's version command before the run, and every input the check's own decision makes part of its evidence's identity. For mutation evidence those are the executor, installation, adapter and test identity [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) names. A check with no tool, such as the guardrails, is keyed by Melian's version of it, so a host with a fixed check never imports the old one's result.
 
 Three things stay out, and this list is the only place an exclusion is written:
 
@@ -167,7 +169,7 @@ Every other repository has no key. The envelope keeps `signer` and `signature` s
 - A dismissal stands if its author was a writer when it was made.
 - Any standing dismissal of a finding dismisses it, and each one's reason is shown.
 
-A reopen is computed, not recorded. A reader walks the revisions from the dismissal's to the one it judges, in the order the rounds name, and applies the lifecycle's reopen rule at each with that revision's proving hunks from git. A dismissal once reopened stays reopened, though a later revision restores the old content. A reader that cannot read the hunks takes the dismissal as reopened.
+A reopen is computed, not recorded, and from the set, never from an order. A dismissal record names the rounds its writer listed. A reader applies the lifecycle's reopen rule to every sighting of the finding in the set that those rounds do not hold, with that revision's proving hunks from git, since the lifecycle already reopens on different content "regardless of revision order". So a round that arrives late reopens what it would have reopened on time, whatever a later round named as the revision before it. A late round of a revision older than the dismissal can reopen it too; that fails closed, and a writer dismisses again. A dismissal once reopened stays reopened, though a later revision restores the old content. A reader that cannot read the hunks takes the dismissal as reopened.
 
 ### 8. Another host resumes by completing the manifest
 
@@ -181,7 +183,7 @@ Each is a projection of the record and none is stored as the authority.
 - An inheritance is computed with it, never stored. A verification's payload holds the verifier's `same` or `different` for each claim against each dismissed finding it was shown, with that dismissal record's ID. The reader applies the other conditions of [the restatement decision](2026-11-08-dismissal-carries-to-restatement.md) itself, from the dismissal records and git, and an inheritance holds only while the dismissal the verifier was shown stands. The maintainer ruled so on 2026-11-13, in the coordinator's session: a head's job relays the judgement alone, so a forged record cannot claim that a trust-floor finding inherits or that a changed region is unchanged.
 - The coverage ledger comes from which records cover which lines. It is no second store, so nothing carries it anywhere.
 - The ledger comment renders the record, as it renders the local store today.
-- The gate is a command, `melian gate "#N"`. It lists the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one.
+- The gate is a command, `melian gate "#N"`. It lists the record, computes the verdict of each standing round for the pull request's base and head, and exits with the worst. Any provider's CI can run it. The merge-group check runs it and writes the group's status; a status on the head is a display, and no gate reads one. Just before it writes that status, or copies an override, the check lists again, and computes again when the set differs from the one it read, as [the coordination decision](2026-11-08-how-melian-coordinates.md) requires of any job that writes from an authority it read earlier.
 
 The gate fails closed with no standing round for the revision, a record not found, a base whose policy it cannot read, or a store it cannot reach. So no status needs fencing: a stale status decides nothing.
 
@@ -191,7 +193,7 @@ One status is still read. [The outage procedure](2026-10-23-melian-review-outage
 
 Before it posts, the publisher adds a marker record holding the hash of a fresh random value and the login that will post, and puts the value in the comment's marker. A marker counts when the changeset's records hold its hash under the key of that post. Marker records are a set: an unused one from a crash before the post stays and harms nothing.
 
-After the post, a `post` record names the comment's ID, and the ID is the authority from then on, so the marker only covers a crash between the two. In that window the author is the whole defence, since a posted value is public: a resumed publisher takes a comment as its own only when it carries a recorded value and the provider reports its author as the login the marker record names. Recovery reads the login from the record and the author from the provider, never from the token, so it does not depend on the token knowing who it is, as [marker trust](2026-10-03-marker-trust.md) requires. Only a token's first post, made before any response has told it its login, records a marker without one; a crash in that one window posts afresh, and can leave an orphan to delete by hand, as today.
+After the post, a `post` record names the comment's ID, and for a review the ID of each inline comment with the finding it speaks for, so any host can edit a comment and resolve its thread. The ID is the authority from then on, so the marker only covers a crash between the two. In that window the author is the whole defence, since a posted value is public: a resumed publisher takes a comment as its own only when it carries a recorded value and the provider reports its author as the login the marker record names. Recovery reads the login from the record and the author from the provider, never from the token, so it does not depend on the token knowing who it is, as [marker trust](2026-10-03-marker-trust.md) requires. Only a token's first post, made before any response has told it its login, records a marker without one; a crash in that one window posts afresh, and can leave an orphan to delete by hand, as today.
 
 Nothing in the store is secret, and nothing in it needs sealing. A pull request's author cannot write the store, so cannot record a hash.
 
@@ -199,7 +201,7 @@ Nothing in the store is secret, and nothing in it needs sealing. A pull request'
 
 Publication is the one write that cannot be repeated safely. `melian publish` takes a short lease in the changeset's cell by compare-and-set, posts, records, and releases it. Core's `Lease` keeps its incarnation and generation for this. Storage takes no lease.
 
-A provider takes no fence, so a holder paused past its lease can still post after its successor. A time margin narrows that and cannot close it, so the stale publisher removes its own effect: after each post it reads the cell again, and when the lease is no longer its own it deletes what it posted and records nothing. A publisher posts only while its lease has more than one post's deadline left, which keeps that rare. One that dies between its post and that read leaves a post with a recorded marker and no `post` record, and the next publish deletes it. Until then a stale review can show on the pull request. It gates nothing, since the gate reads no post.
+A provider takes no fence, so a holder paused past its lease can still post after its successor. A time margin narrows that and cannot close it, so the stale publisher removes its own effect: after each post it reads the cell again, and when the lease is no longer its own it deletes what it posted and records nothing. A publisher posts only while its lease has more than one post's deadline left, which keeps that rare. One that dies between its post and that read leaves a post with a recorded marker and no `post` record, and the next publish deletes it. One that passes that read, pauses, and records its post after a successor took the lease adds a record of an older generation, which rule 4 never lets stand. Until then a stale review can show on the pull request. It gates nothing, since the gate reads no post.
 
 The login on the standing `post` record owns a pull request's reviews and its ledger comment. A publish that knows its login to be another refuses, naming the owner. Whether a token may edit is the provider's answer, not a guess from its login. A cloud session cannot set a status, so publication runs on the trusted host or from a maintainer's CLI.
 
@@ -250,6 +252,11 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | A closed pull request was disposed, so a reopened one could record nothing (`d48f504f94e100d3`) | Rule 13: closing disposes nothing |
 | A signed record let a fork's head count, against the coverage ledger's "Fork heads" section, which this file did not amend (`ab55c8493996ace2`) | Rule 6 and the header: the section is amended for a record the trusted host signed, and every other clause of it stands |
 | Whether a `supersedes` entry applied depended on arrival order, which the store does not keep (`2839409b73dade40`) | Rule 4: an entry applies whenever its target is in the set |
+| A round's frozen list of earlier rounds skipped one that arrived late and reopened a dismissal (`19de850807b1107d`) | Rule 7: a reopen is computed from every sighting in the set, in no order |
+| A check's key left out Melian's own version of the check and the mutation executor (`00638ec931f0ec40`) | Rule 5: a check's request is built whole, as the others are |
+| The merge-group check wrote its status from a list it read earlier (`c88b6f3b39196e7a`) | Rule 9: it lists again just before it writes |
+| Two runs of one lens tied in the merge, so list order chose the speaker (`51cdb2a1409fc35e`) | Rule 4: records merge in ID order, and no claim or severity is dropped |
+| A publisher that lost its lease after its check still recorded its post, and could win the slot (`f4c883cd4496d7a2`) | Rules 4 and 11: the highest lease generation stands |
 
 ## What this gives up
 
@@ -258,6 +265,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 - A dismisser from the CLI stays self-declared. A repository that must prove who dismissed uses the provider path.
 - A writer can run a round that replaces a blocking one, as a writer can rerun a review or set a status today. [Issue #379](https://github.com/melian-agent/melian/issues/379) proposed counting only rounds the trusted host signed; that puts a key in every repository, which the maintainer's direction on logistics rules out. The maintainer agreed on 2026-11-13, in the coordinator's session.
 - A writer can block by adding a second round, since the worse gates.
+- A comment command on another host works from the record, so an explanation cannot draw on the lens's transcript, and a steer reaches a running review only on its own host.
 - A stale review can show on a pull request until the next publish, when a publisher dies between its post and its lease check.
 - Two hosts can give one lens different callers and enclosing functions under one key.
 - One file the adapter does not know stops every gate and publish on the branch until a writer removes it.
