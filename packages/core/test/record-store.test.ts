@@ -69,12 +69,12 @@ function brokenFixture(breaks: (inner: RecordStore) => Partial<RecordStore>): Re
 	};
 }
 
-const cutOffAnswer = <T>(answer: T) =>
+const cutOffAnswer = <T>(answer: T, code = "unreachable") =>
 	async function (this: void, call: () => Promise<T>): Promise<T> {
 		try {
 			return await call();
 		} catch (error) {
-			if (error instanceof RecordError && error.code === "unreachable") return answer;
+			if (error instanceof RecordError && error.code === code) return answer;
 			throw error;
 		}
 	};
@@ -239,6 +239,16 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 				list: async (name) => (gone.has(name) ? [] : inner.list(name)),
 			};
 		},
+	],
+	[
+		"list answers past an entry it did not write",
+		"list and add refuse an entry the store did not write, and write nothing through it",
+		(inner) => ({ list: (name) => cutOffAnswer<RecordEnvelope[]>([], "unknownFile")(() => inner.list(name)) }),
+	],
+	[
+		"add skips past an entry it did not write",
+		"list and add refuse an entry the store did not write, and write nothing through it",
+		(inner) => ({ add: (records) => cutOffAnswer<void>(undefined, "unknownFile")(() => inner.add(records)) }),
 	],
 	[
 		"a changeset name reaches the adapter unchecked",

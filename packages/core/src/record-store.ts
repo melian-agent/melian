@@ -40,11 +40,19 @@ export function checkCellValue(value: string): void {
 	if (!value.isWellFormed()) throw new RecordError("invalidCell", "a cell holds no lone surrogate");
 }
 
+function strayError(changeset: string, kind: string): RecordError {
+	return new RecordError("unknownFile", `changeset ${changeset} holds a ${kind} entry no handle wrote`);
+}
+
 export function disposedError(changeset: string): RecordError {
 	return new RecordError("disposed", `changeset ${changeset} is disposed`);
 }
 
-type MemoryChangeset = { records: Map<string, string>; cell: { value: string; version: string } | undefined };
+type MemoryChangeset = {
+	records: Map<string, string>;
+	cell: { value: string; version: string } | undefined;
+	stray: Set<string>;
+};
 
 /**
  * The records behind any number of `MemoryRecordStore` handles, as one remote is behind every host's clone. Tests open
@@ -59,11 +67,16 @@ export class MemoryRecordSpace {
 		this.#connected = false;
 	}
 
+	/** Puts an entry no handle wrote among a changeset's records of `kind`, as a stray file is in a directory store. */
+	plant(changeset: string, kind: string): void {
+		this.changeset(changeset).stray.add(kind);
+	}
+
 	changeset(name: string): MemoryChangeset {
 		if (!this.#connected) throw new RecordError("unreachable", "the memory record space is disconnected");
 		let changeset = this.#changesets.get(name);
 		if (changeset === undefined) {
-			changeset = { records: new Map(), cell: undefined };
+			changeset = { records: new Map(), cell: undefined, stray: new Set() };
 			this.#changesets.set(name, changeset);
 		}
 		return changeset;
@@ -90,12 +103,15 @@ export class MemoryRecordStore implements RecordStore {
 		for (const record of parsed) {
 			const changeset = this.#changeset(record.changeset);
 			if (changeset.cell?.value === disposalMark) throw disposedError(record.changeset);
+			if (changeset.stray.has(record.kind)) throw strayError(record.changeset, record.kind);
 			changeset.records.set(record.id, record.bytes);
 		}
 	}
 
 	async list(changeset: string): Promise<RecordEnvelope[]> {
-		return [...this.#changeset(changeset).records.values()].map((bytes) => JSON.parse(bytes) as RecordEnvelope);
+		const entry = this.#changeset(changeset);
+		for (const kind of entry.stray) throw strayError(changeset, kind);
+		return [...entry.records.values()].map((bytes) => JSON.parse(bytes) as RecordEnvelope);
 	}
 
 	async readCell(changeset: string): Promise<RecordCell> {

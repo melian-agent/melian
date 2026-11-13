@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DirectoryRecordStore } from "./directory-record-store.ts";
@@ -13,6 +13,11 @@ export interface RecordStoreSubject {
 	open(): Promise<RecordStore>;
 	/** Cuts every handle off from the store, so that no call can be answered fresh. */
 	cutOff(): Promise<void>;
+	/**
+	 * Puts among a changeset's records of `kind` an entry the store did not write, leading out of the store where the
+	 * store can hold such a thing, as a directory holds a link. Resolves to a check that something reached outside.
+	 */
+	plant(changeset: string, kind: string): Promise<() => Promise<boolean>>;
 	/** Closes every handle and releases the store. */
 	close(): Promise<void>;
 }
@@ -272,6 +277,20 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
+		name: "list and add refuse an entry the store did not write, and write nothing through it",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const store = await subject.open();
+				const escaped = await subject.plant(changeset, "check");
+				await assert.rejects(store.list(changeset), refusal("unknownFile"));
+				await assert.rejects(store.add([envelope("check", "guardrails", {})]), refusal("unknownFile"));
+				assert.equal(await escaped(), false);
+				const elsewhere = envelope("check", "guardrails", {}, other);
+				await store.add([elsewhere]);
+				assert.deepEqual(ids(await store.list(other)), idsOf(elsewhere));
+			}),
+	},
+	{
 		name: "every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		run: (fixture) =>
 			using(fixture, async (subject) => {
@@ -303,6 +322,10 @@ export function memoryRecordStoreFixture(): RecordStoreFixture {
 				return store;
 			},
 			cutOff: async () => space.disconnect(),
+			plant: async (name, kind) => {
+				space.plant(name, kind);
+				return async () => false;
+			},
 			close: async () => {
 				for (const store of handles) await store.close();
 			},
@@ -310,10 +333,14 @@ export function memoryRecordStoreFixture(): RecordStoreFixture {
 	};
 }
 
-/** A fixture for the directory adapter: every handle on one temporary directory, which `cutOff` removes. */
+/**
+ * A fixture for the directory adapter: every handle on one temporary directory, which `cutOff` removes, and `plant`
+ * links a kind's directory to a second one outside it.
+ */
 export function directoryRecordStoreFixture(): RecordStoreFixture {
 	return async () => {
 		const root = await mkdtemp(join(tmpdir(), "melian-records-"));
+		const outside = await mkdtemp(join(tmpdir(), "melian-records-outside-"));
 		const handles: RecordStore[] = [];
 		return {
 			open: async () => {
@@ -322,9 +349,15 @@ export function directoryRecordStoreFixture(): RecordStoreFixture {
 				return store;
 			},
 			cutOff: () => rm(root, { recursive: true, force: true }),
+			plant: async (name, kind) => {
+				await mkdir(join(root, "changesets", name), { recursive: true });
+				await symlink(outside, join(root, "changesets", name, kind));
+				return async () => (await readdir(outside)).length > 0;
+			},
 			close: async () => {
 				for (const store of handles) await store.close();
 				await rm(root, { recursive: true, force: true });
+				await rm(outside, { recursive: true, force: true });
 			},
 		};
 	};
