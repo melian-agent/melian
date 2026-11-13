@@ -133,7 +133,7 @@ For a lens run, a verification and a walkthrough, the request holds:
 - the instructions as rendered, with the standards, decisions and design sections read at base that they quote;
 - the tools offered with their limits, the budget, the report schema, and the severities and rules the producer may use;
 - the route in order, fallbacks included, and the thinking level;
-- the producer's name and version;
+- the producer's name and version, and for a lens the version of the algorithm that works out its delivery evidence, so a host with another algorithm builds another key and runs the lens itself;
 - for a lens, its level, its band, the severity that escalates it, and the run it escalates to;
 - for a verification, every claim in full with its severity, the fence, and each dismissed finding shown, with the ID of its dismissal record.
 
@@ -221,7 +221,7 @@ Nothing in the store is secret, and nothing in it needs sealing. A pull request'
 
 Publication is the one write that cannot be repeated safely. `melian publish` takes a short lease in the changeset's cell by compare-and-set, posts, records, and releases it. Core's `Lease` keeps its incarnation and generation for this. Storage takes no lease.
 
-Publication binds the round the gate would take. [The publication triage guard](2026-10-19-publication-triage-guard.md) made a publisher, fresh or resumed, refuse unless its bound round was the revision's current round, and this design has no current round: several can stand. So a publisher binds the worst standing round of the revision, by rule 4, which is the verdict `melian gate` exits with. Where several standing rounds share the worst outcome, it binds the one with the lowest ID; that tie picks which findings are posted and never the outcome. Holding the lease, it lists again just before each provider effect, and when the worst standing round is no longer the one it bound it ends superseded, posts nothing more, and names the round to publish. A passing round is therefore never published after a blocking round of the same revision has landed. The guard's other check, an adjudication for the revision, becomes a standing round for it; with none, the publisher ends superseded as before.
+Publication binds the round the gate would take. [The publication triage guard](2026-10-19-publication-triage-guard.md) made a publisher, fresh or resumed, refuse unless its bound round was the revision's current round, and this design has no current round: several can stand. So a publisher binds the worst standing round of the revision, by rule 4, which is the verdict `melian gate` exits with. Where several standing rounds share the worst outcome, it binds the one with the lowest ID; that tie picks which findings are posted and never the outcome. Holding the lease, it lists again just before each provider effect, and when the worst standing round is no longer the one it bound, or the standing dismissals its verdict was computed with have changed, it ends superseded, posts nothing more, and names the round to publish. A dismissal is no part of a round and still changes its verdict, so the binding is the round and those dismissals together. A passing round is therefore never published after a blocking round of the same revision has landed. The guard's other check, an adjudication for the revision, becomes a standing round for it; with none, the publisher ends superseded as before.
 
 A provider takes no fence, so a holder paused past its lease can still post after its successor. A time margin narrows that and cannot close it, so the stale publisher removes its own effect: after each post it reads the cell again, and when the lease is no longer its own it deletes what it posted and records nothing. A publisher posts only while its lease has more than one post's deadline left, which keeps that rare. One that dies between its post and that read leaves a post with a recorded marker and no `post` record, and the next publish deletes it. One that passes that read, pauses, and records its post after a successor took the lease adds a record of an older generation, which rule 4 never lets stand. Until then a stale review can show on the pull request. It gates nothing, since the gate reads no post.
 
@@ -294,6 +294,8 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | A check's key left out the host facts its tool's answer turns on (`b5c201e39ccbd168`) | Rule 5: platform, architecture, runtime and case folding are in a check's request |
 | With `trust.writers: false`, a writer could rewind the branch and drop the host's blocking round (`26e8879cab5aecc6`) | Rule 6: such a repository keeps its record where only the trusted host can write, by the maintainer's ruling |
 | A fork's head-code job could hand over a made-up round for the host to sign (`f4eabb100a734a58`) | Rule 6: for a fork, the keyed job runs the lenses and builds the round itself, and signs only what it produced |
+| A lens record made under another delivery algorithm matched the key (`bcefebbb64f3af28`) | Rule 5: the algorithm's version is in a lens's request |
+| A publisher bound the round and not the dismissals that change its verdict (`509acf84a1c94caf`) | Rule 11: it binds both, and checks both before each post |
 
 ## What this gives up
 
