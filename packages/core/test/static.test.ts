@@ -525,6 +525,54 @@ describe("staticFindings", () => {
 		});
 	});
 
+	// Issue #346: from 0.4.37 Enola spans a TypeScript symbol to its closing brace. The maintainer ruled on 2026-11-13 that
+	// an Enola result keeps the identity of the line it starts on, as under 0.4.27.
+	it("identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const spanning = (endLine?: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: "complexity-outliers",
+									level: "warning",
+									message: { text: "High cyclomatic complexity: quote (41)" },
+									locations: [
+										{
+											physicalLocation: {
+												artifactLocation: { uri: "src/quote.ts" },
+												region: { startLine: 1, ...(endLine === undefined ? {} : { endLine }) },
+											},
+										},
+									],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.40" },
+			);
+		const report = (log: ToolLog) =>
+			staticFindings({
+				repoRoot: repo,
+				revision,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				base: log,
+				head: log,
+			});
+		const [spanned] = (await report(spanning(3))).findings;
+		const [line] = (await report(spanning())).findings;
+		expect(spanned?.properties.cause).toBe("pre-existing");
+		expect(spanned?.properties.id).toBe(line?.properties.id);
+		expect(spanned?.locations[0]?.physicalLocation.region).toMatchObject({ startLine: 1, endLine: 3 });
+	});
+
 	it("fails rather than guess when a result's file cannot be read", async () => {
 		const base = commit({ "src/a.ts": lines("a") });
 		const head = commit({ "src/a.ts": lines("b") });

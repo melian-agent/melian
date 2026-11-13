@@ -370,7 +370,9 @@ async function identify(
 		const path = decodePath(artifactLocation.uri);
 		const rule = staticRuleId(tool, result.ruleId);
 		const text = await textOf(path);
-		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
+		// Enola spans a symbol to its closing brace from 0.4.37; it keeps the identity of the line it starts on (issue #346).
+		const endLine =
+			tool === "enola" ? region.startLine : Math.max(region.endLine ?? region.startLine, region.startLine);
 		const snippet = text
 			?.split("\n")
 			.slice(region.startLine - 1, endLine)
@@ -443,7 +445,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		const { region } = each.result.locations[0]!.physicalLocation;
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
 		// A symbol's fan-in grows when the change only adds callers; that is the symbol doing its job, not a defect here.
-		// Enola names only the line a symbol starts on, so any edit to its file keeps the result.
+		// Any edit to the file keeps the result, since its identity is the line its symbol starts on.
 		if (each.rule === "enola/god-class" && !revision.files.some((file) => file.path === each.path)) {
 			untouched++;
 			continue;
