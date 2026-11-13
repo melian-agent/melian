@@ -1052,6 +1052,24 @@ describe("a level that probes", () => {
 		expect(Object.keys(runs)).toEqual(standing);
 	});
 
+	it("starts no rerun for a review whose lens task another review has replaced", async () => {
+		const fake = createFakeModels();
+		// The prober's last turn stands for the moment another review replaces this one's lens task in the index.
+		const replaced: ScriptedReply = async () => {
+			const root = await harness!.harness.root(backgroundContext);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				for (const key of Object.keys(index.reviews)) index.reviews[key] = { ...index.reviews[key]!, task: -1 };
+			}, backgroundContext);
+			return fauxAssistantMessage("Reported 1 finding.");
+		};
+		const prober = probing(failing);
+		const { run, heads } = await review({ planner: plan, prober: [...prober.slice(0, -1), replaced] }, { fake });
+		await run.catch(() => undefined);
+		// The prober's probe alone: the replaced review runs no probe again.
+		expect(heads).toHaveLength(1);
+	});
+
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();
 		let heads = 0;

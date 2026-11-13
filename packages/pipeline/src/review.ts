@@ -1453,6 +1453,7 @@ async function rerunProbes(
 	root: ConversationId,
 	revision: ReviewState,
 	candidates: readonly VerificationCandidate[],
+	lensTask: number | undefined,
 	context: Context,
 ): Promise<void> {
 	const at = Revision.key(revision);
@@ -1472,6 +1473,8 @@ async function rerunProbes(
 	const input: ProbeRerunInput = { root, revision, probes: [...probes.values()] };
 	const key = JSON.stringify(input.probes);
 	const task = await (await harness.root(context)).commit(async (tx) => {
+		// A review another has replaced takes nothing over: its claims may rest on probes the newer review no longer runs.
+		if ((await tx.doc(ReviewIndex, root)).reviews[at]?.task !== lensTask) return undefined;
 		const document = await tx.doc(ProbeReruns, root);
 		const known = document.tasks?.[at];
 		if (known?.key === key && (await tx.task(known.task as TaskId))!.state.status !== "terminal")
@@ -1480,7 +1483,7 @@ async function rerunProbes(
 		document.tasks = { ...document.tasks, [at]: { task: created, key } };
 		return created as TaskId;
 	}, context);
-	await harness.waitForTask(task, context);
+	if (task !== undefined) await harness.waitForTask(task, context);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -2997,7 +3000,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
-			await rerunProbes(harness, root, state, candidates, context);
+			await rerunProbes(harness, root, state, candidates, lensTask, context);
 			const reused: Record<string, VerificationResult[string]> = {};
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
