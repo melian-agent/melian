@@ -492,6 +492,22 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
+	it("keeps a cell value that starts with a byte order mark", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		expect(await store.writeCell(changeset, undefined, "\ufefflease")).toBe(true);
+		expect((await store.readCell(changeset)).value).toBe("\ufefflease");
+		expect(await store.writeCell(changeset, "1", '\ufeff{"disposed":true}')).toBe(true);
+		await store.add([envelope]);
+		expect(await store.list(changeset)).toEqual([envelope]);
+	});
+
+	it("refuses a record file whose bytes start with a byte order mark", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.add([envelope]);
+		writeFileSync(join(root, record.path), `\ufeff${record.bytes}`);
+		expect((await rejection(store.list(changeset), RecordError)).code).toBe("unknownFile");
+	});
+
 	it("reads the highest version by number, past nine", async () => {
 		const store = await DirectoryRecordStore.open(root);
 		for (let write = 1; write <= 11; write++) {

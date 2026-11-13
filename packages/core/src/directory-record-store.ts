@@ -8,7 +8,7 @@ import { checkChangeset, disposalMark, disposedError, type RecordCell, type Reco
 
 const cellDirectory = ".cell";
 const cellFile = /^[1-9][0-9]*$/;
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 type Cell = { sequence: number; value: string };
 
