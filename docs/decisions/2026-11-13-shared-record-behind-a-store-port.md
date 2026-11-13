@@ -7,6 +7,8 @@ Amends: [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-revi
 Amends: [melian/review on merge groups](2026-10-22-melian-review-on-merge-groups.md), what the merge-group check reads
 Amends: [the melian/review outage procedure](2026-10-23-melian-review-outage-procedure.md), when the merge-group check recognises a maintainer's override
 Amends: [marker trust](2026-10-03-marker-trust.md), what proves a marker
+Amends: [publication round binding](2026-10-18-publication-round-binding.md), which round a publication binds when several stand
+Amends: [the publication triage guard](2026-10-19-publication-triage-guard.md), its check that the bound round is the revision's current round
 Amends: [dismissal](2026-10-04-dismissal.md), where a dismissal lives and who may write one
 Amends: [Actions complete the manifest](2026-10-04-actions-complete-the-manifest.md), the form a local record takes
 
@@ -201,6 +203,8 @@ Nothing in the store is secret, and nothing in it needs sealing. A pull request'
 
 Publication is the one write that cannot be repeated safely. `melian publish` takes a short lease in the changeset's cell by compare-and-set, posts, records, and releases it. Core's `Lease` keeps its incarnation and generation for this. Storage takes no lease.
 
+Publication binds the round the gate would take. [The publication triage guard](2026-10-19-publication-triage-guard.md) made a publisher, fresh or resumed, refuse unless its bound round was the revision's current round, and this design has no current round: several can stand. So a publisher binds the worst standing round of the revision, by rule 4, which is the verdict `melian gate` exits with. Holding the lease, it lists again just before each provider effect, and when the worst standing round is no longer the one it bound it ends superseded, posts nothing more, and names the round to publish. A passing round is therefore never published after a blocking round of the same revision has landed. The guard's other check, an adjudication for the revision, becomes a standing round for it; with none, the publisher ends superseded as before.
+
 A provider takes no fence, so a holder paused past its lease can still post after its successor. A time margin narrows that and cannot close it, so the stale publisher removes its own effect: after each post it reads the cell again, and when the lease is no longer its own it deletes what it posted and records nothing. A publisher posts only while its lease has more than one post's deadline left, which keeps that rare. One that dies between its post and that read leaves a post with a recorded marker and no `post` record, and the next publish deletes it. One that passes that read, pauses, and records its post after a successor took the lease adds a record of an older generation, which rule 4 never lets stand. Until then a stale review can show on the pull request. It gates nothing, since the gate reads no post.
 
 The login on the standing `post` record owns a pull request's reviews and its ledger comment. A publish that knows its login to be another refuses, naming the owner. Whether a token may edit is the provider's answer, not a guess from its login. A cloud session cannot set a status, so publication runs on the trusted host or from a maintainer's CLI.
@@ -257,6 +261,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | The merge-group check wrote its status from a list it read earlier (`c88b6f3b39196e7a`) | Rule 9: it lists again just before it writes |
 | Two runs of one lens tied in the merge, so list order chose the speaker (`51cdb2a1409fc35e`) | Rule 4: records merge in ID order, and no claim or severity is dropped |
 | A publisher that lost its lease after its check still recorded its post, and could win the slot (`f4c883cd4496d7a2`) | Rules 4 and 11: the highest lease generation stands |
+| With several rounds standing, nothing said which one a publisher binds, so a stale passing round could be posted (`d4be369f97b0b5ac`) | Rule 11: a publisher binds the worst standing round and checks it again before each post |
 
 ## What this gives up
 
