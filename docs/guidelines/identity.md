@@ -64,7 +64,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Canonical bytes, `canonicalJson` | `core/src/record.ts` | gives a record its ID and a signature its bytes | Nothing. RFC 8785 with keys sorted by UTF-16 code units; a missing field is left out, never `null`, and a number is a safe integer or refused |
 | Record key hash, `SharedRecord.keyHash` | `core/src/record.ts` | files a record in its slot's directory | Nothing |
 | Record slot, `SharedRecord.sharesSlot` | `core/src/record.ts` | lets one record supersede another | The revision and the payload, by rule 4 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) |
-| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: it is random on every write, never a hash of the value, so a value that came back never matches a version read before it left |
+| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: random on every write in memory, a number never reused in a directory, and never a hash of the value, so a value that came back never matches a version read before it left |
 
 ### Pipeline
 

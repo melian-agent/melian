@@ -222,6 +222,21 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
+		name: "writeCell: refuses the disposal mark, which only dispose writes",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const store = await subject.open();
+				await assert.rejects(store.writeCell(changeset, undefined, disposalMark), refusal("invalidCell"));
+				assert.deepEqual(await store.readCell(changeset), {});
+				await store.writeCell(changeset, undefined, "lease");
+				const { version } = await store.readCell(changeset);
+				await assert.rejects(store.writeCell(changeset, version, disposalMark), refusal("invalidCell"));
+				assert.equal((await store.readCell(changeset)).value, "lease");
+				await store.add([envelope("check", "guardrails", {})]);
+				assert.equal((await store.list(changeset)).length, 1);
+			}),
+	},
+	{
 		name: "dispose: marks the cell, removes the records for good, and leaves other changesets",
 		run: (fixture) =>
 			using(fixture, async (subject) => {

@@ -1,41 +1,34 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { link, lstat, mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { RecordError } from "./errors.ts";
 import { type RecordEnvelope, SharedRecord } from "./record.ts";
 import { checkChangeset, disposalMark, disposedError, type RecordCell, type RecordStore } from "./record-store.ts";
 
-const recordFile = /^([0-9a-f]{64})\.json$/;
-const cellFile = /^([1-9][0-9]*)\.json$/;
 const cellDirectory = ".cell";
+const cellFile = /^[1-9][0-9]*$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
-type Cell = { sequence: number; value: string; version: string };
+type Cell = { sequence: number; value: string };
 
-function code(error: unknown): unknown {
+function failure(code: "unknownFile" | "unreachable", path: string, cause?: unknown): RecordError {
+	const says = code === "unknownFile" ? "is no record or cell this store wrote" : "cannot be read or written";
+	return new RecordError(code, `${path} ${says}`, { path, cause });
+}
+
+function errorCode(error: unknown): unknown {
 	return (error as { code?: unknown }).code;
-}
-
-function absent(error: unknown): boolean {
-	return code(error) === "ENOENT";
-}
-
-function unknownFile(path: string, cause?: unknown): RecordError {
-	return new RecordError("unknownFile", `${path} is no record or cell the store wrote`, { path, cause });
-}
-
-function unreadable(path: string, cause: unknown): RecordError {
-	return new RecordError("unreachable", `${path} could not be read`, { path, cause });
 }
 
 /**
  * A record store in a plain directory, which proves the port leaks nothing of git. A record is a file at its
- * `record.path`, written under a temporary name and renamed. The cell is a directory of numbered versions, each
- * linked into place from a complete temporary file, so a write wins only by creating the next number, and a writer
- * that dies leaves at most a temporary file nothing reads. Every call reads the directory itself, so `list` and
- * `readCell` are fresh, and a store whose directory has gone fails every call with `RecordError` `unreachable`. A file
- * whose path its own bytes do not give fails `list` with `unknownFile`.
+ * `record.path`, written under a temporary name and renamed. The cell is `changesets/<changeset>/.cell/<n>`, holding
+ * the value, and its version is `n`: a write wins only by linking the next number from a complete temporary file, so a
+ * writer that dies leaves at most a temporary file nothing reads, and the cell's directory is never removed, so no
+ * number is used twice. Every call reads the directory itself, so `list` and `readCell` are fresh, and a store whose
+ * `changesets` directory has gone fails every call with `RecordError` `unreachable`. A file whose path its own bytes do
+ * not give fails `list` with `unknownFile`.
  */
 export class DirectoryRecordStore implements RecordStore {
 	readonly #root: string;
@@ -57,12 +50,44 @@ export class DirectoryRecordStore implements RecordStore {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
 		checkChangeset(changeset);
 		const changesets = join(this.#root, "changesets");
-		const found = await stat(changesets).catch((cause: unknown) => {
-			throw new RecordError("unreachable", `${changesets} cannot be reached`, { path: changesets, cause });
+		if (!(await stat(changesets).catch(() => undefined))?.isDirectory()) throw failure("unreachable", changesets);
+		const directory = join(changesets, changeset);
+		const found = await lstat(directory).catch((cause: unknown) => {
+			if (errorCode(cause) !== "ENOENT") throw failure("unreachable", directory, cause);
 		});
-		if (!found.isDirectory())
-			throw new RecordError("unreachable", `${changesets} is no directory`, { path: changesets });
-		return join(changesets, changeset);
+		if (found !== undefined && !found.isDirectory()) throw failure("unknownFile", directory);
+		return directory;
+	}
+
+	async #entries(directory: string): Promise<Dirent[]> {
+		try {
+			return await readdir(directory, { withFileTypes: true });
+		} catch (cause) {
+			if (errorCode(cause) === "ENOENT") return [];
+			throw failure(errorCode(cause) === "ENOTDIR" ? "unknownFile" : "unreachable", directory, cause);
+		}
+	}
+
+	async #text(path: string): Promise<string> {
+		const bytes = await readFile(path).catch((cause: unknown) => {
+			throw failure("unreachable", path, cause);
+		});
+		try {
+			return utf8.decode(bytes);
+		} catch (cause) {
+			throw failure("unknownFile", path, cause);
+		}
+	}
+
+	async #cell(directory: string): Promise<Cell | undefined> {
+		const path = join(directory, cellDirectory);
+		let sequence = 0;
+		for (const entry of await this.#entries(path)) {
+			if (!cellFile.test(entry.name) || !entry.isFile()) throw failure("unknownFile", join(path, entry.name));
+			sequence = Math.max(sequence, Number(entry.name));
+		}
+		if (sequence === 0) return undefined;
+		return { sequence, value: await this.#text(join(path, String(sequence))) };
 	}
 
 	async #temporary(bytes: string): Promise<string> {
@@ -71,43 +96,24 @@ export class DirectoryRecordStore implements RecordStore {
 		return path;
 	}
 
-	async #entries(directory: string): Promise<Dirent[]> {
+	async #swap(directory: string, cell: Cell | undefined, value: string): Promise<boolean> {
+		await mkdir(join(directory, cellDirectory), { recursive: true });
+		const temporary = await this.#temporary(value);
 		try {
-			return await readdir(directory, { withFileTypes: true });
+			await link(temporary, join(directory, cellDirectory, String((cell?.sequence ?? 0) + 1)));
+			return true;
 		} catch (cause) {
-			if (absent(cause)) return [];
-			if (code(cause) === "ENOTDIR") throw unknownFile(directory, cause);
-			throw unreadable(directory, cause);
+			if (errorCode(cause) === "EEXIST") return false;
+			throw failure("unreachable", join(directory, cellDirectory), cause);
+		} finally {
+			await unlink(temporary);
 		}
-	}
-
-	async #cell(directory: string): Promise<Cell | undefined> {
-		const path = join(directory, cellDirectory);
-		let latest = 0;
-		for (const entry of await this.#entries(path)) {
-			const sequence = cellFile.exec(entry.name)?.[1];
-			if (sequence === undefined || !entry.isFile()) throw unknownFile(join(path, entry.name));
-			latest = Math.max(latest, Number(sequence));
-		}
-		if (latest === 0) return undefined;
-		const file = join(path, `${latest}.json`);
-		const stored = await readFile(file).catch((cause: unknown) => {
-			throw unreadable(file, cause);
-		});
-		try {
-			const { value, version, ...rest } = JSON.parse(utf8.decode(stored)) as Record<string, unknown>;
-			if (typeof value === "string" && typeof version === "string" && Object.keys(rest).length === 0) {
-				return { sequence: latest, value, version };
-			}
-		} catch (cause) {
-			throw unknownFile(file, cause);
-		}
-		throw unknownFile(file);
 	}
 
 	async add(records: RecordEnvelope[]): Promise<void> {
 		for (const record of records.map((envelope) => SharedRecord.parse(envelope))) {
 			const directory = await this.#reach(record.changeset);
+			if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 			const path = join(this.#root, record.path);
 			await mkdir(join(path, ".."), { recursive: true });
 			await rename(await this.#temporary(record.bytes), path);
@@ -120,86 +126,57 @@ export class DirectoryRecordStore implements RecordStore {
 
 	async list(changeset: string): Promise<RecordEnvelope[]> {
 		const directory = await this.#reach(changeset);
+		if ((await this.#cell(directory))?.value === disposalMark) return [];
 		const records: RecordEnvelope[] = [];
-		const kinds = await lstat(directory).then(
-			(found) => (found.isDirectory() ? this.#entries(directory) : Promise.reject(unknownFile(directory))),
-			(cause: unknown) => (absent(cause) ? [] : Promise.reject(unreadable(directory, cause))),
-		);
-		for (const kind of kinds) {
+		for (const kind of await this.#entries(directory)) {
+			if (kind.name === cellDirectory) continue;
 			const kindPath = join(directory, kind.name);
-			if (!kind.isDirectory()) throw unknownFile(kindPath);
-			if (kind.name === cellDirectory) {
-				await this.#cell(directory);
-				continue;
-			}
+			if (!kind.isDirectory()) throw failure("unknownFile", kindPath);
 			for (const slot of await this.#entries(kindPath)) {
 				const slotPath = join(kindPath, slot.name);
-				if (!slot.isDirectory()) throw unknownFile(slotPath);
-				for (const file of await this.#entries(slotPath)) {
+				if (!slot.isDirectory()) throw failure("unknownFile", slotPath);
+				for (const file of await this.#entries(slotPath))
 					records.push(await this.#record(join(slotPath, file.name), file));
-				}
 			}
 		}
 		return records;
 	}
 
 	async #record(path: string, file: Dirent): Promise<RecordEnvelope> {
-		const id = recordFile.exec(file.name)?.[1];
-		if (id === undefined || !file.isFile()) throw unknownFile(path);
-		const stored = await readFile(path).catch((cause: unknown) => {
-			throw unreadable(path, cause);
-		});
+		if (!file.isFile()) throw failure("unknownFile", path);
+		const text = await this.#text(path);
 		let record: SharedRecord;
 		try {
-			record = SharedRecord.read(utf8.decode(stored), id);
+			record = SharedRecord.read(text, basename(path, ".json"));
 		} catch (cause) {
-			throw unknownFile(path, cause);
+			throw failure("unknownFile", path, cause);
 		}
-		if (join(this.#root, record.path) !== path) throw unknownFile(path);
+		if (join(this.#root, record.path) !== path) throw failure("unknownFile", path);
 		return record.toJSON();
 	}
 
 	async readCell(changeset: string): Promise<RecordCell> {
 		const cell = await this.#cell(await this.#reach(changeset));
-		return cell === undefined ? {} : { value: cell.value, version: cell.version };
+		return cell === undefined ? {} : { value: cell.value, version: String(cell.sequence) };
 	}
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
+		if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
 		const directory = await this.#reach(changeset);
 		const cell = await this.#cell(directory);
 		if (cell?.value === disposalMark) throw disposedError(changeset);
-		if (cell?.version !== expectedVersion) return false;
-		await mkdir(join(directory, cellDirectory), { recursive: true });
-		const temporary = await this.#temporary(JSON.stringify({ value, version: randomUUID() }));
-		try {
-			await link(temporary, join(directory, cellDirectory, `${(cell?.sequence ?? 0) + 1}.json`));
-			return true;
-		} catch (cause) {
-			if (code(cause) === "EEXIST") return false;
-			throw new RecordError("unreachable", `the cell of ${changeset} could not be written`, { cause });
-		} finally {
-			await unlink(temporary);
-		}
+		if (cell?.sequence.toString() !== expectedVersion) return false;
+		return this.#swap(directory, cell, value);
 	}
 
 	async dispose(changeset: string): Promise<void> {
 		const directory = await this.#reach(changeset);
 		for (;;) {
 			const cell = await this.#cell(directory);
-			if (cell?.value === disposalMark || (await this.#mark(changeset, cell?.version))) break;
+			if (cell?.value === disposalMark || (await this.#swap(directory, cell, disposalMark))) break;
 		}
-		for (const entry of await this.#entries(directory)) {
+		for (const entry of await this.#entries(directory))
 			if (entry.name !== cellDirectory) await rm(join(directory, entry.name), { recursive: true, force: true });
-		}
-	}
-
-	async #mark(changeset: string, version: string | undefined): Promise<boolean> {
-		try {
-			return await this.writeCell(changeset, version, disposalMark);
-		} catch (cause) {
-			if (cause instanceof RecordError && cause.code === "disposed") return true;
-			throw cause;
-		}
 	}
 
 	async close(): Promise<void> {

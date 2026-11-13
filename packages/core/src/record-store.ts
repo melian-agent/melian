@@ -98,6 +98,7 @@ export class MemoryRecordStore implements RecordStore {
 	}
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
+		if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
 		const entry = this.#changeset(changeset);
 		if (entry.cell?.value === disposalMark) throw disposedError(changeset);
 		if (entry.cell?.version !== expectedVersion) return false;

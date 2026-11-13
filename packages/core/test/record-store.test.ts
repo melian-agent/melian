@@ -209,6 +209,17 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 		}),
 	],
 	[
+		"writeCell lets a caller write the disposal mark",
+		"writeCell: refuses the disposal mark, which only dispose writes",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				if (value !== '{"disposed":true}') return inner.writeCell(name, expected, value);
+				await inner.dispose(name);
+				return true;
+			},
+		}),
+	],
+	[
 		"dispose removes the records and leaves no mark",
 		"dispose: marks the cell, removes the records for good, and leaves other changesets",
 		(inner) => {
@@ -336,6 +347,17 @@ describe("DirectoryRecordStore", () => {
 		expect(await store.writeCell(changeset, version, "lease B")).toBe(true);
 		await store.add([envelope]);
 		expect(await store.list(changeset)).toEqual([envelope]);
+	});
+
+	it("lists nothing for a disposed changeset, though a record a dying add left lands after the mark", async () => {
+		const store = await DirectoryRecordStore.open(root);
+		await store.dispose(changeset);
+		mkdirSync(join(root, record.path, ".."), { recursive: true });
+		writeFileSync(join(root, record.path), record.bytes);
+		expect(await store.list(changeset)).toEqual([]);
+		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("disposed");
+		await store.dispose(changeset);
+		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
 	});
 
 	it("keeps the cell out of the listing", async () => {
