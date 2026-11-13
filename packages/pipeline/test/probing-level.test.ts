@@ -1094,7 +1094,7 @@ describe("a level that probes", () => {
 		expect(Object.keys(runs)).toEqual(standing);
 	});
 
-	it("starts no rerun for a review whose lens task another review has replaced", async () => {
+	it("starts no rerun and no verifier for a review whose lens task another review has replaced", async () => {
 		const fake = createFakeModels();
 		// The prober's last turn stands for the moment another review replaces this one's lens task in the index.
 		const replaced: ScriptedReply = async () => {
@@ -1106,15 +1106,20 @@ describe("a level that probes", () => {
 			return fauxAssistantMessage("Reported 1 finding.");
 		};
 		const prober = probing(failing);
-		const { run, heads } = await review({ planner: plan, prober: [...prober.slice(0, -1), replaced] }, { fake });
-		// The replaced review may fail as replaced, but never on a reruns document it never wrote.
+		const { run, heads, requests } = await review(
+			{ planner: plan, prober: [...prober.slice(0, -1), replaced] },
+			{ fake },
+		);
+		// The replaced review fails as replaced, never on a reruns document it never wrote.
 		const outcome = await run.then(
 			() => undefined,
 			(error: unknown) => error,
 		);
-		expect(outcome).not.toBeInstanceOf(TypeError);
+		expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
 		// The prober's probe alone: the replaced review runs no probe again.
 		expect(heads).toHaveLength(1);
+		// Nor does it judge its claims, which the review that replaced it may no longer make.
+		expect(requests["Melian adversarial verifier"] ?? []).toEqual([]);
 	});
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {

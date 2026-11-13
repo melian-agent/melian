@@ -1446,7 +1446,8 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 const ProbeRerunTask = probeRerunTask();
 
 // Starts the task that runs each candidate's claim probes again, or attaches to the live one another review started
-// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once.
+// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once. False,
+// with nothing started, when a later review has replaced this one's lens task.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
@@ -1454,7 +1455,7 @@ async function rerunProbes(
 	candidates: readonly VerificationCandidate[],
 	lensTask: number | undefined,
 	context: Context,
-): Promise<void> {
+): Promise<boolean> {
 	const at = Revision.key(revision);
 	const probes = new Map<string, ProbeRerunInput["probes"][number]>();
 	for (const candidate of candidates)
@@ -1482,7 +1483,9 @@ async function rerunProbes(
 		document.tasks = { ...document.tasks, [at]: { task: created, key } };
 		return created as TaskId;
 	}, context);
-	if (task !== undefined) await harness.waitForTask(task, context);
+	if (task === undefined) return false;
+	await harness.waitForTask(task, context);
+	return true;
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -2998,7 +3001,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
-			await rerunProbes(harness, root, state, candidates, lensTask, context);
+			if (!(await rerunProbes(harness, root, state, candidates, lensTask, context)))
+				throw new ReviewError(
+					"superseded",
+					`a later review of ${reviewed} replaced this one's lens run, so this review records no verdict`,
+					{ lenses: lenses.map((lens) => lens.name) },
+				);
 			const reused: Record<string, VerificationResult[string]> = {};
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
