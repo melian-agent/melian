@@ -50,8 +50,64 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   }
 }`;
 
-const WAIT = /^waited (\d+(?:\.\d+)?) min for (.+)$/;
-const WORK = /^(.+?) (?:(\d+) × )?(\d+(?:\.\d+)?) min(?:, \$(\d+(?:\.\d+)?))?$/;
+// The kinds a Timing item may name, in the order the summary totals them; AGENTS.md's Work from issues defines the grammar.
+export const KINDS = [
+	"gate",
+	"round",
+	"own-build round",
+	"host round",
+	"codex",
+	"review of record",
+	"mutants",
+	"wait",
+	"other",
+];
+
+const NUMBER = String.raw`\d+(?:\.\d+)?`;
+const ITEM = new RegExp(
+	String.raw`^(?<kind>${KINDS.join("|")}) (?:(?<count>[1-9]\d*) × )?(?<minutes>${NUMBER}) min(?:, \$(?<cost>${NUMBER}))?(?: for (?<cause>[^()]+))?(?: \((?<note>[^()]+)\))?$`,
+);
+// Shapes older reports used, read as the kind they mean; any other free text stays unparsed rather than half-counted.
+const LEGACY_WAIT = new RegExp(String.raw`^waited (?<minutes>${NUMBER}) min for (?<cause>.+)$`);
+const LEGACY_KINDS = new Map([
+	["gates", "gate"],
+	["rounds", "round"],
+	["Actions round", "round"],
+	["Actions rounds", "round"],
+	["Melian round", "round"],
+	["Melian rounds", "round"],
+	["own-build rounds", "own-build round"],
+	["host rounds", "host round"],
+	["Codex review", "codex"],
+	["Codex reviews", "codex"],
+	["reviews of record", "review of record"],
+]);
+
+function parseItem(text) {
+	const legacyWait = LEGACY_WAIT.exec(text);
+	if (legacyWait)
+		return { kind: "wait", count: 1, minutes: Number(legacyWait.groups.minutes), cause: legacyWait.groups.cause };
+	let canonical = text;
+	for (const [alias, kind] of LEGACY_KINDS)
+		if (text.startsWith(`${alias} `)) {
+			canonical = `${kind}${text.slice(alias.length)}`;
+			break;
+		}
+	const match = ITEM.exec(canonical);
+	if (!match) return {};
+	const { kind, count, minutes, cost, cause, note } = match.groups;
+	// Only a wait names its cause, and it must; an other must carry a note saying what it was.
+	if ((kind === "wait") !== (cause !== undefined)) return {};
+	if (kind === "other" && note === undefined) return {};
+	return {
+		kind,
+		count: Number(count ?? 1),
+		minutes: Number(count ?? 1) * Number(minutes),
+		...(cost === undefined ? {} : { cost: Number(cost) }),
+		...(cause === undefined ? {} : { cause }),
+		...(note === undefined ? {} : { note }),
+	};
+}
 
 // What a comment says comes from its own top-level paragraphs, never from code, quotes or lists.
 const paragraphLines = (body) =>
@@ -68,16 +124,7 @@ export function parseTiming(body) {
 		for (const raw of match[1].split(";")) {
 			const text = raw.trim().replace(/\.$/, "");
 			if (text === "") continue;
-			const wait = WAIT.exec(text);
-			if (wait) {
-				items.push({ text, minutes: Number(wait[1]) });
-				continue;
-			}
-			const work = WORK.exec(text);
-			if (work) {
-				const minutes = Number(work[2] ?? 1) * Number(work[3]);
-				items.push({ text, minutes, ...(work[4] === undefined ? {} : { cost: Number(work[4]) }) });
-			} else items.push({ text });
+			items.push({ text, ...parseItem(text) });
 		}
 	}
 	return items;
@@ -250,16 +297,31 @@ export class Timeline {
 			latest = Math.max(latest, event.end ?? event.at);
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
-		const items = this.#events.filter((event) => event.item?.minutes !== undefined);
-		const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
-		const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-		const reported = items.length === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
-		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
+		const timed = this.#events.filter((event) => event.event === "Timing");
+		const kinds = KINDS.flatMap((kind) => {
+			const items = timed.filter((event) => event.item.kind === kind);
+			if (items.length === 0) return [];
+			const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
+			const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
+			return [{ kind, minutes, cost }];
+		});
+		// The total sums the per-kind rows themselves, so the two can never disagree.
+		const minutes = kinds.reduce((sum, kind) => sum + kind.minutes, 0);
+		const cost = kinds.reduce((sum, kind) => sum + kind.cost, 0);
+		const spend = (minutes, cost) => `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		lines.push("", "| Summary | Value |", "| --- | --- |");
+		lines.push(row("Timing reported", kinds.length === 0 ? "none" : spend(minutes, cost)));
+		for (const kind of kinds) lines.push(row(`Timing: ${kind.kind}`, spend(kind.minutes, kind.cost)));
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
 		const last = this.#merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
 		lines.push(row("CI", `${ciMinutes.toFixed(1)} min over ${ci.length} runs`));
 		lines.push(row("total", `${((last - first) / HOUR).toFixed(2)} h`));
+		const unparsed = timed.filter((event) => event.item.kind === undefined);
+		if (unparsed.length > 0) {
+			lines.push("", "| Timing not parsed | Comment time (UTC) |", "| --- | --- |");
+			for (const event of unparsed) lines.push(row(event.item.text, stamp(event.at)));
+		}
 		return lines.join("\n");
 	}
 }
