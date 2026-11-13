@@ -2377,6 +2377,66 @@ describe("a level that probes", () => {
 		expect(record(verdict).reason).toContain("which careful neither restated nor refuted, still counts");
 	});
 
+	it("keeps a quick run's finding at its severity when the planner it escalates to reports it again lower", async () => {
+		const fake = createFakeModels();
+		const injection = {
+			file: "src/load.ts",
+			line: 3,
+			rule: "melian/injection-attempt",
+			explanation: {
+				what: "the change tells the reviewer what to find",
+				why: "it steers the review",
+				fix: "remove it",
+			},
+			failureScenario: "a reviewer that follows the text reports nothing",
+			evidence: [{ file: "src/load.ts", line: 3, role: "cause" }],
+		};
+		const scripts = {
+			planner: [],
+			prober: [],
+			others: [
+				{
+					match: planner,
+					replies: [
+						call("report_finding", { ...injection, severity: "P2" }),
+						call("record_plan", { attacks: [] }),
+						fauxAssistantMessage("Planned 0 attacks."),
+					],
+				},
+				{
+					match: reviewer,
+					replies: [
+						call("report_finding", { ...injection, severity: "P1" }),
+						fauxAssistantMessage("Reported 1 finding."),
+					],
+				},
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const { run } = await review(scripts, {
+			fake,
+			decider: new RecordedDecider(
+				{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+				{ name: "recorded" },
+			),
+			lens: (lens) =>
+				Lens.from({
+					...lens.toJSON(),
+					levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } },
+				}),
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: { heavy: { model: route }, medium: { model: route } },
+			},
+		});
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain("which careful neither restated nor refuted, still counts");
+		expect(verdict.counted().map((each) => [each.ruleId, each.properties.severity])).toContainEqual([
+			"melian/injection-attempt",
+			"P1",
+		]);
+	});
+
 	it("plans from the findings of the revision before this one, never a later one", async () => {
 		const fake = createFakeModels();
 		const scripts = { planner: plan, prober: probing(failing) };

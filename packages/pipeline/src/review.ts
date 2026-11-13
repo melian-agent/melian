@@ -752,14 +752,21 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const listed = carried.length === 0 ? undefined : carriedFindings(carried, input.revision.nonce);
 				const prompt = listed === undefined ? next.prompt : `${next.prompt}\n\n${listed}`;
 				const rerun = await run(next, child!, prompt, listed);
+				const prober = rerun.status === "done" ? rerun.probing?.prober : undefined;
+				// A probing level's planner may neither restate nor refute a carried finding: only what its prober reported
+				// stands for one. Each conversation's lens document names the findings it reported.
+				const reportedIn = async (conversation: ConversationId) =>
+					Object.keys((await runtime.snapshot(LensDocument, conversation, context))?.spend?.reports ?? {});
+				const planned = next.probe === undefined ? [] : await reportedIn(child!);
+				const probed = prober === undefined ? [] : await reportedIn(prober);
 				// A restatement is the same finding by its ID, or by its file, rule, and overlapping lines, since a run that
 				// reported other lines of one defect hashes another snippet.
-				const higher = await sighted(next);
+				const higher = (await sighted(next)).filter(
+					(each) => !planned.includes(each.id) || probed.includes(each.id),
+				);
 				const restates = (finding: SightedFinding) =>
 					higher.some((each) => each.id === finding.id || overlapsSite(each, finding));
 				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
-				// A probing level's prober refutes; its planner may not.
-				const prober = rerun.status === "done" ? rerun.probing?.prober : undefined;
 				const refuting = [child!, ...(prober === undefined ? [] : [prober])];
 				const reported: string[] = [];
 				for (const conversation of refuting)
