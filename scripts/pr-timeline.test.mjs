@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { RoundComment } from "./round.mjs";
-import { HOUR, parseTiming, Timeline } from "./timeline.mjs";
+import { HOUR, KINDS, parseTiming, Timeline } from "./timeline.mjs";
 
 const script = fileURLToPath(new URL("./pr-timeline.mjs", import.meta.url));
 const fixture = fileURLToPath(new URL("./fixtures/pr-timeline/pr-900.json", import.meta.url));
@@ -78,8 +78,16 @@ const expected = [
 	"| Summary | Value |",
 	"| --- | --- |",
 	"| Timing reported | 83 min, $6.40 |",
+	"| Timing: gate | 28 min |",
+	"| Timing: round | 6 min, $6.40 |",
+	"| Timing: codex | 9 min |",
+	"| Timing: wait | 40 min |",
 	"| CI | 29.0 min over 2 runs |",
 	"| total | 8.27 h |",
+	"",
+	"| Timing not parsed | Comment time (UTC) |",
+	"| --- | --- |",
+	"| lunch \\| break | 2026-10-01 05:25 |",
 	"",
 ];
 
@@ -256,7 +264,7 @@ describe("Timing rows", () => {
 				__typename: "PullRequestReview",
 				submittedAt: at,
 				state: "APPROVED",
-				body: "Timing: review 3 min",
+				body: "Timing: codex 3 min",
 				author: null,
 			},
 			{ __typename: "IssueComment", createdAt: at, body: "Timing: round 2 min", author: { login: "b" } },
@@ -266,6 +274,7 @@ describe("Timing rows", () => {
 		expect(rows(timeline).filter((row) => row.includes("Timing"))).toEqual([
 			"| 2026-10-01 01:00 | 1.00 | Timing | round 2 min |",
 			"| Timing reported | 2 min |",
+			"| Timing: round | 2 min |",
 		]);
 		expect(rows(timeline)).toContain("| 2026-10-01 01:00 | 1.00 | review | approved by ghost |");
 	});
@@ -331,7 +340,7 @@ describe("summary", () => {
 		]);
 	});
 
-	it("sums every Timing item's minutes and cost across comments into one line", () => {
+	it("sums every parsed Timing item's minutes and cost across comments, per kind and in all", () => {
 		const comment = (hours, body) => ({
 			__typename: "IssueComment",
 			createdAt: new Date(start + hours * HOUR).toISOString(),
@@ -341,10 +350,25 @@ describe("summary", () => {
 		const timelineItems = page([
 			comment(1, "Timing: gate 2 × 14 min; round 6 min, $6.40"),
 			comment(2, "Timing: waited 40.5 min for CI; lunch"),
-			comment(3, "Timing: review 1 min, $0.10"),
+			comment(3, "Timing: codex 1 min, $0.10"),
 		]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
-		expect(rows(timeline)).toContain("| Timing reported | 75.5 min, $6.50 |");
+		const summary = rows(timeline).slice(rows(timeline).indexOf("| Summary | Value |"));
+		expect(summary).toEqual([
+			"| Summary | Value |",
+			"| --- | --- |",
+			"| Timing reported | 75.5 min, $6.50 |",
+			"| Timing: gate | 28 min |",
+			"| Timing: round | 6 min, $6.40 |",
+			"| Timing: codex | 1 min, $0.10 |",
+			"| Timing: wait | 40.5 min |",
+			"| CI | 0.0 min over 0 runs |",
+			"| total | 3.00 h |",
+			"",
+			"| Timing not parsed | Comment time (UTC) |",
+			"| --- | --- |",
+			"| lunch | 2026-10-01 02:00 |",
+		]);
 	});
 
 	it("reads a Timing line from a comment on the closing issue", () => {
@@ -364,6 +388,7 @@ describe("summary", () => {
 		expect(rows(timeline).filter((row) => row.includes("Timing"))).toEqual([
 			"| 2026-10-01 01:00 | 1.00 | Timing | gate 4 min |",
 			"| Timing reported | 4 min |",
+			"| Timing: gate | 4 min |",
 		]);
 	});
 
@@ -376,6 +401,58 @@ describe("summary", () => {
 		]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
 		expect(rows(timeline)).toContain(`| Timing reported | ${reported} |`);
+	});
+
+	it("totals decimal minutes exactly, with no floating-point noise", () => {
+		const timelineItems = page([
+			{
+				__typename: "IssueComment",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				body: "Timing: gate 3 × 0.1 min; gate 1.01 min",
+				author: { login: "b" },
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing reported | 1.31 min |");
+		expect(rows(timeline)).toContain("| Timing: gate | 1.31 min |");
+	});
+
+	it("sums the per-kind rows into the total exactly, so the printed rows always add up", () => {
+		const timelineItems = page([
+			{
+				__typename: "IssueComment",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				body: "Timing: gate 0.1 min, $0.1; codex 0.2 min, $0.2; codex 1.01 min, $1.01",
+				author: { login: "b" },
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing: gate | 0.1 min, $0.10 |");
+		expect(rows(timeline)).toContain("| Timing: codex | 1.21 min, $1.21 |");
+		expect(rows(timeline)).toContain("| Timing reported | 1.31 min, $1.31 |");
+	});
+
+	it("totals a hundred items of 0.01 exactly, and the largest legal items without losing a hundredth", () => {
+		const comment = (body) => ({
+			__typename: "IssueComment",
+			createdAt: "2026-10-01T01:00:00.000Z",
+			body,
+			author: { login: "b" },
+		});
+		const small = Timeline.from({
+			pull: pull({
+				timelineItems: page([comment(`Timing: ${Array(100).fill("gate 0.01 min, $0.01").join("; ")}`)]),
+			}),
+			runs: [],
+		});
+		expect(rows(small)).toContain("| Timing reported | 1 min, $1.00 |");
+		const large = Timeline.from({
+			pull: pull({
+				timelineItems: page([comment("Timing: gate 999 × 999999.99 min, $999999.99; codex 0.01 min, $0.01")]),
+			}),
+			runs: [],
+		});
+		expect(rows(large)).toContain("| Timing reported | 998999990.02 min, $1000000.00 |");
 	});
 
 	it("prints minutes alone when no Timing item carries a cost", () => {
@@ -747,52 +824,213 @@ describe("Markdown text", () => {
 });
 
 describe("parseTiming", () => {
-	it("reads multi-digit counts, decimal minutes and costs, and refuses trailing or leading words", () => {
-		expect(
-			parseTiming(
-				"Timing: gate 12 × 3 min; round 1.25 min, $12.40; round 2 min, $6; waited 40.25 min for CI; gate 5 min extra; then waited 5 min for CI",
-			),
-		).toEqual([
-			{ text: "gate 12 × 3 min", minutes: 36 },
-			{ text: "round 1.25 min, $12.40", minutes: 1.25, cost: 12.4 },
-			{ text: "round 2 min, $6", minutes: 2, cost: 6 },
-			{ text: "waited 40.25 min for CI", minutes: 40.25 },
-			{ text: "gate 5 min extra" },
-			{ text: "then waited 5 min for CI" },
+	it.each([
+		["gate 2 × 14 min", { kind: "gate", count: 2, minutes: 28 }],
+		["round 1 × 6 min, $6.40", { kind: "round", count: 1, minutes: 6, cost: 6.4 }],
+		["own-build round 1 × 18 min, $2.43", { kind: "own-build round", count: 1, minutes: 18, cost: 2.43 }],
+		["host round 2 × 11 min, $8.00", { kind: "host round", count: 2, minutes: 22, cost: 8 }],
+		["codex 3 × 6 min", { kind: "codex", count: 3, minutes: 18 }],
+		["review of record 1 × 55 min", { kind: "review of record", count: 1, minutes: 55 }],
+		["mutants 2 × 15.5 min", { kind: "mutants", count: 2, minutes: 31 }],
+		[
+			"wait 1 × 10 min for the coordinator's answer",
+			{ kind: "wait", count: 1, minutes: 10, cause: "the coordinator's answer" },
+		],
+		[
+			"other 1 × 15 min (CI diagnosis and fix)",
+			{ kind: "other", count: 1, minutes: 15, note: "CI diagnosis and fix" },
+		],
+	])("reads the kind in %s, with no key it does not use", (text, item) => {
+		expect(parseTiming(`Timing: ${text}`)).toStrictEqual([{ text, ...item }]);
+	});
+
+	it("covers every kind the grammar names, in the order the summary prints them", () => {
+		expect(KINDS).toEqual([
+			"gate",
+			"round",
+			"own-build round",
+			"host round",
+			"codex",
+			"review of record",
+			"mutants",
+			"wait",
+			"other",
 		]);
 	});
 
-	it("reads each item, keeps an unreadable one as text, and ignores other lines", () => {
+	it("separates items at each semicolon and drops a trailing full stop and empty items", () => {
+		expect(parseTiming("Timing: gate 1 × 2 min;; round 1 × 3 min.")).toEqual([
+			{ text: "gate 1 × 2 min", kind: "gate", count: 1, minutes: 2 },
+			{ text: "round 1 × 3 min", kind: "round", count: 1, minutes: 3 },
+		]);
+	});
+
+	it("reads a count of one when the item names none, and multiplies the minutes by the count", () => {
+		expect(parseTiming("Timing: gate 5 min; gate 12 × 3 min")).toEqual([
+			{ text: "gate 5 min", kind: "gate", count: 1, minutes: 5 },
+			{ text: "gate 12 × 3 min", kind: "gate", count: 12, minutes: 36 },
+		]);
+	});
+
+	it("keeps a cost as the item's own total, never multiplied by its count", () => {
+		expect(parseTiming("Timing: round 2 × 5 min, $3.50")).toEqual([
+			{ text: "round 2 × 5 min, $3.50", kind: "round", count: 2, minutes: 10, cost: 3.5 },
+		]);
+	});
+
+	it("counts an item's minutes and cost fields alone, and never reads its cause or note for numbers", () => {
 		expect(
 			parseTiming(
-				"Intro Timing: no\n  Timing: gate 2 × 14 min; round 6 min, $6.40;; waited 40.5 min for a ruling; tea; gate 2 x 3 min.\nTiming: Codex review 9 min",
+				"Timing: wait 1 × 10 min for CI and 20 min for the coordinator; gate 5 min, $2 (plus 20 min and $10 elsewhere)",
+			),
+		).toStrictEqual([
+			{
+				text: "wait 1 × 10 min for CI and 20 min for the coordinator",
+				kind: "wait",
+				count: 1,
+				minutes: 10,
+				cause: "CI and 20 min for the coordinator",
+			},
+			{
+				text: "gate 5 min, $2 (plus 20 min and $10 elsewhere)",
+				kind: "gate",
+				count: 1,
+				minutes: 5,
+				cost: 2,
+				note: "plus 20 min and $10 elsewhere",
+			},
+		]);
+	});
+
+	it("reads a cause that names a number without a duration or a cost", () => {
+		expect(parseTiming("Timing: wait 1 × 5 min for issue 400")).toStrictEqual([
+			{ text: "wait 1 × 5 min for issue 400", kind: "wait", count: 1, minutes: 5, cause: "issue 400" },
+		]);
+	});
+
+	it("keeps a note in brackets after the minutes, the cost or the cause", () => {
+		expect(
+			parseTiming("Timing: gate 4 × 13 min (one failed); round 1 × 6 min, $1 (cold); wait 1 × 3 min for CI (twice)"),
+		).toEqual([
+			{ text: "gate 4 × 13 min (one failed)", kind: "gate", count: 4, minutes: 52, note: "one failed" },
+			{ text: "round 1 × 6 min, $1 (cold)", kind: "round", count: 1, minutes: 6, cost: 1, note: "cold" },
+			{ text: "wait 1 × 3 min for CI (twice)", kind: "wait", count: 1, minutes: 3, cause: "CI", note: "twice" },
+		]);
+	});
+
+	it.each([
+		["a kind the grammar does not name", "review 2 min"],
+		["a kind with a capital letter", "Gate 2 min"],
+		["a count of zero", "gate 0 × 5 min"],
+		["a letter x for the multiplication sign", "gate 2 x 3 min"],
+		["a count with no minutes", "gate 2 ×"],
+		["minutes with no unit", "gate 5"],
+		["about before the minutes", "gate 4 × about 13 min"],
+		["minutes with three decimal places", "gate 1.005 min"],
+		["a cost with three decimal places", "gate 1 min, $1.005"],
+		["a waited item with three decimal places", "waited 1.005 min for CI"],
+		["a range of minutes", "gate 3 × 8 to 40 min"],
+		["a list of minutes", "rounds 42592039166, 42595639774 and 42608746510 at 12, 12 and 10 min"],
+		["two minutes in one item", "mutation runs 25 min and 6 min"],
+		["about before the cost", "host round 2 × 11 min, about $4.00 each"],
+		["words after the cost", "round 1 × 6 min, $6 each"],
+		["a cause on a kind that is not a wait", "gate 5 min for CI"],
+		["a wait with no cause", "wait 3 min"],
+		["an other with no note", "other 3 min"],
+		["a wait whose cause is blank", "wait 1 × 10 min for   (note)"],
+		["an other whose note is blank", "other 5 min ( )"],
+		["a note with a bracket inside it", "gate 1 × 2 min (a (b))"],
+		["words before the kind", "then gate 5 min"],
+		["free text", "lunch | break"],
+	])("leaves %s unparsed: %s", (_rule, text) => {
+		expect(parseTiming(`Timing: ${text}`)).toEqual([{ text }]);
+	});
+
+	it.each([
+		["two decimal places in minutes", "gate 1.25 min", { kind: "gate", count: 1, minutes: 1.25 }],
+		["two decimal places in the cost", "gate 1 min, $1.25", { kind: "gate", count: 1, minutes: 1, cost: 1.25 }],
+		["six whole digits of minutes", "gate 999999.99 min", { kind: "gate", count: 1, minutes: 999999.99 }],
+		["six whole digits of cost", "gate 1 min, $999999.99", { kind: "gate", count: 1, minutes: 1, cost: 999999.99 }],
+		["a three-digit count", "gate 999 × 1 min", { kind: "gate", count: 999, minutes: 999 }],
+	])("reads %s, at the bound", (_bound, text, item) => {
+		expect(parseTiming(`Timing: ${text}`)).toStrictEqual([{ text, ...item }]);
+	});
+
+	it.each([
+		["seven whole digits of minutes", "gate 1000000 min"],
+		["seven whole digits of cost", "gate 1 min, $1000000"],
+		["a four-digit count", "gate 1000 × 1 min"],
+	])("leaves %s unparsed, one past the bound", (_bound, text) => {
+		expect(parseTiming(`Timing: ${text}`)).toEqual([{ text }]);
+	});
+
+	it("reads the shapes older reports used as the kind they mean", () => {
+		expect(
+			parseTiming(
+				"Timing: waited 40.5 min for a ruling; Codex review 9 min; rounds 2 × 10 min; own-build rounds 4 × 12 min; host rounds 2 × 5 min; gates 3 × 14 min; Actions rounds 2 × 10 min; reviews of record 2 × 15 min; Actions round 7 min; Melian round 5 min; Melian rounds 2 × 4 min; Codex reviews 2 × 6 min",
 			),
 		).toEqual([
-			{ text: "gate 2 × 14 min", minutes: 28 },
-			{ text: "round 6 min, $6.40", minutes: 6, cost: 6.4 },
-			{ text: "waited 40.5 min for a ruling", minutes: 40.5 },
-			{ text: "tea" },
-			{ text: "gate 2 x 3 min", minutes: 3 },
-			{ text: "Codex review 9 min", minutes: 9 },
+			{ text: "waited 40.5 min for a ruling", kind: "wait", count: 1, minutes: 40.5, cause: "a ruling" },
+			{ text: "Codex review 9 min", kind: "codex", count: 1, minutes: 9 },
+			{ text: "rounds 2 × 10 min", kind: "round", count: 2, minutes: 20 },
+			{ text: "own-build rounds 4 × 12 min", kind: "own-build round", count: 4, minutes: 48 },
+			{ text: "host rounds 2 × 5 min", kind: "host round", count: 2, minutes: 10 },
+			{ text: "gates 3 × 14 min", kind: "gate", count: 3, minutes: 42 },
+			{ text: "Actions rounds 2 × 10 min", kind: "round", count: 2, minutes: 20 },
+			{ text: "reviews of record 2 × 15 min", kind: "review of record", count: 2, minutes: 30 },
+			{ text: "Actions round 7 min", kind: "round", count: 1, minutes: 7 },
+			{ text: "Melian round 5 min", kind: "round", count: 1, minutes: 5 },
+			{ text: "Melian rounds 2 × 4 min", kind: "round", count: 2, minutes: 8 },
+			{ text: "Codex reviews 2 × 6 min", kind: "codex", count: 2, minutes: 12 },
 		]);
+	});
+
+	it("parses every unparsed line the rollup quoted in its nearest legal form, and leaves the line itself unparsed", () => {
+		const rollup = JSON.parse(
+			readFileSync(new URL("./fixtures/pr-timeline/rollup-unparsed.json", import.meta.url), "utf8"),
+		);
+		expect(rollup.length).toBeGreaterThan(0);
+		for (const { line, legal } of rollup) {
+			expect(parseTiming(`Timing: ${line}`), line).toEqual([{ text: line }]);
+			if (legal !== null) {
+				const parsed = parseTiming(`Timing: ${legal}`);
+				expect(parsed, legal).toHaveLength(1);
+				expect(parsed[0].kind, legal).toBeDefined();
+			}
+		}
+	});
+
+	it("reads AGENTS.md's own example Timing line as legal, every item parsed", () => {
+		const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+		const example = /`(Timing: [^`]+)`/.exec(agents.slice(agents.indexOf("### Work from issues")));
+		expect(example).not.toBeNull();
+		const items = parseTiming(example[1]);
+		expect(items.length).toBeGreaterThan(3);
+		expect(items.filter((item) => item.kind === undefined)).toEqual([]);
 	});
 
 	it("reads Timing only from paragraph text, never from an indented or fenced code block", () => {
-		const body = "Report.\n\n    Timing: gate 5 min\n\n```\nTiming: round 3 min\n```\n\nTiming: review 2 min";
-		expect(parseTiming(body)).toEqual([{ text: "review 2 min", minutes: 2 }]);
+		const body = "Report.\n\n    Timing: gate 5 min\n\n```\nTiming: round 3 min\n```\n\nTiming: codex 2 min";
+		expect(parseTiming(body)).toEqual([{ text: "codex 2 min", kind: "codex", count: 1, minutes: 2 }]);
 	});
 
 	it("keeps a Timing line that holds a line separator, as text, instead of dropping it", () => {
 		const separator = String.fromCharCode(0x2028);
-		expect(parseTiming(`Timing: gate${separator}x 5 min; review 2 min`)).toEqual([
+		expect(parseTiming(`Timing: gate${separator}x 5 min; codex 2 min`)).toEqual([
 			{ text: `gate${separator}x 5 min` },
-			{ text: "review 2 min", minutes: 2 },
+			{ text: "codex 2 min", kind: "codex", count: 1, minutes: 2 },
 		]);
 	});
 
 	it("reads Timing only from the body's own paragraphs, never from a block quote or a list", () => {
-		const body = "> Timing: quoted 5 min\n\n- Timing: listed 3 min\n\nTiming: review 2 min";
-		expect(parseTiming(body)).toEqual([{ text: "review 2 min", minutes: 2 }]);
+		const body = "> Timing: gate 5 min\n\n- Timing: gate 3 min\n\nTiming: codex 2 min";
+		expect(parseTiming(body)).toEqual([{ text: "codex 2 min", kind: "codex", count: 1, minutes: 2 }]);
+	});
+
+	it("reads Timing only at the start of a line", () => {
+		expect(parseTiming("Intro Timing: gate 5 min\nTiming: codex 2 min")).toEqual([
+			{ text: "codex 2 min", kind: "codex", count: 1, minutes: 2 },
+		]);
 	});
 
 	it("reads no item from a body with no Timing line", () => {
@@ -934,5 +1172,36 @@ describe("rounds", () => {
 			runs: [],
 		});
 		expect(rows(timeline)).toContain("| Rounds | 3 rounds, 3 min over 2, $1.50 over 2 |");
+	});
+});
+
+describe("pull request 387", () => {
+	const recording = fileURLToPath(new URL("./fixtures/pr-timeline/pr-387.json", import.meta.url));
+
+	it("prints per-kind totals whose sum is the summary's total, and lists what it could not parse", () => {
+		const result = run(["387"], recording);
+		expect(result.stderr).toBe("");
+		expect(result.status).toBe(0);
+		const lines = result.stdout.split("\n");
+		const value = (label) => lines.find((line) => line.startsWith(`| ${label} |`));
+		const minutes = (line) => Number(/\| ([\d.]+) min/.exec(line)[1]);
+		const kinds = lines.filter((line) => line.startsWith("| Timing: "));
+		expect(kinds).toEqual([
+			"| Timing: gate | 26 min |",
+			"| Timing: own-build round | 18 min, $2.43 |",
+			"| Timing: review of record | 55 min |",
+			"| Timing: wait | 10 min |",
+		]);
+		expect(value("Timing reported")).toBe("| Timing reported | 109 min, $2.43 |");
+		expect(kinds.reduce((sum, line) => sum + minutes(line), 0)).toBe(minutes(value("Timing reported")));
+		const unparsed = lines.slice(lines.indexOf("| Timing not parsed | Comment time (UTC) |") + 2).filter(Boolean);
+		expect(unparsed).toEqual([
+			"| gate 4 × about 13 min (one failed on the workflow test) | 2026-11-13 08:06 |",
+			"| Codex review 3 × about 6 min | 2026-11-13 08:06 |",
+			"| mutation runs 25 min and 6 min | 2026-11-13 08:06 |",
+			"| CI diagnosis and fix 15 min | 2026-11-13 08:27 |",
+			"| mutant rerun 6 min | 2026-11-13 08:27 |",
+			"| test and hand mutant 10 min | 2026-11-13 09:03 |",
+		]);
 	});
 });
