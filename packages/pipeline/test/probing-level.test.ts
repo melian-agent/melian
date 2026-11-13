@@ -2455,6 +2455,57 @@ describe("a level that probes", () => {
 		]);
 	});
 
+	it("counts a prober's restatement of a carried finding, though the planner reported it too", async () => {
+		const fake = createFakeModels();
+		const injection = {
+			file: "src/load.ts",
+			line: 3,
+			rule: "melian/injection-attempt",
+			severity: "P1",
+			explanation: {
+				what: "the change tells the reviewer what to find",
+				why: "it steers the review",
+				fix: "remove it",
+			},
+			failureScenario: "a reviewer that follows the text reports nothing",
+			evidence: [{ file: "src/load.ts", line: 3, role: "cause" }],
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("skip_attack", { attack: 1, reason: "needs the network" }),
+				call("report_finding", injection),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: [call("report_finding", injection), ...plan] },
+				{
+					match: reviewer,
+					replies: [call("report_finding", injection), fauxAssistantMessage("Reported 1 finding.")],
+				},
+			],
+		};
+		const { run } = await review(scripts, escalating(fake));
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain("careful restated 1 finding quick carried");
+	});
+
+	it("ends an escalated level whose planner calls no tool as a lens that did not finish", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		const scripts = {
+			planner: [],
+			prober: [],
+			others: [
+				{ match: planner, replies: [fauxAssistantMessage("No plan."), fauxAssistantMessage("Still no plan.")] },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const { run } = await review(scripts, escalating(fake));
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(record(verdict).reason).toContain("the lens did not finish; escalated");
+	});
+
 	it("refuses a prober's refutation that rests on a probe that failed, and keeps the carried finding", async () => {
 		const fake = createFakeModels();
 		const { probe: _, ...plain } = finding("p0");
