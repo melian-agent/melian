@@ -296,6 +296,8 @@ describe("a level that probes", () => {
 			.join("\n");
 		expect(input).toContain(attack.failing);
 		expect(input).not.toContain("readFileSync(path");
+		// No quick run carried a finding, so the prober's input lists none.
+		expect(input).not.toMatch(/\bundefined\b|Findings a quicker look reported/);
 		expect(systemPromptOf(probed)).not.toContain("You are the trust-boundary reviewer");
 		const record = verdict.ran!.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record).toMatchObject({ status: "ran", level: "deep" });
@@ -2283,6 +2285,56 @@ describe("a level that probes", () => {
 		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
 		expect(record(verdict).reason).toContain("careful refuted 1 finding quick carried");
 		expect(verdict.counted().map((each) => each.ruleId)).not.toContain("path-traversal");
+	});
+
+	it("refuses a prober's refutation that rests on a probe that failed, and keeps the carried finding", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		let probe = "p0";
+		const refute: ScriptedReply = (messages) => {
+			probe = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? probe;
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...finding(probe), refuted: id });
+		};
+		const { run, requests } = await review(
+			{
+				planner: [],
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					refute,
+					fauxAssistantMessage("Refuted 1 finding."),
+				],
+				others: [
+					{ match: planner, replies: plan },
+					{
+						match: reviewer,
+						replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+					},
+				],
+			},
+			{
+				fake,
+				decider: new RecordedDecider(
+					{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+					{ name: "recorded" },
+				),
+				lens: (lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } },
+					}),
+				config: {
+					lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+					models: {
+						heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+						medium: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					},
+				},
+			},
+		);
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(lastResults(requests[prober]![2]!)).toContain("did not pass, so it shows no finding wrong");
+		expect(record(verdict).reason).toContain("which careful neither restated nor refuted, still counts");
 	});
 
 	it("plans from the findings of the revision before this one, never a later one", async () => {
