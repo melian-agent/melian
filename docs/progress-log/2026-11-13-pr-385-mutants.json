@@ -1,0 +1,117 @@
+{
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 3,
+			"endLine": 375,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 3,
+			"endLine": 375,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 3,
+			"endLine": 375,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"enola\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 12,
+			"endLine": 375,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 41,
+			"endLine": 375,
+			"endColumn": 103,
+			"mutatorName": "MethodExpression",
+			"replacement": "Math.min(region.endLine ?? region.startLine, region.startLine)",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 375,
+			"column": 50,
+			"endLine": 375,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.endLine && region.startLine",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "564c6e4d",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		}
+	],
+	"total": 6,
+	"omitted": 0,
+	"unmutated": []
+}
