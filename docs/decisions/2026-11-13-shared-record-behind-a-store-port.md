@@ -206,7 +206,7 @@ Each is a projection of the record and none is stored as the authority.
 
 The gate fails closed with no standing round for the revision, a record not found, a base whose policy it cannot read, or a store it cannot reach. So no status needs fencing: a stale status decides nothing.
 
-One status is still read. [The outage procedure](2026-10-23-melian-review-outage-procedure.md) lets the maintainer post an override on one commit when Melian cannot run, and a store that cannot be reached is such an outage. The merge-group check recognises that override on the head by the procedure's own form, and only when it reached the store and found no round for the revision. A round that stands and blocks outranks it. When the check cannot reach the store it cannot know that, so it fails, and copies no override from the head: the maintainer posts the override on the entry's group commit, as the procedure already has them do when the workflow cannot run. That is a fresh act for that entry, so an old override never returns because the store dropped out.
+One status is still read. [The outage procedure](2026-10-23-melian-review-outage-procedure.md) lets the maintainer post an override on one commit when Melian cannot run, and a store that cannot be reached is such an outage. The merge-group check recognises that override on the head by the procedure's own form, unless a round of the revision stands and blocks. A round that reads not reviewed does not outrank it: a provider's usage limit can fail every lens and still leave a stored round, and that is the outage the override exists for. The maintainer ruled so on 2026-11-13, in the coordinator's session, and asked that a repository be able to set a stricter policy in its `melian.yaml`, which [issue #391](https://github.com/melian-agent/melian/issues/391) tracks. This replaces the coordination decision's order by time, where a round posted after the override outranked it: the record keeps no order, and a blocking round outranks an override whenever both are there. When the check cannot reach the store it cannot know whether a round blocks, so it fails, and copies no override from the head: the maintainer posts the override on the entry's group commit, as the procedure already has them do when the workflow cannot run. That is a fresh act for that entry, so an old override never returns because the store dropped out.
 
 ### 10. A marker is proved by a value recorded before the post
 
@@ -288,6 +288,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | The language line would have entered every key (sweep) | Rule 5: a fourth exclusion |
 | The reply journal and owed resolutions stayed on one host (sweep) | Rule 10: each reply and resolution is a `post` record |
 | ID-first merge order let a lower severity speak (sweep) | Rule 4 keeps severity first |
+| The override was refused when a round stood that read not reviewed, the very outage it is for (`807a4d728b569993`, and the sweep) | Rule 9: only a standing round that blocks outranks it, by the maintainer's ruling |
 
 ## What this gives up
 
