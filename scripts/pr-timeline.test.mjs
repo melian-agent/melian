@@ -877,6 +877,12 @@ describe("parseTiming", () => {
 		]);
 	});
 
+	it("reads a cause that names a number without a duration or a cost", () => {
+		expect(parseTiming("Timing: wait 1 × 5 min for issue 400")).toStrictEqual([
+			{ text: "wait 1 × 5 min for issue 400", kind: "wait", count: 1, minutes: 5, cause: "issue 400" },
+		]);
+	});
+
 	it("keeps a note in brackets after the minutes, the cost or the cause", () => {
 		expect(
 			parseTiming("Timing: gate 4 × 13 min (one failed); round 1 × 6 min, $1 (cold); wait 1 × 3 min for CI (twice)"),
@@ -905,6 +911,9 @@ describe("parseTiming", () => {
 		["words after the cost", "round 1 × 6 min, $6 each"],
 		["a cause on a kind that is not a wait", "gate 5 min for CI"],
 		["a wait with no cause", "wait 3 min"],
+		["a wait whose cause hides a second duration", "wait 1 × 10 min for CI and 20 min for the coordinator"],
+		["a wait whose cause hides a cost", "wait 10 min for CI, $6.40"],
+		["a waited item whose cause hides a second duration", "waited 10 min for CI and 5 min for a ruling"],
 		["an other with no note", "other 3 min"],
 		["a wait whose cause is blank", "wait 1 × 10 min for   (note)"],
 		["an other whose note is blank", "other 5 min ( )"],
