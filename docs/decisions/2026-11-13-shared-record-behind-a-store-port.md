@@ -128,7 +128,7 @@ An inheritance stays on the relayed list. It is the verifier's judgement, made i
 The trusted host holds the one key, pinned as `trust.host.key` in the root `melian.yaml` and read from the base commit. Two kinds of repository pin it:
 
 - One that sets `trust.writers: false`. The gate then counts only records that key signed. A record it did not sign is set aside before every other rule: it supersedes nothing and stands nowhere.
-- One that takes pull requests from forks, whatever `trust.writers` says, because without the key the gate cannot tell the trusted host's record of a fork's head from a writer's. This clause awaits the maintainer's ruling.
+- One that takes pull requests from forks, whatever `trust.writers` says, because without the key the gate cannot tell the trusted host's record of a fork's head from a writer's. For a fork's head the gate counts only records that key signed, so a repository that has not pinned it passes no fork's pull request, and the gate names what to set up. The maintainer ruled so on 2026-11-13, in the coordinator's session, over the alternative of a writer's recorded vouch: the rule's promise is that a fork's head was reviewed where its code could not touch the result, and a vouch promises only that a writer read it.
 
 Every other repository has no key. The envelope keeps `signer` and `signature` so a later decision can add a named identity for each writer without a new format.
 
@@ -202,7 +202,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 | Naming a predecessor round had no stated effect | Rule 4: a round replaces the rounds of its revision it names |
 | A stale list passed the gate on an older round | Rules 3 and 4: the cell names the standing rounds, and reading it is fresh |
 | The computed verdict lacked each revision's hunks, so a dismissal never reopened | Rules 7 and 9 |
-| The fork rule could not be applied without a key | Rule 6, awaiting a ruling |
+| The fork rule could not be applied without a key | Rule 6: a repository that takes fork pull requests pins the trusted host's key |
 | A head job's dismissal passed the relay's shape check | Rule 6: the relay adds only a review's kinds |
 
 ## What this gives up
@@ -213,7 +213,7 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 - A writer can run a round that replaces a blocking one, as a writer can rerun a review or set a status today. [Issue #379](https://github.com/melian-agent/melian/issues/379) proposed counting only rounds the trusted host signed; that puts a key in every repository, which the maintainer's direction on logistics rules out.
 - A writer can block by adding a second round, since the worse gates.
 - One file the adapter does not know stops every gate and publish on the branch until a writer removes it.
-- A repository that takes fork pull requests holds one key, if rule 6's clause is ruled in.
+- A repository that takes fork pull requests holds one key, in CI alone.
 - The record is a new stored shape, with versions to migrate and an import path to keep true, about 400 to 550 lines by [issue #372](https://github.com/melian-agent/melian/issues/372)'s estimate.
 - The reopen rule, sighting merge and verifier lowering live in the pipeline, so a gate that is core alone needs them moved.
 - A pull request whose markers were made under the per-changeset secret finishes on its local store.
@@ -227,6 +227,5 @@ Three reviews tested the first draft with unit tests, before any ruling: [issue 
 
 ## Still open
 
-- Rule 6's clause on fork pull requests awaits the maintainer's ruling.
 - No review ran the gate on a merge-group runner, so what it lacks there is untested.
 - The reviews tested scripts that word these rules, not product code. Each build's tests must fail with its rule removed.
