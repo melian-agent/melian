@@ -1,0 +1,472 @@
+{
+ "total": 27,
+ "omitted": 0,
+ "base": "94c18cdc",
+ "head": "998c2465",
+ "command": "node scripts/enumerate-mutants.mjs 94c18cdc...1c546451 --json --limit 10000",
+ "note": "Fix pass 21 of pull request #296: what the Actions round at e1280f1a found. Each claim was run against its named test alone; the two the first run left surviving were run again after the test commit that followed. Ignored literals are left out.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 120,
+   "column": 10,
+   "endLine": 120,
+   "endColumn": 31,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 120,
+   "column": 20,
+   "endLine": 120,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 120,
+   "column": 20,
+   "endLine": 120,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 120,
+   "column": 20,
+   "endLine": 120,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "line === \"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 121,
+   "column": 7,
+   "endLine": 121,
+   "endColumn": 62,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 121,
+   "column": 17,
+   "endLine": 121,
+   "endColumn": 50,
+   "mutatorName": "MethodExpression",
+   "replacement": "line",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 121,
+   "column": 57,
+   "endLine": 121,
+   "endColumn": 61,
+   "mutatorName": "Regex",
+   "replacement": "/ /",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 122,
+   "column": 5,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 122,
+   "column": 5,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 122,
+   "column": 5,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entries.length >= limits.entries",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 122,
+   "column": 5,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entries.length <= limits.entries",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 122,
+   "column": 38,
+   "endLine": 122,
+   "endColumn": 108,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 123,
+   "column": 15,
+   "endLine": 123,
+   "endColumn": 60,
+   "mutatorName": "MethodExpression",
+   "replacement": "entries",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "998c2465",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 123,
+   "column": 30,
+   "endLine": 123,
+   "endColumn": 59,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 123,
+   "column": 44,
+   "endLine": 123,
+   "endColumn": 59,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "998c2465",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 123,
+   "column": 44,
+   "endLine": 123,
+   "endColumn": 59,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > counts a head's files and submodules toward its entries, not its trees, and only its files' bytes",
+   "survivorClasses": [],
+   "run": {
+    "head": "998c2465",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 123,
+   "column": 44,
+   "endLine": 123,
+   "endColumn": 59,
+   "mutatorName": "EqualityOperator",
+   "replacement": "type !== \"blob\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head's bound > runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 423,
+   "column": 49,
+   "endLine": 425,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/verification-instructions.test.ts > the production verifier version > changes when the fixed wording a verifier reads of a claim's probe changes, on any branch",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 424,
+   "column": 8,
+   "endLine": 424,
+   "endColumn": 61,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > hashes every function and string probing.ts exports, unless it renders no prompt wording",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1214,
+   "column": 11,
+   "endLine": 1214,
+   "endColumn": 57,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds which tools each role may call, and the findings a quick run carries to the planner and the prober",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2322,
+   "column": 20,
+   "endLine": 2322,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2322,
+   "column": 20,
+   "endLine": 2322,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reads probe trust from the policy revision the host names, not the merge base, once the base branch moves",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2322,
+   "column": 20,
+   "endLine": 2322,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.policy?.kind !== \"revision\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reads probe trust from the policy revision the host names, not the merge base, once the base branch moves",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2322,
+   "column": 20,
+   "endLine": 2322,
+   "endColumn": 40,
+   "mutatorName": "OptionalChaining",
+   "replacement": "options.policy.kind",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2324,
+   "column": 39,
+   "endLine": 2324,
+   "endColumn": 79,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reads probe trust from the policy revision the host names, not the merge base, once the base branch moves",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification-instructions.ts",
+   "line": 61,
+   "column": 8,
+   "endLine": 64,
+   "endColumn": 15,
+   "mutatorName": "MethodExpression",
+   "replacement": "createHash(\"sha256\").update(JSON.stringify({\n  instructions,\n  schema,\n  questions,\n  probeEvidence\n})).digest(\"hex\")",
+   "claim": "equivalent",
+   "evidence": "main's own truncation of the version hash, on a line this pass rewrapped: every test reads the version through computeVerifierVersion or the rounds fixtures' mock, so its length is never compared.",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification-instructions.ts",
+   "line": 62,
+   "column": 25,
+   "endLine": 62,
+   "endColumn": 75,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/verification-instructions.test.ts > the production verifier version > changes when the fixed wording a verifier reads of a claim's probe changes, on any branch",
+   "survivorClasses": [],
+   "run": {
+    "head": "1c546451",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 26,
+  "equivalent": 1
+ }
+}
