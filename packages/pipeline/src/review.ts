@@ -1447,8 +1447,8 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 const ProbeRerunTask = probeRerunTask();
 
 // Starts the task that runs each candidate's claim probes again, or attaches to the live one another review started
-// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once. False,
-// with nothing started, when a later review has replaced this one's lens task.
+// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once. False
+// when a later review has replaced this one's lens task, before the reruns start or while they run.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
@@ -1486,7 +1486,8 @@ async function rerunProbes(
 	}, context);
 	if (task === undefined) return false;
 	await harness.waitForTask(task, context);
-	return true;
+	// A review that took the reruns over while they ran replaced this one's lens task too.
+	return (await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task === task;
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
