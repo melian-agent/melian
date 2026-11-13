@@ -16,7 +16,7 @@ Example: on the range of [pull request #339](https://github.com/melian-agent/mel
 
 ## Why
 
-Issue #346 asks that Enola-backed checks behave the same after the upgrade. Span identity would be a change of what counts as new, and belongs in its own issue with its own measurement.
+[Issue #346](https://github.com/melian-agent/melian/issues/346) asks that Enola-backed checks behave the same after the upgrade. Span identity would be a change of what counts as new, and belongs in its own issue with its own measurement.
 
 ## What it gives up
 
