@@ -214,8 +214,9 @@ export function publicVerdict(text) {
 	}
 }
 
-// A finite, non-negative number, or undefined: anything else is refused.
-const amount = (value) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined);
+// A finite, non-negative number, or undefined: anything else is refused. Number.isFinite coerces nothing, so a string
+// of digits is refused too.
+const amount = (value) => (Number.isFinite(value) && value >= 0 ? value : undefined);
 const field = (object, key) => (typeof object === "object" && object !== null ? object[key] : undefined);
 
 // A round's duration in whole seconds, its tokens and its cost in dollars: from the telemetry `melian review --json`
@@ -230,10 +231,8 @@ function spendOf(verdict) {
 		const startedAt = amount(field(prepare, "startedAt"));
 		const endedAt = amount(field(prepare, "endedAt"));
 		const total = field(field(verdict.telemetry, "total"), "total");
-		seconds =
-			startedAt === undefined || endedAt === undefined
-				? undefined
-				: amount(Math.round((endedAt - startedAt) / 1000));
+		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards.
+		seconds = amount(Math.round((endedAt - startedAt) / 1000));
 		tokens = amount(field(total, "totalTokens"));
 		cost = amount(field(field(total, "cost"), "total"));
 	} else {

@@ -865,6 +865,35 @@ describe("rounds", () => {
 		expect(rows(timeline).some((row) => row.startsWith("| Rounds |"))).toBe(false);
 	});
 
+	it.each([
+		["text before a part", "572 s, x12 tokens"],
+		["text after a part", "572 s, 12 tokensx"],
+		["a part it does not know", "572 s, 12 tokens, soon"],
+		["seconds with a fraction, which the comment never writes", "572.5 s"],
+		["a cost without its two decimals", "$4.4"],
+	])("reads no round from a spend line with %s", (_name, spend) => {
+		const body = `<!-- melian-round run:1 nonce:00 -->\nMelian round\n\n\`\`\`text\nVerdict: passed\nSpend: ${spend}\n\`\`\`\n`;
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
+	});
+
+	it("reads no round when the line after the verdict only ends with a spend", () => {
+		const body =
+			"<!-- melian-round run:1 nonce:00 -->\nMelian round\n\n```text\nVerdict: passed\nNot Spend: 572 s\n```\n";
+		const timeline = Timeline.from({ pull: pull({ timelineItems: page([comment(10, body)]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([]);
+	});
+
+	it("reads a round that names its minutes and cost but no tokens", () => {
+		const timeline = Timeline.from({
+			pull: pull({ timelineItems: page([comment(10, roundBody({ seconds: 60, cost: 0.5 }))]) }),
+			runs: [],
+		});
+		expect(rows(timeline).filter((row) => row.includes("| round |"))).toEqual([
+			"| 2026-10-01 00:10 | 0.17 | round | 1.0 min, $0.50 |",
+		]);
+	});
+
 	it("reads a round whose spend names only some of its numbers", () => {
 		const timeline = Timeline.from({
 			pull: pull({ timelineItems: page([comment(10, roundBody({ tokens: 12 }))]) }),

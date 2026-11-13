@@ -94,8 +94,7 @@ export function parseRound(body, author) {
 	if (match === null) return undefined;
 	const spend = {};
 	for (const part of match[1].split(", ")) {
-		const [, seconds, tokens, cost] =
-			/^(?:(\d+(?:\.\d+)?) s|(\d+(?:\.\d+)?) tokens|\$(\d+(?:\.\d+)?))$/.exec(part) ?? [];
+		const [, seconds, tokens, cost] = /^(?:(\d+) s|(\d+) tokens|\$(\d+\.\d{2}))$/.exec(part) ?? [];
 		if (seconds !== undefined) spend.seconds = Number(seconds);
 		else if (tokens !== undefined) spend.tokens = Number(tokens);
 		else if (cost !== undefined) spend.cost = Number(cost);

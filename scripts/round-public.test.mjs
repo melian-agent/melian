@@ -299,6 +299,22 @@ describe("a round's spend in the public verdict", () => {
 		expect(JSON.parse(result.stdout)).toStrictEqual({ ...passed, spend });
 	});
 
+	it("keeps a zero, as a round that ran nothing new costs nothing", () => {
+		const value = {
+			...passed,
+			telemetry: telemetry({ totalTokens: 0, cost: { total: 0 } }, { startedAt: 7, endedAt: 7 }),
+		};
+		expect(JSON.parse(published(value))).toStrictEqual({ ...passed, spend: { seconds: 0, tokens: 0, cost: 0 } });
+	});
+
+	it.each([
+		["telemetry", null],
+		["its total and its preparation", { total: null, prepare: null }],
+		["the total inside its total", { total: { total: null } }],
+	])("keeps the verdict and leaves out the spend when %s is null", (_name, value) => {
+		expect(JSON.parse(published({ ...passed, telemetry: value }))).toStrictEqual(passed);
+	});
+
 	it("leaves out the spend whole when the telemetry holds none of the three", () => {
 		expect(
 			JSON.parse(published({ ...passed, telemetry: { revision: "r", stages: [], usageUnavailable: [] } })),
@@ -337,6 +353,11 @@ describe("a round's spend in the public verdict", () => {
 		expect(lines(comment({ ...passed, telemetry: telemetry({ totalTokens: 12 }) }))).toEqual([
 			"Verdict: passed",
 			"Spend: 572 s, 12 tokens",
+			"",
+		]);
+		expect(lines(comment({ ...passed, telemetry: telemetry({ cost: { total: 4.44 } }, { endedAt: 9 }) }))).toEqual([
+			"Verdict: passed",
+			"Spend: $4.44",
 			"",
 		]);
 		expect(lines(comment(passed))).toEqual(["Verdict: passed", "", "No findings above advisory."]);
