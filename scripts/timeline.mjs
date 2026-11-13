@@ -299,18 +299,18 @@ export class Timeline {
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
 		const timed = this.#events.filter((event) => event.event === "Timing");
+		// Each row is rounded to two places before the total sums them, so the printed rows always add up to the total.
+		const cents = (value) => Math.round(value * 100) / 100;
 		const kinds = KINDS.flatMap((kind) => {
 			const items = timed.filter((event) => event.item.kind === kind);
 			if (items.length === 0) return [];
 			const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
 			const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-			return [{ kind, minutes, cost }];
+			return [{ kind, minutes: cents(minutes), cost: cents(cost) }];
 		});
-		// The total sums the per-kind rows themselves, so the two can never disagree.
-		const minutes = kinds.reduce((sum, kind) => sum + kind.minutes, 0);
-		const cost = kinds.reduce((sum, kind) => sum + kind.cost, 0);
-		const spend = (minutes, cost) =>
-			`${Math.round(minutes * 100) / 100} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		const minutes = cents(kinds.reduce((sum, kind) => sum + kind.minutes, 0));
+		const cost = cents(kinds.reduce((sum, kind) => sum + kind.cost, 0));
+		const spend = (minutes, cost) => `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
 		lines.push("", "| Summary | Value |", "| --- | --- |");
 		lines.push(row("Timing reported", kinds.length === 0 ? "none" : spend(minutes, cost)));
 		for (const kind of kinds) lines.push(row(`Timing: ${kind.kind}`, spend(kind.minutes, kind.cost)));

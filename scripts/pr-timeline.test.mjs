@@ -416,6 +416,21 @@ describe("summary", () => {
 		expect(rows(timeline)).toContain("| Timing: gate | 1.31 min |");
 	});
 
+	it("sums the rounded per-kind rows into the total, so the printed rows always add up", () => {
+		const timelineItems = page([
+			{
+				__typename: "IssueComment",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				body: "Timing: gate 0.005 min, $0.005; codex 0.005 min, $0.005",
+				author: { login: "b" },
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing: gate | 0.01 min, $0.01 |");
+		expect(rows(timeline)).toContain("| Timing: codex | 0.01 min, $0.01 |");
+		expect(rows(timeline)).toContain("| Timing reported | 0.02 min, $0.02 |");
+	});
+
 	it("prints minutes alone when no Timing item carries a cost", () => {
 		const timelineItems = page([
 			{
