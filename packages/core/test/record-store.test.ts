@@ -139,6 +139,26 @@ const breakages: [string, string, (inner: RecordStore) => Partial<RecordStore>][
 		(inner) => ({ list: (name) => cutOffAnswer<RecordEnvelope[]>([])(() => inner.list(name)) }),
 	],
 	[
+		"list fails cut off with a plain error that carries the code",
+		"list: fails when the store cannot answer it fresh",
+		(inner) => ({
+			list: (name) =>
+				inner.list(name).catch((error: unknown) => {
+					throw Object.assign(new Error("cut off"), { code: (error as RecordError).code });
+				}),
+		}),
+	],
+	[
+		"list fails cut off with a RecordError of another code",
+		"list: fails when the store cannot answer it fresh",
+		(inner) => ({
+			list: (name) =>
+				inner.list(name).catch(() => {
+					throw new RecordError("closed", "cut off");
+				}),
+		}),
+	],
+	[
 		"readCell answers from the copy it read first",
 		"readCell: returns the last value a writeCell stored, on any handle",
 		(inner) => ({
@@ -279,6 +299,29 @@ describe("each conformance case fails against an adapter that breaks its promise
 		await expect(target?.run(memoryRecordStoreFixture())).resolves.toBeUndefined();
 		await expect(target?.run(brokenFixture(breaks))).rejects.toThrow();
 	});
+});
+
+describe("the conformance suite's own bookkeeping", () => {
+	it.each(recordStoreConformance.map((each) => [each.name, each] as const))(
+		"%s closes every store it opens",
+		async (_name, each) => {
+			const healthy = memoryRecordStoreFixture();
+			let opened = 0;
+			let closed = 0;
+			await each.run(async () => {
+				const subject = await healthy();
+				opened++;
+				return {
+					...subject,
+					close: async () => {
+						closed++;
+						await subject.close();
+					},
+				};
+			});
+			expect([opened, closed]).toEqual([1, 1]);
+		},
+	);
 });
 
 describe("MemoryRecordStore", () => {
