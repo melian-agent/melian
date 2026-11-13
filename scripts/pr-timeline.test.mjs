@@ -787,8 +787,8 @@ describe("parseTiming", () => {
 			"other 1 × 15 min (CI diagnosis and fix)",
 			{ kind: "other", count: 1, minutes: 15, note: "CI diagnosis and fix" },
 		],
-	])("reads the kind in %s", (text, item) => {
-		expect(parseTiming(`Timing: ${text}`)).toEqual([{ text, ...item }]);
+	])("reads the kind in %s, with no key it does not use", (text, item) => {
+		expect(parseTiming(`Timing: ${text}`)).toStrictEqual([{ text, ...item }]);
 	});
 
 	it("covers every kind the grammar names, in the order the summary prints them", () => {
@@ -861,7 +861,7 @@ describe("parseTiming", () => {
 	it("reads the shapes older reports used as the kind they mean", () => {
 		expect(
 			parseTiming(
-				"Timing: waited 40.5 min for a ruling; Codex review 9 min; rounds 2 × 10 min; own-build rounds 4 × 12 min; host rounds 2 × 5 min; gates 3 × 14 min; Actions rounds 2 × 10 min; reviews of record 2 × 15 min",
+				"Timing: waited 40.5 min for a ruling; Codex review 9 min; rounds 2 × 10 min; own-build rounds 4 × 12 min; host rounds 2 × 5 min; gates 3 × 14 min; Actions rounds 2 × 10 min; reviews of record 2 × 15 min; Actions round 7 min; Melian round 5 min; Melian rounds 2 × 4 min; Codex reviews 2 × 6 min",
 			),
 		).toEqual([
 			{ text: "waited 40.5 min for a ruling", kind: "wait", count: 1, minutes: 40.5, cause: "a ruling" },
@@ -872,6 +872,10 @@ describe("parseTiming", () => {
 			{ text: "gates 3 × 14 min", kind: "gate", count: 3, minutes: 42 },
 			{ text: "Actions rounds 2 × 10 min", kind: "round", count: 2, minutes: 20 },
 			{ text: "reviews of record 2 × 15 min", kind: "review of record", count: 2, minutes: 30 },
+			{ text: "Actions round 7 min", kind: "round", count: 1, minutes: 7 },
+			{ text: "Melian round 5 min", kind: "round", count: 1, minutes: 5 },
+			{ text: "Melian rounds 2 × 4 min", kind: "round", count: 2, minutes: 8 },
+			{ text: "Codex reviews 2 × 6 min", kind: "codex", count: 2, minutes: 12 },
 		]);
 	});
 
