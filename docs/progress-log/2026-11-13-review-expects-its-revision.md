@@ -3,3 +3,5 @@
 The `melian round` workflow passes the base and head its gate approved. Before, a push between the workflow's re-read of the pull request and Melian's own fetch was still reviewed with the logins, on a head no gate had checked. The report job keeps its own checks, since the pull request can still move during the round.
 
 `packages/cli/test/compare.test.ts` refuses a moved head and a moved base, each with an unreadable secrets file that would fail the review if Melian read it, and an empty state directory afterwards. It reviews a pull request at the expected revision as before, and refuses each option alone, both on a range, and both on another command. Moving the refusal after the secrets read fails the first test with the secrets file's error.
+
+The mutation inventory, `2026-11-13-review-expects-its-revision-mutants.json`, lists 68 mutants: 60 killed by the tests above, 4 killed by usage tests `ebf5042e` added to `packages/cli/test/main.test.ts`, and 4 equivalent, each with its reason.
