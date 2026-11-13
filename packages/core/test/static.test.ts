@@ -573,6 +573,23 @@ describe("staticFindings", () => {
 		expect(spanned?.locations[0]?.physicalLocation.region).toMatchObject({ startLine: 1, endLine: 3 });
 	});
 
+	it("still identifies a tsc result by every line it spans, so an edit inside the span introduces it", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const spanning = log(["src/quote.ts", 1, "TS2322"]);
+		spanning.runs[0]!.results[0]!.locations[0]!.physicalLocation.region.endLine = 3;
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: spanning,
+			head: spanning,
+		});
+		expect(findings.map((finding) => finding.properties.cause)).toEqual(["introduced"]);
+	});
+
 	it("fails rather than guess when a result's file cannot be read", async () => {
 		const base = commit({ "src/a.ts": lines("a") });
 		const head = commit({ "src/a.ts": lines("b") });
