@@ -363,6 +363,8 @@ Solution: Pi's storage is working state and stays local, SQLite in a clone and t
 
 Alternative record stores behind the same port: a directory, object storage, Postgres, Cloudflare Durable Objects.
 
+The state directory keeps every changeset file until the shared record holds its records. `melian store prune` removes only cache Melian can rebuild: Enola graphs for trees no branch or worktree holds, their coverage, stale mutation partitions and unpinned tool downloads. It keeps anything it does not recognise. [The store retention decision](decisions/2026-11-14-store-retention.md) sets the rules, and records the maintainer's ruling that a merged pull request's changeset is deleted only once the shared record lists its records, never compacted.
+
 Stored rounds expose their identity through `Round.revisionKey()`. A verdict written under a head-only key keeps that key explicitly, with no invented base. Round document version 2 restores the head and key from version 1's empty-head representation, preserving the round ID and verdict.
 
 ## Trust and isolation
