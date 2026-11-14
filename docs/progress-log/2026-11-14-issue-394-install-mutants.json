@@ -1,0 +1,192 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c5df92e030639980c136503b7ebffb5dda060668",
+		"head": "5b9dd9927ba9a06505a84790aef7f88b7d94596c"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/mutation-static.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "af5dfcec62e0a855a0ea814a35fc71935d1a93fa7bbf458669e3682e7c723f40",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 135,
+			"column": 73,
+			"endLine": 150,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6a4ea4680b8f0ef5db81cf65e7a3349d060e2bce1fc855c46058117f9c48b48f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-cache.test.ts",
+					"path": [
+						"changes the installation identity that the durable run key hashes after selection changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 137,
+			"column": 31,
+			"endLine": 148,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dbe162e8e06a1d6d9a0e9e114298bc75da941edc66ab6062f2ac5f92f29f57f9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-cache.test.ts",
+					"path": [
+						"changes the installation identity that the durable run key hashes after selection changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 138,
+			"column": 7,
+			"endLine": 145,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cd8fc5a7f6bcb685712de76c6ead7323cd52bb6acce2ae39137de805e13d62da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-cache.test.ts",
+					"path": [
+						"changes the installation identity that the durable run key hashes after selection changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 139,
+			"column": 11,
+			"endLine": 144,
+			"endColumn": 5,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "b9f9ca2d668da424442ba9eed3f86a78f90c7d30f5347361f99baaaa876009a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-cache.test.ts",
+					"path": [
+						"changes the installation identity that the durable run key hashes after selection changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 141,
+			"column": 16,
+			"endLine": 141,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0131a943c62c1223e849c98ae08775eab9425172cd92de1dc327497be7023229"
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 143,
+			"column": 14,
+			"endLine": 143,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "914dfa8ee1f230c49a6403f475478f5982dd7eaa27054be8541878d155ec98e7"
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 145,
+			"column": 11,
+			"endLine": 147,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c38638a8ab622d5f382a403c3ce0f7ae82ba0076fcb32ed76bf0ea6d601064f9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again when the checkout's install changes under the same lockfile"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 146,
+			"column": 11,
+			"endLine": 146,
+			"endColumn": 32,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "ca417fac87453f7df63a248216417dd6ee7dae1543215281add3d88301b737ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-cache.test.ts",
+					"path": [
+						"changes the installation identity that the durable run key hashes after selection changes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 146,
+			"column": 18,
+			"endLine": 146,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "720fce60bba99a70a2d204865a2119ad31862854cd84d948906169b66694cfda"
+		}
+	],
+	"total": 9,
+	"omitted": 0,
+	"unmutated": []
+}
