@@ -21,7 +21,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeadProgram } from "../src/compiler-graph.ts";
 import { roleTools } from "../src/lens-tools.ts";
-import { Probe, probeLimits } from "../src/probe.ts";
+import { Probe, probeLimits, probeRunnerSample } from "../src/probe.ts";
 import * as probing from "../src/probing.ts";
 import {
 	type Attack,
@@ -637,6 +637,47 @@ describe("the probing protocol a probing run's fingerprint holds", () => {
 		const golden = readFileSync(new URL("./golden/probing-prompts.txt", import.meta.url), "utf8");
 		const { renderings } = JSON.parse(probingProtocol()) as { renderings: unknown };
 		expect(renderings).toBe(golden.slice(0, golden.indexOf("=== evidence, ") - 1));
+	});
+
+	it("holds what the probe runner gives a probe, over fixed paths", () => {
+		const { runner } = JSON.parse(probingProtocol()) as { runner: Record<string, unknown> };
+		expect(runner).toMatchObject({
+			runner: 'import "./watchdog.mjs";\nimport "./probe.mjs";\n',
+			watchdog: "setTimeout(() => process.exit(124), 1000).unref();\n",
+			environment: { PATH: "/node/bin:/usr/bin:/bin", HOME: "/scratch/run/home", TMPDIR: "/scratch/run/tmp" },
+		});
+		expect(runner).toHaveProperty("policy.linux.deny", expect.arrayContaining(["/"]));
+		expect(runner).toHaveProperty("policy.darwin.read", expect.arrayContaining(["/scratch/tree"]));
+	});
+
+	it("changes when any part of what the runner gives a probe changes, and only then", () => {
+		const sample = probeRunnerSample();
+		expect(probingProtocol(structuredClone(sample))).toBe(probingProtocol());
+		// Every leaf of the sample, by its path: the generated modules, each variable, each read and deny entry.
+		const leaves: (string | number)[][] = [];
+		const walk = (value: unknown, path: (string | number)[]) => {
+			if (value !== null && typeof value === "object")
+				for (const [key, child] of Object.entries(value))
+					walk(child, [...path, Array.isArray(value) ? Number(key) : key]);
+			else leaves.push(path);
+		};
+		walk(sample, []);
+		expect(leaves.map((path) => path.join("."))).toEqual(
+			expect.arrayContaining([
+				"runner",
+				"watchdog",
+				"environment.PATH",
+				"policy.linux.read.0",
+				"policy.linux.deny.0",
+			]),
+		);
+		for (const path of leaves) {
+			const changed = structuredClone(sample) as Record<string | number, unknown>;
+			let at = changed;
+			for (const key of path.slice(0, -1)) at = at[key] as Record<string | number, unknown>;
+			at[path.at(-1)!] = `${String(at[path.at(-1)!])} changed`;
+			expect(probingProtocol(changed), path.join(".")).not.toBe(probingProtocol());
+		}
 	});
 
 	it("tells no role to ignore or disregard other instructions", () => {

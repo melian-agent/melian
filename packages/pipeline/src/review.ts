@@ -133,7 +133,7 @@ import {
 	skipAttack,
 } from "./lens-tools.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
-import { Probe, type ProbeSandbox, probeLimits } from "./probe.ts";
+import { Probe, type ProbeSandbox, probeLimits, probeRunnerSample } from "./probe.ts";
 import {
 	type Attack,
 	answerPrompt,
@@ -1220,7 +1220,7 @@ function planned(options: ReviewOptions): ReviewOptions {
  * how it is put together. A release that changes any of them runs the level again; the plan and its earlier findings,
  * which move between reviews of one head, stay out.
  */
-export function probingProtocol(): string {
+export function probingProtocol(runner: unknown = probeRunnerSample()): string {
 	return JSON.stringify({
 		tools: [recordPlan, runProbe, skipAttack, reportFinding].map(({ name, description, parameters }) => ({
 			name,
@@ -1230,6 +1230,7 @@ export function probingProtocol(): string {
 		roles: roleTools,
 		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits, earlier: earlierLimits },
 		renderings: probingRenderings().prompts,
+		runner,
 		// The findings a quick run carries reach the planner and the prober too.
 		wording: probingWording,
 	});

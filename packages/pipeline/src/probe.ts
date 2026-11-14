@@ -499,6 +499,75 @@ function runtimePackage(): string {
 	return dirname(dirname(fileURLToPath(import.meta.resolve("@anthropic-ai/sandbox-runtime"))));
 }
 
+// The paths a probe's policy is built from: its scratch and linked installs, and the host's Node, npm and system paths.
+type PolicyPaths = {
+	readonly platform: "darwin" | "linux";
+	readonly scratch: string;
+	readonly installs: readonly string[];
+	readonly node: readonly string[];
+	readonly npmrc: string;
+	readonly runtime: string;
+	readonly system: readonly string[];
+};
+
+// What a probe may read and write, for its paths.
+function policyFor(paths: PolicyPaths): ProbePolicy {
+	const run = join(paths.scratch, "run");
+	const tree = join(paths.scratch, "tree");
+	return {
+		read: [tree, ...paths.installs, ...paths.node, paths.runtime, join(paths.scratch, "probe"), run, ...paths.system],
+		// A granted Node prefix's `etc` holds the global npmrc, and npm's own directory its builtin one; either can carry a
+		// registry token.
+		deny: ["/", ...paths.node.map((path) => join(path, "etc")), paths.npmrc],
+		denyGlobs: [tree, ...paths.installs].flatMap((root) => denyGlobs.map((pattern) => posix.join(root, pattern))),
+		write: [run],
+		// sandbox-runtime keeps this writable for itself whatever the policy says.
+		denyWrite: paths.platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
+	};
+}
+
+// The shell command the sandbox runs for a probe in `scratch`.
+function commandFor({ scratch, node, timeout }: { scratch: string; node: string; timeout: number }): string {
+	const tree = join(scratch, "tree");
+	const run = join(scratch, "run");
+	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} ${quote(join(scratch, "probe", runnerName))}`;
+}
+
+// The environment a probe in `scratch` starts with. spawn leaves out a variable whose value is undefined.
+function environmentFor({ scratch, node, lang }: { scratch: string; node: string; lang: string | undefined }) {
+	const run = join(scratch, "run");
+	return { PATH: `${dirname(node)}:/usr/bin:/bin`, HOME: join(run, "home"), TMPDIR: join(run, "tmp"), LANG: lang };
+}
+
+/**
+ * What Melian's probe runner gives a probe, over fixed paths, so a key that holds it changes when the runner does: the
+ * modules it generates, the command and environment it starts, and the policy it hands the sandbox on each platform.
+ * The paths are placeholders, so the value names no host. How the head's tree is written is left out, since it writes
+ * the head's own tracked files, which a review pins by commit.
+ */
+export function probeRunnerSample(): unknown {
+	const scratch = "/scratch";
+	const node = "/node/bin/node";
+	const paths = (platform: "darwin" | "linux") =>
+		policyFor({
+			platform,
+			scratch,
+			installs: ["/install/node_modules"],
+			node: ["/node"],
+			npmrc: "/node/lib/node_modules/npm/npmrc",
+			runtime: "/sandbox-runtime",
+			system: systemReads[platform],
+		});
+	return {
+		runner: runnerSource(),
+		watchdog: watchdogSource(1000),
+		command: commandFor({ scratch, node, timeout: 30_000 }),
+		environment: environmentFor({ scratch, node, lang: "C.UTF-8" }),
+		policy: { darwin: paths("darwin"), linux: paths("linux") },
+		denyGlobs,
+	};
+}
+
 /** The parts of sandbox-runtime's manager a probe uses. */
 export type SandboxRuntime = Pick<
 	typeof SandboxManager,
@@ -732,31 +801,15 @@ export class Probe {
 	/** What the probe may read and write, as the sandbox is given it. */
 	get policy(): ProbePolicy {
 		const { platform } = this.#sandbox;
-		const system = systemReads[platform].filter((path) => existsSync(path));
-		const run = join(this.#scratch, "run");
-		const tree = join(this.#scratch, "tree");
-		return {
-			read: [
-				tree,
-				...this.#installs,
-				...nodeReads(process.execPath),
-				runtimePackage(),
-				join(this.#scratch, "probe"),
-				run,
-				...system,
-			],
-			// A granted Node prefix's `etc` holds the global npmrc, and npm's own directory its builtin one; either can carry a
-			// registry token.
-			deny: [
-				"/",
-				...nodeReads(process.execPath).map((path) => join(path, "etc")),
-				join(dirname(dirname(realpathSync(process.execPath))), "lib", "node_modules", "npm", "npmrc"),
-			],
-			denyGlobs: [tree, ...this.#installs].flatMap((root) => denyGlobs.map((pattern) => posix.join(root, pattern))),
-			write: [run],
-			// sandbox-runtime keeps this writable for itself whatever the policy says.
-			denyWrite: platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
-		};
+		return policyFor({
+			platform,
+			scratch: this.#scratch,
+			installs: this.#installs,
+			node: nodeReads(process.execPath),
+			npmrc: join(dirname(dirname(realpathSync(process.execPath))), "lib", "node_modules", "npm", "npmrc"),
+			runtime: runtimePackage(),
+			system: systemReads[platform].filter((path) => existsSync(path)),
+		});
 	}
 
 	/** Runs the probe once, within its time and output limits, and ends every process it started. */
@@ -764,11 +817,9 @@ export class Probe {
 		if (this.#closed) throw new ProbeError("closed", "the probe is closed");
 		if (this.#running) throw new ProbeError("invalidProbe", "a probe runs once at a time");
 		this.#running = true;
-		const home = join(this.#scratch, "run", "home");
-		const temporary = join(this.#scratch, "run", "tmp");
 		const node = realpathSync(process.execPath);
 		const tree = join(this.#scratch, "tree");
-		const command = `cd ${quote(tree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && ulimit -t ${Math.ceil(backstop(this.#timeout) / 1000)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", runnerName))}`;
+		const command = commandFor({ scratch: this.#scratch, node, timeout: this.#timeout });
 		const chunks: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
@@ -797,13 +848,7 @@ export class Probe {
 			);
 			child = ProbeProcess.start(argv, {
 				cwd: tree,
-				env: {
-					PATH: `${dirname(node)}:/usr/bin:/bin`,
-					HOME: home,
-					TMPDIR: temporary,
-					// spawn leaves out a variable whose value is undefined.
-					LANG: process.env.LANG,
-				},
+				env: environmentFor({ scratch: this.#scratch, node, lang: process.env.LANG }),
 				timeoutMs: this.#timeout,
 				output: (chunk) => {
 					if (truncated) return;
