@@ -19,9 +19,9 @@ export type PruneEntry = { kind: PruneKind; paths: string[]; bytes: number };
 /** A static run that holds a worktree lock, so prune removes nothing beside it. */
 export type LiveRun = { pid: number; worktree: string };
 
-/** Git could not answer, or the state directory could not be read, so prune removes nothing. */
+/** Git could not answer, or the state directory is a link or could not be read, so prune removes nothing. */
 export class StorePruneError extends Error {
-	readonly code: "gitFailed" | "unreadable";
+	readonly code: "gitFailed" | "linked" | "unreadable";
 	constructor(code: StorePruneError["code"], message: string, options?: ErrorOptions) {
 		super(message, options);
 		this.name = "StorePruneError";
@@ -178,6 +178,12 @@ export class StorePrune {
 		options: { root: string; now?: number; env?: NodeJS.ProcessEnv },
 	): Promise<StorePrune> {
 		const root = resolve(options.root);
+		// Apply refuses to rename through a linked state directory, so a plan through one would promise what it never removes.
+		if ((await lstat(root).catch(() => undefined))?.isSymbolicLink())
+			throw new StorePruneError(
+				"linked",
+				`Melian's state directory at ${root} is a link, and prune does not follow a linked state directory. Set MELIAN_STATE_DIR to a directory of your choice, move the files the link points to into the state directory melian doctor then names, and run prune again`,
+			);
 		const now = options.now ?? Date.now();
 		const env = Object.fromEntries(
 			Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_")),

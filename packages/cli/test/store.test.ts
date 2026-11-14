@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -182,6 +182,47 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		}
 		expect(await exists(`graphs/${"a".repeat(64)}`)).toBe(true);
 		expect(await exists("tools/gone")).toBe(true);
+	});
+
+	it("lists on --apply exactly what the dry run listed, with the same changeset count", async () => {
+		await seed();
+		const dry = output();
+		expect(await main(["store", "prune"], dry)).toBe(0);
+		const applied = output();
+		expect(await main(["store", "prune", "--apply"], applied)).toBe(0);
+		const [dryHeader, ...dryRest] = dry.lines.join("").split("\n").slice(1);
+		const [appliedHeader, ...appliedRest] = applied.lines.join("").split("\n").slice(1);
+		expect(dryHeader).toBe("Would remove 3 entries, freeing 14 B. Nothing is removed without --apply.");
+		expect(appliedHeader).toBe("Removed 3 entries, freeing 14 B.");
+		expect(appliedRest).toEqual(dryRest);
+	});
+
+	it("refuses a linked state directory on a dry run and on --apply, and prunes it once moved as the message says", async () => {
+		const real = join(scratch, "real");
+		await mkdir(real);
+		await symlink(real, state);
+		await seed();
+		const refusal = `melian: Melian's state directory at ${state} is a link, and prune does not follow a linked state directory. Set MELIAN_STATE_DIR to a directory of your choice, move the files the link points to into the state directory melian doctor then names, and run prune again\n`;
+		for (const args of [
+			["store", "prune"],
+			["store", "prune", "--apply"],
+		]) {
+			const io = output();
+			expect(await main(args, io)).toBe(1);
+			expect(io.lines).toEqual([]);
+			expect(io.errors).toEqual([refusal]);
+		}
+		expect(await readdir(join(real, "graphs"))).toEqual(["a".repeat(64)]);
+		const chosen = join(scratch, "chosen");
+		const moved = await stateDirectory(repo, { MELIAN_STATE_DIR: chosen });
+		await mkdir(chosen);
+		await rename(real, moved);
+		const io = output();
+		io.env.MELIAN_STATE_DIR = chosen;
+		expect(await main(["store", "prune", "--apply"], io)).toBe(0);
+		expect(io.lines.join("")).toContain(`State directory: ${moved}\nRemoved 3 entries, freeing 14 B.\n`);
+		expect(io.lines.join("")).toContain("Kept 1 changeset file, 12 B, and scripted/.\n");
+		expect(await readFile(join(moved, "pull-1.sqlite"), "utf8")).toBe("changeset");
 	});
 
 	it.each([

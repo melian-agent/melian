@@ -755,3 +755,41 @@ it("keeps a link at a removed graph's coverage path, which it lists as not recog
 	await prune.apply();
 	expect((await lstat(join(state, "coverage", dead))).isSymbolicLink()).toBe(true);
 });
+
+it("refuses a state directory that is itself a link, naming it, and removes nothing", async () => {
+	const real = `${state}-real`;
+	outside.push(real);
+	await rename(state, real);
+	await symlink(real, state);
+	const dead = await graph("f".repeat(40), 30 * day);
+	await writeFile(join(state, "pull-1.sqlite"), "changeset");
+	await expect(plan()).rejects.toEqual(
+		new StorePruneError(
+			"linked",
+			`Melian's state directory at ${state} is a link, and prune does not follow a linked state directory. Set MELIAN_STATE_DIR to a directory of your choice, move the files the link points to into the state directory melian doctor then names, and run prune again`,
+		),
+	);
+	expect(await readdir(join(real, "graphs"))).toEqual([dead]);
+	expect(await readdir(join(real, "coverage"))).toEqual([dead]);
+});
+
+it("removes on an unchanged store exactly what the plan lists, of every kind", async () => {
+	const dead = await graph("f".repeat(40), 30 * day);
+	await mkdir(join(state, "graphs", "1".repeat(64)), { recursive: true });
+	await age(`graphs/${"1".repeat(64)}`, 2 * day);
+	await mkdir(join(state, "coverage", "2".repeat(64)), { recursive: true });
+	await mkdir(join(state, "mutation", "3".repeat(64)), { recursive: true });
+	await age(`mutation/${"3".repeat(64)}`, 20 * day);
+	await writeFile(join(state, "pull-1.sqlite"), "changeset");
+	const prune = await plan();
+	expect(kinds(prune)).toEqual([
+		["unreadable graph", `graphs/${"1".repeat(64)}`],
+		["graph", `graphs/${dead}`, `coverage/${dead}`],
+		["orphan coverage", `coverage/${"2".repeat(64)}`],
+		["mutation partition", `mutation/${"3".repeat(64)}`],
+	]);
+	expect(prune.changesets).toEqual({ files: 1, bytes: 9 });
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	for (const entry of prune.entries) for (const path of entry.paths) expect(await exists(path)).toBe(false);
+	expect(await readFile(join(state, "pull-1.sqlite"), "utf8")).toBe("changeset");
+});

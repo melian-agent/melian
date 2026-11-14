@@ -81,7 +81,8 @@ Commands:
                          2 when it cannot run here.
   store prune [--apply]  Print the rebuildable cache Melian's state directory holds past its retention, and the space
                          removing it frees; --apply removes it. Changeset files are never removed. Exits 0, or 1
-                         when a static check is running, which stops prune removing anything.
+                         when a static check is running, which stops prune removing anything, or when the state
+                         directory is a link, which prune does not follow.
   doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
                          access.
 
