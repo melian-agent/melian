@@ -24,6 +24,16 @@ describe("walkthroughRequest", () => {
 		expect(walkthroughRequest(unset).key).not.toBe(walkthroughRequest(sample).key);
 	});
 
+	it("keys the record tool the summariser is given", () => {
+		expect(walkthroughRequest(sample).request).toMatchObject({
+			tool: {
+				name: "record_walkthrough",
+				description: "Record the change summary and finish.",
+				parameters: expect.objectContaining({ type: "object" }),
+			},
+		});
+	});
+
 	it("attaches a review with a fresh nonce to the same task, and shows it the prompt under that nonce", () => {
 		const again = walkthroughRequest({ ...sample, nonce: "m".repeat(24) });
 		expect(again.key).toBe(walkthroughRequest(sample).key);
