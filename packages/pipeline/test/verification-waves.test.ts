@@ -227,6 +227,33 @@ describe("verification as each lens ends", () => {
 		expect(entry?.ended).toEqual({});
 	});
 
+	it("keeps another lens task's waves when the index names it before a review starts watching its lenses", async () => {
+		lenses = [lens("correctness")];
+		const key = Revision.key(changeset.revision);
+		scriptConversations(fake, [
+			{ match: lens("correctness").instructions, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const other = { lensTask: 999_999, ended: {}, waves: [] };
+		let moved = false;
+		const getTask = harness.getTask.bind(harness);
+		harness.getTask = (async (...args: Parameters<typeof getTask>) => {
+			// The watcher reads the lens task just before it opens the waves; another review has replaced it by then.
+			if (!moved && new Error().stack?.includes("verifyAsLensesEnd")) {
+				moved = true;
+				const root = await harness.root(context);
+				await root.commit(async (tx) => {
+					(await tx.doc(ReviewIndex, root.id)).reviews[key]!.task = other.lensTask;
+					(await tx.doc(VerificationWavesDocument, root.id)).reviews[key] = structuredClone(other);
+				}, context);
+			}
+			return getTask(...args);
+		}) as typeof harness.getTask;
+		await expect(review()).rejects.toMatchObject({ code: "superseded" });
+		expect(moved).toBe(true);
+		const root = await harness.root(context);
+		expect((await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[key]).toEqual(other);
+	});
+
 	it("starts no wave for a revision the index holds nothing for", async () => {
 		const root = await harness.root(context);
 		const created = await startWave(

@@ -1162,7 +1162,12 @@ describe("a level that probes", () => {
 			() => undefined,
 			(error: unknown) => error,
 		);
-		expect(outcome).toMatchObject({ code: "superseded" });
+		expect(outcome).toMatchObject({
+			code: "superseded",
+			message: expect.stringContaining(
+				"replaced this one's lens run or verification, so this review records no verdict",
+			),
+		});
 		expect(second).toBeDefined();
 		const { verdict } = await second!.run;
 		expect(verdict.blocking).toBe(true);
