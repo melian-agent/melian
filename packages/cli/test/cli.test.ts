@@ -778,16 +778,21 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		timeout: 120_000,
 	}, () => {
 		const { repo, env } = staticCheckout("export const b: number = 2;\n");
+		// The tool, its source and its version stay the same, so the request does too, and only --rerun runs it again.
+		const fails = join(repo, ".git", "tsc-fails");
+		writeFileSync(fails, "");
 		const tsc = join(repo, "node_modules/.bin/tsc");
 		mkdirSync(dirname(tsc), { recursive: true });
+		// npm's record of the install, as a real install writes, so the stored run can be reused.
+		writeFileSync(join(repo, "node_modules/.package-lock.json"), "{}");
 		writeFileSync(
 			tsc,
-			'#!/bin/sh\nif [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho segfault\nexit 139\n',
+			`#!/bin/sh\nif [ -f '${fails}' ] && [ "$1" != "--version" ]; then echo segfault; exit 139; fi\nexec node '${join(root, "node_modules/typescript/bin/tsc")}' "$@"\n`,
 			{ mode: 0o755 },
 		);
 		const first = melian(repo, ["review", "main"], env);
 		expect(first.stdout).toContain("static.tsc  failed");
-		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
+		rmSync(fails);
 
 		const stored = melian(repo, ["review", "main"], env);
 		const rerun = melian(repo, ["review", "main", "--rerun"], env);

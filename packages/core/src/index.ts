@@ -91,6 +91,7 @@ export {
 	melianYamlSchema,
 	modelTiers,
 	type PolicyChangeReview,
+	type PolicyText,
 	type PreExistingCap,
 	parseResolution,
 	preExistingCapSchema,
@@ -450,6 +451,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { type HostFacts, hostFacts } from "./host.ts";
 export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
@@ -508,6 +510,13 @@ export {
 	type RecordCell,
 	type RecordStore,
 } from "./record-store.ts";
+export {
+	KeyedRequest,
+	type RequestExclusion,
+	requestExclusions,
+	requestJson,
+	type UnkeyedInput,
+} from "./request-key.ts";
 export {
 	costText,
 	durationText,

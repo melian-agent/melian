@@ -1,0 +1,791 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "06583b07132b821945b126edd02065fb48e3072e",
+		"head": "3b156b8a2f677e537ed7914d7896ebfab20ad7d0"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/check-request.ts",
+		"packages/pipeline/src/checks.ts",
+		"packages/core/src/config.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "d398a6582704ce1bf3dcba14b4c2355afd5c24debb04da07b2a0b8415c7ee96b",
+	"mutants": [
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1188,
+			"column": 14,
+			"endLine": 1188,
+			"endColumn": 89,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ed3c7ae9c08e4c02a00b191c34244e59eaf83cad292e254d9045a1b0003df5a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1188,
+			"column": 21,
+			"endLine": 1188,
+			"endColumn": 88,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "reader &&= openSource(repoRoot, source).catch(fromSource(repoRoot))",
+			"status": "generated",
+			"id": "801896d38e0eed8ef878c5ee621266fdd02fff94cb155b81dc024c0773bcdd93",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1189,
+			"column": 15,
+			"endLine": 1189,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "fec5cd36f77ba9f5b0641cd6d651ea39e110ffe784c755e6f02dbcd19dc0abd8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1189,
+			"column": 94,
+			"endLine": 1189,
+			"endColumn": 98,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fabfac050c8abab1eee34b809fd80dc466f39ab7fa7d8b6f62ce2a9c8dee50cc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1194,
+			"column": 24,
+			"endLine": 1194,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "15ea9f96f563b2106ebb38cd3853e1b60d6f57aa89641706b7264ef4c5ebf963",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"resolution per check and rule, from the worktree",
+						"gives policy-change-review the layers of the directory that judges the path"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1210,
+			"column": 75,
+			"endLine": 1231,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "08a82a984c9977caceca652190456571f18d33b3c57cb9c6697f7e72e686c103",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1212,
+			"column": 16,
+			"endLine": 1214,
+			"endColumn": 10,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(paths.flatMap(path => chain(path).map(directory => posix.join(directory, melianPaths.config))))]",
+			"status": "generated",
+			"id": "9e6c6d47a6e3671d4cb9fc2f7b63561a8b2a68fa3d9537cb5124c968f5029858",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1212,
+			"column": 16,
+			"endLine": 1214,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "11c84f78d5611dc245500260ad79c04b51a9e2edab4f827a24e8e4f420675cbd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1213,
+			"column": 28,
+			"endLine": 1213,
+			"endColumn": 111,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "1bbbca2a75c7799ed71f5689021c0843946b3ffbbe983639c6baca1c10e2b593",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1213,
+			"column": 54,
+			"endLine": 1213,
+			"endColumn": 110,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "49fb1ee8661534df143933c830c341af36b1af8d72f82a2cd8fc5436dd9ac939",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1215,
+			"column": 30,
+			"endLine": 1215,
+			"endColumn": 32,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "8a3358636004a7879bdb63e955f8acda8b06cea7662d543e2bc2f94765a028f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1217,
+			"column": 28,
+			"endLine": 1229,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c7bcadd897030f103627646fbf14ab7cc6aa0a5bf9829a80d2b985bceab02e65",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1219,
+			"column": 7,
+			"endLine": 1219,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d030cad8d7c2b937a79dab55d4fc63943aef6902502e2c3ba95ec9df5f0d8425",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1219,
+			"column": 7,
+			"endLine": 1219,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b2d90325f587ed55cd4e32e834c8aec1f8a2dc879c74dab46f6875cc7352a82f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1219,
+			"column": 7,
+			"endLine": 1219,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "text !== undefined",
+			"status": "generated",
+			"id": "638bf275f41656fe06f6ba899779b949ef97f08a312ae01017c3de9bed94a4c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1220,
+			"column": 3,
+			"endLine": 1220,
+			"endColumn": 35,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "total -= Buffer.byteLength(text)",
+			"status": "generated",
+			"id": "24c33efa02b1c371b10355e4e4f334621771aaec53e131122053855a3307c80a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1221,
+			"column": 7,
+			"endLine": 1221,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9743da54e42a625ab2a2fbced44bc7676022dd94c0bbb7978cc03a75032c13c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1221,
+			"column": 7,
+			"endLine": 1221,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1c097aa14ff5f90587bc05cdd6ba6de7df3eafa86d07ef277a066a493931d8cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1221,
+			"column": 7,
+			"endLine": 1221,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "total >= maxBytes",
+			"status": "generated",
+			"id": "22fbff648fc0f2edf6a455a3b2fb236586f92e99a7e7d7bcc80c44c8c9cc3f3c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1221,
+			"column": 7,
+			"endLine": 1221,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "total <= maxBytes",
+			"status": "generated",
+			"id": "eacaad270a54c9060bc20da3ba164c86b1b9b776bfcdcbf6b42c87d12f0bc0ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1221,
+			"column": 25,
+			"endLine": 1227,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d6c7e503cc0e338e0eed6fdcb2b82de69bbb0d0ff530dc7edaffdaa57e0837ea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1223,
+			"column": 5,
+			"endLine": 1223,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d95d9d01a004468c69ce2ad23bbb9bb49e393933fd8ef8e2f7dcaa31f9d7de49"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1224,
+			"column": 5,
+			"endLine": 1224,
+			"endColumn": 40,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "825948ddb99ad7e42852ac6bded22f66917b20750dd2d828ef045e1c1ac0a1d5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads the policy files' text up to the total limit and refuses one byte past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1225,
+			"column": 5,
+			"endLine": 1225,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "56a3fbdadb8d80072ca94bbf9827e5da07d57a360aae14f18b4979d4bcf6bf1b"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 1228,
+			"column": 14,
+			"endLine": 1228,
+			"endColumn": 28,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "175d10cb6113109bc2dc44d95003fbaf61f9b4eb3ccdc5c5eaccf5e2786bd6b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 39,
+			"column": 35,
+			"endLine": 39,
+			"endColumn": 46,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "1024 / 1024",
+			"status": "generated",
+			"id": "325c4ebcc10f6c20971693155fb8da397fdfe8dac32fa9c9fa8debceb81d3034",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 674,
+			"column": 6,
+			"endLine": 674,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "32acf158def9c9f6ffb4730023f96fc42d493009f25e41d1be732c9de6095f54",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a revision source's run under a nested melian.yaml past the size limit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 674,
+			"column": 6,
+			"endLine": 674,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "81ee3c8206862442d35e35ee52b61b8b4e10742248c9b23d865936eac4a96c27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again when a nested melian.yaml in the working tree changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 674,
+			"column": 6,
+			"endLine": 674,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "input.source.kind !== \"worktree\"",
+			"status": "generated",
+			"id": "807f8a98feabb10c8b91f2e3908ac92c7c783133f580e7c8e1eaaaf63c921610",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again when a nested melian.yaml in the working tree changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 674,
+			"column": 28,
+			"endLine": 674,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7c0a79aa7c90eb7fdf4c1f3800dcee9c2b266db8848d6b8982d95444a6781ef0"
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 674,
+			"column": 41,
+			"endLine": 674,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1a67cd7c3ae0b7ee4308de8b3c9cf8b9de937ded12135cd118c0f578b55da2e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again when a nested melian.yaml in the working tree changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 683,
+			"column": 115,
+			"endLine": 690,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "43b69758d1b7d6336aed9a784451759046bf54c2173ffcb594c5c769ed88e7af",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again when a nested melian.yaml in the working tree changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 686,
+			"column": 29,
+			"endLine": 689,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e514e559d383723ae883aa8fbd986e3cdeeae985a1f2b565fed86c9634d85968",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 687,
+			"column": 7,
+			"endLine": 687,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6fca2561090d48f0f5f09683c9b393b18c4d0c1bfc2d2bb57c3b262f89a6d176",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"stops on a failure to read the working tree's policy that is not a configuration error"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 687,
+			"column": 7,
+			"endLine": 687,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4bebbdf449ee8b294ca61008e835f86bb61077cdf3df51ab63258024a9f7faab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 687,
+			"column": 44,
+			"endLine": 687,
+			"endColumn": 68,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b63e5bb2c8bc933b05b2eb21d652597984588fd2bd7b85743b7df0956765a629",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 36,
+	"omitted": 0,
+	"unmutated": []
+}

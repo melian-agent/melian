@@ -5,7 +5,7 @@ import type {
 	Severity,
 	StoredVerificationState,
 } from "@melian-agent/core";
-import { Revision } from "@melian-agent/core";
+import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
@@ -24,10 +24,11 @@ import {
 	type ReviewState,
 	reportVerdict,
 	type StoredBudgetEnd,
+	verifierInjectionPolicy,
 } from "./lens-tools.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
-import { quoteUntrusted } from "./untrusted.ts";
+import { identityNonce, quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
 import {
 	claimKey,
@@ -47,6 +48,9 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
+	// The severity each claim's lens reported, by claim key, read when the candidate formed; absent from a candidate an
+	// older Melian stored, whose verifier reads it from the findings at spawn.
+	reportedAt?: Record<string, Severity>;
 	// The dismissed findings the verifier judges each claim against for sameness; absent when none qualifies, so a
 	// candidate without them keeps the attach key it had before Melian asked.
 	dismissed?: DismissedPredecessor[];
@@ -116,36 +120,22 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					if (task.input.reused?.[candidate.key] !== undefined) continue;
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
-					const claims = candidate.state.claims.map(({ id, source }, index) => ({
+					const claims = candidate.state.claims.map((claim, index) => ({
 						label: `c${index + 1}`,
-						id,
-						source,
+						id: claim.id,
+						source: claim.source,
+						severity:
+							candidate.reportedAt === undefined
+								? sightingIn(findings, Revision.key(task.input.revision), claim.id, claim.source)?.properties
+										.severity
+								: candidate.reportedAt[claimKey(claim)],
 						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
 					}));
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
-						instructions: [
-							verifierInstructions,
-							...(candidate.decisionsAtBase === undefined
-								? []
-								: [
-										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
-									]),
-							...(candidate.designAtBase === undefined
-								? []
-								: [
-										`## Design sections at base\n${quoteUntrusted("listing", candidate.designAtBase.sections, task.input.revision.nonce)}`,
-										`## Design files at base\n${quoteUntrusted("listing", candidate.designAtBase.files, task.input.revision.nonce)}`,
-									]),
-							...claims.map(({ label, id, source }) => {
-								const at = Revision.key(task.input.revision);
-								const severity = sightingIn(findings, at, id, source)?.properties.severity;
-								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
-							}),
-							...dismissed.map(({ label, id }) => `Dismissed ${label} finding ${id}`),
-						].join("\n\n"),
+						instructions: verifierPrompt(candidate, claims, dismissed, task.input.revision.nonce),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
 					});
@@ -154,7 +144,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						version: task.input.version,
 						role: "verifier",
 						model: `${candidate.route[0]!.provider}/${candidate.route[0]!.modelId}`,
-						claims,
+						claims: claims.map(({ severity: _, ...claim }) => claim),
 						...(dismissed.length === 0 ? {} : { dismissed }),
 						review: task.input.root,
 						revision: task.input.revision,
@@ -181,19 +171,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						return { status: "unanswered", reason: "superseded" };
 					const content =
 						attempt === 0
-							? candidate.state.claims
-									.map(
-										(claim, index) =>
-											`Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
-									)
-									.concat(
-										(candidate.dismissed ?? []).map(
-											({ id: _, ...claim }, index) =>
-												`Dismissed d${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
-										),
-									)
-									.join("\n\n")
-							: "Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";
+							? verifierInput(
+									candidate.state.claims.map(({ verification: _, ...claim }) => claim),
+									(candidate.dismissed ?? []).map(({ id: _, ...claim }) => claim),
+									task.input.revision.nonce,
+								)
+							: continueJudging;
 					const settled = await (
 						await child.submit(
 							{ type: "input", content, requestId: `verify:${candidate.key}:${attempt}` },
@@ -277,13 +260,7 @@ export async function startVerification(
 	own: ReadonlySet<string> = new Set(),
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
-	const { nonce: _, ...revision } = input.revision;
-	const key = JSON.stringify({
-		root: input.root,
-		revision,
-		version: input.version,
-		candidates: input.candidates.map(candidateIdentity),
-	});
+	const { key } = verificationRequest(input);
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
@@ -346,11 +323,11 @@ export async function startVerification(
 		);
 		for (const candidate of input.candidates)
 			if (
-				(input.reused?.[candidate.key] !== undefined || own.has(JSON.stringify(candidateIdentity(candidate)))) &&
+				(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
 				standing.standing(
-					JSON.stringify(candidateIdentity(candidate)),
+					candidateKey(candidate),
 					candidate.state.claims.map(claimKey),
-					input.version,
+					waveVersion(input.version),
 				) === undefined
 			)
 				return undefined;
@@ -387,6 +364,111 @@ export function candidateIdentity({ dismissals: _, ...candidate }: VerificationC
 	};
 }
 
+/** The key of a candidate's verification, through core's key function, which a wave outcome stands for. */
+export function candidateKey(candidate: VerificationCandidate): string {
+	return KeyedRequest.of("verification.candidate", requestJson(candidateIdentity(candidate))).key;
+}
+
+const continueJudging =
+	"Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";
+
+function claimLine(label: string, id: string, severity: Severity | undefined): string {
+	return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
+}
+
+function dismissedLine(label: string, id: string): string {
+	return `Dismissed ${label} finding ${id}`;
+}
+
+function verifierPrompt(
+	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
+	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
+	dismissed: readonly { label: string; id: string }[],
+	nonce: string,
+): string {
+	return [
+		verifierInstructions,
+		...(decisionsAtBase === undefined
+			? []
+			: [`## Decisions at base\n${quoteUntrusted("listing", decisionsAtBase, nonce)}`]),
+		...(designAtBase === undefined
+			? []
+			: [
+					`## Design sections at base\n${quoteUntrusted("listing", designAtBase.sections, nonce)}`,
+					`## Design files at base\n${quoteUntrusted("listing", designAtBase.files, nonce)}`,
+				]),
+		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
+		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
+	].join("\n\n");
+}
+
+function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[], nonce: string): string {
+	return claims
+		.map((claim, index) => `Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), nonce)}`)
+		.concat(
+			dismissed.map(
+				(claim, index) => `Dismissed d${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), nonce)}`,
+			),
+		)
+		.join("\n\n");
+}
+
+// The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
+// for what varies, so every fixed fragment it is shown reaches the key.
+function verifierText(): unknown {
+	const nonce = identityNonce;
+	return {
+		tools: [...Object.values(lensReadTools), reportVerdict].map(({ name, description, parameters }) => ({
+			name,
+			description,
+			parameters,
+		})),
+		policy: verifierInjectionPolicy(nonce),
+		prompt: verifierPrompt(
+			{ decisionsAtBase: "<decisions>", designAtBase: { sections: "<sections>", files: "<files>" } },
+			[
+				{ label: "c1", id: "<id>", severity: "P1" },
+				{ label: "c2", id: "<id>", severity: undefined },
+			],
+			[{ label: "d1", id: "<id>" }],
+			nonce,
+		),
+		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
+		continue: continueJudging,
+	};
+}
+
+/** What a wave's outcome was judged under beyond its candidate: the verifier's version and the fixed text it is given. */
+export function waveIdentity(version: string): RecordJson {
+	return requestJson({ version, text: verifierText() });
+}
+
+/** The version a wave records and is compared under, so a wave stands only while the verifier's text is unchanged too. */
+export function waveVersion(version: string): string {
+	return KeyedRequest.of("verification.wave", waveIdentity(version)).key;
+}
+
+/**
+ * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
+ * nonce, which is drawn afresh on every review, and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
+ * version.
+ */
+export function verificationRequest({
+	// A storage-local conversation ID and a checkout path name the host; the index the key is compared in is the root's own.
+	root: _root,
+	revision: { nonce, repoRoot: _repoRoot, ...revision },
+	candidates,
+	// Outcomes standing waves already reached for these candidates' identities; the commit checks each still stands.
+	reused: _,
+	...input
+}: VerificationInput): KeyedRequest<RecordJson> {
+	return KeyedRequest.of(
+		"verification",
+		requestJson({ ...input, revision, candidates: candidates.map(candidateIdentity), text: verifierText() }),
+		{ nonce },
+	);
+}
+
 /**
  * Starts a wave for `lensTask` at the input's revision: a verification task over candidates some lenses' ends formed
  * while others still run. Clears their claims' earlier verdicts, so the wave's own decide them. Returns nothing when the
@@ -409,9 +491,9 @@ export async function startWave(
 		return input.candidates.filter(
 			(candidate) =>
 				waves.standing(
-					JSON.stringify(candidateIdentity(candidate)),
+					candidateKey(candidate),
 					candidate.state.claims.map(claimKey),
-					input.version,
+					waveVersion(input.version),
 				) === undefined,
 		);
 	};
@@ -443,9 +525,9 @@ export async function startWave(
 		);
 		entry.waves.push({
 			task: created,
-			version: input.version,
+			version: waveVersion(input.version),
 			candidates: fresh.map((candidate) => ({
-				key: JSON.stringify(candidateIdentity(candidate)),
+				key: candidateKey(candidate),
 				claims: candidate.state.claims.map(claimKey),
 			})),
 		});

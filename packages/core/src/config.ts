@@ -1149,7 +1149,16 @@ export interface ConfigLookup {
 	 * make that review stricter than the defaults, never more lenient.
 	 */
 	policyReview(path: string): Promise<Pick<LoadedConfig, "config" | "resolutionLayers">>;
+	/**
+	 * The text of every committed or working-tree `melian.yaml` that applies to any of `paths`, sorted by file, read as
+	 * the lookup reads them, so a key built from it names what a check would load. Preference files are left out. A file
+	 * the lookup would refuse throws as the lookup does, and so do files that pass `maxBytes` of UTF-8 together.
+	 */
+	policyText(paths: readonly string[], maxBytes: number): Promise<readonly PolicyText[]>;
 }
+
+/** One `melian.yaml` as {@link ConfigLookup.policyText} read it. */
+export type PolicyText = { readonly file: string; readonly text: string };
 
 const severityOrder: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
 
@@ -1176,12 +1185,13 @@ function withReviewFloor(config: MelianConfig): MelianConfig {
 export function configLookup(repoRoot: string, source: RepositorySource): ConfigLookup {
 	const loaded = new Map<string, Promise<Layered>>();
 	let reader: Promise<SourceReader> | undefined;
+	const open = () => (reader ??= openSource(repoRoot, source).catch(fromSource(repoRoot)));
+	const chain = (path: string) => directoriesUpToRoot(repoPath(repoRoot, posix.dirname(path)), true);
 	const layered = (path: string) => {
 		const directory = repoPath(repoRoot, posix.dirname(path));
 		let config = loaded.get(directory);
 		if (config === undefined) {
-			reader ??= openSource(repoRoot, source).catch(fromSource(repoRoot));
-			config = reader.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true), source));
+			config = open().then((opened) => loadLayers(opened, chain(path), source));
 			loaded.set(directory, config);
 		}
 		return config;
@@ -1196,6 +1206,28 @@ export function configLookup(repoRoot: string, source: RepositorySource): Config
 		if (path.toLowerCase() !== melianPaths.config) return layered(posix.dirname(path));
 		const { config, resolutionLayers } = await layered(path);
 		return { config: withReviewFloor(config), resolutionLayers };
+	};
+	lookup.policyText = async (paths: readonly string[], maxBytes: number) => {
+		const opened = await open();
+		const files = [
+			...new Set(paths.flatMap((path) => chain(path).map((directory) => posix.join(directory, melianPaths.config)))),
+		].sort();
+		const texts: PolicyText[] = [];
+		let total = 0;
+		for (const file of files) {
+			const text = await opened.readText(file, maxConfigBytes).catch(fromSource(file));
+			if (text === undefined) continue;
+			total += Buffer.byteLength(text);
+			if (total > maxBytes) {
+				throw configError(
+					"tooLarge",
+					{ file, where: opened.label(file) },
+					`policy files pass ${maxBytes} bytes together`,
+				);
+			}
+			texts.push({ file, text });
+		}
+		return texts;
 	};
 	return lookup;
 }

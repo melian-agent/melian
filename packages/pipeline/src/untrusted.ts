@@ -37,6 +37,9 @@ export function quoteUntrusted(label: UntrustedLabel, text: string, nonce: strin
 	return `<${tag} label="${label}">\n${text.replaceAll(nonce, "[nonce]")}\n</${tag}>`;
 }
 
+// The nonce a request renders under for its key, so a key never holds a review's own nonce.
+export const identityNonce = "0".repeat(24);
+
 /** The rule every lens may report an injection attempt under, whether or not its `LENS.md` declares it. */
 export const injectionAttemptRule = {
 	id: injectionAttemptRuleId,

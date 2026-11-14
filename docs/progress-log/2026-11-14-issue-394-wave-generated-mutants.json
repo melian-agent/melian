@@ -1,0 +1,233 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6a84c1180a2252301711c8da655d86c50099045f",
+		"head": "c5df92e030639980c136503b7ebffb5dda060668"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/verification.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 349,
+			"column": 4,
+			"endLine": 353,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5a393e3ea02e2cae9b50b8718ff9f22ce1ac871b90365c0f03938a432b39b678",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 349,
+			"column": 4,
+			"endLine": 353,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "standing.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), waveVersion(input.version)) !== undefined",
+			"status": "generated",
+			"id": "92a37749769f6f25fbcd7b926e1556ce72da318b82e5e08bd5cf43fcc62ec0e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 420,
+			"column": 58,
+			"endLine": 422,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "de46d48d5ea13ac181d83bcfa982c71e8464ea7c5008813fc8bf8cfb21d434ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"hashes every input of the final verification key that no candidate's key or the revision covers"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 421,
+			"column": 20,
+			"endLine": 421,
+			"endColumn": 53,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "30aa17e92466bd978b3ffa134c2555bb6c6fc10df76b2d35f5325d156d5f64a3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"hashes every input of the final verification key that no candidate's key or the revision covers"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 425,
+			"column": 53,
+			"endLine": 427,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "feb861f87b9b182b65be3bf78f246d1597dca82aed7928592d6723386ed12833",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 426,
+			"column": 24,
+			"endLine": 426,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3bf033f5d25e76de1d80b7434886aed8b6ba3bb442f4c310c70017a6ed33a71d"
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 471,
+			"column": 4,
+			"endLine": 475,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e21bd96cb3262a03d6ac5727216a0b9317db3ea3fe30df3fbf5a0dff6f82d7ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 471,
+			"column": 4,
+			"endLine": 475,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f1564afdace9ddff770c006d9c33c9616412f11098599b05e02f71985333fe1e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 471,
+			"column": 4,
+			"endLine": 475,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), waveVersion(input.version)) !== undefined",
+			"status": "generated",
+			"id": "507f6e0ae382081c1bfc90eff7c6d3e0e82c17629f5c8b326a8a9bdcf6bf3847",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-waves.test.ts",
+					"path": [
+						"verification as each lens ends",
+						"a wave's version",
+						"stands while the verifier's text is unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 9,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -8,7 +8,6 @@ import {
 	configLookup,
 	type Decider,
 	type Decision,
-	type DecisionRequest,
 	defaultScrutinyLevel,
 	describeLineage,
 	EscalationRule,
@@ -66,6 +65,7 @@ import {
 	DecisionDocument,
 	type DecisionResult,
 	type DecisionTaskInput,
+	deciderOf,
 	decisionExtension,
 	decisionTask,
 	decisionTaskName,
@@ -87,6 +87,7 @@ import {
 	reopenDismissals,
 	type SightedFinding,
 	sightedBy,
+	sightingIn,
 } from "./findings.ts";
 import {
 	backgroundContext,
@@ -137,15 +138,17 @@ import {
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
-import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
+import { triageRequest } from "./triage-request.ts";
+import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 import {
-	candidateIdentity,
+	candidateKey,
 	startVerification,
 	startWave,
 	type VerificationCandidate,
 	type VerificationInput,
 	type VerificationResult,
 	VerificationTask,
+	waveVersion,
 } from "./verification.ts";
 import { verifierVersion } from "./verification-instructions.ts";
 import { claimKey, VerificationWaves, VerificationWavesDocument } from "./verification-waves.ts";
@@ -725,9 +728,8 @@ export class ReviewHarness {
 				);
 			}
 			if (record.kind === decisionTaskName) {
-				const { key } = record.input as unknown as DecisionTaskInput;
-				const { decider } = JSON.parse(key) as { decider: string };
-				return /^llm-fallback:([^/]+)\//.exec(decider)?.slice(1) ?? [];
+				const { name } = deciderOf(record.input as unknown as DecisionTaskInput);
+				return /^llm-fallback:([^/]+)\//.exec(name)?.slice(1) ?? [];
 			}
 			return [];
 		});
@@ -1547,26 +1549,22 @@ async function triage(
 	harness: Harness,
 	revision: string,
 	decider: Decider,
-	request: DecisionRequest,
-	inputCut: boolean,
+	asked: ReturnType<typeof triageRequest>,
 	rerun: boolean,
 	context: Context,
 	providers: readonly string[],
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
+	const request = asked.unkeyed.nonce;
+	const { inputCut } = asked.request;
 	const set = request.questionSet.name;
-	// What was asked, without the state: the state carries this review's boundary nonce, which differs on every call.
-	const key = JSON.stringify({
-		decider: decider.name,
-		questionSet: request.questionSet,
-		questions: request.questions,
-		...(inputCut ? { inputCut: true } : {}),
-	});
+	const { key } = asked;
 	const input: DecisionTaskInput = {
 		root: root.id,
 		revision,
 		key,
+		decider: { name: decider.name, ...(decider.version === undefined ? {} : { version: decider.version }) },
 		request: structuredClone(request) as DecisionTaskInput["request"],
 		...(inputCut ? { inputCut: true } : {}),
 	};
@@ -1820,14 +1818,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					harness,
 					reviewed,
 					options.decider,
-					{
+					triageRequest({
+						decider: options.decider,
 						questionSet: triageQuestionSet,
-						state: [triageBoundary(nonce), "## The change", triageInput.text].join("\n\n"),
 						questions: sharedQuestions(
 							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
 						),
-					},
-					triageInput.cut,
+						change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
+						nonce,
+					}),
 					options.rerun === true,
 					context,
 					options.triageProviders ?? [],
@@ -2045,6 +2044,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		// As the lenses reported them: a lowering stored by a verification this review attaches to must not change which
 		// finding speaks for a defect, or the candidates would read as new input and the stored judgements be cleared.
 		const storedFindings = await readFindings(harness, root, reviewed, context, { producers, asReported: true });
+		const sightings = await harness.snapshot(FindingsDocument, root, context);
 		const policies =
 			options.policy === undefined
 				? undefined
@@ -2149,6 +2149,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					coReported: !defect.lensOnly(),
 					silent: defect.silentAt(configFor),
 				},
+				reportedAt: Object.fromEntries(
+					candidateState.claims.flatMap((claim) => {
+						const severity =
+							sightings === undefined
+								? undefined
+								: sightingIn(sightings, reviewed, claim.id, claim.source)?.properties.severity;
+						return severity === undefined ? [] : [[claimKey(claim), severity]];
+					}),
+				),
 				...(restatement === undefined
 					? {}
 					: {
@@ -2416,9 +2425,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const shownTo = new Map<string, Record<string, string>>();
 			for (const candidate of candidates) {
 				const wave = waves.standing(
-					JSON.stringify(candidateIdentity(candidate)),
+					candidateKey(candidate),
 					candidate.state.claims.map(claimKey),
-					verifierVersion,
+					waveVersion(verifierVersion),
 				);
 				// A wave another run started, a crashed one's included, is waited for only where it would be reused.
 				const record = wave === undefined ? undefined : await harness.waitForTask(wave as TaskId, context);
@@ -2447,7 +2456,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				for (const candidate of (
 					(await harness.getTask(wave as TaskId, context))!.input as unknown as VerificationInput
 				).candidates)
-					own.add(JSON.stringify(candidateIdentity(candidate)));
+					own.add(candidateKey(candidate));
 			const attached = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification?.task;
 			spans.end();
 			verifying = await startVerification(

@@ -1,0 +1,20 @@
+{
+	"head": "b888477b",
+	"runs": [
+		{
+			"id": "hand-request-keys-digests-alone",
+			"at": "packages/pipeline/src/check-request.ts:98:12",
+			"mutator": "Hand",
+			"replacement": "input.install.digests",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		}
+	]
+}

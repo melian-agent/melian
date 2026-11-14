@@ -1,0 +1,142 @@
+{
+	"head": "12e1a0d8",
+	"runs": [
+		{
+			"id": "5a393e3ea02e2cae9b50b8718ff9f22ce1ac871b90365c0f03938a432b39b678",
+			"at": "packages/pipeline/src/verification.ts:349:4",
+			"mutator": "ConditionalExpression",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "92a37749769f6f25fbcd7b926e1556ce72da318b82e5e08bd5cf43fcc62ec0e1",
+			"at": "packages/pipeline/src/verification.ts:349:4",
+			"mutator": "EqualityOperator",
+			"replacement": "standing.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), waveVersion(input.version)) !== undefined",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "de46d48d5ea13ac181d83bcfa982c71e8464ea7c5008813fc8bf8cfb21d434ca",
+			"at": "packages/pipeline/src/verification.ts:420:58",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "30aa17e92466bd978b3ffa134c2555bb6c6fc10df76b2d35f5325d156d5f64a3",
+			"at": "packages/pipeline/src/verification.ts:421:20",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "e21bd96cb3262a03d6ac5727216a0b9317db3ea3fe30df3fbf5a0dff6f82d7ed",
+			"at": "packages/pipeline/src/verification.ts:471:4",
+			"mutator": "ConditionalExpression",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "f1564afdace9ddff770c006d9c33c9616412f11098599b05e02f71985333fe1e",
+			"at": "packages/pipeline/src/verification.ts:471:4",
+			"mutator": "ConditionalExpression",
+			"replacement": "false",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "507f6e0ae382081c1bfc90eff7c6d3e0e82c17629f5c8b326a8a9bdcf6bf3847",
+			"at": "packages/pipeline/src/verification.ts:471:4",
+			"mutator": "EqualityOperator",
+			"replacement": "waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), waveVersion(input.version)) !== undefined",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "feb861f87b9b182b65be3bf78f246d1597dca82aed7928592d6723386ed12833",
+			"at": "packages/pipeline/src/verification.ts:425:53",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		}
+	],
+	"survivedFirstNamedTest": [
+		{
+			"id": "feb861f87b9b182b65be3bf78f246d1597dca82aed7928592d6723386ed12833",
+			"at": "packages/pipeline/src/verification.ts:425:53",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		}
+	]
+}

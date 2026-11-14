@@ -1,0 +1,260 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "4bb8dc7a7803f9e4ee0a0a5ca0863142b400ed0d",
+		"head": "fde89e2561d53b12c11c3850ee4d2113d18ceb87"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/mutation-static.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 156,
+			"column": 18,
+			"endLine": 158,
+			"endColumn": 2,
+			"mutatorName": "MethodExpression",
+			"replacement": "managers.every(({\n  lockfiles,\n  records\n}) => (records.length === 0 ? lockfiles : records).some(present))",
+			"status": "generated",
+			"id": "f1be084919121ae3fc8bdd97d9cdada63845f71c7e7151e75a0675a755dc193c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 156,
+			"column": 32,
+			"endLine": 157,
+			"endColumn": 60,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e5e20961995bd12b71e5e614bedd1d644a4f2899466e6f660255bfeaf9ada317",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 157,
+			"column": 2,
+			"endLine": 157,
+			"endColumn": 60,
+			"mutatorName": "MethodExpression",
+			"replacement": "(records.length === 0 ? lockfiles : records).every(present)",
+			"status": "generated",
+			"id": "2c2ce316f45a37197bf792c5377024ff8fdaa72b2c508fe198aa79b311c5da69",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 157,
+			"column": 3,
+			"endLine": 157,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f4d8a92db82b1836e61b1a1c8412e084ba773d2763361adef9b1344f3e54e52b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside a node_modules npm recorded without a lockfile"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 157,
+			"column": 3,
+			"endLine": 157,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4e03663f0b26711dd98239e7710b7b8aa05f448248a101e54ec422cd1a7ca668",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 157,
+			"column": 3,
+			"endLine": 157,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "records.length !== 0",
+			"status": "generated",
+			"id": "cc4115d1e36a3d8cc7ef9a4dba50bfe4fd99fa1d4a1b00459d93d074cf56b066",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 161,
+			"column": 3,
+			"endLine": 161,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9cc69296b4c120d7c155d4eb9ec897d02d5c94797ee7f28ec2e70772b364f33b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"never reuses a run beside a node_modules that no manager recorded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 161,
+			"column": 3,
+			"endLine": 161,
+			"endColumn": 64,
+			"mutatorName": "LogicalOperator",
+			"replacement": "recorded && !existsSync(posix.join(repoRoot, \"node_modules\"))",
+			"status": "generated",
+			"id": "11d73d35968f7d5c24419ff9acf22cfca89399abeaddd91b984edd8b7777f40e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"reuses a run beside Bun's lockfile and its node_modules, which have no record to read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 161,
+			"column": 15,
+			"endLine": 161,
+			"endColumn": 64,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "existsSync(posix.join(repoRoot, \"node_modules\"))",
+			"status": "generated",
+			"id": "2f332497c8b76ab4ce60fe8d5081d41a8e7753adee1c3171691c6772ccf0cd34",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"the checkout's install",
+						"never reuses a run beside a node_modules that no manager recorded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/mutation-static.ts",
+			"line": 161,
+			"column": 48,
+			"endLine": 161,
+			"endColumn": 62,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c107214953e0a93228f2dfa18683450811d2d5ad8887fbb7352492270b2b6514"
+		}
+	],
+	"total": 10,
+	"omitted": 0,
+	"unmutated": []
+}

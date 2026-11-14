@@ -55,6 +55,11 @@ export interface DeciderAnswer {
 export interface Decider {
 	readonly name: string;
 	readonly calibrated: boolean;
+	/**
+	 * A hash of the fixed text this decider sends with every request, such as a text model's instructions and tool, so
+	 * a change to that text asks again rather than reuse an answer to other words. Absent for a decider that sends none.
+	 */
+	readonly version?: string;
 	decide(request: DecisionRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<DeciderAnswer>;
 }
 
