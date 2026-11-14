@@ -154,6 +154,30 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(await exists(`coverage/${name}`)).toBe(false);
 	});
 
+	it("prunes the repository it runs in, not one a hook's GIT_DIR and GIT_WORK_TREE name", async () => {
+		const other = createRepository();
+		const otherState = await stateDirectory(other, { MELIAN_STATE_DIR: scratch });
+		const orphan = `coverage/${"b".repeat(64)}/index.json`;
+		await write(orphan, "0123456789");
+		await mkdir(join(otherState, orphan, ".."), { recursive: true });
+		await writeFile(join(otherState, orphan), "0123456789");
+		const saved = { GIT_DIR: process.env.GIT_DIR, GIT_WORK_TREE: process.env.GIT_WORK_TREE };
+		process.env.GIT_DIR = join(other, ".git");
+		process.env.GIT_WORK_TREE = other;
+		try {
+			const io = output();
+			expect(await main(["store", "prune", "--apply"], io)).toBe(0);
+			expect(io.lines.join("").split("\n")[0]).toBe(`State directory: ${state}`);
+		} finally {
+			for (const [name, value] of Object.entries(saved))
+				if (value === undefined) delete process.env[name];
+				else process.env[name] = value;
+		}
+		expect(await exists(orphan)).toBe(false);
+		expect(await readFile(join(otherState, orphan), "utf8")).toBe("0123456789");
+		removeRepository(other);
+	});
+
 	it("removes nothing beside a live static check, names every one and exits 1", async () => {
 		await seed();
 		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "base");

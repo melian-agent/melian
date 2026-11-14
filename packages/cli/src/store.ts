@@ -1,7 +1,7 @@
-import { visibleText } from "@melian-agent/core";
+import { gitOutput, visibleText } from "@melian-agent/core";
 import { type LiveRun, type PruneEntry, StorePrune } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
-import { git, stateDirectory } from "./repository.ts";
+import { stateDirectory } from "./repository.ts";
 
 // A byte count is a safe integer, below 8 PiB, so the units never run out.
 export function size(bytes: number): string {
@@ -31,7 +31,8 @@ function refusal(live: readonly LiveRun[]): string {
 }
 
 export async function storePrune(io: Io, apply: boolean): Promise<number> {
-	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+	// Core's helper drops a hook's GIT_DIR and its kin, which would otherwise choose the repository prune removes from.
+	const repoRoot = (await gitOutput(io.cwd, ["rev-parse", "--show-toplevel"])).trim();
 	const prune = await StorePrune.open(repoRoot, {
 		root: await stateDirectory(repoRoot, io.env),
 		env: io.env,
