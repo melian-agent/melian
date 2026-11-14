@@ -552,10 +552,12 @@ describe("runChecks", () => {
 			},
 		);
 
+		// npm's install is fully recorded, so only the unreadable file, a directory where Yarn's record would be, decides.
 		it("never reuses a run whose install record cannot be read", { timeout: 60_000 }, async () => {
 			const run = await fixture();
 			write("package-lock.json", "lock");
-			mkdirSync(join(repo, "node_modules", ".package-lock.json"), { recursive: true });
+			write("node_modules/.package-lock.json", "@types/node 1");
+			mkdirSync(join(repo, "node_modules", ".yarn-integrity"), { recursive: true });
 			const first = await run();
 			expect(await run()).not.toBe(first);
 		});
