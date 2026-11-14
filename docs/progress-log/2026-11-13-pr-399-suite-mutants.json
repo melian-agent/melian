@@ -1,6 +1,6 @@
 {
 	"pull_request": 399,
-	"head": "7624e7edb209b1b53164c745db9477e104c03861",
+	"head": "19f93db2889f03e76de0a863c611c83a0fa6f0bf",
 	"ruling": "The maintainer ruled on 2026-11-14, in the coordinator's session, that these conformance-suite mutants are listed by line with a reason under the label \"suite assertion, proved per case\", never as equivalent. They stay unclaimed in 2026-11-13-pr-399-mutants.json, which fails --sample until issue #406 adds a claim for them; they then take \"claim\": \"suite\". Each row that deletes or changes something inside a case names the line that catches its case's failures under the mutant, as the decision's wording of 2026-11-14 requires.",
 	"mutants": [
 		{
@@ -77,57 +77,57 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 150,
+			"line": 157,
 			"column": 20,
-			"endLine": 150,
+			"endLine": 157,
 			"endColumn": 57,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"id": "0e248c6c64bede2aa0c3de1ccf440956ac4f22792cf2586f0785eb1d89e48272",
 			"label": "suite assertion, proved per case",
-			"reason": "Drops the record added before the cut-off; the cut-off list must still fail, and every breakage is still caught at line 152, as without the mutant."
+			"reason": "Drops the record added before the cut-off; the cut-off list must still fail, and every breakage is still caught at line 159, as without the mutant."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 161,
+			"line": 168,
 			"column": 4,
-			"endLine": 161,
+			"endLine": 168,
 			"endColumn": 59,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"id": "bfc43695c6238b486987e383f63cdc959cbaac507d955d80bd37ec1a1a998341",
 			"label": "suite assertion, proved per case",
-			"reason": "Line 168, a killed assertion, checks the same promise, that a cell no write reached reads as empty, for another changeset."
+			"reason": "Line 175, a killed assertion, checks the same promise, that a cell no write reached reads as empty, for another changeset."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 218,
+			"line": 225,
 			"column": 4,
-			"endLine": 218,
+			"endLine": 225,
 			"endColumn": 51,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"id": "0e1539efd4f61d876608bd4e87ed1f73850c7a961f8267591b834bd1b688cd41",
 			"label": "suite assertion, proved per case",
-			"reason": "Line 219 refuses a write with the first version, which catches a version that did not change: under the mutant the breakage \"the version is a hash of the value\" fails there."
+			"reason": "Line 226 refuses a write with the first version, which catches a version that did not change: under the mutant the breakage \"the version is a hash of the value\" fails there."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 233,
+			"line": 240,
 			"column": 4,
-			"endLine": 233,
+			"endLine": 240,
 			"endColumn": 49,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"id": "043bfff989df1592fa1c7e3c68c21f3e843de6b3ca5c8642147304bb8cb2893f",
 			"label": "suite assertion, proved per case",
-			"reason": "Line 234 refuses a write with the stale version, which catches a reused version: under the mutant the breakage \"the version is a hash of the value\" fails there."
+			"reason": "Line 241 refuses a write with the stale version, which catches a reused version: under the mutant the breakage \"the version is a hash of the value\" fails there."
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 354,
+			"line": 361,
 			"column": 4,
-			"endLine": 354,
+			"endLine": 361,
 			"endColumn": 24,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
@@ -137,9 +137,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 362,
+			"line": 369,
 			"column": 22,
-			"endLine": 364,
+			"endLine": 371,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
@@ -149,9 +149,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 381,
+			"line": 388,
 			"column": 4,
-			"endLine": 381,
+			"endLine": 388,
 			"endColumn": 24,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
@@ -161,9 +161,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 384,
+			"line": 391,
 			"column": 52,
-			"endLine": 384,
+			"endLine": 391,
 			"endColumn": 56,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
@@ -173,9 +173,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 386,
+			"line": 393,
 			"column": 48,
-			"endLine": 386,
+			"endLine": 393,
 			"endColumn": 67,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
@@ -185,9 +185,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 386,
+			"line": 393,
 			"column": 61,
-			"endLine": 386,
+			"endLine": 393,
 			"endColumn": 65,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
@@ -197,9 +197,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 390,
+			"line": 397,
 			"column": 22,
-			"endLine": 394,
+			"endLine": 401,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
@@ -209,9 +209,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 393,
+			"line": 400,
 			"column": 48,
-			"endLine": 393,
+			"endLine": 400,
 			"endColumn": 52,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",

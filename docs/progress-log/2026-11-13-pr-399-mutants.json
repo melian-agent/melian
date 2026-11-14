@@ -2,7 +2,7 @@
 	"melianMutants": 2,
 	"range": {
 		"base": "188ee862098521d0dd9a191f9e9e9a590d2f7080",
-		"head": "7624e7edb209b1b53164c745db9477e104c03861"
+		"head": "19f93db2889f03e76de0a863c611c83a0fa6f0bf"
 	},
 	"adapters": [
 		{
@@ -12992,7 +12992,7 @@
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -13080,7 +13080,7 @@
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -18581,7 +18581,7 @@
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -18625,7 +18625,7 @@
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -18691,7 +18691,7 @@
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -18767,12 +18767,12 @@
 			"file": "packages/core/src/testing.ts",
 			"line": 88,
 			"column": 66,
-			"endLine": 344,
+			"endLine": 351,
 			"endColumn": 1,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "aec69c14d165d50939d0445dad547cb4995f70d43e6f78e976d91f4481be9884",
+			"id": "de05a039ff5da6f3f71bfcb3fa40f8ccf4c07c9e8ba982e52bc1a446d45cef61",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19424,12 +19424,12 @@
 			"file": "packages/core/src/testing.ts",
 			"line": 120,
 			"column": 1,
-			"endLine": 129,
+			"endLine": 136,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "1523c39437f8248608f6ae345f6d461819a145194eda4c37a281b7cb092a2d92",
+			"id": "e612f22d2fecd82d459b6abca448782832d72fac50d2fd42bbb50562097c7a91",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19447,31 +19447,31 @@
 			"line": 121,
 			"column": 8,
 			"endLine": 121,
-			"endColumn": 70,
+			"endColumn": 117,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "5940c917f173bf0a40965193031235e6763214505a09b5645df9115c7b3286a1"
+			"id": "bfd4f5c0ebcf1d6a97dfad5b4f9bec816cf818463fc288a1fdd41337418b0e75"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 122,
 			"column": 7,
-			"endLine": 128,
+			"endLine": 135,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "bfa85543b408e44dd6198048b42b5a5792d3191727358cf96f6b24b799ad7142",
+			"id": "cdc5f062b6cb11dcb62927fa3c60c6adbebbc4887641a493d1114f66b3aeb849",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"each conformance case fails against an adapter that breaks its promise",
-						"add lands the valid records of a batch before it refuses an invalid one"
+						"add resolves past a record it refuses"
 					]
 				}
 			},
@@ -19481,19 +19481,19 @@
 			"file": "packages/core/src/testing.ts",
 			"line": 123,
 			"column": 37,
-			"endLine": 128,
+			"endLine": 135,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "b49710dc3ef4ad64f412ea3085e57ed433b679ccc92c79763061c01a8d0e629f",
+			"id": "4ecea008c9467be68e1d5e61c1f002395eb3b347598856d20d94f4eb56ad7421",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"each conformance case fails against an adapter that breaks its promise",
-						"add lands the valid records of a batch before it refuses an invalid one"
+						"add resolves past a record it refuses"
 					]
 				}
 			},
@@ -19528,20 +19528,46 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 126,
-			"column": 35,
+			"column": 29,
 			"endLine": 126,
-			"endColumn": 72,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[]",
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fa01765e1e14f8a62a9891fdb1b2ba568005e679c6ecf14282763f5b86e2f80"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 126,
+			"column": 43,
+			"endLine": 126,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e299a82e52427e0bf44d3acc5ab77eb00d3c33f849f3799b4116f1672a694a72"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 127,
+			"column": 18,
+			"endLine": 128,
+			"endColumn": 91,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "c7b658a2fe0e6d150f5e12291e4451afdd1572a2690c175d6d3770c13c5dde90",
+			"id": "40e6e3c526077fc36cbc08cead4bf2c63721c6b0444575204e82a900ebf81ae3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
 					]
 				}
 			},
@@ -19549,60 +19575,197 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 126,
-			"column": 52,
-			"endLine": 126,
-			"endColumn": 61,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "442cfe8a82848662404ef24b853be1cfbb3b07c42ea82cda637b09224c158345"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 126,
-			"column": 63,
-			"endLine": 126,
-			"endColumn": 66,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "3374758a72136f548b7e3dce64b2622f992c18b20519f1b3d42a75a983e4ba40"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 126,
-			"column": 83,
-			"endLine": 126,
-			"endColumn": 96,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d3bd916c3f80d6e33b8ec811b2a33eb1a484dc0447475aead85e197ef76522dd"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 127,
-			"column": 50,
-			"endLine": 127,
-			"endColumn": 52,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[\"Stryker was here\"]",
+			"line": 128,
+			"column": 5,
+			"endLine": 128,
+			"endColumn": 91,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
 			"status": "generated",
-			"id": "1b92151c0fd8950f7aec67e7d309fac7adfaaf23808a7098e53761aa58ea3316",
+			"id": "9dc27fb979895120480fb0426091afe6f360c9444a695823edb88ec4113ae1cf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"add refuses a record without naming it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 128,
+			"column": 5,
+			"endLine": 128,
+			"endColumn": 91,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e4e1c021689b59a0d162d9d7763cbfe1860c9129c5c2db3410166ae5b3311b41",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: refuses an invalid record before any of its batch lands"
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 128,
+			"column": 5,
+			"endLine": 128,
+			"endColumn": 91,
+			"mutatorName": "LogicalOperator",
+			"replacement": "refusal(\"unknownKind\")(error) || (error as RecordError).message.includes(\"not-a-kind\")",
+			"status": "generated",
+			"id": "57959c5601c2e8275a4ca9436d59528a5abd267678ceaff7f9f0eba2308196c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"add refuses a record without naming it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 128,
+			"column": 13,
+			"endLine": 128,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eac1c36cbeca2df5a494f911ce6b2e00663a4a6858ad464494db7c4aa20425c1"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 128,
+			"column": 78,
+			"endLine": 128,
+			"endColumn": 90,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dbbd6c90ed7a5274d476af632af42b7c6f6d760e8eb8ed294eb1a7070bf66259"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 129,
+			"column": 26,
+			"endLine": 129,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "646f25a0f8ebce82bac8731d05fdd349434e9f645b1f01d9f7166ff277698b46",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"add resolves past a record it refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 129,
+			"column": 26,
+			"endLine": 129,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "attempt <= 2",
+			"status": "generated",
+			"id": "7039b9d9a62c39565322bbc9239098f1a2b6b64fec07dd3693288b94e80939ad",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A third attempt repeats what the first two assert: a second attempt already shows the refusal repeats and the refused record still never lists."
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 129,
+			"column": 26,
+			"endLine": 129,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "attempt >= 2",
+			"status": "generated",
+			"id": "a40441ca21f70ceab5361e0cd9787bafad717723617ca83df12b7e15fa8a75c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"add resolves past a record it refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 129,
+			"column": 39,
+			"endLine": 129,
+			"endColumn": 48,
+			"mutatorName": "UpdateOperator",
+			"replacement": "attempt--",
+			"status": "generated",
+			"id": "7cfaa667cca9cd408da36b78082c78ad6e1ba7abe01aeebb26540ce0e5766b2e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 129,
+			"column": 50,
+			"endLine": 132,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2dfc57bb2532b124a3c1442e2ec980775c7143db8af80cf514919af09e29d2d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"add resolves past a record it refuses"
 					]
 				}
 			},
@@ -19611,13 +19774,202 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 130,
+			"column": 36,
+			"endLine": 130,
+			"endColumn": 52,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c7062e4ae330cb753106c37ab918096e32262d9d26a1b6bfb0cce776b9117d07",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 15,
+			"endLine": 131,
+			"endColumn": 88,
+			"mutatorName": "MethodExpression",
+			"replacement": "(await store.list(changeset)).some(each => each.kind !== \"not-a-kind\")",
+			"status": "generated",
+			"id": "c849631831e7f279e80c846ddecd3d377e68e028c90c73edf51e3eb11ed365d0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 51,
+			"endLine": 131,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7897bbb966416b88850f710d582ce55b399a0152ed8f608ed7b1383047c6b565",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the conformance suite asks no more than rule 3",
+						"passes a store that lands a refused batch's valid records, as rule 3 allows"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 61,
+			"endLine": 131,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "85d4721257bfcb1ec1e2e578633fd15fe3c0363fce8caf607b6953c67a71cf44",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"list shows a record add refused, until another add lands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 61,
+			"endLine": 131,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "dab02abfc0b7bf3c0a56fcca7e6487aec140710bae1235d1d87acf8881eb9d77",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the conformance suite asks no more than rule 3",
+						"passes a store that lands a refused batch's valid records, as rule 3 allows"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 61,
+			"endLine": 131,
+			"endColumn": 87,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.kind === \"not-a-kind\"",
+			"status": "generated",
+			"id": "8f747d7ee97e0e8d9b5c9561b330ed65fb15b5e0e9137834985f0f01fe6ca99c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"list shows a record add refused, until another add lands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 131,
+			"column": 75,
+			"endLine": 131,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ff7bcd0bfe5278cf00ab99b1f76433eddb68a14a171cdefb1d6d86db7cf21922"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 133,
+			"column": 20,
+			"endLine": 133,
+			"endColumn": 27,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "79c3497ed7373a17d64b8c75cab0db6d62e94573c820a404f273b9d5b7afb1a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 134,
+			"column": 4,
+			"endLine": 134,
+			"endColumn": 69,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4dfa72387fd708f66b68c97619cc5ffb24e6e4a36fec2e580625ff9135e8ff6f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"list repeats a valid record a refused batch held, once a repeat lands it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 137,
 			"column": 1,
-			"endLine": 144,
+			"endLine": 151,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "988fd63b0f651fc35190ec249b44565a1c32b590f05bd10f138fe8748812dac5",
+			"id": "f0ac952054a17c9946f6d715c1e35d1139a3e7863b2c94562c9b05b098b3a982",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19632,27 +19984,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 131,
+			"line": 138,
 			"column": 8,
-			"endLine": 131,
+			"endLine": 138,
 			"endColumn": 106,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8b24f343b896ce12cf07e7dca0b80d1078de93169012987e497d891003b92d30"
+			"id": "ad8ac4c101f89812b59e2a5c9cfe79f2b68283e1b56ff0a22f4c97ade303349c"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 132,
+			"line": 139,
 			"column": 7,
-			"endLine": 143,
+			"endLine": 150,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "ac0dd3da0ce23f2c4fea56c1aab698f3d6727348f222cf9542e2eca6df7e1397",
+			"id": "353697f42e4b58fd49c07b38965f0aa0d6fea56d38751511c1f590aa6b72078d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19667,14 +20019,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 133,
+			"line": 140,
 			"column": 37,
-			"endLine": 143,
+			"endLine": 150,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "4f1fd665ee335912c160245d51149f74c98627d891dc1eec375fc7f179ffc1c2",
+			"id": "3c13175de7338f04f43a6d08e1c049b4d2a653b72d869813ab3c72efe8d0eecf",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19689,14 +20041,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 136,
+			"line": 143,
 			"column": 51,
-			"endLine": 136,
+			"endLine": 143,
 			"endColumn": 53,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[\"Stryker was here\"]",
 			"status": "generated",
-			"id": "8c691b3ed518f8df9cae043c7296cbc8a2675c482227ca24757591500c699804",
+			"id": "ff0e4c72be6bb61978bd8402da0c77f3a7e8a03f5d619bb7a58626d493e5dfb4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19711,40 +20063,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 137,
+			"line": 144,
 			"column": 27,
-			"endLine": 137,
+			"endLine": 144,
 			"endColumn": 34,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "0e0ad980affe74cffe7e62732d6c9c8f1691102ebf1c2ebf7d94e8a99c7666ea"
+			"id": "8fd0be745e5c4e1724796846e9bbf086577d712d6cc25429044966a601a7a3fa"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 137,
+			"line": 144,
 			"column": 36,
-			"endLine": 137,
+			"endLine": 144,
 			"endColumn": 48,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f1a5cb60763c1dd52a20cb837f95a53ec1c95fb93a2bba76c1ebe1a578aaaa67"
+			"id": "57e6bc1dbd5e14ef5ace1b333945947094237c4776ba8fdf9e15729c34f356f0"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 138,
+			"line": 145,
 			"column": 21,
-			"endLine": 138,
+			"endLine": 145,
 			"endColumn": 72,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "5a0803d79a2f8984ef878a52a11c97155d996717aee9521aa08960ccac6480d6",
+			"id": "7c4ae4384d99b0c06c5fda80f0b3a0bc19d0c07fa438f9da023963dd1b4f169b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19759,40 +20111,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 138,
+			"line": 145,
 			"column": 38,
-			"endLine": 138,
+			"endLine": 145,
 			"endColumn": 45,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f2f16f2ae630868bab648c11cc0d60846ab5dac92b8c74f68f1987261d413028"
+			"id": "683e4f0f67517a0646f22444aef472e163cc79ab22277aa1b87b4fbfb558755a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 138,
+			"line": 145,
 			"column": 47,
-			"endLine": 138,
+			"endLine": 145,
 			"endColumn": 59,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "81a6f7b4400e905085d0a439aec8bee3d0ec5cafb80a55f6cc3bfccebf1726b4"
+			"id": "8eab4a8fe2101a5c37a7b94aec3dd1caece2265caae7640fbad094e79881bf44"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 139,
+			"line": 146,
 			"column": 4,
-			"endLine": 139,
+			"endLine": 146,
 			"endColumn": 70,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "c32dd7180c8f2ad41e6a2eba6e882f82948f106a482d15d8b1e7147eb24e910f",
+			"id": "fec5c9896a3f19f4ba288dd900b907ab16249913416f564e433bad9f7054b837",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19807,40 +20159,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 140,
+			"line": 147,
 			"column": 28,
-			"endLine": 140,
+			"endLine": 147,
 			"endColumn": 35,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "536907834a3c514805a5de95ebfcfd291ab9824b9a265e9437eea1f159b5506e"
+			"id": "962e3a68882eda7950e4b05e1c6baccdb27922a239028e9b46f7eb9722d63faa"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 140,
+			"line": 147,
 			"column": 37,
-			"endLine": 140,
+			"endLine": 147,
 			"endColumn": 40,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b5c555c585e118ad35e43a9dee86266afbc1be5ef3b774937d4487e7ef0a8173"
+			"id": "6b9aa9a89342d2f6d0aac103bc5578c65ec7bfc12ee997437f6eb529848bdb5a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 141,
+			"line": 148,
 			"column": 21,
-			"endLine": 141,
+			"endLine": 148,
 			"endColumn": 29,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "5ffafa1ef6b0ab1331008772ba247ebadc56a8ccd8a8a40259092d86bd11b5d7",
+			"id": "4023807c1582342bd97c514bd7a449205a0ccb8588ad6380a34cf1b8c62b9e2c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19855,14 +20207,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 142,
+			"line": 149,
 			"column": 4,
-			"endLine": 142,
+			"endLine": 149,
 			"endColumn": 78,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8c68384a2019ede48e877618d1ae8d92f2c0b47d48a4c836f1827e6d40ba7077",
+			"id": "d9f140c5b03f018622d4efdce2907a0cb653e97c28384d8172ef631575427e04",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19877,14 +20229,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 145,
+			"line": 152,
 			"column": 1,
-			"endLine": 154,
+			"endLine": 161,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "b4eb081688b19fab0d3c999d14b455fccf22217c1e13525d03fcb269ed488106",
+			"id": "eb3a6995fe0416d1a4fc4767853a7efa4f26d312436a4f571c4deecff6b89aaa",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19899,27 +20251,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 146,
+			"line": 153,
 			"column": 8,
-			"endLine": 146,
+			"endLine": 153,
 			"endColumn": 59,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a4ba8c974a7eaf0db742d9f6122560ebcc3df08311fdead7b5a8a4cce3e75419"
+			"id": "438c425bbdd40c15537738b9afa7692d3f1bab7e8c52a4649c0ce912eeaefc04"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 147,
+			"line": 154,
 			"column": 7,
-			"endLine": 153,
+			"endLine": 160,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "7fad54c828534ae1df91cdeb225b0a772bcf61e98965c3d5c5da43dfdb1d9689",
+			"id": "bdb98d461ef7b16331fa5477621b3b66f3abed4da7362dc3b65883c613d2aff1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19934,14 +20286,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 148,
+			"line": 155,
 			"column": 37,
-			"endLine": 153,
+			"endLine": 160,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "5ac076844aca8cb122320b2140858e391bcab4becb4891ec36d4551c5505c1fa",
+			"id": "1a2069d0b1670944c3fca9fad888a9e9d40d9aa3748192defe4f6050d53c2241",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -19956,64 +20308,64 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 150,
+			"line": 157,
 			"column": 20,
-			"endLine": 150,
+			"endLine": 157,
 			"endColumn": 57,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "0e248c6c64bede2aa0c3de1ccf440956ac4f22792cf2586f0785eb1d89e48272"
+			"id": "96804e5fb49f9aab955d5e86ad3d6915d4930b00c0602a6fef831c9265df6db8"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 150,
+			"line": 157,
 			"column": 30,
-			"endLine": 150,
+			"endLine": 157,
 			"endColumn": 37,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8346ad56f357ec59a2a44f43ee114ada5dd011a08fdce9b7691a1d544b03777f"
+			"id": "a27f7c5a25ff84f1dac8828e7628295287fe77a79164f5e7ff73765c06ca3ec0"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 150,
+			"line": 157,
 			"column": 39,
-			"endLine": 150,
+			"endLine": 157,
 			"endColumn": 51,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "46dd72085c16fe24705f91a3b6f2faf96b3d4ee2b85ee9897ec26ad370adda16"
+			"id": "ef798fc58b3eff4b37b8885e418d3e2ca99fb69339268613be2e4f907c7daca1"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 152,
+			"line": 159,
 			"column": 56,
-			"endLine": 152,
+			"endLine": 159,
 			"endColumn": 69,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "c3e772ddaae637c67925350907e6a2387f89f48af1cc2b36ecc92af914da6ed8"
+			"id": "bd40cfcf458051ad1429ae3c2a013a2d2fd534fbfb133e839e6fc68b42b1feeb"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 155,
+			"line": 162,
 			"column": 1,
-			"endLine": 170,
+			"endLine": 177,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "0839d14bf42789c986fbedbd93724edc1cc28a1b2e77b88104b251932560933a",
+			"id": "97d23779da37b1998635881976a8ee395e6d2d138941f91abf74b9d76d14d520",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20028,27 +20380,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 156,
+			"line": 163,
 			"column": 8,
-			"endLine": 156,
+			"endLine": 163,
 			"endColumn": 76,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "965b4ad9a50ce39c6a2def98ac6e5369e6daa85aa6e29104a42130e01f5ec66e"
+			"id": "013dab51fe67cabf06eec792e88539523c470a8f63220e778da1613101a7b88d"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 157,
+			"line": 164,
 			"column": 7,
-			"endLine": 169,
+			"endLine": 176,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "dd7a478f7a38f29a15846169364fc5f76eb9a9c42097e9ea2878a7d618194863",
+			"id": "9cfe4a175294553e8bfcf0dde97f7d9e2ea0650bda1457e20f5afe1cb8fdd5a9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20063,14 +20415,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 158,
+			"line": 165,
 			"column": 37,
-			"endLine": 169,
+			"endLine": 176,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9259ec930ba54b14b28029abf0ac053e494cf8e3a4b52c00ef4993a0a6d08e94",
+			"id": "efb147e5e038acdf0a34a067c496e985e31dfff8bc0baa6f7879ea1fde7f1d35",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20085,38 +20437,38 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 161,
+			"line": 168,
 			"column": 4,
-			"endLine": 161,
+			"endLine": 168,
 			"endColumn": 59,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "bfc43695c6238b486987e383f63cdc959cbaac507d955d80bd37ec1a1a998341"
+			"id": "b3b239a9b47b7726c2008c70ca71e0eccfb92e65aa2a27326681cb0608fc9117"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 162,
+			"line": 169,
 			"column": 62,
-			"endLine": 162,
+			"endLine": 169,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e8ad4a588f3fb1bb9fbb3e734ce4624a987b3482cf5cab9dd4b5a8efc3baa724"
+			"id": "21dcf1ee253255cb8610e06476105408838de0bf63fe591a62a2a73160d84e35"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 162,
+			"line": 169,
 			"column": 76,
-			"endLine": 162,
+			"endLine": 169,
 			"endColumn": 80,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "1c5424be4b48ad4cd7ded93e54dc35b8a42e3b00762901b6f0167d59f9a22e2d",
+			"id": "cd1496fee782140c7cafc2e7968d7fd3fad8a62d508a17a68a9bb9abea2650b8",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20131,14 +20483,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 164,
+			"line": 171,
 			"column": 4,
-			"endLine": 164,
+			"endLine": 171,
 			"endColumn": 43,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "aac2cd6fc1614d11cfe3a60d261008c68d91829f371524429cc707874c0e3299",
+			"id": "99c4cd5f58f7a0ff68c845eece9f26622e28269447089a73a9009ee4137803bf",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20153,27 +20505,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 164,
+			"line": 171,
 			"column": 30,
-			"endLine": 164,
+			"endLine": 171,
 			"endColumn": 41,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a434af66f9e86f749d562ed1ae29024feaebb66f1f0aa59e8e27dc17346a4809"
+			"id": "aae8772dcbeea25d7a75f808796d1a1dc68086a315fb96979614a5eddd693280"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 165,
+			"line": 172,
 			"column": 4,
-			"endLine": 165,
+			"endLine": 172,
 			"endColumn": 49,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "dcd6d8ae26344b5233cb3faeaed6e59f77a7c233450fdeadce604b50a968db56",
+			"id": "7f0f99acdbc3934513529b2a8d10562e2b5eb19b630b5d5667926176d26e11fe",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20188,40 +20540,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 165,
+			"line": 172,
 			"column": 39,
-			"endLine": 165,
+			"endLine": 172,
 			"endColumn": 47,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8aaaa2d480f413d7baa1827627bcf88e6c5c2db0297d93fb8e409b7aefbae3d0"
+			"id": "7e92a33c96a4de58f9c773c7bc2eeaf0ec6140c27c93461ee6ac10963095f5b3"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 166,
+			"line": 173,
 			"column": 66,
-			"endLine": 166,
+			"endLine": 173,
 			"endColumn": 77,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "4ae11835993e0c6e636eb3d4e7997550bab05807d84f146ea60a066dabae26c0"
+			"id": "de6ac7a440c8184a4825d01764e9bc86c3654fc2246f1fc6a9ec533d8b47492d"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 166,
+			"line": 173,
 			"column": 80,
-			"endLine": 166,
+			"endLine": 173,
 			"endColumn": 84,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "c3fe4b8cc18046ceced6d575a17f19b8b0b77b4ae68f1082941a6cfba2340477",
+			"id": "ec79cd44804f40daf9152e914f104186c56383cbc542b17cae99bc085eb8aa06",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20236,14 +20588,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 167,
+			"line": 174,
 			"column": 4,
-			"endLine": 167,
+			"endLine": 174,
 			"endColumn": 72,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "b9b8688d1e6f596b91c0bc1e3c6e0c15b04bf68d1388541657f5c8fbb711a624",
+			"id": "b273f99a83f9f92327b44aff48b905b733bf3f9b92c56eb5b4efac54caf246c9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20258,27 +20610,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 167,
+			"line": 174,
 			"column": 59,
-			"endLine": 167,
+			"endLine": 174,
 			"endColumn": 70,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "aa8f60f1fa3c0d93fc39384f940a7f902deb1efc7606513d4bee88d66cc558a6"
+			"id": "6bef131475e87027c2e60360dbf8b57a55024e38bbdc00d983075fcd5d27eda7"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 168,
+			"line": 175,
 			"column": 4,
-			"endLine": 168,
+			"endLine": 175,
 			"endColumn": 55,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "42afdb6dd881ed9af413636c08df713dd809aa8da6c189a881040113e9c3f232",
+			"id": "8727fadae8d1a65c42e9225a2125c094f5c8648020117baef3fc4d616e1b3890",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20293,14 +20645,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 171,
+			"line": 178,
 			"column": 1,
-			"endLine": 180,
+			"endLine": 187,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "4dc924fa59efa13794b50791a537785f00edd8eeccc74e61021e5badab1e390f",
+			"id": "675238f00eb71dae17564131ba5ed50deaa09c3685a8b9b0f14d45eebb397547",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20315,27 +20667,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 172,
+			"line": 179,
 			"column": 8,
-			"endLine": 172,
+			"endLine": 179,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "1060b489b1ef5c42c03016847fdd3b66bd5b8b2acc8c0d8a823f211f045a1b8d"
+			"id": "199ba7c5b7c6f326708e671a32cf6b1bbb87383dcaedbf1916bc820c2dae825a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 173,
+			"line": 180,
 			"column": 7,
-			"endLine": 179,
+			"endLine": 186,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "05065f729b481d9de4c11077eed2a0dabe85dea740e47f2e89674baa8b2f16d1",
+			"id": "f963dc4e077d52e6f70b8685c977a3c3b3b00962b134469c44a087597aa2b928",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20350,14 +20702,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 174,
+			"line": 181,
 			"column": 37,
-			"endLine": 179,
+			"endLine": 186,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "c238b67f4df1acb6bfbce771329e22dc272b7fd4c62524e448626f452d6bcc68",
+			"id": "3cab962932e37808b470a5a07ae27b2ac650b4b48f3e7c92a773a3499d804de4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20372,40 +20724,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 176,
+			"line": 183,
 			"column": 48,
-			"endLine": 176,
+			"endLine": 183,
 			"endColumn": 57,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "2de5a49d0ee26ad5c876bd8fffc2ff5445639d0e177009d6f55474f2e3d308b6"
+			"id": "6b07f064d05940c2ecaf07967da44c9e882d94eae336607c872b234e211dc3d3"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 178,
+			"line": 185,
 			"column": 60,
-			"endLine": 178,
+			"endLine": 185,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "63f1e5cc533a48e3a097576d6642da6d89fb5a0e5704bcfd8215debf7214f493"
+			"id": "d0c8d75020990b0d8b05b4fac1c6bfe6c4e4b5f18cbeef7c4d44fccabcf6e5c4"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 181,
+			"line": 188,
 			"column": 1,
-			"endLine": 190,
+			"endLine": 197,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "edd0ffd3765ccd66f1d5a3b3a7891797b5c0f7f4e28eb6ae3d190b2069f8aace",
+			"id": "ff61bf4a361504670a80095b208f048d07b459d07fb0e5b32f20d054921484a2",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20420,27 +20772,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 182,
+			"line": 189,
 			"column": 8,
-			"endLine": 182,
+			"endLine": 189,
 			"endColumn": 66,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "3e698d5703aedb5b8c00fe7497887c85699c26680eaa9f12047ca520b5345e30"
+			"id": "29edac51c828977202acf39d158faeeb917019f225aa1195f733642cea31a10b"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 183,
+			"line": 190,
 			"column": 7,
-			"endLine": 189,
+			"endLine": 196,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "4afe29cb9aaf3c65ae2f83acdb3e52513656045f29c2eb94030747b3b6d84d15",
+			"id": "69addf39bf42f5135f4b8dca0c7ca3cd350053493421c528196c181f3a0c7cde",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20455,14 +20807,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 184,
+			"line": 191,
 			"column": 37,
-			"endLine": 189,
+			"endLine": 196,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "ba38d78eb58316fafc64a935c7cc0bcae3fe353fdfc72adb5ea980193cd4ceed",
+			"id": "29f252e9c5b872c1b1b4555ff5a31515ed9ce26bf560474763738014ddf13131",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20477,14 +20829,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 187,
+			"line": 194,
 			"column": 35,
-			"endLine": 187,
+			"endLine": 194,
 			"endColumn": 72,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "c73b13e5a653552f9911d7ae2824291b2cea70fd022dd3e5e3d6318a82dd0323",
+			"id": "61aa8a728d22cdf5a34f148d7b07d97bd38457b6f71bdcaeb02998c54a1586eb",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20499,79 +20851,79 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 187,
+			"line": 194,
 			"column": 45,
-			"endLine": 187,
+			"endLine": 194,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "bd9d6ceb063a092bbbc4b0747ae42b8165d8bb8f4f1f8d13e985232b322c601b"
+			"id": "46cac2ad4f66cc757e7dc87054d7a61a3c27954a8a63712eccaa101684049f03"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 187,
+			"line": 194,
 			"column": 54,
-			"endLine": 187,
+			"endLine": 194,
 			"endColumn": 66,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "85da7123287ebbb9fcce35b35564ede6d465ab00b6337196a246d0474d67a633"
+			"id": "f964226bb39b93904a9a4bce8a3bb39d87818edab1dbd737ca8934352eea18c6"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 187,
+			"line": 194,
 			"column": 83,
-			"endLine": 187,
+			"endLine": 194,
 			"endColumn": 96,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "632e10eed1835e9c41bec513734aa27a98352ba136b764d14d88e1b3adfbb7ba"
+			"id": "70ef74096ee88772bfcf72aad8ffc0da5527cb513917cf552a205272a729252d"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 188,
+			"line": 195,
 			"column": 63,
-			"endLine": 188,
+			"endLine": 195,
 			"endColumn": 72,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a9b050e0a9d9ba8f7eb7e9f9885b50789fcb8e4aa36a25a3908e912959ce31c2"
+			"id": "52cc5d3a4b68896f8df174fdfcadbec2f22e226b5685f5e53304e9bafcaa62f3"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 188,
+			"line": 195,
 			"column": 83,
-			"endLine": 188,
+			"endLine": 195,
 			"endColumn": 96,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b79f0dca5c9c58779bb2b1043c7ce6bfc5a19c34f8fcd4231c5a56c736b1dca1"
+			"id": "c4e9b49f096b482eaca5826d6293cf152f30795b61001a93a4d8239ebff87710"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 191,
+			"line": 198,
 			"column": 1,
-			"endLine": 207,
+			"endLine": 214,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "a3d23913ebdb0d90749138d241089b43df0f49a565a3e675dd6e19c2dc3afcff",
+			"id": "feebc6f04af843610a685cdac89ca739a5d39415ef81c1e86de4c43b2f2e69db",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20586,27 +20938,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 192,
+			"line": 199,
 			"column": 8,
-			"endLine": 192,
+			"endLine": 199,
 			"endColumn": 78,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e2c0b00e5569ea32a6873ed7ab912fafc6356adbeb84b77849f4531052bac99f"
+			"id": "8ae1eff8e33a22956d71f654f90558ccdf33de478cc2e79d194fd2e1b692a30f"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 193,
+			"line": 200,
 			"column": 7,
-			"endLine": 206,
+			"endLine": 213,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "4ebe6c11275388518f943963878f1eb8346b058c3f1d72d2f3a77e3c4a575ce4",
+			"id": "68154947a60be39e2435f3a20ccf18d0849476654af1dc610815ef9755cee72f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20621,14 +20973,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 194,
+			"line": 201,
 			"column": 37,
-			"endLine": 206,
+			"endLine": 213,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "4d7810f90db80589b3f2a447311072f7dc67f8605aa61b75891d3ea83d16637a",
+			"id": "1adc48ffa8c24138a9321906e07317994e6e9bc0547abc117a9ecde594f107e1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20643,40 +20995,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 196,
+			"line": 203,
 			"column": 50,
-			"endLine": 196,
+			"endLine": 203,
 			"endColumn": 65,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e8c15533a3067b80fbb631be6565c904a31c40c57c8b711173c6d82941739954"
+			"id": "a60b2ddca03916b7bb7ed92ae62fe5c6d53cf0608396bb178c58d606578e6f0a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 196,
+			"line": 203,
 			"column": 67,
-			"endLine": 196,
+			"endLine": 203,
 			"endColumn": 78,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "53323eb34a0718f24c93f334f579bfdd1ecd386c80f59cac29409ffbcc891f2a"
+			"id": "bae7369ae0e8accb92f014780691c87597a86149fd3e113691871b767a471a60"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 196,
+			"line": 203,
 			"column": 81,
-			"endLine": 196,
+			"endLine": 203,
 			"endColumn": 86,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "46a783f5c501c41caafbcdad5d797d2c5fc91eb614996ec9ad9bd3e0e61d523d",
+			"id": "44fd76f077d19bd49960b6a54f165f4b2814fb1b142dbb81be4a4250a7a5984d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20691,14 +21043,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 197,
+			"line": 204,
 			"column": 4,
-			"endLine": 197,
+			"endLine": 204,
 			"endColumn": 58,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "0d809702d6461bf566fcff821bdf9b8fbd4022b4063586b19b3f4953ac7a54a9",
+			"id": "3352ca33bd03efc5a0e0f23d30187ab4690d79c301ad8900b4566929ecdba683",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20713,27 +21065,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 198,
+			"line": 205,
 			"column": 61,
-			"endLine": 198,
+			"endLine": 205,
 			"endColumn": 72,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "18f8b0a45f9296cf891c9a00104fd799e09c637dc713c43aa1d40c082c4b7912"
+			"id": "1c09f9fe584bb2f7540f7ed8f03f775df71b389e1edbcae4b8097e2943993029"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 198,
+			"line": 205,
 			"column": 75,
-			"endLine": 198,
+			"endLine": 205,
 			"endColumn": 79,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "265d7ba0f72bf90cf7fdd3778bcd9204eb86ff0889f5bd81faab10c536eff104",
+			"id": "1bd2a592807a3bdbbd223a754921016b273baef5d371647656356ce1e0a9a2a2",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20748,27 +21100,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 200,
+			"line": 207,
 			"column": 61,
-			"endLine": 200,
+			"endLine": 207,
 			"endColumn": 72,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "92318f24936332f7d8a59c85d271d3378030eaf73bda1b443b901bca649d2c7d"
+			"id": "ba228092e786441c174d4b6173e16e9662f79064a109446a68c30abfcef180bd"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 200,
+			"line": 207,
 			"column": 75,
-			"endLine": 200,
+			"endLine": 207,
 			"endColumn": 80,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "222966b4cb267deb39aea7fed1161582f147c47fa8c627f0f8835dd45a5764fc",
+			"id": "3b63e9fad31dbe7e571beb7dd5a846b244a4d0c0d5eec42a62c01d23010b783c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20783,40 +21135,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 201,
+			"line": 208,
 			"column": 50,
-			"endLine": 201,
+			"endLine": 208,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a7f10ebab6856111064b22218afa1e3132b7b242aed8bfbb77f94ef55f1c7ceb"
+			"id": "266b65a0c37e186fef32b565926dd33aaeddc43d4347c66e60331a9d95b41ee7"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 201,
+			"line": 208,
 			"column": 65,
-			"endLine": 201,
+			"endLine": 208,
 			"endColumn": 76,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b56f1b1404a7fce4c3dd487658c800bfb5152177bb998177d130f70cbc2579af"
+			"id": "8f4531367f0a7eaeeaeba07b2172db27559e6c774e2617dfda7b954185aae108"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 201,
+			"line": 208,
 			"column": 79,
-			"endLine": 201,
+			"endLine": 208,
 			"endColumn": 84,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "7bcc7dca2f1c138155a465f4565299653ea476895563211c38c683a6c74b2bdb",
+			"id": "140f6308d349650568e05d038959cfb1907881bce8641a8b4b66ed263587dbce",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20831,14 +21183,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 202,
+			"line": 209,
 			"column": 4,
-			"endLine": 202,
+			"endLine": 209,
 			"endColumn": 71,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "20c070af1303f7e6c2d9583a5a77a04f40e674f3e05b4fad935177eb2461c3d4",
+			"id": "290bda21b8dc7e8d8e0d16a3a8807ba9ceb0bf983d582c8ff24d84b5ecbac59a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20853,40 +21205,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 202,
+			"line": 209,
 			"column": 58,
-			"endLine": 202,
+			"endLine": 209,
 			"endColumn": 69,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "75ecfd5cb176ef14c9fe4c1713c323b59bb9543437d11e03f6c740e4d079535f"
+			"id": "ae453710e058f80b5f78d81a952d11f2c1f65ee465f0259faeecaad23bb4b8a7"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 203,
+			"line": 210,
 			"column": 59,
-			"endLine": 203,
+			"endLine": 210,
 			"endColumn": 70,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e1d6090b2938e72898acaa9667072e931befc6fcdf3437ded0d0fa1f9798ba0d"
+			"id": "34d4b9d2e807cc9ef97a970bd904e851638d68adac50466156906547c7091bbf"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 203,
+			"line": 210,
 			"column": 73,
-			"endLine": 203,
+			"endLine": 210,
 			"endColumn": 77,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "3acc35247e53cc46952579c807551f6c6453f3f9fda229f4d6dc690c0c72898e",
+			"id": "c70423c31f4bdcbd0780e5a3fdad5735fede5b3557f0eb0f4772734cb288db32",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20901,27 +21253,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 204,
+			"line": 211,
 			"column": 59,
-			"endLine": 204,
+			"endLine": 211,
 			"endColumn": 70,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e05445662d757042b53646afc174da6180b80d27717844cb901acc3048cc4e45"
+			"id": "7c74e4e0e53ab86be3f141f9bed9e0c21b97c65f691411afacc146bcb46fc4b6"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 204,
+			"line": 211,
 			"column": 73,
-			"endLine": 204,
+			"endLine": 211,
 			"endColumn": 78,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "6f161fd4e7500dbb014e8054314034b182a51fc89b125e3c90d18ce210973aab",
+			"id": "fc2931ad4da26f1b6280d136bd1b5bcc4f86ea81cbc04e5293f180e75d4430f3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20936,14 +21288,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 205,
+			"line": 212,
 			"column": 4,
-			"endLine": 205,
+			"endLine": 212,
 			"endColumn": 71,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "bd7f1a769562ed4c6a4014c6ec9c0f7e8c78341fa38fb8f0bb180ef94d3c1aa2",
+			"id": "b3af4b95d1015a1936f26e89e920cb1428848ac7f6d5e6479911b405da0a096a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20958,27 +21310,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 205,
+			"line": 212,
 			"column": 58,
-			"endLine": 205,
+			"endLine": 212,
 			"endColumn": 69,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d4bfdc56e8ef85387d6a6723797f4ee11633d3f395461fa003dd09779865001c"
+			"id": "5c550372e7293aec30442a933f6f267e583fdf344f5409925506832ed98db98c"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 208,
+			"line": 215,
 			"column": 1,
-			"endLine": 221,
+			"endLine": 228,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "626f863444c3ac8949d3de3f8cd03476b20888358bcae8ac1abd6fe06a67b0b1",
+			"id": "2285f6121d981bc2d3e4cfd90efe6eafb3b219cd1ec9614417d1d744dcfc5290",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -20993,27 +21345,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 209,
+			"line": 216,
 			"column": 8,
-			"endLine": 209,
+			"endLine": 216,
 			"endColumn": 88,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "37098bf1751750e8039715c6a0f7d7cf6c8a4e74e3af8e465e8d66b2005ddb66"
+			"id": "6a52ca7e58d7beb1276beef9b7286d25e24d8492bc414ef0016dd32b130c9f25"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 210,
+			"line": 217,
 			"column": 7,
-			"endLine": 220,
+			"endLine": 227,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "3d04ba220a3ff33bd80286be41243ad46ab210a4162cac41bd1d7b83f5c43758",
+			"id": "483fa78ac7dfb2ffdbc2ca258f4bc2572a4e3509eec88f263760e05a4006812e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21028,14 +21380,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 211,
+			"line": 218,
 			"column": 37,
-			"endLine": 220,
+			"endLine": 227,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "d47220b028e3212d312ce538bc343b0e370a766c6b2b85fa8a31a214281b0ae0",
+			"id": "fe5aa3da50ea5361424c41c6fcd456c4a685c758bcf691ce60f668849703d4a2",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21050,40 +21402,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 213,
+			"line": 220,
 			"column": 48,
-			"endLine": 213,
+			"endLine": 220,
 			"endColumn": 56,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "1c1b68bd2d15165db834cf43ad7fdabb7a3469527e6cc0ef6a74de49de4af688"
+			"id": "6a9674bb725d225ca4c7d938254cf59af81ef79213b3d35ee6ad405af3a66d70"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 215,
+			"line": 222,
 			"column": 65,
-			"endLine": 215,
+			"endLine": 222,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "da91cb2421979c0ce1033e049ac8e19195e3b19e024058d7ae670141cd3a094b"
+			"id": "70dc623ab529c129329832a6f4b8c4cee4f839fcbae7f0e2ce141ac60d267be1"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 215,
+			"line": 222,
 			"column": 76,
-			"endLine": 215,
+			"endLine": 222,
 			"endColumn": 80,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "851446b82b81b65b35faea6433cb193b8a881ad6c2e8f059c55ebbbf4e3551df",
+			"id": "be2922bd6df6de5239f7a6d089dddd4bf1e6b742009337450e7192dde1a8925d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21098,14 +21450,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 217,
+			"line": 224,
 			"column": 4,
-			"endLine": 217,
+			"endLine": 224,
 			"endColumn": 41,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "11ee4f0165eb62358bfd3c5e01c9272886b4d70f3c2b57d5d08a19cc8a1be133",
+			"id": "f4b373ee272af33f583b440fe47396c739a38e9550a12705782bc8fa09ba1526",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21120,51 +21472,51 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 217,
+			"line": 224,
 			"column": 31,
-			"endLine": 217,
+			"endLine": 224,
 			"endColumn": 39,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "96de6551a0fd23158ba55e3de8f8d8001b340d241f009156b9507a3305a1f601"
+			"id": "7f0806a1df1d0d8ad4240bb7bc85608d8385b68d8c0b975c5f844d66aa5cd356"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 218,
+			"line": 225,
 			"column": 4,
-			"endLine": 218,
+			"endLine": 225,
 			"endColumn": 51,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "0e1539efd4f61d876608bd4e87ed1f73850c7a961f8267591b834bd1b688cd41"
+			"id": "938aa1ce7c57cb76a94a0fe7602468b2eaf83e637947cc4a4a98d18d5ed7e369"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 219,
+			"line": 226,
 			"column": 65,
-			"endLine": 219,
+			"endLine": 226,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "9f60deace58309584eb28c4a79d98b7e863dfbbcb1887a941be022cebf032eef"
+			"id": "9203851ed9f90cb1754f0b9cefe4e828b097d51522397649a720a97717b2e129"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 219,
+			"line": 226,
 			"column": 76,
-			"endLine": 219,
+			"endLine": 226,
 			"endColumn": 81,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "82b28b410808e87cf74a6d69bfee634095761ec09580a614a6fdc1361a475839",
+			"id": "158039408010c4477fb1046164e8a855d86ecc76ac5b70e4da82e814a0436f35",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21179,14 +21531,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 222,
+			"line": 229,
 			"column": 1,
-			"endLine": 237,
+			"endLine": 244,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "82b7940e762a65468529fdce4a3267d8b88ec7bfaae1f8028267bf6773f99bb3",
+			"id": "7f2bcd484e249ca1ccfdfa7c0a222d17c0e60afd7b1b133274cc22dabfad2c87",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21201,27 +21553,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 223,
+			"line": 230,
 			"column": 8,
-			"endLine": 223,
+			"endLine": 230,
 			"endColumn": 74,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "157f6608f26df90a7fea16bd3ee62e62d2c49dd0144e156421ddf5c943a139a9"
+			"id": "ad580ba761420941d82b992a723d21cb006c7c3f3a9e966e72170c6b118583f2"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 224,
+			"line": 231,
 			"column": 7,
-			"endLine": 236,
+			"endLine": 243,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "660480a2fbbdbf559ab5ef40510e9f63ae9bced28152899d054ff90fdc8bab1d",
+			"id": "d74c4791eeca05d5ae200d1d298293623c0902428c230239b267eed317cd853f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21236,14 +21588,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 225,
+			"line": 232,
 			"column": 37,
-			"endLine": 236,
+			"endLine": 243,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "d2ed3b3e9696d0c54e934864d43d952aba2e9b8c7d1e6cd5de270d464e06c30d",
+			"id": "ccd6dd128541d164fbb29c8b0f5007613fa384baa029b5a38299f8783a19495e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21258,53 +21610,53 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 227,
+			"line": 234,
 			"column": 48,
-			"endLine": 227,
+			"endLine": 234,
 			"endColumn": 53,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "5193a262154b47c253d8bec3024b4d66fbde907e259439b63053f19712ea26b9"
+			"id": "b1783b1ba7675872f9b7bacce232deca7472c8f2b701cba6851ea8fe5d1c32b9"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 229,
+			"line": 236,
 			"column": 52,
-			"endLine": 229,
+			"endLine": 236,
 			"endColumn": 57,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7df2a9533451bad06d8ab083e84ed4c72adb4cd49bace0b3e8569fb8bb904113"
+			"id": "abfad5a571bff2fe0f98ab9112752d858dbfa7ed9094fb62ac69a0632714619e"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 230,
+			"line": 237,
 			"column": 80,
-			"endLine": 230,
+			"endLine": 237,
 			"endColumn": 85,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "44aa63442ce431cc2c378be9459cc1624b10d1b8318efa69e6047e8b39623bdb"
+			"id": "8ebe33299ccc478ae0eabd2683de5474793df21ab44a9c6ecc1a4847151826ce"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 232,
+			"line": 239,
 			"column": 4,
-			"endLine": 232,
+			"endLine": 239,
 			"endColumn": 36,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8118456b237bb0da8dd586ebccbe90778685f9b11b9bffbaa4f2b768e2660a24",
+			"id": "feb2e39947010cb0bbea2931b010e980dfe6b3a687c8972d8650074e31c3b028",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21319,51 +21671,51 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 232,
+			"line": 239,
 			"column": 29,
-			"endLine": 232,
+			"endLine": 239,
 			"endColumn": 34,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "02ce20dcbc1fea2cc3263317b6d58aaa0f58d1997976090e61432a85afc9c015"
+			"id": "c26fbc188c6c1ec19b036d040c433708088d7e1c88eb1d113921040467f65eca"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 233,
+			"line": 240,
 			"column": 4,
-			"endLine": 233,
+			"endLine": 240,
 			"endColumn": 49,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "043bfff989df1592fa1c7e3c68c21f3e843de6b3ca5c8642147304bb8cb2893f"
+			"id": "2e76eb0d751ddeaf12afa37a6a1a8cb6f50014e3f0d6344e981ebd5fcbf2d224"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 234,
+			"line": 241,
 			"column": 65,
-			"endLine": 234,
+			"endLine": 241,
 			"endColumn": 70,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ad89794319f1010c22fc518ee9459e3110686c7837a8485594d8e3a3d664eacd"
+			"id": "33657e4686a663f9d08d4354929e3ae38083a1e72e1465de9e5bb941819cccda"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 234,
+			"line": 241,
 			"column": 73,
-			"endLine": 234,
+			"endLine": 241,
 			"endColumn": 78,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "459915cac47d2ad2bfe063426014cb6265511977c99a533e3acde9e184c6256b",
+			"id": "1696e29fd5b71a6bd0423540355da6aea6179c2e0d695cf2c3007fa613b97030",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21378,14 +21730,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 235,
+			"line": 242,
 			"column": 4,
-			"endLine": 235,
+			"endLine": 242,
 			"endColumn": 65,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "7e1b1d3be589397a3e5d424f59b85a07937f027ea820eabb9158ce6beaca7cf6",
+			"id": "abdccef1a98f54062b4835968751f7097a843c8b239712f137495f512e413142",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21400,27 +21752,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 235,
+			"line": 242,
 			"column": 58,
-			"endLine": 235,
+			"endLine": 242,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "05db69ca80fbb351902a12433daddb3214a1bbacf0f6cb9c03c57e89729dc34f"
+			"id": "4dbfeeaa2cb3d82517208e98f4e76e411751ff0a1ba73e155452910b024b5cad"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 238,
+			"line": 245,
 			"column": 1,
-			"endLine": 250,
+			"endLine": 257,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "122acc70b9769a406ceb06a21d552b325f7cfb15fc05291b2c5fcd7ca2568eeb",
+			"id": "ca24ed0c9f3d5ecf9d9d139fe8a41f98081a4480696a76abf6ecc2f92f81ecc2",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21435,148 +21787,34 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 239,
+			"line": 246,
 			"column": 8,
-			"endLine": 239,
+			"endLine": 246,
 			"endColumn": 77,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "c0b38c73e593a799f171650aeb9b73e0e842a5d4773a0b9931e8591c2196976d"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 240,
-			"column": 7,
-			"endLine": 249,
-			"endColumn": 5,
-			"mutatorName": "ArrowFunction",
-			"replacement": "() => undefined",
-			"status": "generated",
-			"id": "4db72257b74d028d7bb213704e8caa8e3893f9e6a648711f6d3f82d3fe9a3a78",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"each conformance case fails against an adapter that breaks its promise",
-						"writeCell compares and sets in two steps"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 241,
-			"column": 37,
-			"endLine": 249,
-			"endColumn": 4,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "ab20ce4706bf349801da0a2c486981e361017dc097c360811aad1077a4cf996b",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"each conformance case fails against an adapter that breaks its promise",
-						"writeCell compares and sets in two steps"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 242,
-			"column": 28,
-			"endLine": 242,
-			"endColumn": 72,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[]",
-			"status": "generated",
-			"id": "9de39ed645f997b5e10dd58db6bd1c2739120f0e9964b48211ec5d652782b08a",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"writeCell: of two writers racing from one version, exactly one wins"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 243,
-			"column": 34,
-			"endLine": 246,
-			"endColumn": 5,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[]",
-			"status": "generated",
-			"id": "062d67e472cf5e783ef45cea0657903e902c9f5e11420d56317ade3f3f247e05",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"writeCell: of two writers racing from one version, exactly one wins"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 244,
-			"column": 43,
-			"endLine": 244,
-			"endColumn": 52,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7d31224cf7abb4049dce83bde5b85e4cc3cabcc376e605a36c77771a362426ea"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 245,
-			"column": 44,
-			"endLine": 245,
-			"endColumn": 54,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "06540a73f6840b7290e30c0e2f51b3e641614c0562336a544a0a9c204780d8c4"
+			"id": "df50b1ff015ad95b454f872f62b24c5932eb71d79fa9f74b4afdeaaaf3b99c62"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 247,
-			"column": 17,
-			"endLine": 247,
-			"endColumn": 36,
-			"mutatorName": "MethodExpression",
-			"replacement": "won",
+			"column": 7,
+			"endLine": 256,
+			"endColumn": 5,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "45e6dbbc14e3556cdd8a303921955edbf6a0a8b79503a5c1e2cb28af92488f0e",
+			"id": "448748455eacba01fd24eb319c6266a434620239c879c9a3d417203dd7cd6f6c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
-						"the record store conformance suite on the memory adapter",
-						"writeCell: of two writers racing from one version, exactly one wins"
+						"each conformance case fails against an adapter that breaks its promise",
+						"writeCell compares and sets in two steps"
 					]
 				}
 			},
@@ -21585,13 +21823,127 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 248,
+			"column": 37,
+			"endLine": 256,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cef7c421034cc2f488b42e9a8ec32b32bd33b72526d5fac54231d99eed87b69d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"each conformance case fails against an adapter that breaks its promise",
+						"writeCell compares and sets in two steps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 249,
+			"column": 28,
+			"endLine": 249,
+			"endColumn": 72,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "54396eaa8431622dffef63092fdfe14c817090a4da21d95063b0c18676e30486",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"writeCell: of two writers racing from one version, exactly one wins"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 250,
+			"column": 34,
+			"endLine": 253,
+			"endColumn": 5,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "0d72adbbc83ced55d2b0a169f30e4c9cf0ec5290d378497c0e99b65f712f4aab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"writeCell: of two writers racing from one version, exactly one wins"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 251,
+			"column": 43,
+			"endLine": 251,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c639e33c82740d302859d8ebe213197f401d146fae62d687ccc64fa33c8bc0ec"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 252,
+			"column": 44,
+			"endLine": 252,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7b25f906fc7d6269fefbe1800f4c8730473f29add46f29e69ada48d8ce0089df"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 254,
+			"column": 17,
+			"endLine": 254,
+			"endColumn": 36,
+			"mutatorName": "MethodExpression",
+			"replacement": "won",
+			"status": "generated",
+			"id": "7df95d86b023c42058784f0b0c804802ff6ced0a49c0028a1ebe9ce8c176d4c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"writeCell: of two writers racing from one version, exactly one wins"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 255,
 			"column": 4,
-			"endLine": 248,
+			"endLine": 255,
 			"endColumn": 91,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "1c53679370e129d04c6f98119c7af7d8e127b9297e60765b37c30766d94553cb",
+			"id": "35017e19e4ba5937639eeed17c25dd52c31b61fcbe1f67d1df1d31ef2c741a80",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21606,40 +21958,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 248,
+			"line": 255,
 			"column": 67,
-			"endLine": 248,
+			"endLine": 255,
 			"endColumn": 76,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7c96f22e65917632d579b2087d016f0818096b71eb4b14777164564d5bf8ef5d"
+			"id": "24ee556540f9355c1ac4e759c62811dbbdf3bb37d2e1a44d0ce0d035b9f07805"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 248,
+			"line": 255,
 			"column": 79,
-			"endLine": 248,
+			"endLine": 255,
 			"endColumn": 89,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "97a6b27e8e6bd91995b99a96cedcc868a0affb39188fb9843c3b2bb606d33a01"
+			"id": "bb05ca3269cfb09dd6a20fd4dc16a243dcbe4c8423499bf19afae55dd6c272af"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 251,
+			"line": 258,
 			"column": 1,
-			"endLine": 265,
+			"endLine": 272,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "f18a90af712841b2afdbae4c81c1ff7fcd1e4ea4c29d02201e513c525a0d3b97",
+			"id": "d59c1620bf2487a791807baa0c7bd443a8aef2644ba66dc3cc58d215fed46688",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21654,27 +22006,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 252,
+			"line": 259,
 			"column": 8,
-			"endLine": 252,
+			"endLine": 259,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "15f0e7338fe14a7b60e514a72a4cea35a62c4007965c31983d16a0f33d6bc10d"
+			"id": "3fdf27db98ba056e4656f35688472ca438708be00520ad18f7d37d91b85bbba2"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 253,
+			"line": 260,
 			"column": 7,
-			"endLine": 264,
+			"endLine": 271,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "bdef334de2abd7297e8671171d5f4ba17782866b6604db366c65f6ec47913810",
+			"id": "24d9aaa960378fd2cd11ecdc0fe0634c636b46908194b8aa5250547d29ba5d2b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21689,14 +22041,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 254,
+			"line": 261,
 			"column": 37,
-			"endLine": 264,
+			"endLine": 271,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "7d2146aeb1707379ffca311e7560cf42af174abafafa51913475957412021cfd",
+			"id": "87190a267028418eb9a5d077d17c7471a62d0bb7aeed11ee27bb54969f0da2dc",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21711,27 +22063,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 256,
+			"line": 263,
 			"column": 86,
-			"endLine": 256,
+			"endLine": 263,
 			"endColumn": 99,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "44c2db5919a180c537dd0060026b8004d12d54a34727e8e0063d687f78ee9903"
+			"id": "e774e1d79f1d5ff6c4a3c41246e5e21f2c066609b9c6430b3176b183c89d04b6"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 257,
+			"line": 264,
 			"column": 4,
-			"endLine": 257,
+			"endLine": 264,
 			"endColumn": 58,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "150583b61e81894c30d59010bfd85e4c33d8c30962e8a0848b69375f133782fd",
+			"id": "da7035945fd5c619149d014344621fe5877af2e0865eac947e6eb0db09c7d26f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21746,40 +22098,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 258,
+			"line": 265,
 			"column": 48,
-			"endLine": 258,
+			"endLine": 265,
 			"endColumn": 57,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ef6c2a375fe16599625ec750aeb8d59ff96c952c545b0c20fb1531e5ba15b44b"
+			"id": "0b970c948f950ab2a7cdc299f49b0b346efb389509122da52b1e8e9284a29c8d"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 260,
+			"line": 267,
 			"column": 84,
-			"endLine": 260,
+			"endLine": 267,
 			"endColumn": 97,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "26f1ff271d151eef7b86e4e889952c2e17e4f6ddded763c1966c3d7effdbb779"
+			"id": "2fa65ea748aee0616f6a86ffcb63fefc83f79fd6650e7a87b5cd5d8fd09279e2"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 261,
+			"line": 268,
 			"column": 4,
-			"endLine": 261,
+			"endLine": 268,
 			"endColumn": 69,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "9fc0e55466d592da6fd0b2889f155295abf675f42acda7d5f754a56fd26f3aa1",
+			"id": "456f5ff1107a68f2bacacd58a1d9f561265a191d16b747b4a226e2e94df2989d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21794,27 +22146,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 261,
+			"line": 268,
 			"column": 58,
-			"endLine": 261,
+			"endLine": 268,
 			"endColumn": 67,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "52cf2852b4cd8eb87b1594bcacfa7917499b8ceeccb09540ddfb911eb37f106f"
+			"id": "2ab672370563d404bda61ab81f6a8cd4d0addbdac62b76c6af59090613cc6a5c"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 262,
+			"line": 269,
 			"column": 20,
-			"endLine": 262,
+			"endLine": 269,
 			"endColumn": 57,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "276c1c07baf26419df54099e51c9ef17fbf73f51f33be2bd9071c6286caaaf1d",
+			"id": "af8cdcc4f5ac212c80a32cc4ea2b950d5193bfedc63a30afe694ff8cf4ff78b8",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21829,40 +22181,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 262,
+			"line": 269,
 			"column": 30,
-			"endLine": 262,
+			"endLine": 269,
 			"endColumn": 37,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a6b8e5e062be63a735819be5bc0e2d1a96796533f6c5b06945e64c6d37c37544"
+			"id": "a576b507c8eb3005e4a90a1239824b497a9dc1ae66d3b7b7a917c589d10f94fa"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 262,
+			"line": 269,
 			"column": 39,
-			"endLine": 262,
+			"endLine": 269,
 			"endColumn": 51,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "96bff534182faa2221b563ed8ec34bda5cda2f09de439aa93a863b9197c6905a"
+			"id": "28d25c0786f39cc8aa4d093c2f5d280ecf8bdbef8eea5c0b90f84d807c9a0518"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 263,
+			"line": 270,
 			"column": 4,
-			"endLine": 263,
+			"endLine": 270,
 			"endColumn": 58,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "1f22cd56e91dd8e8332380e9c5bd7baf66bcc5f94389792dce04a83074f1a71b",
+			"id": "056a016546a9a8ff738437d29ad11ee192a8e959ee520e965aee358d5672141e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21877,14 +22229,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 266,
+			"line": 273,
 			"column": 1,
-			"endLine": 278,
+			"endLine": 285,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "52979512a11040c3762019178867fc37b9e9c9965c86ee53d1b774561009c4bd",
+			"id": "20748e7ccf0fed5fabeb84e50def6d36f72f0f77a0cc0305d93d586924581782",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21899,27 +22251,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 267,
+			"line": 274,
 			"column": 8,
-			"endLine": 267,
+			"endLine": 274,
 			"endColumn": 69,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "1bcead0a52dfff7fdc1e91e84b582ac191d55ef116bbbe4fd394d22ed4ba8a57"
+			"id": "14655963fda5ad2b84fd6a9797238e3e61725f0e181cd4dfdfd4a04021759583"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 268,
+			"line": 275,
 			"column": 7,
-			"endLine": 277,
+			"endLine": 284,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "13b5e95b556c121365db69d10313439bf05003aa51d68326d69c94f9529b3108",
+			"id": "ebf0f65efe6037d608cddd7adb03caf3acbaf1bc7f64d7eb428691eba67f6ca1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21934,14 +22286,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 269,
+			"line": 276,
 			"column": 37,
-			"endLine": 277,
+			"endLine": 284,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9f47a29995131fd605604ce7ccbb4f4818af40af6a71644001250d14599ec3c8",
+			"id": "e286da573b224bffc24b99672a27e87a99dc0c283426d45bb36f125eed9b2b28",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -21956,40 +22308,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 271,
+			"line": 278,
 			"column": 17,
-			"endLine": 271,
+			"endLine": 278,
 			"endColumn": 57,
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8dd4d7ac1433d59eba9166d8755394bc2e14412dccf952fff8263c810106b5d1"
+			"id": "2ff05acaaf4db07fa4395d1f21bce658edb030806849c9a463907a1aaaec1bfc"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 272,
+			"line": 279,
 			"column": 78,
-			"endLine": 272,
+			"endLine": 279,
 			"endColumn": 91,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "c11052b99c1af59c8b817481a57a552208764a9ab947f8c6986d5ce27ee742e3"
+			"id": "2ccf62df2f849582cd406b8b9e6939bee2c017f003aff3b4d612f6b9ad2d0996"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 273,
+			"line": 280,
 			"column": 4,
-			"endLine": 273,
+			"endLine": 280,
 			"endColumn": 58,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "02b4708fcef88c209fd30621dc2319026b768180432c7ffc316f4da8bae556b6",
+			"id": "ac4c1db1ad07c430a6bf304d40933db97d5aca51be860de1296bcb884d79d3cd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22004,27 +22356,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 274,
+			"line": 281,
 			"column": 17,
-			"endLine": 274,
+			"endLine": 281,
 			"endColumn": 65,
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "3882a2f86d9dfebe9593c01015c994c8c1868ebe8863456e5ea62f428f748c09"
+			"id": "afb14176cde9db62e3517b51b391cd16357006ca993cfb6c475f82bab1b30c56"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 275,
+			"line": 282,
 			"column": 68,
-			"endLine": 275,
+			"endLine": 282,
 			"endColumn": 72,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "d3a45746117bf77b991987774dd852e449a239f6a258dc52cd9aef589d93a54b",
+			"id": "4fad79885f3281f2f64b3be00cc90ca8db79a7094300ea12251e2b56e58bb160",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22039,14 +22391,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 276,
+			"line": 283,
 			"column": 4,
-			"endLine": 276,
+			"endLine": 283,
 			"endColumn": 64,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "e7d3f4bb90349c6577b4a775e89b152a0cf501bc9e2814a5a8eda601ff08f6f3",
+			"id": "b43626804d081426db82a5e18cb9fe9c322b3c22b6abd89438b2b8fe2efdbcc9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22061,14 +22413,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 279,
+			"line": 286,
 			"column": 1,
-			"endLine": 289,
+			"endLine": 296,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "c87f9b5ca80e120d9434791cd2a2ecbe7bf71c7964f903818aa3ce0e6d91883f",
+			"id": "2942620b61f5be42a65a183f6952983af0c1106bfcf8a51aab96f32d4f003501",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22083,27 +22435,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 280,
+			"line": 287,
 			"column": 8,
-			"endLine": 280,
+			"endLine": 287,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f122d916f6459766b8aa834aba98ddbc6f28849dd3243370fa89d8bd578730d4"
+			"id": "5bf82ce3e37116bd81578dd613a68484bc4836c8f6bdc4b0e6b2ba81023d6c21"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 281,
+			"line": 288,
 			"column": 7,
-			"endLine": 288,
+			"endLine": 295,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "f43e19142296b90a1e9fa194a0fa8d789f93b3493767669a9c11f37b944d0940",
+			"id": "4f6316d097b6743e50f5af8e9dd506cbeab2a93bc2fc2169bfbd67cffce93b0d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22118,14 +22470,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 282,
+			"line": 289,
 			"column": 37,
-			"endLine": 288,
+			"endLine": 295,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "94403117b3e2caf431c64d98a97bab6628d98c9d02960a7fc4b3c9c1e8a9ef50",
+			"id": "d524d0e6a1a7cb720eac6cbc7f02c2fea48c2b99ed2792f3137949b1509c5c86",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22140,14 +22492,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 284,
+			"line": 291,
 			"column": 24,
-			"endLine": 284,
+			"endLine": 291,
 			"endColumn": 64,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "0963d1b0f13a36b8a8083b932b4752607368b84a58737288abe074c90a16a4ac",
+			"id": "75665c4e51592a8e81e83d5dd3ee42ad4ce64cc70b43b2fcfca92a708cfbdd92",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22162,92 +22514,92 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 284,
+			"line": 291,
 			"column": 25,
-			"endLine": 284,
+			"endLine": 291,
 			"endColumn": 34,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "0c9e9be1de0f6145686a16de0dfb20fc112bf00103c4ef3fb980c8060b19edeb"
+			"id": "26f6e522cf11682b21fcbd4de6961f15f3581e04680132d2bab3a1728b8d5da2"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 284,
+			"line": 291,
 			"column": 36,
-			"endLine": 284,
+			"endLine": 291,
 			"endColumn": 38,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"Stryker was here!\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f061c27841b6b1aef824916dd1acc7f37aa9dfd0bf3151a5b8558ef737b1b5a9"
+			"id": "c3ce70b8c47009c31fcc68e5e691f6e078f26d87c33e545486e98886d98253e5"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 284,
+			"line": 291,
 			"column": 40,
-			"endLine": 284,
+			"endLine": 291,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d7a20e08ec5dd88a306c37efe7922028769f9e1e0cd6552b42d7f584c8b7f944"
+			"id": "e051b1e0a5d7d5d114e84c460ef10245eca01b6ee03e5c4e2d728af23a775074"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 284,
+			"line": 291,
 			"column": 54,
-			"endLine": 284,
+			"endLine": 291,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "44e1f149e2af26020bb7b05b0c5a5c1b83cd11de5bb073f8281abe07a9992141"
+			"id": "5051cc0494bf5d02b2e94d20cf20443489e7e8865578997275243351eed9efae"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 285,
+			"line": 292,
 			"column": 80,
-			"endLine": 285,
+			"endLine": 292,
 			"endColumn": 93,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "0d97299529c49c44b44156f144a6095f5826a7f314dc5b54ec8ad7d5ad059ad5"
+			"id": "063c2ac52bf57193a7e9c01113781d60fd286cefbaf07421aa319c29bfa7e5af"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 286,
+			"line": 293,
 			"column": 61,
-			"endLine": 286,
+			"endLine": 293,
 			"endColumn": 76,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "941f239436a345c18d765e8394ea5b8f63a8e02a30c71094389fc7fa7e083d24"
+			"id": "3f04d7b5eaeb2d05673cfff9eab14b68e877f07e3e2be65f0806e1d908ff323f"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 286,
+			"line": 293,
 			"column": 79,
-			"endLine": 286,
+			"endLine": 293,
 			"endColumn": 83,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "9d32a7e6223d4804960e1e8de4c9c1d228bd90f2ba3aef85c11dddaccaa30964",
+			"id": "0080082284510b5e58023d71c858f2f74f10169cd6cdc876d7e840a9cfcba33c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22262,14 +22614,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 287,
+			"line": 294,
 			"column": 4,
-			"endLine": 287,
+			"endLine": 294,
 			"endColumn": 75,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "3bde4d0f03b0f475afdb59e6c0a265c6148b0e6d831f156aa4877c2039e84ae2",
+			"id": "27f20e150027814484c3db93cfc4b3ba8d4da9dbe24197a256e7f6b39a304154",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22284,27 +22636,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 287,
+			"line": 294,
 			"column": 58,
-			"endLine": 287,
+			"endLine": 294,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "04160dc80f0ed2aee74484bc4272ed70c9cffd95e794bcf68ba8b466e77d6b2e"
+			"id": "29743d78a8854e31b9089e3cecd97460956c3913998a9d6a754657f56865f9c4"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 290,
+			"line": 297,
 			"column": 1,
-			"endLine": 311,
+			"endLine": 318,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "e2bb4f240fe741a406b5de447bb61659825565d715056182911b73ffb5f1fcc0",
+			"id": "146edc87992031bfb83ddb3aaafb9d0f75e1843ce920512d696b878739305bfa",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22319,27 +22671,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 291,
+			"line": 298,
 			"column": 8,
-			"endLine": 291,
+			"endLine": 298,
 			"endColumn": 92,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e472820e84ec5983fe76741211d80ec268547df355e3cab45fc1989bc9e328bf"
+			"id": "de679d70a0f38d57d6be310c0fb7fd2d6940ee645c03392ad8c76bba188c95dc"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 292,
+			"line": 299,
 			"column": 7,
-			"endLine": 310,
+			"endLine": 317,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "44d667a9b0b70b7a2c81e81c337121cf39fdb1f07ed7fd15689e4ff84ccae4b6",
+			"id": "c13b7dc32d3c4e12744219e2ceb7990de62fe3984fcc448712c51938e3b9374e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22351,146 +22703,24 @@
 				}
 			},
 			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 293,
-			"column": 37,
-			"endLine": 310,
-			"endColumn": 4,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "9acdc831609cb8972ac3c416412d2bfe0fdce3cfd1d897c440a7b5621915dec5",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"each conformance case fails against an adapter that breaks its promise",
-						"dispose removes the records and leaves no mark"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 295,
-			"column": 26,
-			"endLine": 295,
-			"endColumn": 33,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "51d75091215973f9e23e94ace9ac90e3fe4b423bec95e1be4b04b0c6e94680db"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 295,
-			"column": 35,
-			"endLine": 295,
-			"endColumn": 47,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "30e58a9cb3c5471b9f8b0af25060bb5466608c46f315118da3aaf8a67c43716c"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 296,
-			"column": 20,
-			"endLine": 296,
-			"endColumn": 63,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[]",
-			"status": "generated",
-			"id": "be5ef13af36217c6a48d0117db1fbf2f9a8da6b6b8c4a26c776d94bed99cb0c6",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"dispose: marks the cell, removes the records for good, and leaves other changesets"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 296,
-			"column": 30,
-			"endLine": 296,
-			"endColumn": 37,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8afedb34f332fc379b4cdc468f25c7c9fbfd988efbfa4ae58675b2daa49799eb"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 296,
-			"column": 39,
-			"endLine": 296,
-			"endColumn": 51,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "0c4adca445d53ff5b31a2dd35580c75920b0aae7c171e70d8922d54c2037ce35"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 297,
-			"column": 48,
-			"endLine": 297,
-			"endColumn": 57,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7e243dd5d5e6a18eb1743e1442f5412e7c617189c6a5e4b75c63f768e2ef1f8c"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 298,
-			"column": 44,
-			"endLine": 298,
-			"endColumn": 53,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "327f816a5d0f2e4d4bf8a94e740a54b70ad676735d3677a7f9ba21920731413a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 300,
-			"column": 50,
-			"endLine": 300,
-			"endColumn": 52,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[\"Stryker was here\"]",
+			"column": 37,
+			"endLine": 317,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
 			"status": "generated",
-			"id": "051f4e97257fd973d7d87dc13285a470dbff028b11b688ddc9c6b38eb03eea73",
+			"id": "739516371e73f1ed5fb21a2f7acdf75499ef7014a6f7047361c93fed1d899298",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
-						"the record store conformance suite on the memory adapter",
-						"dispose: marks the cell, removes the records for good, and leaves other changesets"
+						"each conformance case fails against an adapter that breaks its promise",
+						"dispose removes the records and leaves no mark"
 					]
 				}
 			},
@@ -22499,13 +22729,135 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 302,
-			"column": 4,
+			"column": 26,
 			"endLine": 302,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2174fa4fa31f78992cdfcc240960f67f10e3eec629da12d419655aa0bec4e360"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 302,
+			"column": 35,
+			"endLine": 302,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b51468ac649927f65ac1f7381f33758c6ac3367c78d070ae6b9f80f67e0cf9e"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 303,
+			"column": 20,
+			"endLine": 303,
+			"endColumn": 63,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "80c37c6830fe6143b14391b30c3b089dd85b62b6097202843411f1f74c4781f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"dispose: marks the cell, removes the records for good, and leaves other changesets"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 303,
+			"column": 30,
+			"endLine": 303,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "78a0ac7b30898adad5c786e1435c5d3169feb2b40ceaa4262066ff9bba49af58"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 303,
+			"column": 39,
+			"endLine": 303,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4f76cb6ed1fb06f19cb6d6a6d6a70f11b690766ea86d95726ad76c77dce49bce"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 304,
+			"column": 48,
+			"endLine": 304,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "010efe6b5c12a5c8e518a723e83f1f465a40b28fd4a624bb918c473216f27a51"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 305,
+			"column": 44,
+			"endLine": 305,
+			"endColumn": 53,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0c7703d5d17af191b69370b9dffa458c4a46b11e954145bc02263c8499369136"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 307,
+			"column": 50,
+			"endLine": 307,
+			"endColumn": 52,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "a3561720e10a352dc4880b86a2303466460b8a86ad7ebf731170a19a630517a1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"dispose: marks the cell, removes the records for good, and leaves other changesets"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 309,
+			"column": 4,
+			"endLine": 309,
 			"endColumn": 43,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "965d338f36ce0f994702ff6321ae97bf4b65bc612c2081311fd1f9ca74fccc5c",
+			"id": "be00ce76f20048ddf1a84fcc7b2ef6a3a300bc5408a15ee28250d9b05ac63ee4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22520,14 +22872,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 303,
+			"line": 310,
 			"column": 35,
-			"endLine": 303,
+			"endLine": 310,
 			"endColumn": 66,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "cee2d646af00ce84eb57cecdd7a7f3f2583c1a68e1858713756e9d9fae8c57c0",
+			"id": "2a777d5f45617331993b184b175685218b3ce27f884ac5b6e4acc87c3f60d778",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22542,53 +22894,53 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 303,
+			"line": 310,
 			"column": 45,
-			"endLine": 303,
+			"endLine": 310,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "210ead9fe494658338a6a141cf304e1f1eb452797366d7cabf3fcbacf6c51142"
+			"id": "5e2c861be0a5e86f2f441851a83910c9e7283f0cab57cb4f88a25d1dd79493d8"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 303,
+			"line": 310,
 			"column": 54,
-			"endLine": 303,
+			"endLine": 310,
 			"endColumn": 60,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "64b57328a702479553ed831ef2464f3889192701d10daef9cd683f888a9c70fe"
+			"id": "e40b7b9892ea640beb6ceea5cb330325c03ef73f87908e8cc82231d169e323fd"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 303,
+			"line": 310,
 			"column": 77,
-			"endLine": 303,
+			"endLine": 310,
 			"endColumn": 87,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "2d532aa20fbf2680cc982771e6da9ad3da90887c256eaf14515721f316ed92e9"
+			"id": "029d907425d31b5c79ead681efb187f1c39f262f84d4fb3389e8d23be742fc99"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 304,
+			"line": 311,
 			"column": 50,
-			"endLine": 304,
+			"endLine": 311,
 			"endColumn": 52,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[\"Stryker was here\"]",
 			"status": "generated",
-			"id": "ac58a000b0eb94e62ca5faa1865560883b88125577acc2281f2de1168c03ebc2",
+			"id": "23dc0f797ebf13429caf14ce6ba36802a2670243d5cb0d70ca4e881b5c1bfed0",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22603,40 +22955,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 305,
+			"line": 312,
 			"column": 66,
-			"endLine": 305,
+			"endLine": 312,
 			"endColumn": 75,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e70f42f89b63030b648dc887dbf63a3759719e3d9dae558a84e98caae0ab9358"
+			"id": "ab2586093e5a4e591bdd17c658db4860401ee0a4e841bcd8a4076e8442933706"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 305,
+			"line": 312,
 			"column": 86,
-			"endLine": 305,
+			"endLine": 312,
 			"endColumn": 96,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "8522560ffe78716ca110f968e76d1c1a898c47b4392572a7b30f59953e8b9021"
+			"id": "1248ab20e1d0607014a746c29e4bc50df8ceb80c7efce4bf235656b373e8ab57"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 307,
+			"line": 314,
 			"column": 4,
-			"endLine": 307,
+			"endLine": 314,
 			"endColumn": 72,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "bfd089d4a276d6c92d98796422636424a3396026d144dbb03f99b393fcfee5b4",
+			"id": "3007f8ca523a1113badd911ac548ad30adc575a1e6e6d46837efbab916692f90",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22651,14 +23003,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 308,
+			"line": 315,
 			"column": 4,
-			"endLine": 308,
+			"endLine": 315,
 			"endColumn": 64,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "8df73ea342b9ec6beb0343bb1a88f5e0163e91a371ec8b4d03fcc6cf3ce4b364",
+			"id": "603a68e6258a890d5d40f51b443138050de793b2d5f2124a3c086bde6047f675",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22673,14 +23025,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 309,
+			"line": 316,
 			"column": 4,
-			"endLine": 309,
+			"endLine": 316,
 			"endColumn": 65,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "37e8063cf8cdfd03d214e626baf99f13f5315e3e7d53b809de7180bfb2c94ed4",
+			"id": "270a42b21abd7ca9e836b56f1eb4af85aacac603505e81eda00b9cf6214b9ba6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22695,27 +23047,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 309,
+			"line": 316,
 			"column": 54,
-			"endLine": 309,
+			"endLine": 316,
 			"endColumn": 63,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d695c11a57034eeadec0e9ec6b01bfc61bde3ced95d7bbb99477ce2a1b8af5f8"
+			"id": "952286098a289ab6f4b1dc524877f04df34a46cda3fee1e7853cd145c8d4e055"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 312,
+			"line": 319,
 			"column": 1,
-			"endLine": 325,
+			"endLine": 332,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "167b05eb24c83c7f9b7d365b292a8b068f663f4e37d4ff4f74cdcb2818429d5c",
+			"id": "d2910cf87d228b03723665ee2a10dde2ab13636f0f9cca3020eae0a132a31614",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22730,27 +23082,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 313,
+			"line": 320,
 			"column": 8,
-			"endLine": 313,
+			"endLine": 320,
 			"endColumn": 92,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "6820614544a0c3f8152feee7df17f77963bda0378a1de861aae8bd339e4f7866"
+			"id": "580d34e7cf7a03d432238fbfad47931a047595f9cbad1b2f92a1a8d05014fbc1"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 314,
+			"line": 321,
 			"column": 7,
-			"endLine": 324,
+			"endLine": 331,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "dfeabda3f938135b97d1b9755ed55e06e85e61fb4d40822e5c81b21856d31dd7",
+			"id": "1e2bb749eb2a9538762272527153122194d58d3030b0c8eb5e8cb75009901810",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22765,14 +23117,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 315,
+			"line": 322,
 			"column": 37,
-			"endLine": 324,
+			"endLine": 331,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "8ae8e6f67ee94bd57bab729761b032acea90af59bd04bdfedda4d1d7d3bbb267",
+			"id": "2392888704bf9ce761809e21eadbc851ec2ca48e04aa8499ef85d5cc0fa1918e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22787,40 +23139,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 317,
+			"line": 324,
 			"column": 51,
-			"endLine": 317,
+			"endLine": 324,
 			"endColumn": 58,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "23a43601e28f18faee8d2d4e613b328d9fe618590992fea3dd994aca6ab39c0b"
+			"id": "79ac96a0d75942cfbe00ee61df67e8cc6880e45526982048d0d2480dded51382"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 318,
+			"line": 325,
 			"column": 56,
-			"endLine": 318,
+			"endLine": 325,
 			"endColumn": 69,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "9c76414a75ec366f42b668c071074639785a6140a1fa24302ca82a4ae8972277"
+			"id": "590a8a238e2b1c8d3377493c4d15db615ae780a3948450b153cd7e49adc5da0a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 319,
+			"line": 326,
 			"column": 35,
-			"endLine": 319,
+			"endLine": 326,
 			"endColumn": 72,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "67255a33437de31c4e09bc13c628ea18d9baebbadd8f84d3400b26ffa27fcc74",
+			"id": "622e21029140ee6ef1827ade613a07053916fb12e55b9c0bdbbb8e4ca2670e50",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22835,53 +23187,53 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 319,
+			"line": 326,
 			"column": 45,
-			"endLine": 319,
+			"endLine": 326,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "158b9054aabb300f5501eef8be6798fa4ec96cbaedcde10c46be5507aee028bf"
+			"id": "2634f8f9759a54b0e05187cb906ee1f1b97ea04f4a56e744c5720fd887eea33b"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 319,
+			"line": 326,
 			"column": 54,
-			"endLine": 319,
+			"endLine": 326,
 			"endColumn": 66,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "9a2f4cd8de204daba6783e7e32c31d79bc3b57b7d794acdfc166a6efb3ca442f"
+			"id": "ad7eb42a2537ca05fea2922b904fe638d900211d6f8f7bf73affb98bf57a106c"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 319,
+			"line": 326,
 			"column": 83,
-			"endLine": 319,
+			"endLine": 326,
 			"endColumn": 96,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "231adefa49fe528ca8bca13e539870ffe09ef792b183923c5fea1e8a3e276442"
+			"id": "fe5710da1529c9dc11d11601aace4d05f26524ec9056f80b0120b2dfe2450f71"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 320,
+			"line": 327,
 			"column": 34,
-			"endLine": 320,
+			"endLine": 327,
 			"endColumn": 39,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "063953b0afce10172d2740c89876aa96edefb816c0812a2a5878ae9684cd8f1f",
+			"id": "8a8651263c9cf54fd83812f7337a7a81ca014040b33d09654ba3d68b5dbed440",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22896,40 +23248,40 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 321,
+			"line": 328,
 			"column": 31,
-			"endLine": 321,
+			"endLine": 328,
 			"endColumn": 38,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "4e3d9b266cfc41fa814e02b5ab714123fef5f7a0d9167c2d05288aced7c1dd12"
+			"id": "28e32c264dde76995a7bc8d0a3dbd6f431ad71df0cd89c685f568a10ab14ebe2"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 321,
+			"line": 328,
 			"column": 40,
-			"endLine": 321,
+			"endLine": 328,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "46fdcfb0becf204b5cd6183fdc37d90eadcaf6095ea8fbbb52c50e5b974faa2d"
+			"id": "957ad1aed4ed76cabaccc115541d40fae19d49e7fc14326040bfa596fbd72d9e"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 322,
+			"line": 329,
 			"column": 20,
-			"endLine": 322,
+			"endLine": 329,
 			"endColumn": 31,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "3505cbb9449483e015b016be93649c8502537a933a580f478acd183e3f04f146",
+			"id": "3c9d9b12b758f36bb384ab38793a06d0779de5db92099d1a48acfd4bec2630bd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22944,14 +23296,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 323,
+			"line": 330,
 			"column": 4,
-			"endLine": 323,
+			"endLine": 330,
 			"endColumn": 69,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "828243840271c0187711bf1b59426177f2dc832c769c1879a46f4a5f4b74e34a",
+			"id": "0b477440c66ee476b68541875c45b595d544abfb7f39cd22d0f3aeddfee14f86",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22966,14 +23318,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 326,
+			"line": 333,
 			"column": 1,
-			"endLine": 343,
+			"endLine": 350,
 			"endColumn": 2,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "e348302bb74d098feb95a6ee3bc2586bd2a66ee6ca9f5fae041c0867f30a5973",
+			"id": "c661fff74349f685a478ca2856d108f6f07bcee0d41c04f58be0651f0f1c2380",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -22988,27 +23340,27 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 327,
+			"line": 334,
 			"column": 8,
-			"endLine": 327,
+			"endLine": 334,
 			"endColumn": 92,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7ea2462d8b1fd4eaab54ccfbb026ce0e9438ce9994e0727a6120a3c0e8ed18a1"
+			"id": "45b34ca5d02bffbc76e2a351481cac560a1ef67754afd7174413235a3771b250"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 328,
+			"line": 335,
 			"column": 7,
-			"endLine": 342,
+			"endLine": 349,
 			"endColumn": 5,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "1f65615571dba5feec0b18e5a0131accc7c2a1cd072838ef3b83cee611502c71",
+			"id": "9543aa33085f573d81194e7ee67917b9c84d6735626fd8a5f623cf8d0c9eec0c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23023,14 +23375,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 329,
+			"line": 336,
 			"column": 37,
-			"endLine": 342,
+			"endLine": 349,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "47908fc791b1fca52988f5c95525a4d3d43ac85297b484d6acb4caae2d9ef46f",
+			"id": "0d0e4c905b141845a1722d5f8ed543d3f25e674fa7fd0673178198f6b736d41c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23045,14 +23397,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 26,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 66,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "380aac95a1f25697f5efbccfa6b6cf3fc6d71c0d0d775a0156a548ef815fea70",
+			"id": "280b877f6bccbf7e8cc069aa8e784c5367845d3fe5ada139a3e49cc1c22accc2",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23067,79 +23419,79 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 27,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 39,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b647c958521709764be74787669182c4763af162219bf05ead618270d11c8bc9"
+			"id": "38a5b082bbc6715466d6a1ae5db7f8ac3079d98e59563fabed4eb12cf7306b7b"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 41,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 46,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "bc0f5ade6d391adf9460cdfcdec4559cc1bd90822512b7f7977e09a7bdb6512b"
+			"id": "1d15df0924a22b6f199919be5f0a9db5635fba71724d3c74610f9dbe6dd38b83"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 48,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 52,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d8bad0ee8205fbbb28d423c558fbc7ce3a791557ab06a8382e57f524d00f2a1a"
+			"id": "634cf4d92b86dc21dc42d8fe87f6af5ce3a0c4b3dfa20fe090aea21b1a59a1cd"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 54,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 60,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "cb94b144e0496d7562f3cd52cb803daa5049ecde8c739b11557ba287493409d8"
+			"id": "2433795c6a6f1859cd147648bf8665ea93b48cc03e8f6b86cc8293be9d7d544a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 62,
-			"endLine": 331,
+			"endLine": 338,
 			"endColumn": 65,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "966a1a3e52257fd01c174f76263a2fc2896ee19336e2c6b3fddceaf1d1c44156"
+			"id": "822ca10c615a4ff935532efc9c86b0c76fc2276505eb8c191c4099c71c7230e6"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 331,
+			"line": 338,
 			"column": 68,
-			"endLine": 336,
+			"endLine": 343,
 			"endColumn": 5,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "41caabd28ec01fec0e11a607aa9996ddfd0ec1a2e92685742802e3cabb5a6a9c",
+			"id": "172cb757fde01d81a0bf8e241216b400583569421d76b5e388a03ddcaa2eee48",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23154,175 +23506,118 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 332,
+			"line": 339,
 			"column": 55,
-			"endLine": 332,
+			"endLine": 339,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "bae67d2cb341af0fd564669dfbfe62f1f57211d9cf47998f4da16e32a461eb9a"
+			"id": "13cf9d62f20db2f59aa5e58f8da3e898547e59a84e4feb288e38004548a0f42f"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 333,
+			"line": 340,
 			"column": 59,
-			"endLine": 333,
+			"endLine": 340,
 			"endColumn": 77,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "969ff6b935c7c911a2fd68af5b7e45fd99c51a10040226ef17450c1fafbf9d32"
+			"id": "d46691c335b3952519a7db17fe00d5c9c57d854a7d364d3cfd16c7e7ded299c8"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 334,
+			"line": 341,
 			"column": 62,
-			"endLine": 334,
+			"endLine": 341,
 			"endColumn": 71,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "aad41b12ec1ecca04be2d1a2caaf644f5b2c4ae91eba1533c4967ab85430ecf9"
+			"id": "b43270e3f93d91bed8f98ea247bd3fbcfbf5b94480f5dd838e5af88a235c34d6"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 334,
+			"line": 341,
 			"column": 82,
-			"endLine": 334,
+			"endLine": 341,
 			"endColumn": 100,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a468f1d55ac8c898d0c3285c20ef5f0d0dc130059db07ec2b801e9913e1a435b"
+			"id": "cce604064c04ba8f6a2d8f200dd8bd81fcfaf9691e61ed896069305234802f17"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 335,
+			"line": 342,
 			"column": 58,
-			"endLine": 335,
+			"endLine": 342,
 			"endColumn": 76,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "d06272390d3047b9a27bf437394921e69ac68445c77be6a045548ba115d3a92f"
+			"id": "0631d02a96668a1031e157c4e45e99732b47c910c7452957c8084a89f99c79e5"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 337,
+			"line": 344,
 			"column": 19,
-			"endLine": 337,
+			"endLine": 344,
 			"endColumn": 49,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "32901664a4bbff3f109e3e286df2df759ec773c615d71b82f70e97a98f4cbd6c"
+			"id": "5dfe62d5239550323983bd182f7f1b800c79c6db6264c3f5dbec176bce8ce1d3"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 338,
+			"line": 345,
 			"column": 28,
-			"endLine": 338,
+			"endLine": 345,
 			"endColumn": 35,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "cede61c18b511949aaa9cd37cd642d09121b0c3a44c792bb6f63ce497fa346aa"
+			"id": "4ecf77ff894179948a396603a30cde3447775166763afe534d9b66cef6ee4e32"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 338,
+			"line": 345,
 			"column": 37,
-			"endLine": 338,
+			"endLine": 345,
 			"endColumn": 49,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b74b516ab687eb692ee0060c396b713473a5a9ff30f74cab59ddc459e10efb15"
+			"id": "d7b60ac804eafd6dd4af8de0b69d5479d8f6778ffbb2b17a2be961d4c5139a3d"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 339,
+			"line": 346,
 			"column": 20,
-			"endLine": 339,
+			"endLine": 346,
 			"endColumn": 28,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[]",
 			"status": "generated",
-			"id": "6e68a558cad79967f0e7f16eb49fe0410e87c772ad0cda716f2eb93dac7ffb50",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"every call refuses a changeset name no envelope could hold, and takes a dotted one"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 340,
-			"column": 4,
-			"endLine": 340,
-			"endColumn": 67,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"status": "generated",
-			"id": "0e60dba8b78899baf62a80a9126d1235b3ad54d3faa2e655c956ef94a484f4da",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"each conformance case fails against an adapter that breaks its promise",
-						"a dotted changeset name lists nothing"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 341,
-			"column": 58,
-			"endLine": 341,
-			"endColumn": 67,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "fca3f13280801447d003d9f4440cd75ef8c10af9ca100a533bcc4a097af24be4"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 341,
-			"column": 70,
-			"endLine": 341,
-			"endColumn": 74,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "4c5ee463c8c55fd73da9fa01f2c40b8b6a125d2317183068b385c314623eb53f",
+			"id": "357a82d1f14f9c8a80adedbcbddfd92107a85ec00f9ed7a2813965c4db04d67e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23338,20 +23633,20 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 347,
-			"column": 63,
-			"endLine": 367,
-			"endColumn": 1,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
+			"column": 4,
+			"endLine": 347,
+			"endColumn": 67,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
 			"status": "generated",
-			"id": "d9945571a69b3b2afd54fdfcb3f760081abcdf2d5dae017ca17604bcc68ac9fc",
+			"id": "c61a9b2d53967846c5f891e1e884d49464e50fc777808f3cd778d0294ddc9cf1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
-						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
+						"each conformance case fails against an adapter that breaks its promise",
+						"a dotted changeset name lists nothing"
 					]
 				}
 			},
@@ -23360,108 +23655,33 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 348,
-			"column": 20,
-			"endLine": 366,
-			"endColumn": 2,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "dff95cf11bd92e2bd352e8370e4a985760b2719a55fee851792add599c92e9bb",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
+			"column": 58,
+			"endLine": 348,
+			"endColumn": 67,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bedf988ecea208c04ca25653926a6a456d675b737f9af42988ab084953d9edb0"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 350,
-			"column": 33,
-			"endLine": 350,
-			"endColumn": 35,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[\"Stryker was here\"]",
+			"line": 348,
+			"column": 70,
+			"endLine": 348,
+			"endColumn": 74,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
 			"status": "generated",
-			"id": "8d05a5e88a0cf4d5326216137b6184438dd6138fa7e088447af9067434738a2f",
+			"id": "8039acb46722d67dce43d6c891287915df17776f90c191c10407739cbd5f3921",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 351,
-			"column": 9,
-			"endLine": 365,
-			"endColumn": 3,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "1777c7718f77a9f4cd58077b4cc9bf6fd84035844308fc7ea9fde7e7ff389711",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 352,
-			"column": 21,
-			"endLine": 356,
-			"endColumn": 4,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "94efd3954ea1bf00085cd9b2af7c1bde881f194e72c09b0b8860d18184e143b8",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 353,
-			"column": 40,
-			"endLine": 353,
-			"endColumn": 73,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "8fdc025bcf59b49a6a5c7b6e001a399dfe864e461a458fc320f0fda76045b852",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the memory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
+						"every call refuses a changeset name no envelope could hold, and takes a dotted one"
 					]
 				}
 			},
@@ -23470,24 +23690,156 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 354,
-			"column": 4,
-			"endLine": 354,
-			"endColumn": 24,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
+			"column": 63,
+			"endLine": 374,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
 			"status": "generated",
-			"id": "07046ebc5db4e2682aec12c90a77083bb18a1dd54a44a73ea7aa357d86b414af"
+			"id": "731d5e2f6c459ee31e8eb2fdc05c9886b74f7a53cdb79b472afc4bbaac6ab699",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 355,
+			"column": 20,
+			"endLine": 373,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "873a2a35309820a69cb79d3596f6b0868ccd93dc3ee15e07cd6fd204f5fbd737",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 357,
-			"column": 11,
+			"column": 33,
 			"endLine": 357,
+			"endColumn": 35,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "88ad3f631cc43171a2ebae9a38703ee1409449083a39d5d1896605c6a32b9351",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 358,
+			"column": 9,
+			"endLine": 372,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1616bb179f5cf1c5cca1001380320bec706beda81ccd7717044d442f856b4f69",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 359,
+			"column": 21,
+			"endLine": 363,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "bdf228b924fbdd27ba3a70f824a6776180723c19968fbae096bf14c95ce3a369",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 360,
+			"column": 40,
+			"endLine": 360,
+			"endColumn": 73,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "07a3bd31c942114828978c8e9d1535f5041a13309eb26142001ec2ef2aa78c95",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 361,
+			"column": 4,
+			"endLine": 361,
+			"endColumn": 24,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "9a8e06bd95ba3def34c690a96f8ba34bc0f85d6ac880af32ab8a17d0ff3f7d85"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 364,
+			"column": 11,
+			"endLine": 364,
 			"endColumn": 41,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "7fb7ff020ffb64785cdd62af39d6b128a7c7f8397362929d719423de81035387",
+			"id": "065c61ec72c9618a9dbd895538b260063a69803c6cfaa37be75e1a1559cab814",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23502,14 +23854,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 358,
+			"line": 365,
 			"column": 32,
-			"endLine": 361,
+			"endLine": 368,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "cac29a9f5dbeac51ebab251cd24541ce9552c56d69918685643d5e54a0957340",
+			"id": "c2e008d9db7b923ce1ccb43ce125181fef8ca8ab58f456a1667d66ab3e8ccb73",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23524,14 +23876,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 359,
+			"line": 366,
 			"column": 4,
-			"endLine": 359,
+			"endLine": 366,
 			"endColumn": 28,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "b137682c1c1dc6bbca6308bdd59a4492c5962498046bce5f9f0241b41b4dd593",
+			"id": "d27ec9d8a21c676c5fe5bdea4ef32d845c39f87a75866982c81c2a2de222bcf1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23546,14 +23898,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 360,
+			"line": 367,
 			"column": 11,
-			"endLine": 360,
+			"endLine": 367,
 			"endColumn": 28,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "74a4018ca911bbd20a1a7fe7e2eb8db11b67cfa03586ee8c5288e7efb0ac5994",
+			"id": "f22ee96f29e9bdca85c181d2a42e702c0914ffd8f4c0e52624cc1e5c12274b8c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23568,14 +23920,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 360,
+			"line": 367,
 			"column": 23,
-			"endLine": 360,
+			"endLine": 367,
 			"endColumn": 28,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "c7d671ba664c2ec06eeee027703c05fcf3574dfe54af65174bb12ec462e4cffe",
+			"id": "7667a04d384b9968f57864eb196982e8a90e5efc73aa78d0ed6c9dff7cbcdcad",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23590,139 +23942,25 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 362,
+			"line": 369,
 			"column": 22,
-			"endLine": 364,
+			"endLine": 371,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9993f1f7f0d21c2578e94d0180eda9c7974fd721ab4c61896db818928d045615"
+			"id": "ea2717cd0886c1ee1b07e764a7cd73483f1a9091681a6f6d114317721767393b"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 373,
+			"line": 380,
 			"column": 66,
-			"endLine": 397,
+			"endLine": 404,
 			"endColumn": 1,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "668750d7c803e0c0896d4aa1def0c28731bc00ec0beb4fdc22cef589221760fa",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 374,
-			"column": 20,
-			"endLine": 396,
-			"endColumn": 2,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "6c88322aeac5d3f60f509fe51a49ce9bcdbb4e34ba7ebda982d7e56bb8797b9e",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 375,
-			"column": 44,
-			"endLine": 375,
-			"endColumn": 61,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "fe40a704dbdaadb3da7bfbb51a91f56f526a062cf1c33e67d493d99c397c304d"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 376,
-			"column": 47,
-			"endLine": 376,
-			"endColumn": 72,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ed2a26108f43f90f88fefd86c627f52e7e4259e6cbb136a7d87b9ffcb95357da"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 377,
-			"column": 33,
-			"endLine": 377,
-			"endColumn": 35,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[\"Stryker was here\"]",
-			"status": "generated",
-			"id": "5d021a3d74cedbf9c3cf4ac5e6801f7bc0896f1467140140885798d4a54c3ff8",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 378,
-			"column": 9,
-			"endLine": 395,
-			"endColumn": 3,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "c464338eb1d279dc8760079e034de08d38f8e0ba4e08b0afb31066f9b2cab54d",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 379,
-			"column": 21,
-			"endLine": 383,
-			"endColumn": 4,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "5d60e88b8d0940a2dafbd3b2af12a7479abe711832c5e1962244b40e2d312065",
+			"id": "6a48c5603d961e700c15b7fe5a1602c431b4df91eb0271c969ef946c0bb222bd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23738,53 +23976,20 @@
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 381,
-			"column": 4,
-			"endLine": 381,
-			"endColumn": 24,
-			"mutatorName": "CallExpression",
-			"replacement": ";",
-			"status": "generated",
-			"id": "4c9152924686b426d1b970d8a2ee81936114a8fa4dbf5aabb67887cf5322d190"
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 384,
-			"column": 11,
-			"endLine": 384,
-			"endColumn": 59,
-			"mutatorName": "ArrowFunction",
-			"replacement": "() => undefined",
-			"status": "generated",
-			"id": "e07cb719f69eeaa66b083edb2e6211ea34295f4b788464fd540754de29a8a068",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"list: fails when the store cannot answer it fresh"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 384,
-			"column": 26,
-			"endLine": 384,
-			"endColumn": 58,
-			"mutatorName": "ObjectLiteral",
+			"column": 20,
+			"endLine": 403,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "10314f89d209f6c507e06fcb1ea491b25e2c7b222efc28f5f9b16d4be12d038d",
+			"id": "231df56984b5589efb109670691a7511253575a68add1b4daa1ae28bf27594ee",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the directory adapter",
-						"list: fails when the store cannot answer it fresh"
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
 					]
 				}
 			},
@@ -23792,47 +23997,194 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
+			"line": 382,
+			"column": 44,
+			"endLine": 382,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8503a05a1179be96ced38d2b6aa7fd841a8d147e51b5a31d787483505355ff0a"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 383,
+			"column": 47,
+			"endLine": 383,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ccbc813155d22a1bb78880d2a5bbf4badfddcc78d4b60e8644759d11ce6c9af3"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
 			"line": 384,
-			"column": 39,
+			"column": 33,
 			"endLine": 384,
-			"endColumn": 43,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
+			"endColumn": 35,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
 			"status": "generated",
-			"id": "188a3addc254e6fbf9c7a41231c9bc4facffb1778de2739887dbae94a893eda4",
+			"id": "1437110cdd496a0307d8a9d6b5febeef38470a790cc69eb17818f38254d8442d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/record-store.test.ts",
 					"path": [
 						"the record store conformance suite on the directory adapter",
-						"list: fails when the store cannot answer it fresh"
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
 					]
 				}
 			},
 			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/testing.ts",
-			"line": 384,
-			"column": 52,
-			"endLine": 384,
-			"endColumn": 56,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "6789d894aa9118cbd10926cef581bb477d4f467ce07f88f2cae8a3ad12be7fc5"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
 			"line": 385,
-			"column": 32,
-			"endLine": 389,
+			"column": 9,
+			"endLine": 402,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e5582020e048f7335a5d23f443aef0a51927df363f1615a9ca99da7a1da1be9d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 386,
+			"column": 21,
+			"endLine": 390,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "cbde18942ed4a62a73bffe7670bb6d740a2bf3abfd5fc4f849e3291b8b06cb03",
+			"id": "d64adba93ebcf43a2bb808547c14289e7742da87f7dd1be26971b7312345838c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 388,
+			"column": 4,
+			"endLine": 388,
+			"endColumn": 24,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "5ae4d9118766157dfdb53b0b2ec9df0568c9479023a274ea88c1efafec401409"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 391,
+			"column": 11,
+			"endLine": 391,
+			"endColumn": 59,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "6442d5e18b3aa2eae51ba89f305322cf6fc7356d3031325b944eeb29fd86677a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"list: fails when the store cannot answer it fresh"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 391,
+			"column": 26,
+			"endLine": 391,
+			"endColumn": 58,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a639bb04d3c2a3ea07f8d606ae491a5dc0d4b8e859d4c67c10f899afe808d0cf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"list: fails when the store cannot answer it fresh"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 391,
+			"column": 39,
+			"endLine": 391,
+			"endColumn": 43,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "064074f362eecb15a3ecdff56a91d3376477b5606e31c661ded9dee22c2682ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"list: fails when the store cannot answer it fresh"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 391,
+			"column": 52,
+			"endLine": 391,
+			"endColumn": 56,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7b268c3ba0fa193675ca1cdc04a337fb237b60336f6b9cab292a0f8ab87c6df9"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 392,
+			"column": 32,
+			"endLine": 396,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a49b10585f309e715cd5e640be9e0c15b3cc6586a56f73b91ec150fa6c2e3482",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23847,62 +24199,62 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 386,
+			"line": 393,
 			"column": 27,
-			"endLine": 386,
+			"endLine": 393,
 			"endColumn": 39,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b961d1e275b57e9fca30d8c54af7428dbb0e64feb65b666609c814d39dcd7f5e"
+			"id": "a1ff91aea206d6dbc15240f842b58db2437af0abaee13e95a96ee7e4c3b9423a"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 386,
+			"line": 393,
 			"column": 48,
-			"endLine": 386,
+			"endLine": 393,
 			"endColumn": 67,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9a7736125e95a5f332d013c1c42dd279c52a2d5c6be6036e208dcc192b997984"
+			"id": "5970aea8fb9ddf5c879a8782e823c43da999f41465c430e7d258199401960572"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 386,
+			"line": 393,
 			"column": 61,
-			"endLine": 386,
+			"endLine": 393,
 			"endColumn": 65,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "8005fc54398d5ee86c52a48fe0cfb311b83e3944eabb89db6aadaa0a83d07aa6"
+			"id": "8c5d15e5d0e6d53940d91d88ca4ba401a7ecb9b914e9c1bfde36e27dfe6a5e35"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 387,
+			"line": 394,
 			"column": 38,
-			"endLine": 387,
+			"endLine": 394,
 			"endColumn": 50,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "08b8a87790f30e8cc89c0a81c4d61dfb620256da294ee5c61565d42035483e48"
+			"id": "a3fe431826f27ec546e0a96e926a01d0314f50c1058296fefe2d326adfa285df"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 388,
+			"line": 395,
 			"column": 11,
-			"endLine": 388,
+			"endLine": 395,
 			"endColumn": 58,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "5cb558a92088046dbbfd50e2114e212643c712017b71a86a46ec35939b626e71",
+			"id": "29ccea5fd862011db72662d9f366aed6524355505210e7e359c7f23cf25a78e9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23917,14 +24269,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 388,
+			"line": 395,
 			"column": 23,
-			"endLine": 388,
+			"endLine": 395,
 			"endColumn": 58,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "7d8527d6379f4e5a68c631562772705718d5f0f16c0e00eb785481a664b07c04",
+			"id": "d07913225e95849042cf4da9dbd2929da7ca77414d8a81e63a29f61930399a89",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23939,14 +24291,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 388,
+			"line": 395,
 			"column": 23,
-			"endLine": 388,
+			"endLine": 395,
 			"endColumn": 58,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "c9b5d705b56e2ebb07ef8d1dbb5d00a5e30aeaf394629748388a0db22e6f94de",
+			"id": "56aa59df7f3e457323b6a81dc7abbae11b4833ab0d3b628e26511cef527b2954",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23961,14 +24313,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 388,
+			"line": 395,
 			"column": 23,
-			"endLine": 388,
+			"endLine": 395,
 			"endColumn": 58,
 			"mutatorName": "EqualityOperator",
 			"replacement": "(await readdir(outside)).length >= 0",
 			"status": "generated",
-			"id": "7d2960f533f00c0120377f1849512b596537f69f2bb24a5a3d3e36109dec2ed1",
+			"id": "776efd85c5aa7e718d3f32cdc43b79005c2ffa11ac3ee9788dab2ccf93e13584",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -23983,14 +24335,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 388,
+			"line": 395,
 			"column": 23,
-			"endLine": 388,
+			"endLine": 395,
 			"endColumn": 58,
 			"mutatorName": "EqualityOperator",
 			"replacement": "(await readdir(outside)).length <= 0",
 			"status": "generated",
-			"id": "f165aa39f1597ca2f64010bac330442b63753126d5558d98e65722f222820d8b",
+			"id": "56629a2e4671699bdb4a645ff153e29dff706347aa30984c8ddd86473857ee4f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24005,25 +24357,25 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 390,
+			"line": 397,
 			"column": 22,
-			"endLine": 394,
+			"endLine": 401,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "d714a287699cd65543127d56ad6fcec32084e1ded71eea2a1e48f8ee227d8725"
+			"id": "bf508d1ae376dc989ebe32d104dbe22a55ff19ead7b559180591b4da6bc4c1d3"
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 392,
+			"line": 399,
 			"column": 19,
-			"endLine": 392,
+			"endLine": 399,
 			"endColumn": 51,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "b28bfc14b6d4bad8cefcb74e245bfea3e1282f9248a8d8be4344972c239943d1",
+			"id": "884f26a66d6eac7254a1a567bc680490e972454e447b9df58d936a4c38f97146",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24038,14 +24390,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 392,
+			"line": 399,
 			"column": 32,
-			"endLine": 392,
+			"endLine": 399,
 			"endColumn": 36,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "7621abe5ae51768ce0a3da961f18eca4880a21c808f0400f18f432e9085ac11f",
+			"id": "7cd832daafed5318cfed1e9ddc588b49fbfdfb0e8f4c23160ae2c7439df03cd9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24060,14 +24412,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 392,
+			"line": 399,
 			"column": 45,
-			"endLine": 392,
+			"endLine": 399,
 			"endColumn": 49,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "9ec14d5a0abbabdbb342beb37670285917d40728c8bd4c42cf8e671591bd11b0",
+			"id": "be8b0c6e79ae8c7412e65beb0f80cb08c42139eb3d52a3c3c4ee42c4fe607c86",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24082,14 +24434,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 393,
+			"line": 400,
 			"column": 22,
-			"endLine": 393,
+			"endLine": 400,
 			"endColumn": 54,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "6e2f56fc987cb4cf70b14971ca1cdac10dd057801db18f06a028a429c9a46844",
+			"id": "11c1b732876f4c3708e4cad40ff3da37f5d0c5276f64e29d009f7961ef1da62a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24104,14 +24456,14 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 393,
+			"line": 400,
 			"column": 35,
-			"endLine": 393,
+			"endLine": 400,
 			"endColumn": 39,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "f6b45ffeafa53cd66cbb1ba03c3e9726b8e097407a95504de12f5d46964cae94",
+			"id": "d429950a8dd71691a254a217def4b1917cab968609653080912cdd7286100fd6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24126,17 +24478,17 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 393,
+			"line": 400,
 			"column": 48,
-			"endLine": 393,
+			"endLine": 400,
 			"endColumn": 52,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "fef7f43a032e44d5066b8d6cd76fc1564ac8c74eb851d55974b808a9030ccaa6"
+			"id": "0b3c0c959981d18204f00efe0af186ab5fc90c580cf0f7894e0367be74b352fd"
 		}
 	],
-	"total": 1241,
+	"total": 1258,
 	"omitted": 0,
 	"unmutated": []
 }
