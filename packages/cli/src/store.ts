@@ -30,7 +30,6 @@ function refusal(live: readonly LiveRun[]): string {
 	return `melian: a static check is running (${runs}), so prune removes nothing; run it again once the review ends\n`;
 }
 
-/** `melian store prune`: prints what the retention decision lets prune remove, and with `apply` removes it. */
 export async function storePrune(io: Io, apply: boolean): Promise<number> {
 	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 	const prune = await StorePrune.open(repoRoot, {
