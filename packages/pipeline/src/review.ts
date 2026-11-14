@@ -1055,6 +1055,8 @@ export interface Review {
 	readonly findings: readonly Finding[];
 	/** The adjudicated outcome: findings merged across sources and resolved per path, grouped, and the review's status. */
 	readonly verdict: Verdict;
+	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
+	readonly decisionIndexWarning?: string;
 }
 
 // A task no installed extension defines stays blocked, and waiting on it would never return. `forget` takes the aborted
@@ -1731,6 +1733,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
+	let decisionIndexWarning: string | undefined;
+	const loadDecisions = async () => {
+		const index = await DecisionFiles.load(repoRoot, base);
+		decisionIndexWarning = index.warning();
+		return index;
+	};
 	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
 	const covering = selected.map((selection) => {
 		const { files } = selection;
@@ -1919,10 +1927,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
-		const decisions =
-			lens.name === "design"
-				? await spans.time("design.decisions", () => DecisionFiles.load(repoRoot, base))
-				: undefined;
+		const decisions = lens.name === "design" ? await spans.time("design.decisions", loadDecisions) : undefined;
 		const designSections =
 			lens.name === "design"
 				? await spans.time("design.sections", () => DesignSections.load(repoRoot, base))
@@ -2124,7 +2129,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
 			);
 			if (designClaim) {
-				decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
+				decisionsAtBase ??= (await loadDecisions()).render();
 				if (designAtBase === undefined) {
 					const sections = await DesignSections.load(repoRoot, base);
 					designAtBase = { sections: sections.render(), files: sections.renderFiles() };
@@ -2653,6 +2658,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			models: [...new Set(exhausted.flatMap(({ tried }) => tried))],
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -2661,6 +2667,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: failed,
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -2668,6 +2675,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: [],
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
-	return { findings, verdict };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
 }

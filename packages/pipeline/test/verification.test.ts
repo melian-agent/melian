@@ -22,6 +22,7 @@ import {
 	openHarness,
 	planInputs,
 	type Review,
+	ReviewError,
 	ReviewHarness,
 	readFindings,
 	reviewChangeset,
@@ -532,6 +533,89 @@ describe("the verifier", () => {
 			expect(instructions).not.toContain("## Decisions at base");
 			expect(instructions).not.toContain("## Design sections at base");
 		}
+	});
+
+	async function withDecisionLog(title: string) {
+		const base = gitIn(repo, "show", "main:src/user.ts");
+		const head = gitIn(repo, "show", "feature:src/user.ts");
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/user.ts": `${base}\n`, "docs/decisions/2026-10-01-a.md": `# ${title}\n` },
+			{ "src/user.ts": `${head}\n` },
+		);
+		changeset = await Changeset.resolve(repo, "main...feature");
+		return (await DecisionFiles.load(repo, changeset.revision.base)).warning();
+	}
+
+	it.each([
+		["the design lens", "design", "wrong-result", true],
+		["the verifier, for a design rule a lens with no index reports", "correctness", "fail-open-default", true],
+		["the verifier, for no design rule", "correctness", "wrong-result", false],
+	])("reports a long decision index only when it gave %s the index", async (_reader, name, rule, given) => {
+		const warning = await withDecisionLog("x".repeat(70_000));
+		expect(warning).toBeDefined();
+		const first = lenses[0]!;
+		lenses = [Lens.from({ ...first.toJSON(), name, rules: [{ id: rule, description: "Planted rule." }] })];
+		scripts();
+		expect((await review()).decisionIndexWarning).toBe(given ? warning : undefined);
+	});
+
+	it("reports nothing for a decision index under the threshold it gave the verifier", async () => {
+		expect(await withDecisionLog("Short")).toBeUndefined();
+		const first = lenses[0]!;
+		lenses = [Lens.from({ ...first.toJSON(), rules: [{ id: "fail-open-default", description: "Planted rule." }] })];
+		scripts();
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		const result = await review();
+		expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
+		expect(result).not.toHaveProperty("decisionIndexWarning");
+	});
+
+	it("reports the warning again for a repeat review, which loads the index to build its lens runs", async () => {
+		const warning = await withDecisionLog("x".repeat(70_000));
+		const first = lenses[0]!;
+		lenses = [
+			Lens.from({
+				...first.toJSON(),
+				name: "design",
+				rules: [{ id: "wrong-result", description: "Planted rule." }],
+			}),
+		];
+		scripts();
+		expect((await review()).decisionIndexWarning).toBe(warning);
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		expect((await review()).decisionIndexWarning).toBe(warning);
+		expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
+	});
+
+	it("carries the warning on the error of a review whose design lens failed after it gave the lens the index", async () => {
+		const warning = await withDecisionLog("x".repeat(70_000));
+		const first = lenses[0]!;
+		lenses = [
+			Lens.from({
+				...first.toJSON(),
+				name: "design",
+				rules: [{ id: "wrong-result", description: "Planted rule." }],
+			}),
+		];
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: Array.from({ length: 6 }, () =>
+					fauxAssistantMessage("", {
+						stopReason: "error",
+						errorMessage: "prompt is too long: 250000 tokens > 200000 maximum",
+					}),
+				),
+			},
+		]);
+		const failure = await review().then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		expect(failure).toBeInstanceOf(ReviewError);
+		expect((failure as ReviewError).verdict).toBeDefined();
+		expect((failure as ReviewError).decisionIndexWarning).toBe(warning);
 	});
 
 	it.each([

@@ -1,21 +1,8 @@
 import type { CheckRecord } from "@melian-agent/core";
-import { DecisionFiles } from "@melian-agent/decisions";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { commit, createRepository, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
+import { describe, expect, it } from "vitest";
 import { DecisionIndexWarning } from "../src/decision-index.ts";
 
-let repo: string;
-let long: string;
-let short: string;
-let broken: string;
-beforeEach(() => {
-	repo = createRepository();
-	short = commit(repo, { "docs/decisions/2026-10-01-a.md": "# A\n" });
-	long = commit(repo, { "docs/decisions/2026-10-01-a.md": `# ${"x".repeat(70_000)}\n` });
-	broken = commit(repo, { "docs/decisions/2026-10-02-b.md": "# B\nSupersedes: 2026-10-09-absent.md\n" });
-});
-afterEach(() => removeRepository(repo));
-
+const long = "The decision log is long.";
 const design = (status: CheckRecord["status"], error?: string): CheckRecord => ({
 	name: "lens.design",
 	status,
@@ -24,44 +11,12 @@ const design = (status: CheckRecord["status"], error?: string): CheckRecord => (
 const overflow = "tried a; the last said: prompt is too long: 250000 tokens > 200000 maximum";
 
 describe("the decision index warning a review gives", () => {
-	it.each(["ran", "failed", "ended"] as const)("warns for a long index when the design lens %s", async (status) => {
-		const warning = await DecisionIndexWarning.read(repo, long, [design(status)]);
-		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
+	it("gives the pipeline's warning as it stands when no reader overflowed", () => {
+		expect(DecisionIndexWarning.from(long, [design("ran")])?.text).toBe(long);
 	});
 
-	it("warns for a long index when only the verifier read it, as it does for a design rule any lens reports", async () => {
-		const checks = [
-			design("skipped"),
-			{ name: "lens.tests", status: "ran" } as const,
-			{ name: "verifier", status: "ran" } as const,
-		];
-		const warning = await DecisionIndexWarning.read(repo, long, checks);
-		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
-	});
-
-	it("names a verifier's overflow when no design lens ran", async () => {
-		const warning = await DecisionIndexWarning.read(repo, long, [
-			{ name: "verifier", status: "failed", reason: overflow },
-		]);
-		expect(warning?.text).toBe(
-			`${(await DecisionFiles.load(repo, long)).warning()} \`verifier\` failed on a request too long for its model, which the decision index's size may explain.`,
-		);
-	});
-
-	it.each([
-		["the design lens was skipped", [design("skipped")]],
-		["no design lens ran", [{ name: "lens.tests", status: "ran" } as const]],
-		["the verifier was skipped", [{ name: "verifier", status: "skipped" } as const]],
-	])("gives no warning for a long index when %s, since the review read no index", async (_name, checks) => {
-		expect(await DecisionIndexWarning.read(repo, long, checks)).toBeUndefined();
-	});
-
-	it("gives no warning for an index under the threshold", async () => {
-		expect(await DecisionIndexWarning.read(repo, short, [design("ran")])).toBeUndefined();
-	});
-
-	it("gives no warning, and refuses nothing, when the decisions cannot be read", async () => {
-		expect(await DecisionIndexWarning.read(repo, broken, [design("ran")])).toBeUndefined();
+	it("gives no warning when the pipeline reported none, whatever failed", () => {
+		expect(DecisionIndexWarning.from(undefined, [design("failed", overflow)])).toBeUndefined();
 	});
 
 	it.each([
@@ -71,40 +26,31 @@ describe("the decision index warning a review gives", () => {
 			[design("ran"), { name: "verifier", status: "failed", reason: overflow } as const],
 			"`verifier`",
 		],
-	])("says the index may be why %s failed on a request too long for its model", async (_name, checks, named) => {
-		const warning = await DecisionIndexWarning.read(repo, long, checks);
-		expect(warning?.text).toBe(
-			`${(await DecisionFiles.load(repo, long)).warning()} ${named} failed on a request too long for its model, which the decision index's size may explain.`,
+		[
+			"both",
+			[design("failed", overflow), { name: "verifier", status: "failed", reason: overflow } as const],
+			"`lens.design` and `verifier`",
+		],
+	])("says the index may be why %s failed on a request too long for its model", (_name, checks, named) => {
+		expect(DecisionIndexWarning.from(long, checks)?.text).toBe(
+			`${long} ${named} failed on a request too long for its model, which the decision index's size may explain.`,
 		);
 	});
 
 	it.each([
-		["a rate limit", "Rate limit: too many tokens per minute"],
-		["a failure that is not about length", "fetch failed"],
-	])("names no failure for %s", async (_name, error) => {
-		const warning = await DecisionIndexWarning.read(repo, long, [design("failed", error)]);
-		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
-	});
-
-	it.each([
+		["a rate limit", [design("failed", "Rate limit: too many tokens per minute")]],
+		["a failure that is not about length", [design("failed", "fetch failed")]],
 		[
 			"a lens that reads no index",
 			[design("ran"), { name: "lens.tests", status: "failed", error: overflow } as const],
 		],
 		["a design lens its budget ended rather than a failure", [design("ended", overflow)]],
-	])("names no failure for %s, even on a request too long for its model", async (_name, checks) => {
-		const warning = await DecisionIndexWarning.read(repo, long, checks);
-		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
+	])("names no failure for %s", (_name, checks) => {
+		expect(DecisionIndexWarning.from(long, checks)?.text).toBe(long);
 	});
 
-	it("reads a failed lens's error, as a lens records its failure, before its reason", async () => {
+	it("reads a failed lens's error, as a lens records its failure, before its reason", () => {
 		const checks = [{ ...design("failed", overflow), reason: "the lens did not finish" }];
-		expect((await DecisionIndexWarning.read(repo, long, checks))?.text).toContain(
-			"`lens.design` failed on a request",
-		);
-	});
-
-	it("names no overflow when the index is under the threshold", async () => {
-		expect(await DecisionIndexWarning.read(repo, short, [design("failed", overflow)])).toBeUndefined();
+		expect(DecisionIndexWarning.from(long, checks)?.text).toContain("`lens.design` failed on a request");
 	});
 });

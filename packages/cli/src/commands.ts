@@ -383,8 +383,9 @@ export async function review(
 			});
 		};
 		let verdict: Verdict;
+		let decisionIndexWarning: string | undefined;
 		try {
-			({ verdict } = await reviewChangeset({
+			({ verdict, decisionIndexWarning } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -408,17 +409,12 @@ export async function review(
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
+			decisionIndexWarning = error.decisionIndexWarning;
 		}
 		summarize();
 		spans.end();
 		await walkthrough;
-		// The design lens's load is not kept, and a repeat review reuses its result without one, so this reads the
-		// index again; its own step records the cost, which grows with the log.
-		spans.step("decision-index");
-		const indexWarning = await DecisionIndexWarning.read(repoRoot, changeset.revision.base, [
-			...(verdict.ran ?? []),
-			...verdict.notRun,
-		]);
+		const indexWarning = DecisionIndexWarning.from(decisionIndexWarning, [...(verdict.ran ?? []), ...verdict.notRun]);
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
