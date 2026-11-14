@@ -86,7 +86,7 @@ it.each([false, true])("reads detached telemetry in process (json=%s)", async (j
 	expect(await main(["telemetry", "main...HEAD", ...(json ? ["--json"] : [])], io)).toBe(0);
 	expect(TelemetryReader.prototype.read).toHaveBeenCalledExactlyOnceWith(timings.revision);
 	expect(io.stdout).toHaveBeenCalledExactlyOnceWith(
-		json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render(),
+		json ? `${JSON.stringify(timings.report(), null, 2)}\n` : timings.render(),
 	);
 	expect(io.stdout.mock.calls[0]![0]).toContain(json ? '"requested": "off"' : "effort=none");
 	expect(io.stderr).not.toHaveBeenCalled();
@@ -152,7 +152,8 @@ it.each([false, true])("prints the slowest stages for an in-process review (fail
 	expect(io.stderr.mock.calls.filter(([line]) => String(line).startsWith("melian: Slowest stages:"))).toEqual([
 		[timings.slowest()],
 	]);
-	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({ telemetry: timings.toJSON() });
+	// The whole telemetry, run included, since the round workflow sums a failed review's spend from the run.
+	expect(JSON.parse(io.stdout.mock.calls[0]![0]).telemetry).toEqual(JSON.parse(JSON.stringify(timings.report())));
 	if (failed) expect(JSON.parse(io.stdout.mock.calls[0]![0])).toHaveProperty("error.message", "review stopped");
 });
 

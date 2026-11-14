@@ -290,6 +290,14 @@ export class StageTelemetry {
 	}
 
 	/**
+	 * What `melian review --json` and `melian telemetry --json` print: {@link toJSON}, with the ledger's run beside it,
+	 * whose rows count nothing for a stage the review reused. Printed, never stored, so `toJSON` keeps its shape.
+	 */
+	report(): ReturnType<StageTelemetry["toJSON"]> & { run: StoredRunDetails } {
+		return { ...this.toJSON(), run: this.runDetails() };
+	}
+
+	/**
 	 * The run the ledger shows: the review's wall clock, its preparation spans as one row, each check, triage, lens,
 	 * adjudication and walkthrough as a row, and every verification claim in one row.
 	 */
