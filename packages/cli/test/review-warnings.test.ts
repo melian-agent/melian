@@ -62,6 +62,22 @@ it.each([false, true])("prints the decision index warning beside the verdict, ne
 	} else expect(printed).not.toContain("The decision log is long.");
 });
 
+it("hands the reader the checks that did not run as well as those that ran", async () => {
+	// A disabled lens leaves a skipped record, which the verdict holds among the checks that did not run.
+	commit(repo, {
+		"melian.yaml":
+			"tiers:\n  fast: [guardrails, lens.tests]\n  full: [fast]\nlenses:\n  tests:\n    enabled: false\n",
+	});
+	const read = vi.spyOn(DecisionIndexWarning, "read").mockResolvedValue(undefined);
+	await main(["review", "main...HEAD", "--json"], io);
+	expect(read.mock.calls[0]![2]).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ name: "guardrails", status: "ran" }),
+			expect.objectContaining({ name: "lens.tests", status: "skipped" }),
+		]),
+	);
+});
+
 it("prints no warning and no warnings field when there is none", async () => {
 	expect(await main(["review", "main...HEAD", "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls[0]![0])).not.toHaveProperty("warnings");
