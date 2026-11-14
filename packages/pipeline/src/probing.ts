@@ -14,8 +14,9 @@ import { quoteUntrusted } from "./untrusted.ts";
 
 /**
  * Every fixed wording a probing level's planner and prober read, and the findings list an escalated run reads, as plain
- * strings. A probing run's fingerprint hashes the table whole, so a release that changes any of it runs the level again,
- * under any loader. `{name}` marks a value {@link fill} puts in; the render functions hold no wording of their own.
+ * strings. The verifier's version hashes the plan row, which a claim's probe evidence quotes, so a release that changes
+ * it judges stored claims again. `{name}` marks a value {@link fill} puts in; the render functions hold no wording of
+ * their own.
  */
 export const probingWording = Object.freeze({
 	planHeader:
