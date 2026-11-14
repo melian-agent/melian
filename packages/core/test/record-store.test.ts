@@ -1160,6 +1160,34 @@ describe("DirectoryRecordStore", () => {
 	});
 });
 
+describe("a store whose payload check refuses a record", () => {
+	let root: string | undefined;
+	const directory = () => {
+		root = temporaryDirectory();
+		return root;
+	};
+	afterEach(() => {
+		if (root !== undefined) removeDirectory(root);
+		root = undefined;
+	});
+	const refusing = { ...testPayloads, check: () => "is refused by this writer" };
+	const record: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: {} };
+
+	it("refuses to add it on the directory adapter, and never lists it", async () => {
+		const path = directory();
+		const store = await DirectoryRecordStore.open(path, refusing);
+		expect((await rejection(store.add([record]), RecordError)).code).toBe("invalidRecord");
+		expect(await (await DirectoryRecordStore.open(path, testPayloads)).list(changeset)).toEqual([]);
+	});
+
+	it("refuses to add it on the memory adapter, and never lists it", async () => {
+		const space = new MemoryRecordSpace();
+		const store = new MemoryRecordStore({ space, payloads: refusing });
+		expect((await rejection(store.add([record]), RecordError)).code).toBe("invalidRecord");
+		expect(await new MemoryRecordStore({ space, payloads: testPayloads }).list(changeset)).toEqual([]);
+	});
+});
+
 describe("a store with no payload check for a kind", () => {
 	let root: string | undefined;
 	const directory = () => {
