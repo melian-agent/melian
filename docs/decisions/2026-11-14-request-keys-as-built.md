@@ -62,13 +62,21 @@ The key leaves these out, each for its reason:
 
 A review that names an input on neither list goes to the coordinator before any fix.
 
+## What a model producer's key holds and leaves out
+
+The verification, walkthrough and triage keys hold what the model is asked: the revision, the prompt, tools and fixed text as the task renders them, and the route. Each leaves out two things:
+
+- The code that handles the model's answer, such as how `report_verdict` checks a verdict's evidence. No key holds a version of that code, so a release that fixes it, with the prompt and tools unchanged, reuses an answer the old code accepted. [Issue #437](https://github.com/melian-agent/melian/issues/437) covers these producers with the test it builds for the checks' code, rather than with more versions raised by hand. Meanwhile a new head asks again, and so does a review with a `MELIAN_STATE_DIR` of its own, which starts with no stored results and no dismissals. `--rerun` asks again only for what failed, and for the walkthrough.
+- The harness's retry setting, which decides how often a request is sent, not what is asked.
+
 ## Reuse compares request keys
 
-Reuse is decided by comparing request keys and nothing else. A narrower comparison misses whatever its list leaves out: Codex's second and third reviews of [pull request #436](https://github.com/melian-agent/melian/pull/436) each found one, the verifier's fixed text in a wave and the install in a check run. Three places still compare something narrower, each with the issue that closes it:
+Reuse is decided by comparing request keys and nothing else. A narrower comparison misses whatever its list leaves out: Codex's second and third reviews of [pull request #436](https://github.com/melian-agent/melian/pull/436) each found one, the verifier's fixed text in a wave and the install in a check run. Four places still compare something narrower, each with the issue that closes it:
 
 - A wave stands by its wave version, not by the final verification's key, until [issue #441](https://github.com/melian-agent/melian/issues/441).
 - The lens task attaches by `instructionFingerprint` and `selectionOf`, until [issue #432](https://github.com/melian-agent/melian/issues/432).
 - A check's own code reaches its key only through the hand-raised `checkVersions`, until [issue #437](https://github.com/melian-agent/melian/issues/437).
+- A stored walkthrough stands by its revision and route, by the maintainer's ruling of 2026-11-09 on walkthroughs by route, and its key decides only which running task a review attaches to. A walkthrough is display text and blocks nothing, and `--rerun` writes it again. Until [issue #443](https://github.com/melian-agent/melian/issues/443).
 
 The lens run is not keyed by this build. Its request, enclosing functions included, and lens reuse per run are [issue #432](https://github.com/melian-agent/melian/issues/432). Until it lands, the lens task attaches through `instructionFingerprint` and `selectionOf`, and rule 8's import of lens records waits for it.
 
