@@ -125,8 +125,10 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 			JSON.stringify({
 				format_version: 1,
 				key: name,
-				parts: { tree: "e".repeat(40) },
+				parts: { tree: "e".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
+				snapshotId: `sha256:${"a".repeat(64)}`,
 				created: new Date(Date.now() - 8 * day).toISOString(),
+				artifacts: {},
 			}),
 		);
 		await write(`coverage/${name}/index.json`, "12345");

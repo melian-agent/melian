@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { type GraphEntryState, GraphSnapshot } from "@melian-agent/core";
 import { running } from "./cache-scratch.ts";
 
 const day = 86_400_000;
@@ -129,18 +130,17 @@ async function graphEntry(
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return "unreadable";
 		throw error;
 	}
-	let entry: { format_version?: unknown; key?: unknown; parts?: { tree?: unknown }; created?: unknown };
+	let entry: GraphEntryState;
 	try {
-		entry = JSON.parse(text);
+		const value: unknown = JSON.parse(text);
+		if (typeof value === "object" && value !== null && (value as { format_version?: unknown }).format_version !== 1)
+			return "unknown";
+		entry = GraphSnapshot.entry(value);
 	} catch {
 		return "unreadable";
 	}
-	if (typeof entry !== "object" || entry === null) return "unreadable";
-	if (entry.format_version !== 1) return "unknown";
-	const tree = entry.parts?.tree;
-	const created = typeof entry.created === "string" ? Date.parse(entry.created) : Number.NaN;
-	if (entry.key !== name || typeof tree !== "string" || !Number.isFinite(created)) return "unreadable";
-	return { tree, created };
+	if (entry.key !== name) return "unreadable";
+	return { tree: entry.parts.tree, created: Date.parse(entry.created) };
 }
 
 /** A plan to remove one state directory's rebuildable cache, read without changing anything. */

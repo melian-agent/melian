@@ -222,6 +222,22 @@ it.each([
 	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
 });
 
+it("reads as unreadable an entry the graph contract refuses, though it names its key, a live tree and a future time", async () => {
+	const name = "1".repeat(64);
+	await mkdir(join(state, "graphs", name), { recursive: true });
+	await writeFile(
+		join(state, "graphs", name, "entry.json"),
+		JSON.stringify({
+			format_version: 1,
+			key: name,
+			parts: { tree: tree("HEAD") },
+			created: "2099-01-01T00:00:00.000Z",
+		}),
+	);
+	await age(`graphs/${name}`, 2 * day);
+	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
+});
+
 it("keeps an old graph whose entry is a format it does not know, and its coverage", async () => {
 	const name = "3".repeat(64);
 	await mkdir(join(state, "graphs", name), { recursive: true });
@@ -551,13 +567,13 @@ it("refuses a state directory that is a file inside, rather than planning nothin
 
 it("reads an entry.json of exactly the size limit and refuses one a byte past it", async () => {
 	const limit = 1024 * 1024;
-	const name = "a".repeat(64);
-	const json = JSON.stringify({
-		format_version: 1,
-		key: name,
-		parts: { tree: "f".repeat(40) },
-		created: new Date(now - 30 * day).toISOString(),
-	});
+	const snapshot = GraphSnapshot.create(
+		{ tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
+		graphFiles,
+		new Date(now - 30 * day),
+	);
+	const name = snapshot.key;
+	const json = JSON.stringify(snapshot.toJSON());
 	await mkdir(join(state, "graphs", name), { recursive: true });
 	await writeFile(join(state, "graphs", name, "entry.json"), json.padEnd(limit, " "));
 	await age(`graphs/${name}`, 2 * day);
