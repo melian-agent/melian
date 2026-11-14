@@ -147,6 +147,22 @@ describe("SharedRecord", () => {
 		expect(record.signedBytes()).toBe(canonicalJson({ ...envelope(), signer: "host" }));
 	});
 
+	it("signs a record's revision and supersedes with the rest of its envelope", () => {
+		const target = hex("1");
+		const unsigned: RecordEnvelope = {
+			v: 1,
+			changeset: "pull-0123456789abcdef",
+			revision: `${commit("a")}..${commit("b")}`,
+			kind: "post",
+			key: "review",
+			supersedes: [target],
+			payload: { n: 1 },
+			signer: "host",
+		};
+		const record = parse({ ...unsigned, signature });
+		expect(record.signedBytes()).toBe(canonicalJson(unsigned));
+	});
+
 	it("is frozen whole, so no caller can change what its ID names", () => {
 		const revision = `${commit("a")}..${commit("b")}`;
 		const round = parse(
