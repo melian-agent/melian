@@ -26,4 +26,4 @@ What it gives up: a repeat review of a head whose lenses include a probing level
 - A review after a dismissal, where someone reviews again to see the verdict. `melian dismiss` itself re-decides and stores the verdict, and `melian publish` posts it, so neither needs the repeat.
 - A crash after the lens task finished, say during adjudication. The resumed review finds the task finished and runs every lens again.
 
-No shipped level probes yet, so only a repository or an eval's own lens pays this today. The way out is to run probing lenses in a task of their own, so that a repeat reuses the other lenses and probes again alone. That belongs with the follow-up that gives the agent the fingerprint as a hint, which the maintainer asked for; it is not built here.
+No shipped level probes yet, so only a repository or an eval's own lens pays this today. The way out is to run probing lenses in a task of their own, so that a repeat reuses the other lenses and probes again alone. That belongs with the follow-up that gives the agent the fingerprint as a hint, which the maintainer asked for, [issue #427](https://github.com/melian-agent/melian/issues/427); it is not built here.
