@@ -78,6 +78,17 @@ describe("payload checks", () => {
 		expect(record.kind).toBe("dismissal");
 	});
 
+	it("hands the check a frozen payload, so a check cannot change what the ID names", () => {
+		const parsing = () =>
+			SharedRecord.parse(envelope({ kind: "check", payload: { status: "blocked" } }), {
+				check: (payload) => {
+					(payload as { status: string }).status = "passed";
+					return undefined;
+				},
+			});
+		expect(parsing).toThrow(TypeError);
+	});
+
 	it("refuses the record, with the check's reason, when the check refuses its payload", () => {
 		const error = refusal(() =>
 			SharedRecord.parse(envelope({ kind: "dismissal", key: "f" }), { dismissal: () => "names no dismisser" }),

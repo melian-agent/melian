@@ -201,7 +201,7 @@ export class SharedRecord {
 		if (typeof value !== "object" || value === null || Array.isArray(value))
 			throw invalid("a record is a JSON object");
 		const bytes = canonicalJson(value);
-		const envelope = JSON.parse(bytes) as { [field: string]: unknown };
+		const envelope = frozen(JSON.parse(bytes) as { [field: string]: unknown });
 		for (const field of Object.keys(envelope))
 			if (!fields.has(field)) throw invalid(`a record holds no field ${field}`);
 		if (envelope.v !== 1) throw invalid("a record's v is 1");
