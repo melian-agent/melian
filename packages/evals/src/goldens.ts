@@ -32,7 +32,7 @@ import {
 	type StageTelemetry,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
-import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
+import { createFakeModels, scriptLenses, unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parse } from "yaml";
@@ -384,9 +384,24 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
 		const storage = createMemoryStorage();
-		const reviewHarness = await openReviewHarness(storage, models, { retry: mode.kind !== "scripted" });
+		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
+		const reviewHarness = await openReviewHarness(storage, models, {
+			retry: mode.kind !== "scripted",
+			...(mode.kind === "scripted" ? { probeSandbox: unconfinedSandbox() } : {}),
+		});
 		try {
-			const review = { harness: reviewHarness, changeset, config, lenses, standards, models, policy: source };
+			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
+			const writer = { trusted: true, by: "reviewer" } as const;
+			const review = {
+				harness: reviewHarness,
+				changeset,
+				config,
+				lenses,
+				standards,
+				models,
+				policy: source,
+				writer,
+			};
 			const reviewed = await reviewChangeset(review);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),

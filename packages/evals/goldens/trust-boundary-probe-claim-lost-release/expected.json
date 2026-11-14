@@ -1,0 +1,23 @@
+{
+  "pr_title": "Swap claim labels in a workflow",
+  "url": "https://github.com/melian-agent/melian/pull/274",
+  "comments": [
+    {
+      "comment": "The claim workflow reads its own unlabeled status: ready as a hand removal, so a Released: posted while a claim run writes is lost and the issue stays in progress.",
+      "severity": "Medium",
+      "category": "security",
+      "file": ".github/workflows/claim.yml",
+      "rule": "fail-open",
+      "source": "lens.trust-boundary",
+      "cause": "introduced",
+      "failureScenario": "The timeline holds a maintainer's status: ready, a builder's Claim:, the builder's Released:, then the claim run's own labeled status: in progress and unlabeled status: ready. The release's run reads the bot's unlabeled ready as a hand removal, sets want to undefined, and removes both status labels, so the released issue is never marked ready.",
+      "evidence": [
+        {
+          "file": ".github/workflows/claim.yml",
+          "line": 77,
+          "role": "cause"
+        }
+      ]
+    }
+  ]
+}

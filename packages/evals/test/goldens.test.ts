@@ -35,6 +35,7 @@ import {
 	scriptedMismatches,
 	selectGoldens,
 } from "@melian-agent/evals";
+import { Probe } from "@melian-agent/pipeline";
 import * as testing from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
@@ -192,6 +193,12 @@ describe("the golden corpus", () => {
 			"trust-boundary-injection",
 			"trust-boundary-joined-path-escape",
 			"trust-boundary-policy-from-head",
+			"trust-boundary-probe-claim-lost-release",
+			"trust-boundary-probe-claim-lost-release-clean",
+			"trust-boundary-probe-round-environ-leak",
+			"trust-boundary-probe-round-environ-leak-clean",
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
 			"trust-boundary-secret-env",
 			"trust-boundary-terminal-escape",
 		]);
@@ -390,8 +397,18 @@ describe("a golden's standards and policy", () => {
 			(entry) => entry.name === "melian.golden.yaml" && ofLensCorpus(entry),
 		);
 		expect(copies.length).toBeGreaterThan(0);
-		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.
-		const exempt = ["guardrails-bare-issue-reference", "guardrails-overlong-sentence"];
+		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones. A probing
+		// golden measures trust-boundary's level that probes alone, so its policy switches every other lens off.
+		const exempt = [
+			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
+			"trust-boundary-probe-claim-lost-release",
+			"trust-boundary-probe-claim-lost-release-clean",
+			"trust-boundary-probe-round-environ-leak",
+			"trust-boundary-probe-round-environ-leak-clean",
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
+		];
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
 		expect(copies.length - tiered.length).toBe(exempt.length);
@@ -1154,5 +1171,46 @@ describe("scoreGolden", () => {
 			scoreGolden(goldens[0]!, [finding("src/main.ts", "wrong-result"), finding("src/main.ts", "state-ordering")]),
 		];
 		expect(scoreCorpus(scores)).toEqual({ precision: 1 / 3, recall: 1 });
+	});
+});
+
+describe("scripting a prober", () => {
+	it("refuses a prober script for a lens the review has not, or a name that only starts like one", async () => {
+		const fake = testing.createFakeModels();
+		const lenses = await Lens.builtins();
+		expect(() => testing.scriptLenses(fake, lenses, { "nope/prober": [] })).toThrow("nope/prober");
+		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/proberx": [] })).toThrow(
+			"trust-boundary/proberx",
+		);
+		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/prober": [] })).not.toThrow();
+	});
+});
+
+describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
+	it("probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === undefined ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const scripted = await runGolden(golden, { kind: "scripted" });
+		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
+		expect(availability.mock.calls.every(([sandbox]) => sandbox !== undefined)).toBe(true);
+		availability.mockClear();
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			},
+		]);
+		const ref = fake.ref();
+		await runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([undefined]);
 	});
 });

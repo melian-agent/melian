@@ -1,0 +1,9 @@
+# Only the lens under measurement runs, at its level that probes, so a live run scores it alone.
+lenses:
+  trust-boundary:
+    level: { floor: deep }
+  correctness: { enabled: false }
+  contracts: { enabled: false }
+  removed-behaviour: { enabled: false }
+  tests: { enabled: false }
+  conventions: { enabled: false }
