@@ -1023,11 +1023,45 @@ describe("a level that probes", () => {
 
 	it("runs a probe again once when two reviews of one head verify at once", async () => {
 		const fake = createFakeModels();
-		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
-		const second = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const at = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
+		const heads: string[] = [];
+		storage = createMemoryStorage();
+		harness = await openReviewHarness(storage, fake.review, {
+			retry: false,
+			probeSandbox: unconfinedSandbox((command) => {
+				if (inHeadTree(command)) heads.push(command);
+				return command;
+			}),
+		});
+		const reviewer = harness.harness;
+		// The first review plans only once the second waits on its lens task too, so the second always attaches to it.
+		let attach!: () => void;
+		const attached = new Promise<void>((resolve) => {
+			attach = resolve;
+		});
+		let lensWaits = 0;
+		const wait = reviewer.waitForTask.bind(reviewer);
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const index = await reviewer.snapshot(
+				ReviewIndex,
+				(await reviewer.root(backgroundContext)).id,
+				backgroundContext,
+			);
+			if (index?.reviews[at]?.task === task && ++lensWaits === 2) attach();
+			return wait(task, context);
+		}) as typeof reviewer.waitForTask;
+		const held: ScriptedReply[] = [
+			async () => {
+				await attached;
+				return plan[0]!;
+			},
+			...plan.slice(1),
+		];
+		const first = await review({ planner: held, prober: probing(failing) }, { fake });
+		const second = await review({ planner: held, prober: probing(failing) }, { fake });
 		await Promise.all([first.run, second.run].map((run) => run.catch(() => undefined)));
 		// The prober's probe and one rerun, which the second review attached to.
-		expect(first.heads).toHaveLength(2);
+		expect(heads).toHaveLength(2);
 	});
 
 	it("attaches no review under another writer's word to a probing run that is still live", async () => {
