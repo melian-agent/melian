@@ -472,6 +472,35 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
 	});
 
+	it("asks a versioned decider for a legacy decision task that names it only in its key", async () => {
+		const decide = vi.fn(async () => ({ answers: [] }));
+		const decider: Decider = { name: "recorded", version: "v1", calibrated: false, decide };
+		const reopened = await ReviewHarness.open(createMemoryStorage(), createFakeModels().review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		const id = await root.commit(
+			(tx) =>
+				tx.createTask(
+					decisionTask(decider),
+					{
+						root: root.id,
+						revision: "r",
+						key: JSON.stringify({ decider: decider.name }),
+						request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+					},
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		harness.resume();
+		const settled = await harness.waitForTask(id, context);
+		expect(decide).toHaveBeenCalledTimes(1);
+		expect(settled.state.outcome?.status).not.toBe("aborted");
+	});
+
 	describe("resumed providers of a stored route", () => {
 		const model = (provider: string) => ({ provider, modelId: "m" });
 		type Run = { key: string; route: { provider: string; modelId: string }[]; escalation?: { next: Run } };
