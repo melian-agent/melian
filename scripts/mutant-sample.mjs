@@ -8,7 +8,9 @@ export function sampleMutants(inventory) {
 		throw new Error("sampling requires a complete inventory with no omitted mutants");
 	if (inventory.limitedTo !== undefined) return MutationInventory.parse(inventory).sample();
 	if (inventory.mutants.some((row) => row.claim === "suite"))
-		throw new Error("a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all");
+		throw new Error(
+			"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+		);
 	const { claimsIn } = inventory;
 	for (const row of inventory.mutants.filter((row) => claimsIn === undefined || claimsIn.includes(row.file))) {
 		if (!["killed", "new-test", "equivalent"].includes(row.claim))
