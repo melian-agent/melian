@@ -261,7 +261,7 @@ Process rulings that week, each recorded in AGENTS.md and the decision log:
 - the rerun triggers count only the pull request's own diff, and the final hand rerun is waived for good, since step 34's `melian mutants verify` is not built;
 - a hand kill counts only when its named test passed unmutated first.
 
-[Issue #240](https://github.com/melian-agent/melian/issues/240) opened on 2026-11-13, when the maintainer ruled, in the coordinator's session, to start every lane with no dependency. Held until the paths close: [issue #348](https://github.com/melian-agent/melian/issues/348), and the follow-ups each step above names. Issue #240 closed as not planned on 2026-11-14, as [the decision](decisions/2026-11-14-mutants-verify-is-not-built.md) records.
+[Issue #240](https://github.com/melian-agent/melian/issues/240) opened on 2026-11-13, when the maintainer ruled, in the coordinator's session, to start every lane with no dependency. Held until the paths close: [issue #348](https://github.com/melian-agent/melian/issues/348), and the follow-ups each step above names. [Issue #240](https://github.com/melian-agent/melian/issues/240) closed as not planned on 2026-11-14, as [the decision](decisions/2026-11-14-mutants-verify-is-not-built.md) records.
 
 #### 2026-10-21 snapshot
 
