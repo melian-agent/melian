@@ -311,6 +311,7 @@ export class SharedRecord {
 
 	/** The bytes a signature covers: the canonical bytes of the whole envelope without `signature`. */
 	signedBytes(): string {
+		// A signature cannot cover itself, so the bytes it signs leave it out.
 		const { signature: _, ...unsigned } = this.toJSON();
 		return canonicalJson(unsigned);
 	}
