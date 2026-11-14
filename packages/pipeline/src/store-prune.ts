@@ -200,7 +200,9 @@ export class StorePrune {
 			entries.push({ kind, paths, bytes });
 		};
 		try {
-			for (const node of await children(root)) {
+			const top = await children(root);
+			const coverageLinked = top.some((node) => node.name === "coverage" && node.link);
+			for (const node of top) {
 				if (/\.sqlite(?:-wal|-shm)?$/.test(node.name) && !node.link) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
@@ -225,11 +227,12 @@ export class StorePrune {
 						await add("unreadable graph", [`graphs/${node.name}`]);
 					else graphs.add(node.name);
 				} else if (entry !== "unknown" && now - entry.created > graphAgeDays * day && !trees.has(entry.tree)) {
-					// A file or link at the coverage path is listed as not recognised, so it must not go with the graph.
+					// A file or link at the coverage path, or a linked coverage folder, is listed as not recognised, so it
+					// must not go with the graph.
 					const coverage = await lstat(join(root, "coverage", node.name)).catch(() => undefined);
 					await add(
 						"graph",
-						coverage === undefined || coverage.isDirectory()
+						!coverageLinked && (coverage === undefined || coverage.isDirectory())
 							? [`graphs/${node.name}`, `coverage/${node.name}`]
 							: [`graphs/${node.name}`],
 					);

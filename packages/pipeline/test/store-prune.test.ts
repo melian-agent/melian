@@ -793,3 +793,25 @@ it("removes on an unchanged store exactly what the plan lists, of every kind", a
 	for (const entry of prune.entries) for (const path of entry.paths) expect(await exists(path)).toBe(false);
 	expect(await readFile(join(state, "pull-1.sqlite"), "utf8")).toBe("changeset");
 });
+
+it("plans and removes a graph alone when its coverage folder is a link, and reports what it removed", async () => {
+	const dead = await graph("f".repeat(40), 30 * day);
+	const real = `${state}-coverage`;
+	outside.push(real);
+	await rename(join(state, "coverage"), real);
+	await symlink(real, join(state, "coverage"));
+	const prune = await plan();
+	expect(prune.entries).toEqual([{ kind: "graph", paths: [`graphs/${dead}`], bytes: expect.any(Number) }]);
+	expect(prune.kept).toEqual(["coverage"]);
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	expect(await exists(`graphs/${dead}`)).toBe(false);
+	expect(await readdir(real)).toEqual([dead]);
+});
+
+it("takes a graph's coverage with it when another cache folder is a link", async () => {
+	const dead = await graph("f".repeat(40), 30 * day);
+	const elsewhere = await realpath(await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-")));
+	outside.push(elsewhere);
+	await symlink(elsewhere, join(state, "mutation"));
+	expect(kinds(await plan())).toEqual([["graph", `graphs/${dead}`, `coverage/${dead}`]]);
+});
