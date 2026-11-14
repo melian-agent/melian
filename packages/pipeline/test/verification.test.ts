@@ -588,7 +588,48 @@ describe("the verifier", () => {
 		expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
 	});
 
-	it("carries the warning on the error of a review whose design lens failed after it gave the lens the index", async () => {
+	it.each([
+		["every model failed", "prompt is too long: 250000 tokens > 200000 maximum", "allModelsFailed"],
+		[
+			"the lens failed",
+			"Your input exceeds the context window of this model. Please adjust your input and try again.",
+			"lensFailed",
+		],
+	])(
+		"carries the warning on the error of a review whose design lens failed after it gave the lens the index, when %s",
+		async (_case, errorMessage, code) => {
+			const warning = await withDecisionLog("x".repeat(70_000));
+			const first = lenses[0]!;
+			lenses = [
+				Lens.from({
+					...first.toJSON(),
+					name: "design",
+					rules: [{ id: "wrong-result", description: "Planted rule." }],
+				}),
+			];
+			scriptConversations(fake, [
+				{
+					match: lenses[0]!.instructions,
+					replies: Array.from({ length: 6 }, () =>
+						fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage,
+						}),
+					),
+				},
+			]);
+			const failure = await review().then(
+				() => undefined,
+				(error: unknown) => error,
+			);
+			expect(failure).toBeInstanceOf(ReviewError);
+			expect((failure as ReviewError).code).toBe(code);
+			expect((failure as ReviewError).verdict).toBeDefined();
+			expect((failure as ReviewError).decisionIndexWarning).toBe(warning);
+		},
+	);
+
+	it("carries the warning on the error of a review whose verifier left a claim unjudged", async () => {
 		const warning = await withDecisionLog("x".repeat(70_000));
 		const first = lenses[0]!;
 		lenses = [
@@ -601,21 +642,16 @@ describe("the verifier", () => {
 		scriptConversations(fake, [
 			{
 				match: lenses[0]!.instructions,
-				replies: Array.from({ length: 6 }, () =>
-					fauxAssistantMessage("", {
-						stopReason: "error",
-						errorMessage: "prompt is too long: 250000 tokens > 200000 maximum",
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", { ...crashFinding, rule: "wrong-result" }), {
+						stopReason: "toolUse",
 					}),
-				),
+					fauxAssistantMessage("Done."),
+				],
 			},
+			{ match: verifierMarker, replies: Array.from({ length: 4 }, () => fauxAssistantMessage("Done.")) },
 		]);
-		const failure = await review().then(
-			() => undefined,
-			(error: unknown) => error,
-		);
-		expect(failure).toBeInstanceOf(ReviewError);
-		expect((failure as ReviewError).verdict).toBeDefined();
-		expect((failure as ReviewError).decisionIndexWarning).toBe(warning);
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed", decisionIndexWarning: warning });
 	});
 
 	it.each([

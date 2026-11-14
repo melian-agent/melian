@@ -95,3 +95,32 @@ it("hands the warning the checks that did not run as well as those that ran", as
 		]),
 	);
 });
+
+it("prints the warning when the review failed after the design lens read the index", async () => {
+	withBase({
+		"melian.yaml": `${designTiers}models:\n  verifier:\n    model: faux/missing\n    unavailable: fail\n`,
+		"docs/decisions/2026-10-01-a.md": longLog,
+	});
+	const finding = {
+		file: "a.ts",
+		line: 1,
+		rule: "fail-open-default",
+		severity: "P2",
+		explanation: {
+			what: "The constant changes from 1 to 2.",
+			why: "Callers that read a as a flag now take the other branch.",
+			fix: "Keep a at 1.",
+		},
+		failureScenario: "A caller that checks a === 1 now skips its guard.",
+		evidence: [{ file: "a.ts", line: 1, role: "cause" }],
+	};
+	writeFileSync(
+		io.env.MELIAN_TEST_SCRIPT!,
+		JSON.stringify({ design: [{ calls: [{ name: "report_finding", arguments: finding }] }, { text: "Done." }] }),
+	);
+	expect(await main(["review", "main...HEAD", "--json"], io)).toBe(2);
+	const warning = (await DecisionFiles.load(repo, base)).warning()!;
+	expect(io.stderr).toHaveBeenCalledWith("melian: the verifier did not judge every claim\n");
+	expect(io.stderr).toHaveBeenCalledWith(`melian: ${warning}\n`);
+	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({ status: "not-reviewed", warnings: [warning] });
+});
