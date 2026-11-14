@@ -1415,7 +1415,7 @@
       "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
         "test": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
         "collected": 1,
         "failed": true
@@ -1488,8 +1488,8 @@
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "claim": "equivalent",
-      "survivorClasses": [],
-      "evidence": "An emptied catch leaves the value undefined, which is no later format and which GraphSnapshot.entry refuses, so classify still answers a miss."
+      "evidence": "An emptied catch leaves the value undefined, which is no later format and which GraphSnapshot.entry refuses, so classify still answers a miss.",
+      "survivorClasses": []
     },
     {
       "file": "packages/pipeline/src/graph-cache.ts",
@@ -1718,14 +1718,14 @@
       "line": 89,
       "column": 6,
       "endLine": 89,
-      "endColumn": 58,
+      "endColumn": 79,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
         "test": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
         "collected": 1,
         "failed": true
@@ -1736,15 +1736,15 @@
       "line": 89,
       "column": 6,
       "endLine": 89,
-      "endColumn": 58,
+      "endColumn": 79,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
-        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
+        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
         "collected": 1,
         "failed": true
       }
@@ -1754,15 +1754,15 @@
       "line": 89,
       "column": 6,
       "endLine": 89,
-      "endColumn": 58,
+      "endColumn": 79,
       "mutatorName": "LogicalOperator",
-      "replacement": "entry.key !== key && !(await this.read(entry.parts))",
+      "replacement": "GraphSnapshot.key(entry.parts) !== key && !(await this.read(entry.parts))",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
-        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
+        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
         "collected": 1,
         "failed": true
       }
@@ -1772,15 +1772,15 @@
       "line": 89,
       "column": 6,
       "endLine": 89,
-      "endColumn": 23,
+      "endColumn": 44,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+      "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
-        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names another key that is a hit",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
+        "test": "packages/pipeline/test/graph-cache.test.ts > classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit",
         "collected": 1,
         "failed": true
       }
@@ -1790,14 +1790,14 @@
       "line": 89,
       "column": 6,
       "endLine": 89,
-      "endColumn": 23,
+      "endColumn": 44,
       "mutatorName": "EqualityOperator",
-      "replacement": "entry.key === key",
+      "replacement": "GraphSnapshot.key(entry.parts) === key",
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
         "test": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
         "collected": 1,
         "failed": true
@@ -1806,16 +1806,16 @@
     {
       "file": "packages/pipeline/src/graph-cache.ts",
       "line": 89,
-      "column": 27,
+      "column": 48,
       "endLine": 89,
-      "endColumn": 58,
+      "endColumn": 79,
       "mutatorName": "BooleanLiteral",
       "replacement": "await this.read(entry.parts)",
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
         "test": "packages/pipeline/test/graph-cache.test.ts > classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is",
         "collected": 1,
         "failed": true
@@ -1824,9 +1824,9 @@
     {
       "file": "packages/pipeline/src/graph-cache.ts",
       "line": 89,
-      "column": 67,
+      "column": 88,
       "endLine": 89,
-      "endColumn": 73,
+      "endColumn": 94,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
@@ -1835,7 +1835,7 @@
       "evidence": "packages/pipeline/test/graph-cache.test.ts > classifies a graph directory with an entry whose artifact was swapped as a miss",
       "survivorClasses": [],
       "run": {
-        "head": "80a69d7b3bb2135ef0b188a198d356523177c400",
+        "head": "66fb3408504e39e8c7c9ab506083a7bb531a404f",
         "test": "packages/pipeline/test/graph-cache.test.ts > classifies a graph directory with an entry whose artifact was swapped as a miss",
         "collected": 1,
         "failed": true
