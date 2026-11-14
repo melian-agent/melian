@@ -1124,6 +1124,11 @@ describe("a level that probes", () => {
 		let second: Awaited<ReturnType<typeof review>> | undefined;
 		let held = false;
 		let at = "";
+		let wrote: unknown;
+		let go!: () => void;
+		const going = new Promise<void>((resolve) => {
+			go = resolve;
+		});
 		// The first review unlocks its verifier only once a repeat review of the head has replaced its lens task and
 		// finished verifying.
 		const first = await review(
@@ -1153,8 +1158,10 @@ describe("a level that probes", () => {
 			const index = await reviewer.snapshot(ReviewIndex, root.id, context);
 			if (!held && second !== undefined && index?.reviews[at]?.verification?.task === task) {
 				held = true;
+				wrote = structuredClone(index?.reviews[at]);
 				reached();
 				await first.run.catch(() => undefined);
+				await going;
 			}
 			return record;
 		}) as typeof reviewer.waitForTask;
@@ -1169,6 +1176,10 @@ describe("a level that probes", () => {
 			),
 		});
 		expect(second).toBeDefined();
+		expect(wrote).toBeDefined();
+		const owner = (await reviewer.root(backgroundContext)).id;
+		expect((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]).toEqual(wrote);
+		go();
 		const { verdict } = await second!.run;
 		expect(verdict.blocking).toBe(true);
 		expect(verdict.counted().map((each) => [each.ruleId, each.properties.verification?.verdict])).toEqual([
@@ -1190,6 +1201,15 @@ describe("a level that probes", () => {
 				release = resolve;
 			});
 			let verification: number | undefined;
+			let wrote: unknown;
+			let go!: () => void;
+			const going = new Promise<void>((resolve) => {
+				go = resolve;
+			});
+			let stop!: () => void;
+			const stopped = new Promise<void>((resolve) => {
+				stop = resolve;
+			});
 			const first = await review(
 				{ planner: plan, prober: probing(failing) },
 				{ fake, config: { models: { heavy: { model: model("heavy") } } } },
@@ -1218,6 +1238,7 @@ describe("a level that probes", () => {
 				await vi.waitFor(async () => expect((await entry())?.verification?.task).not.toBe(verification), {
 					timeout: 10_000,
 				});
+				await stopped;
 			};
 			const wait = reviewer.waitForTask.bind(reviewer);
 			reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
@@ -1225,6 +1246,13 @@ describe("a level that probes", () => {
 					before === "links" && verification === undefined && (await entry())?.verification?.task === task;
 				const outcome = await wait(task, context);
 				if (waits) await replace();
+				// The second review stops once its verification has ended, and the first goes on only then, until it ends.
+				const current = await entry();
+				if (verification !== undefined && task !== verification && current?.verification?.task === task) {
+					wrote = structuredClone(current);
+					stop();
+					await going;
+				}
 				return outcome;
 			}) as typeof reviewer.waitForTask;
 			const snapshot = reviewer.snapshot.bind(reviewer);
@@ -1240,6 +1268,9 @@ describe("a level that probes", () => {
 			);
 			expect(verification).toBeDefined();
 			expect(outcome).toMatchObject({ code: "superseded" });
+			expect(wrote).toBeDefined();
+			expect(await entry()).toEqual(wrote);
+			go();
 			expect((await second.run).verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual([
 				"confirmed",
 			]);
@@ -1252,6 +1283,7 @@ describe("a level that probes", () => {
 		let armed = false;
 		let second: Awaited<ReturnType<typeof review>> | undefined;
 		let verification: number | undefined;
+		let wrote: unknown;
 		const replaced = await review(
 			{ planner: [call("record_plan", { attacks: [] }), plan[1]!], prober: [] },
 			{ fake },
@@ -1274,8 +1306,8 @@ describe("a level that probes", () => {
 				second = await review({ planner: plan, prober: probing(failing) }, { fake });
 				expect((await second.run).verdict.blocking).toBe(true);
 				const owner = (await reviewer.root(backgroundContext)).id;
-				verification = (await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]?.verification
-					?.task;
+				wrote = structuredClone((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]);
+				verification = (wrote as { verification?: { task: number } } | undefined)?.verification?.task;
 			}
 			return open(...args);
 		});
@@ -1286,6 +1318,7 @@ describe("a level that probes", () => {
 		expect((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]?.verification?.task).toBe(
 			verification,
 		);
+		expect((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]).toEqual(wrote);
 	});
 
 	it("keeps a repeat review's restatement link when a review it replaced, with no verifier, reaches the link commit", async () => {
@@ -1327,6 +1360,7 @@ describe("a level that probes", () => {
 		};
 		let second: Awaited<ReturnType<typeof review>> | undefined;
 		let links: Record<string, unknown> | undefined;
+		let wrote: unknown;
 		const wait = reviewer.waitForTask.bind(reviewer);
 		// The first review on the new head waits, once its lens task has finished, until a repeat review has replaced
 		// that task and recorded its link.
@@ -1345,6 +1379,7 @@ describe("a level that probes", () => {
 			);
 			await second.run;
 			links = structuredClone((await reviewer.snapshot(FindingsDocument, owner, context))?.inherited?.[at]);
+			wrote = structuredClone((await reviewer.snapshot(ReviewIndex, owner, context))?.reviews[at]);
 			return outcome;
 		}) as typeof reviewer.waitForTask;
 		const replaced = await review(
@@ -1361,6 +1396,8 @@ describe("a level that probes", () => {
 		expect(Object.values(links ?? {})).toMatchObject([{ from: root!.id }]);
 		const owner = (await reviewer.root(backgroundContext)).id;
 		expect((await reviewer.snapshot(FindingsDocument, owner, backgroundContext))?.inherited?.[at]).toEqual(links);
+		expect(wrote).toBeDefined();
+		expect((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]).toEqual(wrote);
 	});
 
 	it("records no verdict for a review whose revision left the index once its lenses finished", async () => {
