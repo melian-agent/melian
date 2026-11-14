@@ -66,6 +66,24 @@ describe("the decision index warning a review gives", () => {
 		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
 	});
 
+	it.each([
+		[
+			"a lens that reads no index",
+			[design("ran"), { name: "lens.tests", status: "failed", error: overflow } as const],
+		],
+		["a design lens its budget ended rather than a failure", [design("ended", overflow)]],
+	])("names no failure for %s, even on a request too long for its model", async (_name, checks) => {
+		const warning = await DecisionIndexWarning.read(repo, long, checks);
+		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
+	});
+
+	it("reads a failed lens's error, as a lens records its failure, before its reason", async () => {
+		const checks = [{ ...design("failed", overflow), reason: "the lens did not finish" }];
+		expect((await DecisionIndexWarning.read(repo, long, checks))?.text).toContain(
+			"`lens.design` failed on a request",
+		);
+	});
+
 	it("names no overflow when the index is under the threshold", async () => {
 		expect(await DecisionIndexWarning.read(repo, short, [design("failed", overflow)])).toBeUndefined();
 	});

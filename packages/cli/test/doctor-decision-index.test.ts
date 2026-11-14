@@ -69,6 +69,10 @@ describe("doctor's decision index check", { timeout: 60_000 }, () => {
 		commit({ "docs/decisions/2026-10-01-a.md": "# A\n" });
 		await doctor(io);
 		expect(line()).toMatch(/^ok\s+decision index\s+45 bytes for 1 decision at HEAD, under 64 KiB$/);
+		output = "";
+		commit({ "docs/decisions/2026-10-02-b.md": "# B\n" });
+		await doctor(io);
+		expect(line()).toMatch(/^ok\s+decision index\s+91 bytes for 2 decisions at HEAD, under 64 KiB$/);
 	});
 
 	it("warns with the review's own warning when the index at HEAD is long, and passes", async () => {
