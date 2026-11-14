@@ -51,7 +51,7 @@ There is one gate: `npm run check`. It runs Biome, type checking, dependency aud
 
 Do not pipe test or check output through `tail`, `head`, or `cat`. Without `pipefail`, a pipeline reports the last command's status, so `npm run check | tail` exits 0 even when the check failed, and the failure scrolls past above the summary. Redirect to a file and read that, or run the command directly.
 
-A guard, branch, bound, or early return counts as tested only when a test fails with it inverted or removed. A test that passes either way proves nothing. Prove it by running the mutation before you commit, and say so in the pull request. [decisions/2026-10-07-tested-means-a-failing-mutation.md](docs/decisions/2026-10-07-tested-means-a-failing-mutation.md) records why. Five instances recur:
+A guard, branch, bound, or early return counts as tested only when a test fails with it inverted or removed. A test that passes either way proves nothing. For code that guards trust or durability, as defined below, prove it by running the mutation before you commit, and say so in the pull request. [decisions/2026-10-07-tested-means-a-failing-mutation.md](docs/decisions/2026-10-07-tested-means-a-failing-mutation.md) records why. Five instances recur:
 
 - A fake answers only what the request asks. A fake that returns a canned reply to every call hides a request that asks the wrong question.
 - A stored-shape fixture is written by the version it claims, and every version bump ships a reopen test. A hand-built fixture of an old shape drifts from what that version wrote.

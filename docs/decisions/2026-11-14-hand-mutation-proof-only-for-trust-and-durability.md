@@ -1,5 +1,6 @@
 # The hand mutation proof is owed only for code that guards trust or durability
 
+Amends: [Tested means a failing mutation](2026-10-07-tested-means-a-failing-mutation.md), which guards must be proved by a run mutation before a commit
 Amends: [Builders enumerate Stryker mutants before claiming coverage](2026-10-21-builder-mutant-inventory.md), which changes owe an inventory
 Amends: [a mutation proof runs each claim against its named test alone](2026-11-04-mutation-proof-scope.md), which mutants a builder proves
 
@@ -20,6 +21,8 @@ What it bought is thin. First runs do find untested code: [pull request #404](ht
 - An inventory already written for a pull request in flight stands for the code it covers, and no one extends it to ordinary code. A later commit on that pull request that changes trust or durability code still appends and proves its own mutants, as every fix pass does.
 
 ## What this gives up
+
+The 2026-10-07 decision said a guard, branch, bound or early return counts as tested only when a test fails with it inverted or removed, and that the builder runs that mutation. For ordinary code the builder no longer runs it. A branch whose test passes with the branch removed can now merge if the tests lens misses it; the maintainer chose that cost when he narrowed the proof, with "untested branches in ordinary code go unproved" named as the risk. The standard itself stands, and a reviewer or a lens that shows such a test still reports it.
 
 An untested branch in ordinary code is no longer proved absent. A wrong classification, a trust file left off the list, removes the proof where it matters most; the review of record's check of the list is the guard, and it is a reader's judgement.
 
