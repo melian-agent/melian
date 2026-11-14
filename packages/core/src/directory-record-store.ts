@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { link, lstat, mkdir, readdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { RecordError } from "./errors.ts";
 import { type PayloadChecks, type RecordEnvelope, SharedRecord } from "./record.ts";
@@ -107,7 +107,8 @@ export class DirectoryRecordStore implements RecordStore {
 		if (!(await this.#directory(path))) return undefined;
 		let sequence = 0;
 		for (const entry of await this.#entries(path)) {
-			if (!cellFile.test(entry.name) || !entry.isFile()) throw failure("unknownFile", join(path, entry.name));
+			if (!cellFile.test(entry.name) || !Number.isSafeInteger(Number(entry.name)) || !entry.isFile())
+				throw failure("unknownFile", join(path, entry.name));
 			sequence = Math.max(sequence, Number(entry.name));
 		}
 		if (sequence === 0) return undefined;
@@ -127,15 +128,17 @@ export class DirectoryRecordStore implements RecordStore {
 	async #swap(directory: string, cell: Cell | undefined, value: string): Promise<boolean> {
 		await this.#make(directory);
 		await this.#make(join(directory, cellDirectory));
+		const next = (cell?.sequence ?? 0) + 1;
+		if (!Number.isSafeInteger(next)) throw failure("unreachable", join(directory, cellDirectory));
 		const temporary = await this.#temporary(value);
 		try {
-			await link(temporary, join(directory, cellDirectory, String((cell?.sequence ?? 0) + 1)));
+			await link(temporary, join(directory, cellDirectory, String(next)));
 			return true;
 		} catch (cause) {
 			if (errorCode(cause) === "EEXIST") return false;
 			throw failure("unreachable", join(directory, cellDirectory), cause);
 		} finally {
-			await unlink(temporary);
+			await rm(temporary, { force: true });
 		}
 	}
 

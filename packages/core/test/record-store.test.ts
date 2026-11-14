@@ -1000,6 +1000,20 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(store.list(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
+	it("reads a cell version at the largest safe integer, and refuses one past it", async () => {
+		const store = await DirectoryRecordStore.open(root, testPayloads);
+		const cell = join(root, "changesets", changeset, ".cell");
+		mkdirSync(cell, { recursive: true });
+		writeFileSync(join(cell, String(Number.MAX_SAFE_INTEGER)), "lease");
+		expect(await store.readCell(changeset)).toEqual({ value: "lease", version: String(Number.MAX_SAFE_INTEGER) });
+		const error = await rejection(store.writeCell(changeset, String(Number.MAX_SAFE_INTEGER), "next"), RecordError);
+		expect(error.code).toBe("unreachable");
+		expect(readdirSync(cell)).toEqual([String(Number.MAX_SAFE_INTEGER)]);
+		writeFileSync(join(cell, "9007199254740992"), "past");
+		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
+		expect((await rejection(store.dispose(changeset), RecordError)).code).toBe("unknownFile");
+	});
+
 	it("reads the highest version by number, past nine", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		for (let write = 1; write <= 11; write++) {

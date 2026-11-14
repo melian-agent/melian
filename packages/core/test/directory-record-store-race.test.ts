@@ -224,4 +224,23 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		expect((await writing.readCell(changeset)).value).toBe('{"disposed":true}');
 		expect((await rejection(writing.add([envelope]), RecordError)).code).toBe("disposed");
 	});
+
+	it.each([
+		[
+			"a cell write",
+			"link",
+			"/.cell/1",
+			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, "lease"),
+		],
+		["an add", "rename", "/check/", (store: DirectoryRecordStore) => store.add([envelope])],
+	] as const)("fails %s unreachable when the store vanishes before its file lands", async (_name, call, path, act) => {
+		const store = await DirectoryRecordStore.open(root, testPayloads);
+		const { reached, release } = pause(call, path);
+		const pending = act(store);
+		await reached;
+		removeDirectory(join(root, "changesets"));
+		removeDirectory(join(root, "tmp"));
+		release();
+		expect((await rejection(pending, RecordError)).code).toBe("unreachable");
+	});
 });
