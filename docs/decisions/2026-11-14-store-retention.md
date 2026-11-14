@@ -36,7 +36,7 @@ The table is the rule. `melian store prune` removes only the cache kinds it name
 - A graph directory with no readable `entry.json` goes once its modification time is more than a day old, since every reader treats it as a miss.
 - A coverage directory whose graph is gone goes, since `CoverageCache.read` can never return it.
 - A mutation partition goes when nothing in it was written for more than 14 days. The next run of that target starts cold.
-- A tool entry goes when the bundled manifest pins no tool of its name, version, platform and digest. Every pinned entry stays, whatever its age, because a download can fail.
+- Every tool entry stays, pinned or not, until it meets [the tool-cache decision](2026-10-06-tool-cache-publication.md)'s condition for pruning: that a prune account for executable paths in use, which this one does not.
 
 The rule spares about 1.5 GB of graphs on the host, those whose trees are still the tips of merged branches nobody deleted. Deleting the branch frees them on the next prune; the rule is not widened to chase them.
 
@@ -46,7 +46,7 @@ A merge base counts as no live commit. Enola builds a graph for the base of ever
 
 A static run registers its worktrees with `git worktree add --lock --reason "melian-static pid <pid>"` before it reads the cache. When any registered worktree carries that lock and its process is alive, prune removes nothing, names the run, and exits non-zero. It reads the worktree list again before each removal, so a run that starts during a prune stops it.
 
-What remains is a run that registers in the moment between that read and a removal. Each removal renames the entry to a `.prune-<pid>-` name in its own directory, then deletes it, and `CacheScratch` sweeps a dead pruner's leftovers as it sweeps a dead fetch's. A reader that loses the race fails closed: `static.enola` fails its coverage store on a graph that has gone, the review reads not reviewed, and a rerun rebuilds the graph. A tool binary that is running survives its unlink on Linux and macOS.
+What remains is a run that registers in the moment between that read and a removal. Each removal renames the entry to a `.prune-<pid>-` name in its own directory, then deletes it, and `CacheScratch` sweeps a dead pruner's leftovers as it sweeps a dead fetch's. A reader that loses the race fails closed: `static.enola` fails its coverage store on a graph that has gone, the review reads not reviewed, and a rerun rebuilds the graph.
 
 `apply` decides once. Before each removal it reads again only the static-run locks and a mutation partition's age; it does not read refs or graph entries again. Codex's adversarial review on [pull request #426](https://github.com/melian-agent/melian/pull/426) named three races this leaves, and each costs a rebuild:
 

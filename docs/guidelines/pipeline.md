@@ -633,15 +633,14 @@ Every worktree command, including cleanup, passes through `Run.worktreeCommand`.
 
 ## Pruning the store
 
-`StorePrune.open(repoRoot, { root, manifest })` reads a state directory and git, and plans what [the retention decision](../decisions/2026-11-14-store-retention.md) lets it remove; `apply()` removes it. It removes five kinds of cache:
+`StorePrune.open(repoRoot, { root })` reads a state directory and git, and plans what [the retention decision](../decisions/2026-11-14-store-retention.md) lets it remove; `apply()` removes it. It removes four kinds of cache:
 
 - a graph created more than `graphAgeDays` ago whose tree no branch, remote-tracking ref or worktree `HEAD` holds, with its coverage;
 - a graph directory with no readable `entry.json`, once `unreadableGraphAgeDays` old;
 - coverage whose graph is gone;
-- a mutation partition with nothing written for `mutationAgeDays`;
-- a tool entry the manifest does not pin.
+- a mutation partition with nothing written for `mutationAgeDays`.
 
-It keeps everything else, and lists what it does not recognise in `kept`. A changeset file, its `-wal` and `-shm`, and `scripted/` are never entries. `open` strips `GIT_*` from the environment it runs git with, so a caller inside a git hook cannot point it at another repository. Refs under `refs/melian/pull/` hold no tree live: they outlive a merge, and the age bound spares a fork head reviewed that week.
+It keeps everything else, `tools/` included, and lists what it does not recognise in `kept`. A changeset file, its `-wal` and `-shm`, and `scripted/` are never entries. `open` strips `GIT_*` from the environment it runs git with, so a caller inside a git hook cannot point it at another repository. Refs under `refs/melian/pull/` hold no tree live: they outlive a merge, and the age bound spares a fork head reviewed that week.
 
 `live` lists each worktree locked with `melian-static pid <pid>` whose process is alive. While one exists, `apply` removes nothing, and it reads the worktree list again before each entry, so a run that starts mid-prune stops it. It checks a mutation partition's age again before removing it. It reads no ref or graph entry again, so a race costs a rebuild, which [the retention decision](../decisions/2026-11-14-store-retention.md#3-a-prune-beside-a-live-review) accepts only because every entry is cache. Each path is renamed to `.prune-<pid>-<uuid>` beside it and then removed, so a crash leaves scratch that `CacheScratch` sweeps by the dead pid. A path already gone is skipped. Test it only on scratch state directories, never on a real store.
 

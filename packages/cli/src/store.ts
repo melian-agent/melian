@@ -1,5 +1,5 @@
 import { visibleText } from "@melian-agent/core";
-import { type LiveRun, type PruneEntry, StorePrune, ToolProvisioning } from "@melian-agent/pipeline";
+import { type LiveRun, type PruneEntry, StorePrune } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git, stateDirectory } from "./repository.ts";
 
@@ -35,7 +35,6 @@ export async function storePrune(io: Io, apply: boolean): Promise<number> {
 	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 	const prune = await StorePrune.open(repoRoot, {
 		root: await stateDirectory(repoRoot, io.env),
-		manifest: await ToolProvisioning.manifest(),
 		env: io.env,
 	});
 	const outcome = apply ? await prune.apply() : { removed: prune.entries, live: prune.live };

@@ -14,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GraphSnapshot, ToolManifest } from "@melian-agent/core";
+import { GraphSnapshot } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GraphCache } from "../src/graph-cache.ts";
@@ -31,25 +31,6 @@ import { commit, createRepository, gitIn, removeRepository } from "./fixtures/re
 
 const day = 86_400_000;
 const digest = "e".repeat(64);
-const manifest = ToolManifest.parse(
-	JSON.stringify({
-		format_version: 1,
-		tools: {
-			enola: {
-				version: "0.0.1",
-				source: { repository: "test/enola", tag: "v0.0.1" },
-				published: "2020-01-01T00:00:00Z",
-				platforms: {
-					"darwin-arm64": {
-						url: "https://github.com/test/enola/releases/download/v0.0.1/e.tar.gz",
-						sha256: digest,
-					},
-				},
-			},
-		},
-		misses: [],
-	}),
-);
 const graphFiles = {
 	"facts.jsonl": '{"id":"a","kind":"symbol","name":"Alpha"}\n',
 	"insights.json": "[]",
@@ -87,7 +68,6 @@ const tree = (commitish: string) => gitIn(repo, "rev-parse", `${commitish}^{tree
 const plan = (options: { now?: number; env?: NodeJS.ProcessEnv } = {}) =>
 	StorePrune.open(repo, {
 		root: state,
-		manifest,
 		now: options.now ?? now,
 		...(options.env ? { env: options.env } : {}),
 	});
@@ -283,34 +263,18 @@ it("does not remove a mutation partition written to after the plan was made", as
 	expect(await exists(`mutation/${name}/report.json`)).toBe(true);
 });
 
-it("keeps every pinned tool entry and removes an unpinned one at the first level that fails", async () => {
-	const pinned = `tools/enola/0.0.1/darwin-arm64/${digest}`;
-	const unpinned = [
-		`tools/enola/0.0.1/darwin-arm64/${"f".repeat(64)}`,
-		"tools/enola/0.0.1/linux-x64",
-		"tools/enola/0.0.2",
-		"tools/other",
-	];
-	for (const path of [pinned, ...unpinned]) {
+it("keeps every tool entry, pinned or not, until the tool-cache decision's condition for pruning is met", async () => {
+	const paths = [`tools/enola/0.0.1/darwin-arm64/${digest}`, "tools/enola/0.0.2", "tools/other"];
+	for (const path of paths) {
 		await mkdir(join(state, path), { recursive: true });
 		await writeFile(join(state, path, "enola"), "12345");
+		await age(path, 400 * day);
 	}
-	await age(pinned, 400 * day);
 	const prune = await plan();
-	expect(prune.entries).toEqual(unpinned.map((path) => ({ kind: "unpinned tool", paths: [path], bytes: 5 })));
+	expect(prune.entries).toEqual([]);
 	expect(prune.kept).toEqual([]);
 	await prune.apply();
-	expect(await exists(`${pinned}/enola`)).toBe(true);
-	for (const path of unpinned) expect(await exists(path)).toBe(false);
-});
-
-it("removes a tool directory a name like a prototype property holds, since the manifest pins none", async () => {
-	await mkdir(join(state, "tools", "constructor"), { recursive: true });
-	await mkdir(join(state, "tools", "enola", "0.0.1", "toString"), { recursive: true });
-	expect(kinds(await plan())).toEqual([
-		["unpinned tool", "tools/constructor"],
-		["unpinned tool", "tools/enola/0.0.1/toString"],
-	]);
+	for (const path of paths) expect(await exists(`${path}/enola`)).toBe(true);
 });
 
 it("keeps changesets, scripted stores, links, scratch and anything it does not recognise", async () => {
@@ -347,12 +311,12 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 			"coverage/not-a-key",
 			`coverage/${nearScratch}`,
 			"mutation/not-a-key",
-			"tools/stray",
-			"tools/linked",
 		].sort(),
 	);
 	expect(prune.changesets).toEqual({ files: 2, bytes: 15 });
 	expect(await exists("scripted/pull-3.sqlite")).toBe(true);
+	expect(await exists("tools/stray")).toBe(true);
+	expect(await exists("tools/linked")).toBe(true);
 });
 
 it("leaves a changeset store byte for byte as it was, and the store reopens", async () => {
@@ -451,19 +415,19 @@ it("ignores git's repository variables from the caller's environment", async () 
 });
 
 it("plans nothing for a state directory that does not exist yet", async () => {
-	const prune = await StorePrune.open(repo, { root: join(state, "absent"), manifest, now });
+	const prune = await StorePrune.open(repo, { root: join(state, "absent"), now });
 	expect(prune).toMatchObject({ entries: [], kept: [], changesets: { files: 0, bytes: 0 }, live: [] });
 });
 
 it("refuses when git cannot answer", async () => {
 	const notRepo = await mkdtemp(join(tmpdir(), "melian-prune-norepo-"));
 	outside.push(notRepo);
-	await expect(StorePrune.open(notRepo, { root: state, manifest, now })).rejects.toMatchObject({
+	await expect(StorePrune.open(notRepo, { root: state, now })).rejects.toMatchObject({
 		name: "StorePruneError",
 		code: "gitFailed",
 	});
-	await expect(StorePrune.open(notRepo, { root: state, manifest, now })).rejects.toBeInstanceOf(StorePruneError);
-	await expect(StorePrune.open(notRepo, { root: state, manifest, now })).rejects.toThrow(
+	await expect(StorePrune.open(notRepo, { root: state, now })).rejects.toBeInstanceOf(StorePruneError);
+	await expect(StorePrune.open(notRepo, { root: state, now })).rejects.toThrow(
 		/^git worktree failed: fatal: not a git repository[^\n]*$/,
 	);
 });
@@ -578,19 +542,16 @@ it("reads an entry.json of exactly the size limit and refuses one a byte past it
 });
 
 it("lists entries in name order, whatever order the directory returns", async () => {
-	const names = ["h", "c", "f", "a", "g", "b", "e", "d"];
-	for (const name of names) await mkdir(join(state, "tools", name), { recursive: true });
-	expect(kinds(await plan())).toEqual([...names].sort().map((name) => ["unpinned tool", `tools/${name}`]));
+	const names = ["e", "c", "f", "a", "b", "d"].map((letter) => letter.repeat(64));
+	for (const name of names) await mkdir(join(state, "coverage", name), { recursive: true });
+	expect(kinds(await plan())).toEqual([...names].sort().map((name) => ["orphan coverage", `coverage/${name}`]));
 });
 
 it("orders names as JavaScript compares them, not as the directory's bytes do", async () => {
 	// UTF-8 bytes put U+FFFD before U+10000; UTF-16 code units put it after.
 	const names = ["\u{FFFD}", "\u{10000}"];
-	for (const name of names) await mkdir(join(state, "tools", name), { recursive: true });
-	expect(kinds(await plan())).toEqual([
-		["unpinned tool", "tools/\u{10000}"],
-		["unpinned tool", "tools/\u{FFFD}"],
-	]);
+	for (const name of names) await mkdir(join(state, name), { recursive: true });
+	expect((await plan()).kept).toEqual(["\u{10000}", "\u{FFFD}"]);
 });
 
 it("refuses a graph whose entry it may not read, rather than reading it as unreadable", async (test) => {
@@ -609,18 +570,19 @@ it("refuses a graph whose entry it may not read, rather than reading it as unrea
 
 it("never removes a changeset, a scripted store or a name it does not recognise, whatever changes after the plan", async () => {
 	const dead = await graph("f".repeat(40), 8 * day);
-	await mkdir(join(state, "tools", "other"), { recursive: true });
-	await writeFile(join(state, "tools", "other", "enola"), "12345");
+	const orphan = `coverage/${"a".repeat(64)}`;
+	await mkdir(join(state, orphan), { recursive: true });
+	await writeFile(join(state, orphan, "index.json"), "12345");
 	const prune = await plan();
 	expect(kinds(prune)).toEqual([
 		["graph", `graphs/${dead}`, `coverage/${dead}`],
-		["unpinned tool", "tools/other"],
+		["orphan coverage", orphan],
 	]);
 	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
 	outside.push(elsewhere);
 	await writeFile(join(elsewhere, "pull-9.sqlite"), "theirs");
-	await rm(join(state, "tools", "other"), { recursive: true });
-	await symlink(elsewhere, join(state, "tools", "other"));
+	await rm(join(state, orphan), { recursive: true });
+	await symlink(elsewhere, join(state, orphan));
 	const written = {
 		"pull-1.sqlite": "changeset",
 		"pull-1.sqlite-wal": "wal",
@@ -636,7 +598,7 @@ it("never removes a changeset, a scripted store or a name it does not recognise,
 	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
 	for (const [path, text] of Object.entries(written)) expect(await readFile(join(state, path), "utf8")).toBe(text);
 	expect(await readFile(join(elsewhere, "pull-9.sqlite"), "utf8")).toBe("theirs");
-	expect(await exists("tools/other")).toBe(false);
+	expect(await exists(orphan)).toBe(false);
 	expect(await exists(`graphs/${dead}`)).toBe(false);
 });
 

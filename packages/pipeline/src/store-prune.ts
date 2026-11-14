@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import type { ToolManifest } from "@melian-agent/core";
 
 const day = 86_400_000;
 export const graphAgeDays = 7;
@@ -11,7 +10,7 @@ const entryLimit = 1024 * 1024;
 const key = /^[0-9a-f]{64}$/;
 
 /** What kind of rebuildable cache a removal takes, as the store retention decision names it. */
-export type PruneKind = "graph" | "unreadable graph" | "orphan coverage" | "mutation partition" | "unpinned tool";
+export type PruneKind = "graph" | "unreadable graph" | "orphan coverage" | "mutation partition";
 
 /** One removal: the paths it takes, relative to the state directory, and the bytes they hold. */
 export type PruneEntry = { kind: PruneKind; paths: string[]; bytes: number };
@@ -185,7 +184,7 @@ export class StorePrune {
 	/** Reads the state directory and git, and plans what the retention decision allows prune to remove. */
 	static async open(
 		repoRoot: string,
-		options: { root: string; manifest: ToolManifest; now?: number; env?: NodeJS.ProcessEnv },
+		options: { root: string; now?: number; env?: NodeJS.ProcessEnv },
 	): Promise<StorePrune> {
 		const root = resolve(options.root);
 		const now = options.now ?? Date.now();
@@ -244,24 +243,6 @@ export class StorePrune {
 				else if (now - (await measure(node.path)).newest > mutationAgeDays * day)
 					await add("mutation partition", [`mutation/${node.name}`]);
 			}
-			const pinned = options.manifest.toJSON().tools;
-			// Whether a pin holds `tools/<tool>/<version>/<platform>/<digest>`, given as many of those segments as are known.
-			const held = ([tool = "", version, platform, digest]: readonly string[]): boolean => {
-				const pin = Object.hasOwn(pinned, tool) ? pinned[tool] : undefined;
-				if (pin === undefined || (version !== undefined && pin.version !== version)) return false;
-				if (platform === undefined) return true;
-				const artifact = Object.hasOwn(pin.platforms, platform) ? pin.platforms[platform] : undefined;
-				return artifact !== undefined && (digest === undefined || artifact.sha256 === digest);
-			};
-			const walk = async (path: string, segments: readonly string[]) => {
-				for (const node of await children(path)) {
-					if (scratch(node.name)) continue;
-					if (node.link || !node.directory) kept.push(relative(node.path));
-					else if (!held([...segments, node.name])) await add("unpinned tool", [relative(node.path)]);
-					else if (segments.length < 3) await walk(node.path, [...segments, node.name]);
-				}
-			};
-			await walk(join(root, "tools"), []);
 		} catch (error) {
 			throw new StorePruneError(
 				"unreadable",

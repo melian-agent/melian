@@ -1,7 +1,6 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ToolProvisioning } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRepository, gitIn, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import type { Io } from "../src/commands.ts";
@@ -63,9 +62,7 @@ async function seed(): Promise<{ pinned: string }> {
 	await write("tools/gone/1.0.0/linux-x64/file", "tool");
 	await write("notes.txt", "mine");
 	await write("todo.txt", "also");
-	const [name, pin] = Object.entries((await ToolProvisioning.manifest()).toJSON().tools)[0]!;
-	const [platform, artifact] = Object.entries(pin.platforms)[0]!;
-	const pinned = `tools/${name}/${pin.version}/${platform}/${artifact.sha256}/binary`;
+	const pinned = `tools/enola/0.4.40/linux-x64/${hex("e")}/binary`;
 	await write(pinned, "pinned");
 	return { pinned };
 }
@@ -85,15 +82,13 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(io.lines).toEqual([
 			[
 				`State directory: ${state}`,
-				"Would remove 4 entries, freeing 18 B. Nothing is removed without --apply.",
+				"Would remove 3 entries, freeing 14 B. Nothing is removed without --apply.",
 				`  unreadable graph  1 B  graphs/${"a".repeat(64)}`,
 				`  orphan coverage  10 B  coverage/${"b".repeat(64)}`,
 				`  mutation partition  3 B  mutation/${"c".repeat(64)}`,
-				"  unpinned tool  4 B  tools/gone",
 				"  unreadable graph: 1, 1 B",
 				"  orphan coverage: 1, 10 B",
 				"  mutation partition: 1, 3 B",
-				"  unpinned tool: 1, 4 B",
 				"Kept 1 changeset file, 12 B, and scripted/.",
 				"Kept, not recognised: notes.txt, todo.txt",
 				"",
@@ -104,14 +99,14 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 			expect(await exists(path)).toBe(true);
 	});
 
-	it("removes the listed cache with --apply and keeps changesets, pinned tools and unrecognised names", async () => {
+	it("removes the listed cache with --apply and keeps changesets, tools and unrecognised names", async () => {
 		const { pinned } = await seed();
 		const io = output();
 		expect(await main(["store", "prune", "--apply"], io)).toBe(0);
-		expect(io.lines.join("")).toContain("Removed 4 entries, freeing 18 B.\n");
+		expect(io.lines.join("")).toContain("Removed 3 entries, freeing 14 B.\n");
 		for (const path of [`graphs/${"a".repeat(64)}`, `coverage/${"b".repeat(64)}`, `mutation/${"c".repeat(64)}`])
 			expect(await exists(path)).toBe(false);
-		expect(await exists("tools/gone")).toBe(false);
+		expect(await readFile(join(state, "tools/gone/1.0.0/linux-x64/file"), "utf8")).toBe("tool");
 		expect(await readFile(join(state, "pull-1.sqlite"), "utf8")).toBe("changeset");
 		expect(await readFile(join(state, "pull-1.sqlite-wal"), "utf8")).toBe("wal");
 		expect(await readFile(join(state, pinned), "utf8")).toBe("pinned");

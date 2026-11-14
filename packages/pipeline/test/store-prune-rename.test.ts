@@ -3,14 +3,12 @@ import * as files from "node:fs/promises";
 import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ToolManifest } from "@melian-agent/core";
 import { StorePrune } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
 
 vi.mock("node:fs/promises", { spy: true });
 
-const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: {}, misses: [] }));
 let repo: string;
 let state: string;
 let locked: string | undefined;
@@ -42,7 +40,7 @@ afterEach(async () => {
 // A rename that fails while a forced rm of the new name succeeds, as an immutable entry's does.
 it("stops at a rename that fails for a reason other than the path being gone, and counts nothing removed", async () => {
 	await orphan("a");
-	const prune = await StorePrune.open(repo, { root: state, manifest });
+	const prune = await StorePrune.open(repo, { root: state });
 	expect(prune.entries).toEqual([{ kind: "orphan coverage", paths: [coverage("a")], bytes: 5 }]);
 	vi.mocked(files.rename).mockRejectedValueOnce(
 		Object.assign(new Error("operation not permitted"), { code: "EPERM" }),
@@ -54,7 +52,7 @@ it("stops at a rename that fails for a reason other than the path being gone, an
 it("stops at a static run that starts between two removals, and keeps the second entry", async () => {
 	await orphan("a");
 	await orphan("b");
-	const prune = await StorePrune.open(repo, { root: state, manifest });
+	const prune = await StorePrune.open(repo, { root: state });
 	expect(prune.entries).toEqual([
 		{ kind: "orphan coverage", paths: [coverage("a")], bytes: 5 },
 		{ kind: "orphan coverage", paths: [coverage("b")], bytes: 5 },
