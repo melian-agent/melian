@@ -576,10 +576,19 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					}, context);
 				}
 			};
-			// One more input to a conversation that finished without what its role owes, under a request ID of its own.
-			const remind = async (id: ConversationId, content: string, requestId: string): Promise<void> => {
+			// One more input to a conversation that finished without what its role owes, under a request ID of its own. A
+			// reminder that does not finish ends the lens, so what its conversation did before it failed never stands as done.
+			const remind = async (
+				id: ConversationId,
+				content: string,
+				requestId: string,
+				which: string,
+			): Promise<Exclude<LensOutcome, { status: "done" }> | undefined> => {
 				const child = (await runtime.conversation(id, context))!;
-				await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
+				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
+				if (settled.status === "done") return undefined;
+				const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
+				return { status: "unanswered", reason: `${which} did not finish: ${reason}` };
 			};
 			// The attack numbers the prober answered with neither a probe nor a skip.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
@@ -599,7 +608,13 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				let plan = await planOf();
 				if (plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined) {
-					await remind(planner, recordPlanPrompt, `lens:${lens.key}:plan`);
+					const failed = await remind(
+						planner,
+						recordPlanPrompt,
+						`lens:${lens.key}:plan`,
+						"the planner's reminder",
+					);
+					if (failed !== undefined) return failed;
 					plan = await planOf();
 				}
 				if (plan === undefined) return { status: "unanswered", reason: "the planner recorded no attack plan" };
@@ -638,7 +653,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
 				if (open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined) {
-					await remind(prober!, answerPrompt(open), `lens:${key}:answer`);
+					const failed = await remind(prober!, answerPrompt(open), `lens:${key}:answer`, "the prober's reminder");
+					if (failed !== undefined) return failed;
 					open = await unanswered(prober!, plan.length);
 				}
 				const state = (await runtime.snapshot(ProbingDocument, prober!, context)) ?? {};

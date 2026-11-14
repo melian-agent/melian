@@ -377,6 +377,40 @@ describe("a level that probes", () => {
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
+	it.each([
+		[
+			"the prober's, after it ran a probe that failed",
+			"the prober's reminder",
+			{
+				planner: plan,
+				prober: [
+					fauxAssistantMessage("Done."),
+					call("run_probe", { attack: 1, script: failing }),
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "the connection reset" }),
+				],
+			},
+		],
+		[
+			"the planner's, after it recorded a plan",
+			"the planner's reminder",
+			{
+				planner: [
+					fauxAssistantMessage("Nothing."),
+					call("record_plan", { attacks: [attack] }),
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "the connection reset" }),
+				],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+		],
+	])("leaves the review not reviewed when a reminder does not finish: %s", async (_, which, scripts) => {
+		const { run } = await review(scripts);
+		const { verdict } = await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(verdict.status).toBe("not-reviewed");
+		const record = verdict.notRun.find(({ name }) => name === "lens.trust-boundary")!;
+		expect(record.error).toContain(`${which} did not finish`);
+		expect(record.error).toContain("the connection reset");
+	});
+
 	it("counts an attack the prober skipped with its reason as answered", async () => {
 		const { run } = await review({
 			planner: plan,
@@ -523,7 +557,11 @@ describe("a level that probes", () => {
 		const { run } = await review(
 			{
 				planner: plan.map((reply) => on("planner", reply)),
-				prober: [on("prober", fauxAssistantMessage("Reported 0 findings."))],
+				prober: [
+					on("prober", fauxAssistantMessage("Reported 0 findings.")),
+					on("prober", call("skip_attack", { attack: 1, reason: "r" })),
+					on("prober", fauxAssistantMessage("Skipped it.")),
+				],
 			},
 			{
 				fake,
@@ -1474,7 +1512,15 @@ describe("a level that probes", () => {
 	it("tells the prober a probe the sandbox refused did not run", async () => {
 		const base = unconfinedSandbox();
 		const { run, requests } = await review(
-			{ planner: plan, prober: [call("run_probe", { attack: 1, script: passing }), fauxAssistantMessage("Done.")] },
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
 			{
 				sandbox: {
 					...base,
