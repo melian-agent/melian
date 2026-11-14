@@ -38,14 +38,14 @@ const recordOf = (comment, { id = status.id, run = runId, on = pull } = {}) =>
 
 // A fake gh answers only the check's four requests. It runs the check's own --jq over a recorded answer, and answers the
 // comment raw, with no --jq. It serves the run commit's statuses in the pages it is given, as --paginate with --jq does,
-// and answers no artefact download, which a cloud session's proxy refuses.
-function run(comment, pages, { pullArg = pull } = {}) {
+// and answers no artefact download, which a cloud session's proxy refuses. With no pages, the statuses read fails.
+function run(comment, pages, { pullArg = pull, headSha = sha } = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "round-comment-check-"));
 	try {
 		writeFileSync(join(dir, "repository.json"), JSON.stringify(recorded("repository.json")));
-		writeFileSync(join(dir, "run.json"), JSON.stringify(recorded("run.json")));
+		writeFileSync(join(dir, "run.json"), JSON.stringify({ ...recorded("run.json"), head_sha: headSha }));
 		writeFileSync(join(dir, "comment.json"), JSON.stringify(comment));
-		pages.forEach((page, index) => {
+		(pages ?? []).forEach((page, index) => {
 			writeFileSync(join(dir, `statuses-${index}.json`), JSON.stringify(page));
 		});
 		writeFileSync(
@@ -55,8 +55,10 @@ function run(comment, pages, { pullArg = pull } = {}) {
 				'if [ "$1 $2 $3" = "api repos/melian-agent/melian --jq" ]; then jq -r "$4" "$FAKE/repository.json"; exit; fi',
 				`if [ "$1 $2 $3" = "api repos/melian-agent/melian/actions/runs/${runId} --jq" ]; then jq -r "$4" "$FAKE/run.json"; exit; fi`,
 				`if [ "$*" = "api repos/melian-agent/melian/issues/comments/${comment.id}" ]; then cat "$FAKE/comment.json"; exit; fi`,
-				`if [ "$1 $2 $3 $4" = "api --paginate repos/melian-agent/melian/commits/${sha}/statuses?per_page=100 --jq" ]; then`,
-				'  for page in "$FAKE"/statuses-*.json; do [ -e "$page" ] && jq -r "$5" "$page"; done; exit 0',
+				`if [ "$1 $2 $3 $4" = "api --paginate repos/melian-agent/melian/commits/${headSha}/statuses?per_page=100 --jq" ]; then`,
+				pages === null
+					? "  exit 1"
+					: '  for page in "$FAKE"/statuses-*.json; do [ -e "$page" ] && jq -r "$5" "$page"; done; exit 0',
 				"fi",
 				"exit 1",
 				"",
@@ -175,6 +177,21 @@ describe("the round comment check in AGENTS.md", () => {
 		// Another run's later record on the same commit does not stand in for this run's.
 		const another = recordOf(edited, { id: status.id + 2, run: "43558730567" });
 		expect(run(bot, [[another, older]])).toEqual(passes);
+		// Nor does a later record of a run whose ID starts with this run's.
+		const longer = recordOf(edited, { id: status.id + 3, run: `${runId}0` });
+		expect(run(bot, [[longer, older]])).toEqual(passes);
+	});
+
+	it("refuses when the run commit's statuses cannot be read", () => {
+		expect(run(bot, null)).toEqual([1, ""]);
+	});
+
+	it("refuses a run whose record names no full commit", () => {
+		const short = sha.slice(0, 12);
+		expect(run(bot, [[recordOf(bot)]], { headSha: short })).toEqual([
+			1,
+			`run ${runId} is .github/workflows/melian-round.yml workflow_dispatch main melian-agent/melian ${short}, not a melian round on main\n`,
+		]);
 	});
 
 	it("refuses an argument that is not a number before it asks GitHub anything", () => {
