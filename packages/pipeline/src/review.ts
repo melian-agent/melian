@@ -1408,6 +1408,7 @@ async function claimProbes(
 type ProbeRerunInput = {
 	root: ConversationId;
 	revision: ReviewState;
+	lensTask?: number;
 	probes: { key: string; script: string; files: { path: string; text: string }[]; environment: ProbingEnvironment }[];
 };
 
@@ -1425,13 +1426,16 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 		initial: () => ({ phase: "run" }),
 		phases: {
 			run: async (task, runtime, context) => {
-				const { root, revision, probes } = task.input;
+				const { root, revision, lensTask, probes } = task.input;
 				const at = Revision.key(revision);
 				const done = { status: "terminal", outcome: { status: "completed", result: {} } } as const;
 				for (const probe of probes) {
 					const document = (await runtime.snapshot(ProbeReruns, root, context))!;
 					// A task another review has replaced launches no probe; the fence after the run catches a takeover during it.
-					if (document.tasks![at]!.task !== runtime.taskId) {
+					// The lens task is asked here, not in the write commits: a replacing review with nothing to verify never takes
+					// the reruns over, and without this check the replaced review would spend every remaining probe's time.
+					const entry = (await runtime.snapshot(ReviewIndex, root, context))!.reviews[at];
+					if (document.tasks![at]!.task !== runtime.taskId || !stillOwns(entry, lensTask)) {
 						await runtime.commit(() => done, context);
 						return;
 					}
@@ -1497,7 +1501,12 @@ async function rerunProbes(
 				environment: structuredClone(probe.environment),
 			});
 		}
-	const input: ProbeRerunInput = { root, revision, probes: [...probes.values()] };
+	const input: ProbeRerunInput = {
+		root,
+		revision,
+		...(lensTask === undefined ? {} : { lensTask }),
+		probes: [...probes.values()],
+	};
 	const key = JSON.stringify(input.probes);
 	const task = await (await harness.root(context)).commit(async (tx) => {
 		// A review another has replaced takes nothing over: its claims may rest on probes the newer review no longer runs.

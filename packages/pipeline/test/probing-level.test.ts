@@ -1645,6 +1645,64 @@ describe("a level that probes", () => {
 		},
 	);
 
+	it("launches no further rerun once another review with nothing to verify replaces its lens task", async () => {
+		const ids: string[] = [];
+		const probed = (messages: Parameters<typeof lastResults>[0]) => {
+			ids.push(/probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0");
+		};
+		let commands = 0;
+		let taken: Promise<void> | undefined;
+		const { run, heads } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					(messages) => {
+						probed(messages);
+						return call("run_probe", { attack: 1, script: failing });
+					},
+					(messages) => {
+						probed(messages);
+						return call("report_finding", finding(ids[0]!));
+					},
+					() =>
+						call("report_finding", {
+							...finding(ids[1]!),
+							line: 2,
+							rule: "head-controls-judge",
+							evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+						}),
+					fauxAssistantMessage("Reported 2 findings."),
+				],
+			},
+			{
+				rewrite: (command) => {
+					// The third probe on the head is the first of Melian's two reruns. A review with no candidates replaces the
+					// lens task then, and never takes the reruns over.
+					if (inHeadTree(command) && ++commands === 3)
+						taken = (async () => {
+							const root = await harness!.harness.root(backgroundContext);
+							await root.commit(async (tx) => {
+								const index = await tx.doc(ReviewIndex, root.id);
+								for (const key of Object.keys(index.reviews))
+									index.reviews[key] = { ...index.reviews[key]!, task: -1 };
+							}, backgroundContext);
+						})();
+					return command;
+				},
+			},
+		);
+		const outcome = await run.then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		await taken;
+		expect(new Set(ids).size).toBe(2);
+		expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
+		// The prober's two probes and the first rerun: the second rerun never starts.
+		expect(heads).toHaveLength(3);
+	});
+
 	it("goes on to verify when a review sharing its lens task starts a rerun of the same probes again", async () => {
 		let commands = 0;
 		let taken: Promise<void> | undefined;
