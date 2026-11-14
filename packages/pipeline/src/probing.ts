@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { git, gitOutput, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
@@ -212,10 +213,20 @@ export type ProbingEnvironment = {
 	trustWriters: boolean;
 	timeout?: number;
 	read: string[];
-	// The platform and the sandbox the probes run under, from the sandbox itself, so a run on another host runs again.
-	platform: ProbeSandbox["platform"];
-	sandbox: string;
+	host: ProbingHost;
 };
+
+/**
+ * The host a probe's result holds on: the sandbox's platform and kind, and the CPU architecture and version of the Node
+ * that runs it. A probing run's key holds it whole, so a run on another host, or under another Node, runs again.
+ */
+export type ProbingHost = { platform: ProbeSandbox["platform"]; sandbox: string; arch: string; node: string };
+
+/** The host a probe runs on under `sandbox`. */
+export function probingHost(sandbox: ProbeSandbox): ProbingHost {
+	// A probe runs this process's own Node: Probe starts the realpath of process.execPath.
+	return { platform: sandbox.platform, sandbox: sandbox.kind, arch: process.arch, node: process.versions.node };
+}
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
@@ -272,10 +283,10 @@ async function openHeadProbe(
 	limits: { readonly entries: number; readonly bytes: number; readonly listing: number },
 ): Promise<Probe> {
 	const commit = await boundedHead(revision.repoRoot, revision.head, limits);
-	const runs = sandbox ?? Probe.sandbox;
-	if (environment.platform !== runs.platform || environment.sandbox !== runs.kind)
+	const here = probingHost(sandbox ?? Probe.sandbox);
+	if (!isDeepStrictEqual(environment.host, here))
 		throw new Error(
-			`the probe was planned under ${environment.sandbox} on ${environment.platform}, and this host runs ${runs.kind} on ${runs.platform}`,
+			`the probe was planned on ${JSON.stringify(environment.host)}, and this host is ${JSON.stringify(here)}`,
 		);
 	return Probe.open(input, {
 		head: { checkout: revision.repoRoot, commit, read: environment.read },
@@ -595,8 +606,7 @@ export function probingRenderings(): { readonly prompts: string; readonly eviden
 			writer: { trusted: true, by: "reviewer" },
 			trustWriters: true,
 			read: ["node_modules"],
-			platform: "linux",
-			sandbox: "unconfined",
+			host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
 		},
 		plan: [attack, { ...attack, target: "second" }],
 		probe: {

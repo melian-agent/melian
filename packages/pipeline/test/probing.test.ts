@@ -34,6 +34,7 @@ import {
 	probeConclusive,
 	probeFailed,
 	proberInstructions,
+	probingHost,
 	probingLimits,
 	renderEarlierFindings,
 	renderPlan,
@@ -66,8 +67,7 @@ const reviewer: ProbingEnvironment = {
 	writer: { trusted: true, by: "reviewer" },
 	trustWriters: true,
 	read: ["node_modules"],
-	platform: unconfinedSandbox().platform,
-	sandbox: unconfinedSandbox().kind,
+	host: probingHost(unconfinedSandbox()),
 };
 // What a probe left in this test's temporary directory, which nothing else writes.
 const left = () => readdirSync(tmpdir()).length;
@@ -138,6 +138,8 @@ describe("a head's bound", () => {
 	it.each([
 		["platform", { platform: "elsewhere" }],
 		["sandbox", { sandbox: "another" }],
+		["CPU architecture", { arch: "elsewhere" }],
+		["Node version", { node: "0.0.1" }],
 	])(
 		"refuses a probe planned under another %s than the one it would run under, and runs nothing",
 		async (_, other) => {
@@ -146,7 +148,7 @@ describe("a head's bound", () => {
 			const run = await runHeadProbe(
 				{ script: "process.exit(1);\n" },
 				{ repoRoot: repo, head: gitIn(repo, "rev-parse", "HEAD") },
-				{ ...reviewer, ...other } as ProbingEnvironment,
+				{ ...reviewer, host: { ...reviewer.host, ...other } } as ProbingEnvironment,
 				sandbox,
 			);
 			expect(run).toHaveProperty("refused");

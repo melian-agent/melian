@@ -42,7 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { TaskId } from "../src/harness.ts";
 import { type ReviewState, recordPlan, skipAttack } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingLimits } from "../src/probing.ts";
+import { headTreeLimits, ProbeReruns, probingHost, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -1042,8 +1042,7 @@ describe("a level that probes", () => {
 			writer: { trusted: true, by: "reviewer" } as const,
 			trustWriters: true,
 			read: [],
-			platform: unconfinedSandbox().platform,
-			sandbox: unconfinedSandbox().kind,
+			host: probingHost(unconfinedSandbox()),
 		};
 		// New probes it would run, or only the probe whose rerun already stands, which leaves the prune alone to decide.
 		const probes =
@@ -1098,8 +1097,7 @@ describe("a level that probes", () => {
 			writer: { trusted: true, by: "reviewer" } as const,
 			trustWriters: true,
 			read: [],
-			platform: unconfinedSandbox().platform,
-			sandbox: unconfinedSandbox().kind,
+			host: probingHost(unconfinedSandbox()),
 		};
 		let taken: Promise<void> | undefined;
 		during = () => {

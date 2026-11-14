@@ -30,9 +30,29 @@ const planNone = () => ({
 	second: { planner: [], prober: [] },
 });
 
-// Reviews one head on one store, first under `before` and then under `after`, and says whether the second review asked
-// the planner again rather than reusing the first review's probing run.
-async function plannedAgain(before: ProbeSandbox, after: ProbeSandbox): Promise<boolean> {
+// This process, for the length of `run`, as one on another CPU architecture or Node version, since a probe runs this
+// process's Node.
+async function asHost<T>(host: { arch?: string; node?: string }, run: () => Promise<T>): Promise<T> {
+	const arch = Object.getOwnPropertyDescriptor(process, "arch")!;
+	const versions = Object.getOwnPropertyDescriptor(process, "versions")!;
+	if (host.arch !== undefined) Object.defineProperty(process, "arch", { ...arch, value: host.arch });
+	if (host.node !== undefined)
+		Object.defineProperty(process, "versions", { ...versions, value: { ...process.versions, node: host.node } });
+	try {
+		return await run();
+	} finally {
+		Object.defineProperty(process, "arch", arch);
+		Object.defineProperty(process, "versions", versions);
+	}
+}
+
+// Reviews one head on one store, first under `before` and then under `after`, the second as `host` when given, and says
+// whether the second review asked the planner again rather than reusing the first review's probing run.
+async function plannedAgain(
+	before: ProbeSandbox,
+	after: ProbeSandbox,
+	host: { arch?: string; node?: string } = {},
+): Promise<boolean> {
 	const database = join(dir, "state.sqlite");
 	for (const [sandbox, index] of [
 		[before, 0],
@@ -40,7 +60,7 @@ async function plannedAgain(before: ProbeSandbox, after: ProbeSandbox): Promise<
 	] as const) {
 		const { harness, review, requests } = await probingReview(repo, database, planNone(), sandbox);
 		try {
-			await review();
+			await (index === 1 ? asHost(host, review) : review());
 			if (index === 1) return (requests[plannerMatch] ?? []).length > 0;
 		} finally {
 			await harness.close(context);
@@ -60,6 +80,16 @@ describe("a probing run's reuse across hosts", { timeout: 60_000 }, () => {
 		expect(await plannedAgain(unconfinedSandbox(), { ...unconfinedSandbox(), kind: "another" } as ProbeSandbox)).toBe(
 			true,
 		);
+	});
+
+	it("runs a probing level again on a host of another CPU architecture", async () => {
+		expect(await plannedAgain(unconfinedSandbox(), unconfinedSandbox(), { arch: `${process.arch}-other` })).toBe(
+			true,
+		);
+	});
+
+	it("runs a probing level again under another Node version", async () => {
+		expect(await plannedAgain(unconfinedSandbox(), unconfinedSandbox(), { node: "0.0.1" })).toBe(true);
 	});
 
 	it("reuses the probing run when the platform and the sandbox agree", async () => {
