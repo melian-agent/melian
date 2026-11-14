@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { cp, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -52,6 +52,10 @@ export const probeLimits = {
 	path: 200,
 	/** How long starting the sandbox (open and wrap) may take, apart from the probe's own time limit. */
 	setup: 120_000,
+	/** What `probe.read` may copy into the tree, across all its entries; past any of them the probe is refused. */
+	// About twice Melian's own install, 25,566 entries and 300 MB copied in 7.6 s, and half the head tree's limits, since
+	// every probe copies again.
+	read: { entries: 50_000, bytes: 536_870_912, time: 60_000 },
 } as const;
 
 /** A fixture file a probe's script reads, at a relative path beside the script, as text or as raw bytes. */
@@ -322,6 +326,35 @@ function staysInside(root: string, link: string, install: ReturnType<typeof stat
 	return true;
 }
 
+// Copies each allowed path over the tree, counting every entry before it is written. A copy past one of the limits is
+// refused part-way, and `Probe.open` removes what it wrote. Only a file that grows while it is copied passes unseen.
+export async function copyReads(
+	copies: readonly (readonly [string, string])[],
+	tree: string,
+	limits: { readonly entries: number; readonly bytes: number; readonly time: number } = probeLimits.read,
+	now: () => number = Date.now,
+): Promise<void> {
+	const deadline = now() + limits.time;
+	let entries = 0;
+	let bytes = 0;
+	for (const [entry, real] of copies) {
+		const past = (limit: string) =>
+			new ProbeError("invalidProbe", `probe.read's copy of ${entry} passes its limit of ${limit}`);
+		const filter = async (source: string) => {
+			const stats = await lstat(source);
+			if (now() > deadline) throw past(`${limits.time} milliseconds`);
+			entries += 1;
+			if (entries > limits.entries) throw past(`${limits.entries} entries`);
+			if (stats.isFile()) bytes += stats.size;
+			if (bytes > limits.bytes) throw past(`${limits.bytes} bytes`);
+			return true;
+		};
+		const target = join(tree, entry);
+		await mkdir(dirname(target), { recursive: true });
+		await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true, filter });
+	}
+}
+
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
 // allowed paths. Returns the install directories the tree's links lead into, which the probe may read.
 async function writeHead({ checkout, commit, entries }: PlannedHead, tree: string): Promise<readonly string[]> {
@@ -344,11 +377,7 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const linking = made && entries.some(([entry]) => entry === "node_modules");
 		refuseLinksOut(tree);
 		const copies = entries.filter(([entry]) => entry !== "node_modules");
-		for (const [entry, real] of copies) {
-			const target = join(tree, entry);
-			await mkdir(dirname(target), { recursive: true });
-			await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
-		}
+		await copyReads(copies, tree);
 		// A copy comes from the reviewer's checkout, and its links are kept as written.
 		if (copies.length > 0) refuseLinksOut(tree);
 		const installs: string[] = [];
