@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { running } from "./cache-scratch.ts";
 
 const day = 86_400_000;
 export const graphAgeDays = 7;
@@ -45,23 +46,13 @@ function git(repoRoot: string, env: NodeJS.ProcessEnv, args: readonly string[], 
 	});
 }
 
-function alive(pid: number): boolean {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		return (error as NodeJS.ErrnoException).code !== "ESRCH";
-	}
-}
-
 async function worktrees(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Worktrees> {
 	const output = await git(repoRoot, env, ["worktree", "list", "--porcelain", "-z"]);
 	const heads = [...output.matchAll(/\0HEAD ([0-9a-f]+)/g)].map((match) => match[1]!);
 	const live: LiveRun[] = [];
 	for (const record of output.split("\0\0")) {
 		const pid = Number(/\0locked melian-static pid (\d+)(?:\0|$)/.exec(record)?.[1]);
-		// Never pid 0 or 1: a signal to 0 asks about this process's own group, and a lock naming either is no run's.
-		if (pid > 1 && alive(pid)) live.push({ pid, worktree: record.slice("worktree ".length, record.indexOf("\0")) });
+		if (running(pid)) live.push({ pid, worktree: record.slice("worktree ".length, record.indexOf("\0")) });
 	}
 	return { heads, live };
 }

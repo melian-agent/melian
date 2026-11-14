@@ -2,6 +2,17 @@ import type { Dirent } from "node:fs";
 import { lstat, mkdtemp, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
+// Never pid 0 or 1: a signal to 0 asks about this process's own group. NaN, a pid no regex matched, fails the test too.
+export function running(pid: number): boolean {
+	if (!(pid > 1)) return false;
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code !== "ESRCH";
+	}
+}
+
 export class CacheScratch {
 	readonly root: string;
 	private constructor(root: string) {
@@ -40,11 +51,7 @@ export class CacheScratch {
 				/^\.(?:fetch|graph|prune)-(\d+)-/.exec(entry.name)?.[1] ??
 				/\.(\d+)\.[0-9a-f-]{36}\.tmp$/.exec(entry.name)?.[1];
 			if (pid !== undefined && Number(pid) > 1) {
-				try {
-					process.kill(Number(pid), 0);
-				} catch (error) {
-					if ((error as NodeJS.ErrnoException).code === "ESRCH") await this.#remove(path);
-				}
+				if (!running(Number(pid))) await this.#remove(path);
 				continue;
 			}
 			if (
