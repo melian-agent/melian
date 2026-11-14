@@ -64,6 +64,9 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Canonical bytes, `canonicalJson` | `core/src/record.ts` | gives a record its ID and a signature its bytes | Nothing. RFC 8785 with keys sorted by UTF-16 code units; a missing field is left out, never `null`, and a number is a safe integer or refused |
 | Record key hash, `SharedRecord.keyHash` | `core/src/record.ts` | files a record in its slot's directory | Nothing |
 | Record slot, `SharedRecord.sharesSlot` | `core/src/record.ts` | lets one record supersede another | The revision and the payload, by rule 4 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) |
+| Request key, `KeyedRequest.of` | `core/src/request-key.ts` | takes a recorded result as the answer to this producer's request, by [the request keys decision](../decisions/2026-11-14-request-keys-as-built.md) | Only what a producer passes as unkeyed, under one of `requestExclusions`: `nonce`, `language`, `bestEffort`, `chosenBy`. The key is the SHA-256 of `canonicalJson({ producer, request })` |
+| Request bytes, `requestJson` | `core/src/request-key.ts` | writes a request one way before it is keyed | A field left undefined, at any depth; `null` stays. A number that is not a safe integer is written as its decimal text |
+| Host facts, `hostFacts` | `core/src/host.ts` | lets a check run on this host answer for another | Nothing: platform, architecture, Node's version, and whether the filesystem under the given directory folds case, asked of the filesystem once per directory |
 | Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: random on every write in memory, a number never reused in a directory, and never a hash of the value, so a value that came back never matches a version read before it left |
 
 ### Pipeline
@@ -71,18 +74,19 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Key | Built in | When it matches, Melian | Left out, and why |
 | --- | --- | --- | --- |
 | Lens run key | `pipeline/src/review.ts` | reuses a run's conversation and request IDs | Scope, which reaches it through the lens version |
-| `instructionFingerprint` | `pipeline/src/review.ts` | keeps the lens task a review attaches to | The real nonce. The callers listing and enclosing functions, which are best effort |
+| `instructionFingerprint` | `pipeline/src/review.ts` | keeps the lens task a review attaches to | The real nonce. The callers listing and enclosing functions, which are best effort until [issue #432](https://github.com/melian-agent/melian/issues/432) keys the lens run through `KeyedRequest` with enclosing functions in its request, by the maintainer's ruling of 2026-11-14 |
 | `selectionOf` | `pipeline/src/review.ts` | attaches a review to its existing lens task | Who set the route, and the credential, by [the run identity decision](../decisions/2026-11-08-lens-run-identity.md) |
 | Adjudication attach key | `pipeline/src/review.ts` | attaches to an existing adjudication task | Run details, which publication projects |
-| Triage decision key | `pipeline/src/review.ts` | attaches to a recorded triage decision | The state, which carries the nonce |
-| `candidateIdentity` | `pipeline/src/verification.ts` | lets an earlier wave's outcome stand for a candidate | `dismissals`, stored verdicts and the speaker's body |
-| Verification task attach key | `pipeline/src/verification.ts` | resumes a verification task | The nonce and stored verdicts |
+| Triage request, producer `triage` | `pipeline/src/triage-request.ts` | attaches to a recorded triage decision | The real request, under `nonce`. The key holds the decider's name and version, the question set, the questions, the input-cut flag and the state rendered under a fixed nonce |
+| `candidateIdentity`, keyed as producer `verification.candidate` by `candidateKey` | `pipeline/src/verification.ts` | lets an earlier wave's outcome stand for a candidate | `dismissals`, stored verdicts and the speaker's body |
+| Verification request, producer `verification` | `pipeline/src/verification.ts` | resumes or reuses a verification task | The nonce, stored verdicts, and the `reused` wave outcomes, which are other runs' answers. The verifier's read tools, report tool, injection policy under a fixed nonce and line templates are in it |
+| Walkthrough request, producer `walkthrough` | `pipeline/src/summarize.ts` | attaches to a walkthrough task | The prompt under the review's nonce, under `nonce`. The key holds the revision, the prompt under a fixed nonce, the model, thinking, paths, instructions and the record tool. A task stored before the key attaches by its route alone |
 | `claimKey` | `pipeline/src/verification-waves.ts` | says which claims a wave owns | Nothing |
 | `verifierVersion` | `pipeline/src/verification-instructions.ts` | lets wave outcomes stand | Nothing |
 | `lensSource` | `pipeline/src/lens-tools.ts` | lets a producer replace its own sighting at a revision | The level, for an old conversation |
 | Dismissal `identityOf` | `pipeline/src/findings.ts` | keeps an inherited dismissal linked to its root | Nothing |
 | Resolution policy fingerprint | `pipeline/src/configurations.ts` | keeps an adjudication under its policy | Lens variants, so a budget or model change leaves it alone |
-| Check run policy and `identityKey` | `pipeline/src/checks.ts` | waits for a running check and starts none | Display-only configuration |
+| Check request, producer `check`, and `identityKey` | `pipeline/src/check-request.ts`, `pipeline/src/checks.ts` | waits for a running check run of the tier and starts none | Display-only configuration, `output` and `publish.emoji`. The request holds the policy source, Melian's tool pins, each analyser's version and source, Stryker's facts, the head's trust and the cold flag when mutation is on, two build rule versions and the host facts. `identityKey` joins base, head, tier, 16 hex digits of the key, and the task |
 | `mutationInstallation` and the mutation cache partition | `pipeline/src/mutation-static.ts`, `pipeline/src/mutation-cache.ts` | reuses an earlier judged head's mutation results | The head, with trust and ancestry checked at read |
 | Coverage producer index | `pipeline/src/coverage-cache.ts` | reads cached coverage under a graph | Nothing |
 | State directory hash | `pipeline/src/tool-provisioning.ts` | gives a clone its state directory | Nothing |
@@ -101,9 +105,9 @@ Each is a defect by rule 10, listed so nobody adds a third. Fixing one is a stor
 
 - **Claim identity.** Core hashes `JSON.stringify([id, check, version])`. The pipeline's `claimKey` writes `<id> <check>@<version or "">`. A missing version reads `null` in one and `""` in the other.
 - **Dismissal identity.** Core's `dismissalVersion` covers reason, dismisser and time. The pipeline's `identityOf` also covers severity, sighting and trigger, in another order. One versions replies and the other gates inheritance.
-- **Canonical bytes.** `checks.ts` sorts keys, and a shared record uses `canonicalJson`, RFC 8785. Every other JSON-hashed key relies on the order its fields are declared.
+- **Canonical bytes.** A shared record and every `KeyedRequest` use `canonicalJson`, RFC 8785. Every other JSON-hashed key relies on the order its fields are declared.
 - **Length.** Keys are cut to 12, 16 or all 64 hex digits, with no rule for which.
 
 ## What is planned
 
-[Pull request #377](https://github.com/melian-agent/melian/pull/377)'s shared record decision, once ruled, gives a result one key function in core: the hash of the whole request its producer was given, with named exclusions and the first test above built in. A guardrail then reports a new direct hash call in source, with today's callers on a list that shrinks.
+Core's `KeyedRequest.of` is the one key function the shared record decision called for, and `keyCoverage` in `@melian-agent/core/testing` is the first test above. [Issue #394](https://github.com/melian-agent/melian/issues/394) keyed triage, check runs, verification and walkthroughs through it. The lens run follows in [issue #432](https://github.com/melian-agent/melian/issues/432). A guardrail then reports a new direct hash call in source, with today's callers on a list that shrinks.
