@@ -500,6 +500,53 @@ syncBuiltinESMExports();`,
 		expect(JSON.parse(child.stdout).suite.map((group) => group.file)).toEqual(files.toSorted());
 	});
 
+	it("samples a suite claim on the path a builder walks: melian mutants list, then --sample", () => {
+		const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
+		const listed = spawnSync(process.execPath, [cli, "mutants", "list", "origin/main...HEAD", "--json", "--all"], {
+			cwd: root,
+			encoding: "utf8",
+		});
+		expect(listed.status, listed.stderr).toBe(0);
+		const inventory = JSON.parse(listed.stdout);
+		const generated = inventory.mutants.filter((row) => row.status === "generated");
+		expect(generated.length).toBeGreaterThan(1);
+		const [suite, ...killed] = generated;
+		Object.assign(suite, {
+			claim: "suite",
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		});
+		for (const row of killed)
+			Object.assign(row, {
+				claim: "killed",
+				evidence: { test: { file: "src/value.test.ts", path: ["value", "guard"] } },
+				survivorClasses: [],
+			});
+		write("claims.json", JSON.stringify(inventory));
+		const sampled = spawnSync(process.execPath, [script, "--sample", "claims.json"], { cwd: root, encoding: "utf8" });
+		expect(sampled.status, sampled.stderr).toBe(0);
+		expect(JSON.parse(sampled.stdout).suite).toEqual([
+			{ file: suite.file, mutants: [{ ...suite, sampleHash: expect.any(String) }] },
+		]);
+
+		const legacy = JSON.parse(
+			execFileSync(process.execPath, [script, "origin/main...HEAD", "--json", "--limit", "10000"], {
+				cwd: root,
+				encoding: "utf8",
+			}),
+		);
+		legacy.mutants[0] = {
+			...legacy.mutants[0],
+			claim: "suite",
+			evidence: "a neighbour catches it",
+			survivorClasses: [],
+		};
+		write("legacy.json", JSON.stringify(legacy));
+		const refused = spawnSync(process.execPath, [script, "--sample", "legacy.json"], { cwd: root, encoding: "utf8" });
+		expect(refused.status).toBe(1);
+		expect(refused.stderr).toContain("enumerate with melian mutants list <range> --json --all");
+	});
+
 	it("sampling rejects a range, an empty filename and unreadable or incomplete claims", () => {
 		for (const [args, text] of [
 			[["HEAD..HEAD", "--sample", "claims.json"], "use either a range or --sample FILE"],
@@ -682,7 +729,7 @@ syncBuiltinESMExports();`,
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', grouped by file, for a reviewer to judge each file and reason.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant.\n--json writes the legacy format, which takes no suite claim; enumerate with melian mutants list <range> --json --all for one.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', grouped by file, for a reviewer to judge each file and reason.\n",
 		);
 	});
 });

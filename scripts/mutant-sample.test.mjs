@@ -171,7 +171,7 @@ describe("mutant sampling", () => {
 			evidence: "a neighbour catches it",
 		});
 		expect(() => sampleMutants(inventory([mutant(0), suite]))).toThrow(
-			"each mutant needs a claim: killed, new-test or equivalent",
+			new Error("a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all"),
 		);
 	});
 

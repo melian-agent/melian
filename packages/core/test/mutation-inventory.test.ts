@@ -830,7 +830,7 @@ describe("suite claims", () => {
 		expect(() => MutationInventory.parse(stored)).toThrow(
 			new MutationInventoryError(
 				"invalidInventory",
-				"a legacy inventory takes no suite claim; enumerate again at version 2",
+				"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
 			),
 		);
 		expect(MutationInventory.parse(legacy([row(1)])).sample().selected).toHaveLength(1);

@@ -171,7 +171,7 @@ function requireKnownClaims(mutants: unknown, legacy: boolean): void {
 		if (legacy && value === "suite")
 			throw new MutationInventoryError(
 				"invalidInventory",
-				"a legacy inventory takes no suite claim; enumerate again at version 2",
+				"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
 			);
 		if (value !== undefined && !Value.Check(claim, value))
 			throw new MutationInventoryError(

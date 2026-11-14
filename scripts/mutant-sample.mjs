@@ -7,6 +7,10 @@ export function sampleMutants(inventory) {
 	if (inventory.omitted !== 0 || inventory.total !== inventory.mutants.length)
 		throw new Error("sampling requires a complete inventory with no omitted mutants");
 	for (const row of inventory.mutants) {
+		if (row.claim === "suite")
+			throw new Error(
+				"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+			);
 		if (!["killed", "new-test", "equivalent"].includes(row.claim))
 			throw new Error("each mutant needs a claim: killed, new-test or equivalent");
 		if (typeof row.evidence !== "string" || row.evidence.trim().length === 0)

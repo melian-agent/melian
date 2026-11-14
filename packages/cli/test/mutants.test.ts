@@ -292,7 +292,9 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 			unmutated: [],
 		};
 		expect(await sample(legacy)).toBe(1);
-		expect(io.errors.join("")).toContain("a legacy inventory takes no suite claim; enumerate again at version 2");
+		expect(io.errors.join("")).toContain(
+			"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+		);
 	});
 
 	it("prints full identity coordinates and a truncation count in text", async () => {
