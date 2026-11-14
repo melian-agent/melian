@@ -784,6 +784,12 @@ describe("a listing limited to some files", () => {
 		expect(() => MutationInventory.parse({ ...legacy(), limitedTo: ["src/a.ts"] }).sample()).toThrow(refusal);
 	});
 
+	it("refuses to sample one that also names the files owing claims", () => {
+		const both = MutationInventory.create(limited([row(0)], { claimsIn: ["src/a.ts"] }));
+		expect(() => both.sample()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+		expect(() => both.forVerification()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+	});
+
 	it("refuses a mutant in a file outside them, naming the file", () => {
 		expect(() => MutationInventory.create(limited([row(0, { file: "src/b.ts" })]))).toThrow(
 			'"src/b.ts" is outside the files the listing was limited to',
