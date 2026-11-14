@@ -6,6 +6,8 @@ Amends: [2026-10-06-immutable-coverage-evidence.md](2026-10-06-immutable-coverag
 
 Amends: [2026-10-06-graph-cache.md](2026-10-06-graph-cache.md), for expiry.
 
+Amends: [2026-10-06-cache-scratch-recovery.md](2026-10-06-cache-scratch-recovery.md), for the scratch kinds the sweep recognises.
+
 ## Problem
 
 Melian keeps one state directory per clone: `.git/melian/` by default, or `<MELIAN_STATE_DIR>/<clone hash>/`, as `CacheLocation.open` in `packages/pipeline/src/tool-provisioning.ts` resolves it. Nothing ever removes anything from it. On the coordinator's host on 2026-11-14 it held 15.7 GB of changeset files and 7.8 GB of cache, and it grows by about 0.4 GB a day on a disk with 28 GB free. A review round refuses to start when space runs low.
@@ -67,6 +69,8 @@ A lens round reads the head's graph with no lock held, since the static checks h
 [The immutable-coverage decision](2026-10-06-immutable-coverage-evidence.md) says an explicit content-ID lookup reads historical evidence. Prune removes a graph's coverage with it, so a lookup by a content ID under a removed graph is a miss. `CoverageCache.read` returns nothing: never an error, and never another artefact, even after the graph is rebuilt under the same key. A caller treats the miss as it treats any coverage it cannot read: the evidence is gone, and a review that needs it builds it again. A check record that names the ID keeps it. No production code reads coverage by content ID today. `grep -rnE "\.read\([^)]*\{ *id" packages/*/src` finds nothing, and the only readers, in `enola-static.ts` and `callers.ts`, read the producer's current index.
 
 [The graph-cache decision](2026-10-06-graph-cache.md) says no timestamp expires an entry. `melian store prune` may remove a graph more than seven days old whose tree no branch, remote-tracking ref or worktree `HEAD` holds, and nothing else removes one. Nothing expires on its own: an entry stays until someone runs `melian store prune --apply`.
+
+[The cache scratch recovery decision](2026-10-06-cache-scratch-recovery.md) names fetch, graph and coverage scratch. Prune's `.prune-<pid>-` scratch joins them, swept on the same rule: removed once its process is gone, and after a day when no process is named. This extends the list and changes nothing a user sees. The coordinator settled it as a choice of approach; the two amendments above wait on the maintainer.
 
 ### 5. Merged changesets wait for the shared record
 
