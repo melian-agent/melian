@@ -1,4 +1,5 @@
 import {
+	type DeterministicCheck,
 	type HostFacts,
 	KeyedRequest,
 	type MelianConfig,
@@ -28,12 +29,16 @@ export type CheckRequestInput = {
 	readonly host: HostFacts;
 };
 
-// Raised when what a check stores from a tool changes, so no run of an earlier build is reused: 2 keeps no Biome or tsc
-// text.
-const storedText = 2;
-
-// Raised when how Melian chooses tsc's projects changes, so no run of an earlier build is reused: 2 asks tsc --showConfig.
-const tscProjectRule = 2;
+// Melian's own code of each check. Raise a check's number when its logic changes what it finds or how it reports, so
+// no run of an earlier build is reused; nothing checks that you did until issue #437. Biome 2 and tsc 2 keep no tool
+// text, and tsc 3 asks tsc --showConfig for its projects.
+const checkVersions: Readonly<Record<DeterministicCheck, number>> = {
+	guardrails: 1,
+	"static.biome": 2,
+	"static.tsc": 3,
+	"static.enola": 1,
+	"static.mutation": 1,
+};
 
 // The configuration without its display-only keys, which change how a review reads and never what a check finds, so a
 // change to one reuses the run. `language` joins them when it lands.
@@ -59,8 +64,8 @@ function strykerFrom({
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, Stryker's facts and the head's trust
- * when mutation testing is on, the build's own rules for what it stores, and the host it runs on. Only the paths that
- * name the host are left out.
+ * when mutation testing is on, the version of Melian's own code for each check, and the host it runs on. Only the
+ * paths that name the host are left out.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
 	return KeyedRequest.of(
@@ -71,8 +76,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			tools: input.tools,
 			analysers: input.analysers,
 			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
-			storedText,
-			tscProjects: tscProjectRule,
+			checks: checkVersions,
 			host: input.host,
 		}),
 	);

@@ -1,4 +1,4 @@
-import { defaultConfig } from "@melian-agent/core";
+import { defaultConfig, deterministicChecks } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { type CheckRequestInput, checkRequest } from "../src/check-request.ts";
@@ -57,6 +57,12 @@ describe("checkRequest", () => {
 		expect(request.request).not.toHaveProperty("mutation");
 		expect(request.key).not.toBe(checkRequest(sample).key);
 		expect(request.producer).toBe("check");
+	});
+
+	it("keys the version of Melian's own code for every check it runs", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, unknown> };
+		expect(Object.keys(checks).sort()).toEqual([...deterministicChecks].sort());
+		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
 	});
 
 	it("holds a fractional setting as its decimal text, since a request's numbers are safe integers", () => {

@@ -665,6 +665,7 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 					},
 				}
 			: {}),
+		// The local environment runs every tool on this host. One that runs tools elsewhere must supply its own host facts.
 		host: hostFacts(),
 	});
 	const policy = request.key.slice(0, 16);
