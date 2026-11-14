@@ -8,4 +8,4 @@ Node is the authority on what `./testing` resolves to, and it cannot run here wi
 
 The limit: a head that adds a `./testing` export widens the rule for its own rows, and a reviewer sees that change in the diff. On pull request #399's branch, `packages/core/package.json` maps `./testing` to `packages/core/src/testing.ts`, and the conformance suite is defined in that file, not re-exported into it.
 
-Inventories written before the change still parse and sample, by a test over two committed inventories: one at version 2 and one legacy. A mutant's ID is unchanged.
+Inventories written before the change still parse and sample, by a test over two committed inventories: one at version 2 and one legacy. A mutant's ID is unchanged. An inventory holding a `suite` row still says version 2: the maintainer ruled on 2026-11-14 that version 2's claims may gain values, which [the claims decision](../decisions/2026-11-14-version-2-claims-may-gain-values.md) records. A build that does not know a claim refuses the whole file and names the claim.
