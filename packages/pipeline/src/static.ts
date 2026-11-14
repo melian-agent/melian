@@ -22,7 +22,7 @@ import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts
 import { linkDependencies } from "./link-dependencies.ts";
 import type { HeadTrust } from "./mutation-cache.ts";
 import type { MutationProcessHooks } from "./mutation-process.ts";
-import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
+import { type MutantsVerifyRun, MutationRun, strykerNotInstalled } from "./mutation-static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -534,29 +534,9 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot, { env: input.environment ?? {} }));
 			return await (await EnolaRun.open(run, root, scratch, tools)).check();
 		}
-		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
-		const notes: string[] = [];
-		// A tracked node_modules would let the head supply the dependencies, plugins, and type libraries the tool loads.
-		for (const directory of trackedModules(files)) {
-			notes.push(`${tool} ignored ${directory}, which ${commit.slice(0, 12)} tracks.`);
-			await run.shell(`rm -rf ${quote(posix.join(root, directory))}`);
-		}
-		// The checkout's node_modules is an install from its lockfile, unless the checkout tracks it, as it does when the
-		// head under review is what is checked out.
-		const checkoutModules = posix.join(repoRoot, "node_modules");
-		const checkoutTracked = await trackedFiles(run, repoRoot, posix.join(scratch, "checkout"), "-- node_modules");
-		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
-		const installed =
-			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		if (installed !== undefined) await linkInstall(run, root, scratch, notes);
-		if (
-			tool === "mutation" &&
-			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
-		) {
-			return { status: "skipped", reason: strykerNotInstalled };
-		}
-		const binary = await binaryFor(run, installed);
-		const version = await versionOf(run, binary);
+		const prepared = await prepareTool(run, root, scratch, tool);
+		if ("skipped" in prepared) return { status: "skipped", reason: prepared.skipped };
+		const { binary, version, notes, files } = prepared;
 		if (tool === "mutation") return new MutationRun(run, root, scratch, binary, version, notes).check();
 		const log =
 			tool === "biome"
@@ -564,6 +544,66 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
 	});
+}
+
+/**
+ * Runs `melian mutants verify` over `files`, the listed changed files of `input.revision`: Stryker once, under `config`,
+ * the base's `stryker.config.json`, in a worktree of the head, with the end check after. It takes the same leave as the
+ * mutation check, `input.headCode`, and throws when it has none.
+ */
+export async function runMutantsVerify(
+	input: StaticRunInput,
+	verify: { readonly files: readonly string[]; readonly config: string },
+	context: Context,
+): Promise<MutantsVerifyRun> {
+	const run = new Run(input, context);
+	if (input.headCode === undefined)
+		throw run.fail("toolFailed", "mutants verify runs the head's tests, so it needs leave to run the head's code");
+	return run.inWorktree(async (root, scratch) => {
+		const prepared = await prepareTool(run, root, scratch, "mutation");
+		if ("skipped" in prepared) throw run.fail("toolMissing", prepared.skipped);
+		return new MutationRun(run, root, scratch, prepared.binary, prepared.version, prepared.notes).verify(
+			verify.files,
+			verify.config,
+		);
+	});
+}
+
+// Readies the worktree for a tool: drops a node_modules the revision tracks, links the checkout's install, and finds the
+// tool's binary and version.
+async function prepareTool(
+	run: Run,
+	root: string,
+	scratch: string,
+	tool: StaticTool,
+): Promise<
+	{ readonly binary: string; readonly version: string; readonly notes: string[]; readonly files: string[] } | { readonly skipped: string }
+> {
+	const { repoRoot, commit } = run.input;
+	const files = await trackedFiles(run, root, posix.join(scratch, "files"));
+	const notes: string[] = [];
+	// A tracked node_modules would let the head supply the dependencies, plugins, and type libraries the tool loads.
+	for (const directory of trackedModules(files)) {
+		notes.push(`${tool} ignored ${directory}, which ${commit.slice(0, 12)} tracks.`);
+		await run.shell(`rm -rf ${quote(posix.join(root, directory))}`);
+	}
+	// The checkout's node_modules is an install from its lockfile, unless the checkout tracks it, as it does when the
+	// head under review is what is checked out.
+	const checkoutModules = posix.join(repoRoot, "node_modules");
+	const checkoutTracked = await trackedFiles(run, repoRoot, posix.join(scratch, "checkout"), "-- node_modules");
+	if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
+	const installed =
+		checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
+	if (installed !== undefined) await linkInstall(run, root, scratch, notes);
+	if (
+		tool === "mutation" &&
+		!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
+	) {
+		return { skipped: strykerNotInstalled };
+	}
+	const binary = await binaryFor(run, installed);
+	const version = await versionOf(run, binary);
+	return { binary, version, notes, files };
 }
 
 // Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.

@@ -96,6 +96,7 @@ export {
 	reviewChangeset,
 } from "./review.ts";
 export {
+	runMutantsVerify,
 	runStaticTool,
 	type StaticRun,
 	type StaticRunInput,
@@ -103,6 +104,7 @@ export {
 	staticOutputLimit,
 	staticToolSource,
 } from "./static.ts";
+export type { MutantsVerifyRun } from "./mutation-static.ts";
 export {
 	injectionAttemptRule,
 	quoteUntrusted,

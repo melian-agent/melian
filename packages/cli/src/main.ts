@@ -20,7 +20,7 @@ import {
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
 import { MergeGroupStatus } from "./merge-group.ts";
-import { listMutants, sampleMutants } from "./mutants.ts";
+import { listMutants, sampleMutants, verifyMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
 import { parseTarget } from "./target.ts";
@@ -70,6 +70,9 @@ Commands:
                          Enumerate changed production lines without running tests or head code. Exits 0 success, 1 failure.
   mutants sample <inventory>
                          Print deterministic probes from a complete classified inventory. Exits 0 success, 1 refused.
+  mutants verify <range|#pr> <file>... [--trust-head] [--json]
+                         Run Stryker over the listed changed files and print the proof block for the pull request.
+                         Exits 0 when every mutant is caught, noted or answered, 1 when one is not, 2 when undecided.
   probe <dir> --trust-head [--timeout <seconds>] [--json]
                          Run <dir>/probe.mjs, with the directory's other files beside it, in the head's tracked tree
                          under the sandbox: no network, writes to its scratch alone, reads of the tree, the install,
@@ -218,13 +221,21 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		switch (name) {
 			case "mutants": {
 				const [subcommand, ...targets] = rest;
-				if (subcommand === undefined) throw new UsageError("mutants takes a subcommand: list or sample");
+				if (subcommand === undefined) throw new UsageError("mutants takes a subcommand: list, sample or verify");
+				if (subcommand === "verify") {
+					if (values.limit !== undefined || values.all)
+						throw new UsageError("mutants verify takes neither --limit nor --all");
+					const [target, ...files] = targets;
+					if (target === undefined || files.length === 0)
+						throw new UsageError("mutants verify takes a range or pull request and at least one file");
+					return await verifyMutants(scoped, target, files, { json: values.json, trustHead: values["trust-head"] });
+				}
 				if (subcommand === "sample") {
 					if (values.limit !== undefined || values.all)
 						throw new UsageError("mutants sample takes neither --limit nor --all");
 					return await sampleMutants(scoped, one(targets, "mutants sample", "inventory"));
 				}
-				if (subcommand !== "list") throw new UsageError("mutants takes list or sample");
+				if (subcommand !== "list") throw new UsageError("mutants takes list, sample or verify");
 				if (values.limit !== undefined && values.all)
 					throw new UsageError("mutants list takes --limit or --all, not both");
 				if (

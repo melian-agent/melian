@@ -491,7 +491,7 @@ const committedRange =
 
 const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
 
-async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+export async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
 	const head = pullRequest.head.repository;
 	if (head === undefined)
 		return { trusted: false, detail: "the provider names no repository for the pull request head" };

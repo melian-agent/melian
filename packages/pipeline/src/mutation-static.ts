@@ -196,6 +196,24 @@ function provisionalReason(log: string): string {
 	return `provisional: ${reused}; a cold run decides approval`;
 }
 
+/** What a `melian mutants verify` run hands back, for core's verdict to decide. */
+export interface MutantsVerifyRun {
+	/** Stryker's JSON report, or undefined when it wrote none. */
+	readonly report: string | undefined;
+	/** Whether Stryker's dry run said it found no test. The head's tests share the log, so this only ever adds survivors. */
+	readonly noTests: boolean;
+	/** Each killing test file's result when rerun unmutated after the mutants: true when it passed. */
+	readonly endCheck: Readonly<Record<string, boolean>>;
+	readonly notes: readonly string[];
+}
+
+// Stryker's own limit on one mutant's run, and how far past the dry run's time it may go, which a verify run sets itself:
+// from the head's configuration, a `timeoutMS` of 1 would turn every covered mutant into a timeout, which counts as caught.
+const verifyTimeoutMs = 30_000;
+const verifyTimeoutFactor = 2;
+const noTestsFound = "No tests were found";
+const endCheckFile = "end-check.json";
+
 export class MutationRun {
 	readonly #run: Run;
 	readonly #root: string;
@@ -433,6 +451,94 @@ process.exitCode = result.code;
 		// `--force` makes a cold run rerun every mutant; a log that still counts reused results means the run was not cold.
 		const reusedAnyway = (reusedOf(deciding)?.[0] ?? 0) > 0;
 		return cold && !reusedAnyway ? { text } : { text, provisional: provisionalReason(deciding) };
+	}
+
+	// The command that runs one verify: Stryker over `entries` under the configuration already written to the worktree,
+	// with Melian's options over it, in an environment Melian builds, then the end check.
+	async #verifyRunner(entries: readonly string[]): Promise<string> {
+		const script = posix.join(this.#scratch, "verify-runner.mjs");
+		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
+		const dryRunMinutes = Math.ceil(this.#run.input.settings.timeout / 60);
+		const text = `
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { join } from "node:path";
+process.on("SIGTERM", () => process.exit(143));
+const config = JSON.parse(readFileSync("stryker.config.json", "utf8"));
+// Nothing of the caller's environment reaches the head's tests but PATH, which finds node.
+const env = {
+  LANG: "C.UTF-8", TZ: "UTC", PATH: process.env.PATH, MELIAN_MUTATION: "1",
+  HOME: mkdtempSync(join(${JSON.stringify(this.#scratch)}, "home-")),
+  TMPDIR: mkdtempSync(join(${JSON.stringify(this.#scratch)}, "tmp-")),
+};
+const run = (command, args) => new Promise((resolve) => {
+  const child = spawn(command, args, { stdio: "inherit", env });
+  child.on("error", () => resolve(1));
+  child.on("exit", (status) => resolve(status ?? 1));
+});
+rmSync(${JSON.stringify(report)}, { force: true });
+writeFileSync(${JSON.stringify(selectedConfig)}, JSON.stringify({ ...config,
+  inPlace: true, coverageAnalysis: "perTest", ignoreStatic: false, allowEmpty: true,
+  timeoutMS: ${verifyTimeoutMs}, timeoutFactor: ${verifyTimeoutFactor}, dryRunTimeoutMinutes: ${dryRunMinutes},
+  incremental: false, reporters: ["json"],
+  jsonReporter: { ...config.jsonReporter, fileName: ${JSON.stringify(report)} },
+  vitest: { ...config.vitest, related: true },
+}));
+const code = await run(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)}, "--inPlace",
+  "--mutate", ${JSON.stringify(entries.join(","))}]);
+// The end check: each killing test's file once more, unmutated, in the checkout the mutants ran in. Stryker has put the
+// source back by now, so a test that fails here fails for a reason no mutant gave it.
+const endCheck = {};
+let text;
+try { text = readFileSync(${JSON.stringify(report)}, "utf8"); } catch {}
+if (code === 0 && text !== undefined) {
+  const parsed = JSON.parse(text);
+  const killers = new Set();
+  for (const file of Object.values(parsed.files ?? {}))
+    for (const mutant of file.mutants ?? []) if (mutant.status === "Killed") for (const id of mutant.killedBy ?? []) killers.add(id);
+  const vitest = join("node_modules", ".bin", "vitest");
+  for (const [file, entry] of Object.entries(parsed.testFiles ?? {}))
+    if ((entry.tests ?? []).some((test) => killers.has(test.id)))
+      endCheck[file] = (await run(vitest, ["run", file, ...(config.vitest?.configFile ? ["--config", config.vitest.configFile] : [])])) === 0;
+}
+writeFileSync(${JSON.stringify(posix.join(this.#scratch, endCheckFile))}, JSON.stringify(endCheck));
+process.exitCode = code;
+`;
+		await this.#write(script, text);
+		return `${quote(process.execPath)} ${quote(script)}`;
+	}
+
+	/**
+	 * One `melian mutants verify` run over the changed lines of `files`: the base's `strykerConfig` replaces the head's
+	 * `stryker.config.json`, Stryker runs once with no earlier results, and each killing test's file is rerun unmutated.
+	 */
+	async verify(files: readonly string[], strykerConfig: string): Promise<MutantsVerifyRun> {
+		const { revision } = this.#run.input;
+		if (revision === undefined) throw this.#run.fail("toolFailed", "mutants verify needs the revision it mutates");
+		const targets = MutationTargets.select(revision, production, mutationUnmutated);
+		const lines = Object.entries(targets.changed).filter(([path]) => files.includes(path));
+		if (lines.length === 0) return { report: undefined, noTests: false, endCheck: {}, notes: this.#notes };
+		await this.#write(posix.join(this.#root, config), strykerConfig);
+		const entries = lines.flatMap(([path, ranges]) =>
+			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
+		);
+		const log = posix.join(this.#scratch, "stryker.log");
+		const command = [
+			`cd ${quote(this.#root)}`,
+			`ulimit -f ${mutationFileLimit / 1024}`,
+			`${await this.#verifyRunner(entries)} > ${quote(log)} 2>&1`,
+		].join(" && ");
+		const result = await new MutationProcess(this.#run).execute(command);
+		const logText = (await this.#read(log)) ?? "";
+		if (result.code !== 0)
+			throw this.#run.fail("toolFailed", `Stryker exited ${result.code}: ${tail(logText) || tail(result.output)}`);
+		const ends = await this.#read(posix.join(this.#scratch, endCheckFile));
+		return {
+			report: await this.#read(posix.join(this.#root, report)),
+			noTests: logText.includes(noTestsFound),
+			endCheck: ends === undefined ? {} : (JSON.parse(ends) as Record<string, boolean>),
+			notes: this.#notes,
+		};
 	}
 
 	async check(): Promise<StaticRun> {
