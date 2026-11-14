@@ -1,10 +1,22 @@
 import { spawnSync } from "node:child_process";
-import { lstat, mkdir, mkdtemp, readdir, readFile, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import {
+	chmod,
+	lstat,
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	realpath,
+	rm,
+	symlink,
+	utimes,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GraphSnapshot, ToolManifest } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GraphCache } from "../src/graph-cache.ts";
 import {
 	type ConversationId,
@@ -123,6 +135,7 @@ it("removes a graph older than seven days whose tree no live commit holds, with 
 	expect(prune.entries).toEqual([
 		{ kind: "graph", paths: [`graphs/${dead}`, `coverage/${dead}`], bytes: expect.any(Number) },
 	]);
+	expect(prune.kept).toEqual([]);
 	const graphBytes = Object.values(graphFiles).reduce((sum, text) => sum + Buffer.byteLength(text), 0);
 	const entryBytes = (await lstat(join(state, "graphs", dead, "entry.json"))).size;
 	expect(prune.entries[0]?.bytes).toBe(graphBytes + entryBytes + 10);
@@ -190,6 +203,15 @@ it.each([
 	[
 		"an entry with no tree",
 		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: {}, created: "2020-01-01T00:00:00Z" }),
+	],
+	["JSON that is a number", "1"],
+	[
+		"an entry with no parts",
+		JSON.stringify({ format_version: 1, key: "1".repeat(64), created: "2020-01-01T00:00:00Z" }),
+	],
+	[
+		"an entry whose creation time is a number",
+		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: { tree: "f".repeat(40) }, created: 0 }),
 	],
 	[
 		"an entry with no creation time",
@@ -310,6 +332,8 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 	await mkdir(join(state, "graphs", `.graph-${process.pid}-partial`), { recursive: true });
 	await mkdir(join(state, "mutation", `.prune-${process.pid}-moved`), { recursive: true });
 	await writeFile(join(state, "coverage", `x.${process.pid}.${crypto.randomUUID()}.tmp`), "x");
+	const nearScratch = `x.${process.pid}.${crypto.randomUUID()}.tmpx`;
+	await writeFile(join(state, "coverage", nearScratch), "x");
 	for (const path of ["graphs", "coverage", "mutation", "tools", "ledger", "scripted"]) await age(path, 400 * day);
 	const prune = await plan();
 	expect(prune.entries).toEqual([]);
@@ -320,6 +344,7 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 			"graphs/not-a-key",
 			`graphs/${"7".repeat(64)}`,
 			"coverage/not-a-key",
+			`coverage/${nearScratch}`,
 			"mutation/not-a-key",
 			"tools/stray",
 			"tools/linked",
@@ -391,6 +416,7 @@ it.each([
 	["pid 1", () => "melian-static pid 1"],
 	["pid 0", () => "melian-static pid 0"],
 	["another reason", () => `someone else pid ${process.pid}`],
+	["a reason that only starts like a run's", () => `melian-static pid ${process.pid} extra`],
 ])("does not count a lock held by %s as a live run", async (_, reason) => {
 	await graph("f".repeat(40), 30 * day);
 	await worktree(reason());
@@ -436,6 +462,9 @@ it("refuses when git cannot answer", async () => {
 		code: "gitFailed",
 	});
 	await expect(StorePrune.open(notRepo, { root: state, manifest, now })).rejects.toBeInstanceOf(StorePruneError);
+	await expect(StorePrune.open(notRepo, { root: state, manifest, now })).rejects.toThrow(
+		/^git worktree failed: fatal: not a git repository[^\n]*$/,
+	);
 });
 
 it("reads a graph whose entry.json is not a file as unreadable", async () => {
@@ -443,4 +472,119 @@ it("reads a graph whose entry.json is not a file as unreadable", async () => {
 	await mkdir(join(state, "graphs", name, "entry.json"), { recursive: true });
 	await age(`graphs/${name}`, 2 * day);
 	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
+});
+
+it("refuses with the reason git could not start when no git is on the path it was given", async () => {
+	const empty = await mkdtemp(join(tmpdir(), "melian-prune-path-"));
+	outside.push(empty);
+	await expect(plan({ env: { PATH: empty } })).rejects.toMatchObject({
+		code: "gitFailed",
+		message: "git worktree failed: spawn git ENOENT",
+	});
+});
+
+it("counts a lock whose process it may not signal as a live run", async () => {
+	await graph("f".repeat(40), 30 * day);
+	const pid = deadPid();
+	const path = await worktree(`melian-static pid ${pid}`);
+	const kill = process.kill.bind(process);
+	const spy = vi.spyOn(process, "kill").mockImplementation((target, signal) => {
+		if (target !== pid) return kill(target, signal);
+		throw Object.assign(new Error("kill EPERM"), { code: "EPERM" });
+	});
+	try {
+		const prune = await plan();
+		expect(prune.live).toEqual([{ pid, worktree: path }]);
+		expect(await prune.apply()).toEqual({ removed: [], live: [{ pid, worktree: path }] });
+	} finally {
+		spy.mockRestore();
+	}
+});
+
+it("keeps a cache directory whose name only contains a key", async () => {
+	const names = [`x${"a".repeat(64)}`, `${"a".repeat(64)}x`];
+	for (const folder of ["graphs", "coverage", "mutation"])
+		for (const name of names) await mkdir(join(state, folder, name), { recursive: true });
+	for (const folder of ["graphs", "coverage", "mutation"])
+		for (const name of names) await age(`${folder}/${name}`, 400 * day);
+	const prune = await plan();
+	expect(prune.entries).toEqual([]);
+	expect([...prune.kept].sort()).toEqual(
+		["graphs", "coverage", "mutation"].flatMap((folder) => names.map((name) => `${folder}/${name}`)).sort(),
+	);
+});
+
+it("keeps a file or a link where a cache folder belongs, and a file with a key's name", async () => {
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	await writeFile(join(state, "coverage"), "x");
+	await symlink(elsewhere, join(state, "mutation"));
+	await mkdir(join(state, "graphs"), { recursive: true });
+	await writeFile(join(state, "graphs", "8".repeat(64)), "x");
+	await age(`graphs/${"8".repeat(64)}`, 400 * day);
+	const prune = await plan();
+	expect(prune.entries).toEqual([]);
+	expect([...prune.kept].sort()).toEqual(["coverage", `graphs/${"8".repeat(64)}`, "mutation"]);
+});
+
+it("counts only a graph's own bytes when it has no coverage", async () => {
+	const dead = await graph("f".repeat(40), 30 * day);
+	await rm(join(state, "coverage", dead), { recursive: true });
+	const graphBytes = Object.values(graphFiles).reduce((sum, text) => sum + Buffer.byteLength(text), 0);
+	const entryBytes = (await lstat(join(state, "graphs", dead, "entry.json"))).size;
+	expect((await plan()).entries).toEqual([
+		{ kind: "graph", paths: [`graphs/${dead}`, `coverage/${dead}`], bytes: graphBytes + entryBytes },
+	]);
+});
+
+it("refuses when a path it measures cannot be read for a reason other than being gone", async () => {
+	const dead = await graph("f".repeat(40), 30 * day);
+	await rm(join(state, "coverage"), { recursive: true });
+	await writeFile(join(state, "coverage"), "x");
+	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
+	expect(await exists(`graphs/${dead}`)).toBe(true);
+});
+
+it("refuses a state directory that is a file inside, rather than planning nothing", async () => {
+	await rm(state, { recursive: true });
+	await writeFile(state, "x");
+	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
+});
+
+it("reads an entry.json of exactly the size limit and refuses one a byte past it", async () => {
+	const limit = 1024 * 1024;
+	const name = "a".repeat(64);
+	const json = JSON.stringify({
+		format_version: 1,
+		key: name,
+		parts: { tree: "f".repeat(40) },
+		created: new Date(now - 30 * day).toISOString(),
+	});
+	await mkdir(join(state, "graphs", name), { recursive: true });
+	await writeFile(join(state, "graphs", name, "entry.json"), json.padEnd(limit, " "));
+	await age(`graphs/${name}`, 2 * day);
+	expect(kinds(await plan())).toEqual([["graph", `graphs/${name}`, `coverage/${name}`]]);
+	await writeFile(join(state, "graphs", name, "entry.json"), json.padEnd(limit + 1, " "));
+	await age(`graphs/${name}`, 2 * day);
+	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
+});
+
+it("lists entries in name order, whatever order the directory returns", async () => {
+	const names = ["h", "c", "f", "a", "g", "b", "e", "d"];
+	for (const name of names) await mkdir(join(state, "tools", name), { recursive: true });
+	expect(kinds(await plan())).toEqual([...names].sort().map((name) => ["unpinned tool", `tools/${name}`]));
+});
+
+it("refuses a graph whose entry it may not read, rather than reading it as unreadable", async (test) => {
+	if (process.getuid?.() === 0) {
+		process.stderr.write("skipped: root reads a file of mode 0\n");
+		test.skip();
+	}
+	const name = "b".repeat(64);
+	await mkdir(join(state, "graphs", name), { recursive: true });
+	await writeFile(join(state, "graphs", name, "entry.json"), "{}");
+	await chmod(join(state, "graphs", name, "entry.json"), 0);
+	await age(`graphs/${name}`, 2 * day);
+	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
+	expect(await exists(`graphs/${name}`)).toBe(true);
 });
