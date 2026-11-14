@@ -40,7 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { TaskId } from "../src/harness.ts";
-import { type ReviewState, recordPlan, skipAttack } from "../src/lens-tools.ts";
+import { type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { headTreeLimits, ProbeReruns, probingHost, probingLimits } from "../src/probing.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";

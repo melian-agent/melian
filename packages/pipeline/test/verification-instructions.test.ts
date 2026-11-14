@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { verificationQuestions } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
