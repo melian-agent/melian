@@ -804,6 +804,20 @@ describe("suite claims", () => {
 		expect(MutationInventory.create(fields([ignored, row(1)])).sample().selected).toHaveLength(1);
 	});
 
+	it.each([
+		["version 2", (claim: string) => fields([row(0), row(1, { claim })])],
+		["a legacy inventory", (claim: string) => legacy([row(0), row(1, { claim })])],
+	])("refuses %s whole when a row holds a claim this build does not know, and names it", (_name, build) => {
+		const input = build("proved-elsewhere");
+		const inventory = "range" in input ? { melianMutants: 2, ...input } : input;
+		const refusal = new MutationInventoryError(
+			"invalidInventory",
+			'mutant claim "proved-elsewhere" is not one this build knows: killed, new-test, equivalent or suite',
+		);
+		if ("range" in input) expect(() => MutationInventory.create(input as MutationInventoryInput)).toThrow(refusal);
+		expect(() => MutationInventory.parse(inventory)).toThrow(refusal);
+	});
+
 	it("names the four claims when a mutant has none", () => {
 		expect(() =>
 			MutationInventory.create(fields([row(0, { claim: undefined, evidence: undefined })])).sample(),

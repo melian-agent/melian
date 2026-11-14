@@ -168,6 +168,20 @@ export class MutationInventoryError extends Error {
 	}
 }
 
+// Version 2's claims may gain values, so an older build meets one it does not know; it refuses the file, naming it.
+function requireKnownClaims(input: unknown): void {
+	const mutants = typeof input === "object" && input !== null && "mutants" in input ? input.mutants : undefined;
+	if (!Array.isArray(mutants)) return;
+	for (const row of mutants) {
+		const value = typeof row === "object" && row !== null && "claim" in row ? row.claim : undefined;
+		if (value !== undefined && !Value.Check(claim, value))
+			throw new MutationInventoryError(
+				"invalidInventory",
+				`mutant claim ${JSON.stringify(value)} is not one this build knows: killed, new-test, equivalent or suite`,
+			);
+	}
+}
+
 function identityHash(row: MutationIdentity): string {
 	return createHash("sha256")
 		.update(
@@ -206,6 +220,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		const version = "melianMutants" in input ? input.melianMutants : undefined;
 		if (version !== undefined && version !== 1 && version !== 2)
 			throw new MutationInventoryError("unsupportedVersion", "unsupported melianMutants inventory version");
+		requireKnownClaims(input);
 		const schema = version === 2 ? inventorySchema : legacySchema;
 		if (!Value.Check(schema, input))
 			throw new MutationInventoryError(
@@ -261,6 +276,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 
 	/** Derives stable ids for enumerator rows and validates the version-2 document. */
 	static create(input: MutationInventoryInput): MutationInventory<MutationInventoryV2> {
+		requireKnownClaims(input);
 		if (!Value.Check(inputSchema, input))
 			throw new MutationInventoryError(
 				"invalidInventory",
