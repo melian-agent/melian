@@ -491,6 +491,7 @@ export {
 } from "./pull-request-rounds.ts";
 export {
 	canonicalJson,
+	everyRecordCounts,
 	type NamedRecord,
 	type PayloadCheck,
 	type PayloadChecks,

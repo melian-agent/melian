@@ -299,6 +299,9 @@ export class SharedRecord {
 	}
 }
 
+/** The trust of a store whose every writer is trusted, by rule 6 of the shared record decision: every record counts. */
+export const everyRecordCounts = (_record: SharedRecord): boolean => true;
+
 /**
  * A set of records, and what rule 4 of the shared record decision computes from it. Every answer is a function of the
  * set alone: no order of arrival, no repeat, and no record outside the set changes it.
@@ -320,14 +323,20 @@ export class RecordSet {
 	}
 
 	/**
-	 * The set of `records`, each once. A record for which `counts` is false, such as one a pinned key did not sign, is
-	 * set aside before every other rule: it supersedes nothing, replaces nothing, and stands nowhere.
+	 * The set of `records`, each once. `counts` is required, so no caller trusts a store by leaving it out. A record for
+	 * which `counts` is false, such as one a pinned key did not sign, is set aside before every other rule: it supersedes
+	 * nothing, replaces nothing, and stands nowhere.
 	 */
 	static of(
 		records: Iterable<SharedRecord | RecordEnvelope>,
-		options: { counts?: (record: SharedRecord) => boolean; payloads?: PayloadChecks } = {},
+		options: { counts: (record: SharedRecord) => boolean; payloads?: PayloadChecks },
 	): RecordSet {
-		const counts = options.counts ?? (() => true);
+		const counts = options?.counts;
+		if (typeof counts !== "function")
+			throw new RecordError(
+				"trustUnstated",
+				"a record set needs counts; pass everyRecordCounts for a store whose every writer is trusted",
+			);
 		const byId = new Map<string, SharedRecord>();
 		for (const each of records) {
 			const record = each instanceof SharedRecord ? each : SharedRecord.parse(each, options.payloads);
