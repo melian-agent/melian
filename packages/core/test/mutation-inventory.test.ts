@@ -802,10 +802,11 @@ describe("a listing limited to some files", () => {
 		);
 	});
 
-	it("refuses limitedTo that names one file twice", () => {
-		expect(() =>
-			MutationInventory.create(limited([row(0)], { limitedTo: ["src/a.ts", "src/a.ts", "src/link.ts"] })),
-		).toThrow("the inventory's limitedTo names one file twice");
+	it.each([
+		[["src/a.ts", "src/a.ts", "src/link.ts"], "the inventory's limitedTo names one file twice"],
+		[[], "fields, coordinates, claims"],
+	])("refuses limitedTo %j", (limitedTo, message) => {
+		expect(() => MutationInventory.create(limited([row(0)], { limitedTo }))).toThrow(message);
 	});
 
 	it("reads an inventory with neither field as before, without either table line", () => {
