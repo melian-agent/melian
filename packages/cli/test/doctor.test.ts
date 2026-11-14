@@ -5,6 +5,7 @@ import * as core from "@melian-agent/core";
 import * as githubProvider from "@melian-agent/github";
 import * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
+import { GitRecordStore } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { fakeGitHub, fakeState } from "../../github/test/fixtures/fake-github.ts";
@@ -17,6 +18,8 @@ let home: string;
 beforeEach(() => {
 	// A real empty probe takes seconds on a loaded runner; the probes line has tests of its own below.
 	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+	// The origin below is GitHub's; the record store line has tests of its own against a local remote.
+	vi.spyOn(GitRecordStore.prototype, "strays").mockResolvedValue([]);
 	const fallback = github();
 	fallback.login = "global-viewer";
 	vi.stubGlobal("fetch", fakeGitHub(fallback));
