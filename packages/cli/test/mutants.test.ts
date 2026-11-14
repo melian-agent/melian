@@ -247,13 +247,7 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(io.errors).toEqual([]);
 	});
 
-	it("samples a suite claim only in a package's ./testing export, read at the inventory's head", async () => {
-		const exported = (file: string) => JSON.stringify({ exports: { "./testing": { "@melian-agent/source": file } } });
-		const at = commit(repo, {
-			"package.json": JSON.stringify({ workspaces: ["packages/*"] }),
-			"packages/core/package.json": exported("./src/testing.ts"),
-		});
-		await writeFile(join(repo, "packages/core/package.json"), exported("./src/record.ts"));
+	it("samples suite claims apart, grouped by file, and refuses one in a legacy inventory", async () => {
 		const suite = {
 			file: "packages/core/src/testing.ts",
 			line: 3,
@@ -267,16 +261,6 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
 			survivorClasses: [],
 		};
-		const inventory = (file: string, head = at) =>
-			MutationInventory.create({
-				range: { base, head },
-				adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
-				installation: "c".repeat(64),
-				mutants: [{ ...suite, file }],
-				total: 1,
-				omitted: 0,
-				unmutated: [],
-			}).toJSON();
 		const io = output();
 		const sample = async (value: unknown) => {
 			await writeFile(join(repo, "suite.json"), JSON.stringify(value));
@@ -284,34 +268,31 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 			io.errors.length = 0;
 			return main(["mutants", "sample", "suite.json"], io);
 		};
-		const accepted = inventory(suite.file);
+		const accepted = MutationInventory.create({
+			range: { base, head },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		}).toJSON();
 		expect(await sample(accepted)).toBe(0);
 		expect(JSON.parse(io.lines.join(""))).toEqual({
 			selected: [],
-			suite: [{ ...accepted.mutants[0], sampleHash: accepted.mutants[0].id }],
+			suite: [{ file: suite.file, mutants: [{ ...accepted.mutants[0], sampleHash: accepted.mutants[0].id }] }],
 			total: 1,
 			unmutated: [],
 			ignored: { config: [], comment: [] },
 		});
-		for (const [value, text] of [
-			[
-				inventory("packages/core/src/record.ts"),
-				"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's",
-			],
-			[inventory(suite.file, "f".repeat(40)), `suite claim refused: cannot read the exports at ${"f".repeat(40)}`],
-			[
-				{
-					mutants: [{ ...suite, evidence: "a neighbour catches it", status: undefined }],
-					total: 1,
-					omitted: 0,
-					unmutated: [],
-				},
-				"a legacy inventory takes no suite claim, since it records no head to read exports at",
-			],
-		] as const) {
-			expect(await sample(value)).toBe(1);
-			expect(io.errors.join("")).toContain(text);
-		}
+		const legacy = {
+			mutants: [{ ...suite, evidence: "a neighbour catches it", status: undefined }],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		};
+		expect(await sample(legacy)).toBe(1);
+		expect(io.errors.join("")).toContain("a legacy inventory takes no suite claim; enumerate again at version 2");
 	});
 
 	it("prints full identity coordinates and a truncation count in text", async () => {

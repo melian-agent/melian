@@ -495,7 +495,6 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
-export { SuiteExports } from "./suite-exports.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

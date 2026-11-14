@@ -3,7 +3,6 @@ import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { canonicalPath } from "./findings.ts";
 import { visibleText } from "./render.ts";
-import type { SuiteExports } from "./suite-exports.ts";
 
 /** Recurring survivor labels used by the builder's checklist and deterministic sample. */
 export const survivorClasses = [
@@ -133,12 +132,12 @@ export type MutationInventoryInput = Omit<MutationInventoryV2, "melianMutants" |
 };
 type SampledMutant = (MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string };
 /**
- * A reproducible set of probes ordered by the full mutant identity's hash, and the shared suite's assertions, which a
- * reviewer reads by their reasons and does not run, under the label "suite assertion, proved per case".
+ * A reproducible set of probes ordered by the full mutant identity's hash, and every shared suite's assertion, grouped
+ * by file in line order, which a reviewer judges by its file and reason and does not run.
  */
 export type MutationSample = {
 	selected: SampledMutant[];
-	suite?: SampledMutant[];
+	suite?: { file: string; mutants: SampledMutant[] }[];
 	total: number;
 	unmutated: MutationInventoryV2["unmutated"];
 	ignored?: { config: MutationInventoryRow[]; comment: MutationInventoryRow[] };
@@ -172,7 +171,7 @@ function requireKnownClaims(mutants: unknown, legacy: boolean): void {
 		if (legacy && value === "suite")
 			throw new MutationInventoryError(
 				"invalidInventory",
-				"a legacy inventory takes no suite claim, since it records no head to read exports at; enumerate again at version 2",
+				"a legacy inventory takes no suite claim; enumerate again at version 2",
 			);
 		if (value !== undefined && !Value.Check(claim, value))
 			throw new MutationInventoryError(
@@ -180,6 +179,11 @@ function requireKnownClaims(mutants: unknown, legacy: boolean): void {
 				`mutant claim ${JSON.stringify(value)} is not one this build knows: killed, new-test, equivalent or suite`,
 			);
 	}
+}
+
+function suiteGroups(rows: SampledMutant[]): { file: string; mutants: SampledMutant[] }[] {
+	const ordered = rows.toSorted((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column);
+	return [...Map.groupBy(ordered, (row) => row.file)].map(([file, mutants]) => ({ file, mutants }));
 }
 
 function identityHash(row: MutationIdentity): string {
@@ -291,21 +295,14 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 
 	/**
 	 * Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script, and lists every
-	 * suite claim apart. Parsing reads no file, so the rule that a suite claim stands only in a package's `./testing`
-	 * export is enforced here, against the exports the caller read.
+	 * suite claim apart, grouped by file. No file is read: a reviewer judges whether each suite claim's file is a suite.
 	 */
-	sample(suites?: SuiteExports): MutationSample {
+	sample(): MutationSample {
 		this.#requireClassified();
 		const all = this.#probes()
 			.map((mutant) => ({ mutant, hash: identityHash(mutant) }))
 			.sort((a, b) => a.hash.localeCompare(b.hash));
 		const suite = all.filter((row) => row.mutant.claim === "suite");
-		for (const { mutant } of suite) {
-			const refusal =
-				suites === undefined ? "no package exports were read to check it against" : suites.refusal(mutant.file);
-			if (refusal !== undefined)
-				throw new MutationInventoryError("invalidEvidence", `suite claim refused: ${visibleText(refusal)}`);
-		}
 		const ranked = all.filter((row) => row.mutant.claim !== "suite");
 		const selected = new Set(ranked.filter((row) => row.mutant.claim !== "killed"));
 		const classGroups = Map.groupBy(
@@ -335,16 +332,13 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 				: {};
 		return structuredClone({
 			selected: ranked.filter((row) => selected.has(row)).map((row) => ({ ...row.mutant, sampleHash: row.hash })),
-			...(suite.length > 0 ? { suite: suite.map((row) => ({ ...row.mutant, sampleHash: row.hash })) } : {}),
+			...(suite.length > 0
+				? { suite: suiteGroups(suite.map((row) => ({ ...row.mutant, sampleHash: row.hash }))) }
+				: {}),
 			total: this.#state.total,
 			unmutated: this.#state.unmutated,
 			...ignored,
 		});
-	}
-
-	/** The distinct files of the generated mutants claimed as `suite`, for the exports a sample reads. */
-	suiteFiles(): string[] {
-		return [...new Set(this.#probes().flatMap((row) => (row.claim === "suite" ? [row.file] : [])))];
 	}
 
 	/** Refuses legacy strings and incomplete claims before a future verifier executes anything. */
@@ -369,8 +363,8 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 	}
 
 	/** Renders the deterministic sample as terminal-safe JSON without changing its data. */
-	renderSampleJson(suites?: SuiteExports): string {
-		return jsonText(this.sample(suites));
+	renderSampleJson(): string {
+		return jsonText(this.sample());
 	}
 
 	/** Renders full identities and ignored provenance without treating statusReason as policy. */

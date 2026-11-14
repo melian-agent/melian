@@ -466,16 +466,9 @@ syncBuiltinESMExports();`,
 		}
 	});
 
-	it("reads the ./testing exports at the inventory's head to check a suite claim", () => {
-		const exported = (file) => JSON.stringify({ exports: { "./testing": { "@melian-agent/source": file } } });
-		write("package.json", JSON.stringify({ workspaces: ["packages/*"] }));
-		write("packages/core/package.json", exported("./src/testing.ts"));
-		git("add", "-A");
-		git("commit", "--quiet", "-m", "exports");
+	it("prints suite claims apart, grouped by file, in any source file", () => {
 		const head = git("rev-parse", "HEAD");
-		write("packages/core/package.json", exported("./src/record.ts"));
 		const suite = {
-			file: "packages/core/src/testing.ts",
 			line: 1,
 			column: 0,
 			endLine: 1,
@@ -487,33 +480,24 @@ syncBuiltinESMExports();`,
 			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
 			survivorClasses: [],
 		};
-		const inventory = (file) =>
-			MutationInventory.create({
-				range: { base: head, head },
-				adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
-				installation: "c".repeat(64),
-				mutants: [{ ...suite, file }],
-				total: 1,
-				omitted: 0,
-				unmutated: [],
-			}).toJSON();
-		for (const [file, status, text] of [
-			[suite.file, 0, ""],
-			[
-				"packages/core/src/record.ts",
-				1,
-				"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's",
-			],
-		]) {
-			write("claims.json", JSON.stringify(inventory(file)));
-			const child = spawnSync(process.execPath, [script, "--sample", "claims.json"], {
-				cwd: root,
-				encoding: "utf8",
-			});
-			expect(child.status, child.stderr).toBe(status);
-			expect(child.stderr).toContain(text);
-			if (status === 0) expect(JSON.parse(child.stdout).suite.map((row) => row.file)).toEqual([suite.file]);
-		}
+		const files = ["packages/core/src/testing.ts", "packages/core/src/record.ts"];
+		write(
+			"claims.json",
+			JSON.stringify(
+				MutationInventory.create({
+					range: { base: head, head },
+					adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+					installation: "c".repeat(64),
+					mutants: files.map((file) => ({ ...suite, file })),
+					total: 2,
+					omitted: 0,
+					unmutated: [],
+				}).toJSON(),
+			),
+		);
+		const child = spawnSync(process.execPath, [script, "--sample", "claims.json"], { cwd: root, encoding: "utf8" });
+		expect(child.status, child.stderr).toBe(0);
+		expect(JSON.parse(child.stdout).suite.map((group) => group.file)).toEqual(files.toSorted());
 	});
 
 	it("sampling rejects a range, an empty filename and unreadable or incomplete claims", () => {
@@ -698,7 +682,7 @@ syncBuiltinESMExports();`,
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant.\nA suite claim stands only in a file a workspace package exports as ./testing at the inventory's head.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', for a reviewer to read by their reasons.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', grouped by file, for a reviewer to judge each file and reason.\n",
 		);
 	});
 });

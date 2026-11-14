@@ -43,7 +43,7 @@ describe("mutant sampling", () => {
 		});
 		expect(sampleMutants(classified.toJSON())).toEqual(classified.sample());
 	});
-	it("passes the caller's exports to a version-2 inventory's suite claims", () => {
+	it("lists a version-2 inventory's suite claims apart, grouped by file", () => {
 		const suite = mutant(1, {
 			file: "packages/core/src/testing.ts",
 			status: "generated",
@@ -60,17 +60,10 @@ describe("mutant sampling", () => {
 			omitted: 0,
 			unmutated: [],
 		});
-		const checked = [];
-		const accepting = {
-			refusal: (file) => {
-				checked.push(file);
-			},
-		};
-		expect(sampleMutants(classified.toJSON(), accepting).suite.map((row) => row.line)).toEqual([2]);
-		expect(checked).toEqual(["packages/core/src/testing.ts"]);
-		expect(() => sampleMutants(classified.toJSON(), { refusal: () => "not exported" })).toThrow(
-			"suite claim refused: not exported",
-		);
+		const sample = sampleMutants(classified.toJSON());
+		expect(sample.suite.map((group) => [group.file, group.mutants.map((row) => row.line)])).toEqual([
+			["packages/core/src/testing.ts", [2]],
+		]);
 	});
 
 	it("keeps the checklist class names in the sampling contract", () => {
@@ -177,8 +170,7 @@ describe("mutant sampling", () => {
 			claim: "suite",
 			evidence: "a neighbour catches it",
 		});
-		const accepting = { refusal: () => undefined };
-		expect(() => sampleMutants(inventory([mutant(0), suite]), accepting)).toThrow(
+		expect(() => sampleMutants(inventory([mutant(0), suite]))).toThrow(
 			"each mutant needs a claim: killed, new-test or equivalent",
 		);
 	});

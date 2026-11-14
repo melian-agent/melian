@@ -8,8 +8,6 @@ import {
 	type MutationInventoryRowInput,
 	survivorClasses,
 } from "../src/mutation-inventory.ts";
-import type { SourceReader } from "../src/source.ts";
-import { SuiteExports } from "../src/suite-exports.ts";
 
 const terminalControls = [
 	...Array.from({ length: 32 }, (_, index) => index),
@@ -726,31 +724,6 @@ describe("suite claims", () => {
 			survivorClasses: [],
 			...extra,
 		});
-	const files: Record<string, string> = {
-		"package.json": JSON.stringify({ workspaces: ["packages/*"] }),
-		"packages/core/package.json": JSON.stringify({
-			exports: { "./testing": { "@melian-agent/source": "./src/testing.ts" } },
-		}),
-	};
-	const source = {
-		exists: async (path: string) => (path in files ? "file" : undefined),
-		readText: async (path: string) => files[path],
-	} as unknown as SourceReader;
-
-	it("names the distinct files of its generated suite claims, and no other", () => {
-		const inventory = MutationInventory.create(
-			fields([
-				suiteRow(0),
-				suiteRow(1),
-				suiteRow(2, { file: "packages/cli/src/testing.ts" }),
-				suiteRow(3, { file: "packages/ignored/src/testing.ts", status: "ignored", ignoredBy: "config" }),
-				row(4, { file: "packages/core/src/record.ts" }),
-			]),
-		);
-		expect(inventory.suiteFiles()).toEqual([suiteFile, "packages/cli/src/testing.ts"]);
-		expect(MutationInventory.create(fields([row()])).suiteFiles()).toEqual([]);
-	});
-
 	it("parses a suite claim whose evidence is a reason", () => {
 		const stored = MutationInventory.create(fields([suiteRow()])).toJSON();
 		expect(stored.mutants[0]).toMatchObject({ claim: "suite", evidence: { reason } });
@@ -764,38 +737,41 @@ describe("suite claims", () => {
 		expect(() => MutationInventory.create(fields([suiteRow(0, extra)]))).toThrow(MutationInventoryError);
 	});
 
-	it("lists every suite row apart from the probes, for a reviewer to read", async () => {
+	it("lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge", () => {
 		const killed = Array.from({ length: 6 }, (_, index) => row(index + 1));
-		const inventory = MutationInventory.create(fields([suiteRow(0), suiteRow(10), ...killed]));
-		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
-		const sample = inventory.sample(suites);
-		expect(sample.suite?.map((mutant) => mutant.line)).toEqual(
-			inventory
-				.toJSON()
-				.mutants.filter((mutant) => mutant.claim === "suite")
-				.sort((a, b) => a.id.localeCompare(b.id))
-				.map((mutant) => mutant.line),
+		const other = "packages/cli/src/testing.ts";
+		const inventory = MutationInventory.create(
+			fields([suiteRow(10), suiteRow(3, { file: other }), suiteRow(0), ...killed]),
 		);
-		expect(sample.suite?.every((mutant) => /^[a-f0-9]{64}$/.test(mutant.sampleHash))).toBe(true);
-		expect(sample).toEqual({ ...MutationInventory.create(fields(killed)).sample(), total: 8, suite: sample.suite });
+		const sample = inventory.sample();
+		const stored = Object.fromEntries(
+			inventory.toJSON().mutants.map((mutant) => [`${mutant.file}:${mutant.line}`, mutant]),
+		);
+		const sampled = (file: string, line: number) => ({
+			...stored[`${file}:${line}`],
+			sampleHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
+		expect(sample.suite).toEqual([
+			{ file: other, mutants: [sampled(other, 4)] },
+			{ file: suiteFile, mutants: [sampled(suiteFile, 1), sampled(suiteFile, 11)] },
+		]);
+		expect(sample).toEqual({ ...MutationInventory.create(fields(killed)).sample(), total: 9, suite: sample.suite });
+	});
+
+	it("orders suite rows on one line by column", () => {
+		const inventory = MutationInventory.create(
+			fields([suiteRow(0, { column: 9, endColumn: 12 }), suiteRow(0, { column: 2, endColumn: 5 })]),
+		);
+		expect(inventory.sample().suite?.[0].mutants.map((mutant) => mutant.column)).toEqual([2, 9]);
 	});
 
 	it("leaves the suite key out of a sample with no suite rows", () => {
 		expect(MutationInventory.create(fields([row()])).sample()).not.toHaveProperty("suite");
 	});
 
-	it("refuses a suite claim in a source file that is no package's ./testing export", async () => {
-		const inventory = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })]));
-		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
-		expect(() => inventory.sample(suites)).toThrow(
-			"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's ./testing export, packages/core/src/testing.ts",
-		);
-	});
-
-	it("refuses a suite claim when the sampler was given no exports to check it against", () => {
-		expect(() => MutationInventory.create(fields([suiteRow()])).sample()).toThrow(
-			"suite claim refused: no package exports were read to check it against",
-		);
+	it("samples a suite claim in production code too, leaving the file's judgement to the reviewer", () => {
+		const sample = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })])).sample();
+		expect(sample.suite?.map((group) => group.file)).toEqual(["packages/core/src/record.ts"]);
 	});
 
 	it("refuses an ignored suite claim no more than an ignored equivalence", () => {
@@ -839,7 +815,7 @@ describe("suite claims", () => {
 		).toThrow("each mutant needs a claim: killed, new-test, equivalent or suite");
 	});
 
-	it("refuses a legacy inventory holding a suite claim when it parses, since it records no head to read exports at", () => {
+	it("refuses a legacy inventory holding a suite claim when it parses", () => {
 		const stored = legacy([row(1)]);
 		(stored.mutants as unknown[]).push({
 			...identity(5, { file: suiteFile }),
@@ -851,7 +827,7 @@ describe("suite claims", () => {
 		expect(() => MutationInventory.parse(stored)).toThrow(
 			new MutationInventoryError(
 				"invalidInventory",
-				"a legacy inventory takes no suite claim, since it records no head to read exports at; enumerate again at version 2",
+				"a legacy inventory takes no suite claim; enumerate again at version 2",
 			),
 		);
 		expect(MutationInventory.parse(legacy([row(1)])).sample().selected).toHaveLength(1);
