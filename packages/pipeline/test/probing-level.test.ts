@@ -1210,28 +1210,25 @@ describe("a level that probes", () => {
 			const stopped = new Promise<void>((resolve) => {
 				stop = resolve;
 			});
-			const first = await review(
-				{ planner: plan, prober: probing(failing) },
-				{ fake, config: { models: { heavy: { model: model("heavy") } } } },
-			);
-			const reviewer = harness!.harness;
+			// The first review plans only once the second waits on its lens task too, so the second always attaches to it.
+			let attach!: () => void;
+			const attached = new Promise<void>((resolve) => {
+				attach = resolve;
+			});
+			let lensWaits = 0;
+			const held: ScriptedReply[] = [
+				async () => {
+					await attached;
+					return plan[0]!;
+				},
+				...plan.slice(1),
+			];
+			storage = createMemoryStorage();
+			harness = await openReviewHarness(storage, fake.review, { retry: false, probeSandbox: unconfinedSandbox() });
+			const reviewer = harness.harness;
 			const entry = async () =>
 				(await reviewer.snapshot(ReviewIndex, (await reviewer.root(backgroundContext)).id, backgroundContext))
 					?.reviews[at];
-			const second = await review(
-				{ planner: plan, prober: probing(failing) },
-				{
-					fake,
-					config: { models: { heavy: { model: model("heavy") }, verifier: { model: model("judge") } } },
-					unlockModels: async () => {
-						const lens = (await entry())?.task;
-						const record =
-							lens === undefined ? undefined : await reviewer.getTask(lens as TaskId, backgroundContext);
-						if (record?.state.status === "terminal") await released;
-					},
-				},
-			);
-			second.run.catch(() => undefined);
 			const replace = async () => {
 				verification = (await entry())?.verification?.task;
 				release();
@@ -1242,6 +1239,7 @@ describe("a level that probes", () => {
 			};
 			const wait = reviewer.waitForTask.bind(reviewer);
 			reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+				if ((await entry())?.task === task && ++lensWaits === 2) attach();
 				const waits =
 					before === "links" && verification === undefined && (await entry())?.verification?.task === task;
 				const outcome = await wait(task, context);
@@ -1262,6 +1260,24 @@ describe("a level that probes", () => {
 				if (before === "adjudicates" && verification === undefined && last) await replace();
 				return snapshot(...args);
 			}) as typeof reviewer.snapshot;
+			const first = await review(
+				{ planner: held, prober: probing(failing) },
+				{ fake, config: { models: { heavy: { model: model("heavy") } } } },
+			);
+			const second = await review(
+				{ planner: held, prober: probing(failing) },
+				{
+					fake,
+					config: { models: { heavy: { model: model("heavy") }, verifier: { model: model("judge") } } },
+					unlockModels: async () => {
+						const lens = (await entry())?.task;
+						const record =
+							lens === undefined ? undefined : await reviewer.getTask(lens as TaskId, backgroundContext);
+						if (record?.state.status === "terminal") await released;
+					},
+				},
+			);
+			second.run.catch(() => undefined);
 			const outcome = await first.run.then(
 				() => undefined,
 				(error: unknown) => error,
