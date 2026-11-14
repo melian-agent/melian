@@ -43,6 +43,36 @@ describe("mutant sampling", () => {
 		});
 		expect(sampleMutants(classified.toJSON())).toEqual(classified.sample());
 	});
+	it("passes the caller's exports to a version-2 inventory's suite claims", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			status: "generated",
+			claim: "suite",
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		});
+		const classified = MutationInventory.create({
+			range: { base: "a".repeat(40), head: "b".repeat(40) },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		});
+		const checked = [];
+		const accepting = {
+			refusal: (file) => {
+				checked.push(file);
+			},
+		};
+		expect(sampleMutants(classified.toJSON(), accepting).suite.map((row) => row.line)).toEqual([2]);
+		expect(checked).toEqual(["packages/core/src/testing.ts"]);
+		expect(() => sampleMutants(classified.toJSON(), { refusal: () => "not exported" })).toThrow(
+			"suite claim refused: not exported",
+		);
+	});
+
 	it("keeps the checklist class names in the sampling contract", () => {
 		expect(survivorClasses).toEqual(classes);
 		const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
