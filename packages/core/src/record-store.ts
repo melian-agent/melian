@@ -34,10 +34,15 @@ export function checkChangeset(changeset: string): void {
 	}
 }
 
-// A file-backed adapter writes UTF-8, which cannot hold a lone surrogate, so no adapter takes one.
+// A file-backed adapter writes UTF-8, which cannot hold a lone surrogate, so no adapter takes one. A cell holds one JSON value, by rule 3.
 export function checkCellValue(value: string): void {
 	if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
 	if (!value.isWellFormed()) throw new RecordError("invalidCell", "a cell holds no lone surrogate");
+	try {
+		JSON.parse(value);
+	} catch {
+		throw new RecordError("invalidCell", "a cell holds one JSON value");
+	}
 }
 
 function strayError(changeset: string, kind: string): RecordError {

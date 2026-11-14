@@ -297,6 +297,20 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
+		"writeCell stores a value that is not JSON as one that is",
+		"writeCell: refuses a value that is not one JSON value",
+		(inner) => ({
+			writeCell: (name, expected, value) => {
+				try {
+					JSON.parse(value);
+					return inner.writeCell(name, expected, value);
+				} catch {
+					return inner.writeCell(name, expected, JSON.stringify(value));
+				}
+			},
+		}),
+	],
+	[
 		"dispose removes the records and leaves no mark",
 		"dispose: marks the cell, removes the records for good, and leaves other changesets",
 		(inner) => {
@@ -378,7 +392,7 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		(inner) => ({
 			writeCell: async (name, expected, value) => {
 				const read = await inner.readCell(name);
-				if (value === mark && read.value !== undefined) await inner.writeCell(name, read.version, "half");
+				if (value === mark && read.value !== undefined) await inner.writeCell(name, read.version, '"half"');
 				return inner.writeCell(name, expected, value);
 			},
 		}),
@@ -549,7 +563,11 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		"writeCell: every successful write changes the version, the same value included",
 		(inner) => ({
 			writeCell: async (name, expected, value) =>
-				inner.writeCell(name, expected, (await inner.readCell(name)).value === value ? `${value}!` : value),
+				inner.writeCell(
+					name,
+					expected,
+					(await inner.readCell(name)).value === value ? JSON.stringify(`${value}!`) : value,
+				),
 		}),
 	],
 	[
@@ -678,6 +696,7 @@ describe("MemoryRecordStore", () => {
 		expect(await message(store.writeCell(changeset, undefined, String.fromCharCode(0xdc00)))).toBe(
 			"a cell holds no lone surrogate",
 		);
+		expect(await message(store.writeCell(changeset, undefined, "lease A"))).toBe("a cell holds one JSON value");
 		await store.dispose(changeset);
 		expect(await message(store.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]))).toBe(
 			`changeset ${changeset} is disposed`,
@@ -760,10 +779,10 @@ describe("DirectoryRecordStore", () => {
 
 	it("is not blocked by a temporary file a writer that died left behind", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		expect(await store.writeCell(changeset, undefined, "lease A")).toBe(true);
+		expect(await store.writeCell(changeset, undefined, '"lease A"')).toBe(true);
 		writeFileSync(join(root, "tmp", "left-by-a-dead-writer"), "x");
 		const { version } = await store.readCell(changeset);
-		expect(await store.writeCell(changeset, version, "lease B")).toBe(true);
+		expect(await store.writeCell(changeset, version, '"lease B"')).toBe(true);
 		await store.add([envelope]);
 		expect(await store.list(changeset)).toEqual([envelope]);
 	});
@@ -782,14 +801,14 @@ describe("DirectoryRecordStore", () => {
 	it("keeps its records, its cell's version and a disposal across a reopen", async () => {
 		const first = await DirectoryRecordStore.open(root, testPayloads);
 		await first.add([envelope]);
-		await first.writeCell(changeset, undefined, "lease A");
-		await first.writeCell(changeset, "1", "lease B");
+		await first.writeCell(changeset, undefined, '"lease A"');
+		await first.writeCell(changeset, "1", '"lease B"');
 		await first.dispose("pull-fedcba9876543210");
 		await first.close();
 		const second = await DirectoryRecordStore.open(root, testPayloads);
 		expect(await second.list(changeset)).toEqual([envelope]);
-		expect(await second.readCell(changeset)).toEqual({ value: "lease B", version: "2" });
-		expect(await second.writeCell(changeset, "1", "lease C")).toBe(false);
+		expect(await second.readCell(changeset)).toEqual({ value: '"lease B"', version: "2" });
+		expect(await second.writeCell(changeset, "1", '"lease C"')).toBe(false);
 		const disposed = { ...envelope, changeset: "pull-fedcba9876543210" };
 		expect((await rejection(second.add([disposed]), RecordError)).code).toBe("disposed");
 	});
@@ -823,7 +842,7 @@ describe("DirectoryRecordStore", () => {
 			const store = await DirectoryRecordStore.open(root, testPayloads);
 			mkdirSync(join(root, "changesets", changeset));
 			symlinkSync(outside, join(root, "changesets", changeset, ".cell"));
-			expect((await rejection(store.writeCell(changeset, undefined, "lease"), RecordError)).code).toBe(
+			expect((await rejection(store.writeCell(changeset, undefined, '"lease"'), RecordError)).code).toBe(
 				"unknownFile",
 			);
 			expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
@@ -845,12 +864,12 @@ describe("DirectoryRecordStore", () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		mkdirSync(join(root, "changesets", changeset, ".cell"), { recursive: true });
 		expect(await store.readCell(changeset)).toEqual({});
-		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
+		expect(await store.writeCell(changeset, undefined, '"lease"')).toBe(true);
 	});
 
 	it("leaves no temporary file behind a cell write it won", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		expect(await store.writeCell(changeset, undefined, "lease")).toBe(true);
+		expect(await store.writeCell(changeset, undefined, '"lease"')).toBe(true);
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
 
@@ -864,7 +883,7 @@ describe("DirectoryRecordStore", () => {
 
 	it("keeps the cell out of the listing", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		await store.writeCell(changeset, undefined, "lease");
+		await store.writeCell(changeset, undefined, '"lease"');
 		expect(await store.list(changeset)).toEqual([]);
 		expect(readdirSync(join(root, "changesets", changeset))).toEqual([".cell"]);
 	});
@@ -952,7 +971,7 @@ describe("DirectoryRecordStore", () => {
 
 	it.each(["0", "01", "1.json", "x1", "1x", " 1"])("refuses a cell file named %j", async (name) => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		await store.writeCell(changeset, undefined, "lease");
+		await store.writeCell(changeset, undefined, '"lease"');
 		const cell = join(root, "changesets", changeset, ".cell");
 		writeFileSync(join(cell, name), "x");
 		const error = await rejection(store.readCell(changeset), RecordError);
@@ -963,7 +982,7 @@ describe("DirectoryRecordStore", () => {
 
 	it("refuses a directory in the cell", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		await store.writeCell(changeset, undefined, "lease");
+		await store.writeCell(changeset, undefined, '"lease"');
 		mkdirSync(join(root, "changesets", changeset, ".cell", "2"));
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
@@ -979,16 +998,17 @@ describe("DirectoryRecordStore", () => {
 
 	it("refuses a cell value that is not UTF-8", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		await store.writeCell(changeset, undefined, "lease");
+		await store.writeCell(changeset, undefined, '"lease"');
 		writeFileSync(join(root, "changesets", changeset, ".cell", "1"), Buffer.from([0xff]));
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
 	it("keeps a cell value that starts with a byte order mark", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		expect(await store.writeCell(changeset, undefined, "\ufefflease")).toBe(true);
-		expect((await store.readCell(changeset)).value).toBe("\ufefflease");
-		expect(await store.writeCell(changeset, "1", '\ufeff{"disposed":true}')).toBe(true);
+		const cell = join(root, "changesets", changeset, ".cell");
+		mkdirSync(cell, { recursive: true });
+		writeFileSync(join(cell, "1"), '\ufeff{"disposed":true}');
+		expect((await store.readCell(changeset)).value).toBe('\ufeff{"disposed":true}');
 		await store.add([envelope]);
 		expect(await store.list(changeset)).toEqual([envelope]);
 	});
@@ -1004,9 +1024,9 @@ describe("DirectoryRecordStore", () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		const cell = join(root, "changesets", changeset, ".cell");
 		mkdirSync(cell, { recursive: true });
-		writeFileSync(join(cell, String(Number.MAX_SAFE_INTEGER)), "lease");
-		expect(await store.readCell(changeset)).toEqual({ value: "lease", version: String(Number.MAX_SAFE_INTEGER) });
-		const error = await rejection(store.writeCell(changeset, String(Number.MAX_SAFE_INTEGER), "next"), RecordError);
+		writeFileSync(join(cell, String(Number.MAX_SAFE_INTEGER)), '"lease"');
+		expect(await store.readCell(changeset)).toEqual({ value: '"lease"', version: String(Number.MAX_SAFE_INTEGER) });
+		const error = await rejection(store.writeCell(changeset, String(Number.MAX_SAFE_INTEGER), '"next"'), RecordError);
 		expect(error.code).toBe("unreachable");
 		expect(readdirSync(cell)).toEqual([String(Number.MAX_SAFE_INTEGER)]);
 		writeFileSync(join(cell, "9007199254740992"), "past");
@@ -1018,15 +1038,15 @@ describe("DirectoryRecordStore", () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		for (let write = 1; write <= 11; write++) {
 			const { version } = await store.readCell(changeset);
-			expect(await store.writeCell(changeset, version, `lease ${write}`)).toBe(true);
+			expect(await store.writeCell(changeset, version, JSON.stringify(`lease ${write}`))).toBe(true);
 		}
-		expect(await store.readCell(changeset)).toEqual({ value: "lease 11", version: "11" });
+		expect(await store.readCell(changeset)).toEqual({ value: '"lease 11"', version: "11" });
 	});
 
 	it("fails unreachable, not with a raw error, when it cannot write its temporary file", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		removeDirectory(join(root, "tmp"));
-		expect((await rejection(store.writeCell(changeset, undefined, "lease"), RecordError)).code).toBe("unreachable");
+		expect((await rejection(store.writeCell(changeset, undefined, '"lease"'), RecordError)).code).toBe("unreachable");
 		expect((await rejection(store.add([envelope]), RecordError)).code).toBe("unreachable");
 	});
 

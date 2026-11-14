@@ -159,12 +159,12 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const writer = await subject.open();
 				const reader = await subject.open();
 				assert.deepEqual(await reader.readCell(changeset), {});
-				assert.equal(await writer.writeCell(changeset, undefined, "lease A"), true);
+				assert.equal(await writer.writeCell(changeset, undefined, '"lease A"'), true);
 				const first = await reader.readCell(changeset);
-				assert.equal(first.value, "lease A");
+				assert.equal(first.value, '"lease A"');
 				assert.equal(typeof first.version, "string");
-				assert.equal(await writer.writeCell(changeset, first.version, "lease B"), true);
-				assert.equal((await reader.readCell(changeset)).value, "lease B");
+				assert.equal(await writer.writeCell(changeset, first.version, '"lease B"'), true);
+				assert.equal((await reader.readCell(changeset)).value, '"lease B"');
 				assert.deepEqual(await reader.readCell(other), {});
 			}),
 	},
@@ -173,7 +173,7 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				await store.writeCell(changeset, undefined, "lease");
+				await store.writeCell(changeset, undefined, '"lease"');
 				await subject.cutOff();
 				await assert.rejects(store.readCell(changeset), refusal("unreachable"));
 			}),
@@ -185,7 +185,7 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const store = await subject.open();
 				await subject.cutOff();
 				await assert.rejects(store.add([envelope("check", "guardrails", {})]), refusal("unreachable"));
-				await assert.rejects(store.writeCell(changeset, undefined, "lease"), refusal("unreachable"));
+				await assert.rejects(store.writeCell(changeset, undefined, '"lease"'), refusal("unreachable"));
 			}),
 	},
 	{
@@ -193,16 +193,16 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				assert.equal(await store.writeCell(changeset, "never-written", "lease A"), false);
+				assert.equal(await store.writeCell(changeset, "never-written", '"lease A"'), false);
 				assert.deepEqual(await store.readCell(changeset), {});
-				assert.equal(await store.writeCell(changeset, undefined, "lease A"), true);
+				assert.equal(await store.writeCell(changeset, undefined, '"lease A"'), true);
 				const { version } = await store.readCell(changeset);
-				assert.equal(await store.writeCell(changeset, undefined, "lease B"), false);
-				assert.equal(await store.writeCell(changeset, `${version}x`, "lease B"), false);
-				assert.equal((await store.readCell(changeset)).value, "lease A");
-				assert.equal(await store.writeCell(changeset, version, "lease B"), true);
-				assert.equal(await store.writeCell(changeset, version, "lease C"), false);
-				assert.equal((await store.readCell(changeset)).value, "lease B");
+				assert.equal(await store.writeCell(changeset, undefined, '"lease B"'), false);
+				assert.equal(await store.writeCell(changeset, `${version}x`, '"lease B"'), false);
+				assert.equal((await store.readCell(changeset)).value, '"lease A"');
+				assert.equal(await store.writeCell(changeset, version, '"lease B"'), true);
+				assert.equal(await store.writeCell(changeset, version, '"lease C"'), false);
+				assert.equal((await store.readCell(changeset)).value, '"lease B"');
 			}),
 	},
 	{
@@ -210,13 +210,13 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				await store.writeCell(changeset, undefined, "same");
+				await store.writeCell(changeset, undefined, '"same"');
 				const first = await store.readCell(changeset);
-				assert.equal(await store.writeCell(changeset, first.version, "same"), true);
+				assert.equal(await store.writeCell(changeset, first.version, '"same"'), true);
 				const second = await store.readCell(changeset);
-				assert.equal(second.value, "same");
+				assert.equal(second.value, '"same"');
 				assert.notEqual(second.version, first.version);
-				assert.equal(await store.writeCell(changeset, first.version, "same"), false);
+				assert.equal(await store.writeCell(changeset, first.version, '"same"'), false);
 			}),
 	},
 	{
@@ -224,15 +224,15 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				await store.writeCell(changeset, undefined, "A");
+				await store.writeCell(changeset, undefined, '"A"');
 				const stale = await store.readCell(changeset);
-				await store.writeCell(changeset, stale.version, "B");
-				await store.writeCell(changeset, (await store.readCell(changeset)).version, "A");
+				await store.writeCell(changeset, stale.version, '"B"');
+				await store.writeCell(changeset, (await store.readCell(changeset)).version, '"A"');
 				const back = await store.readCell(changeset);
-				assert.equal(back.value, "A");
+				assert.equal(back.value, '"A"');
 				assert.notEqual(back.version, stale.version);
-				assert.equal(await store.writeCell(changeset, stale.version, "C"), false);
-				assert.equal((await store.readCell(changeset)).value, "A");
+				assert.equal(await store.writeCell(changeset, stale.version, '"C"'), false);
+				assert.equal((await store.readCell(changeset)).value, '"A"');
 			}),
 	},
 	{
@@ -241,11 +241,11 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			using(fixture, async (subject) => {
 				const [first, second] = [await subject.open(), await subject.open()];
 				const won = await Promise.all([
-					first.writeCell(changeset, undefined, "first"),
-					second.writeCell(changeset, undefined, "second"),
+					first.writeCell(changeset, undefined, '"first"'),
+					second.writeCell(changeset, undefined, '"second"'),
 				]);
 				assert.equal(won.filter(Boolean).length, 1);
-				assert.equal((await first.readCell(changeset)).value, won[0] ? "first" : "second");
+				assert.equal((await first.readCell(changeset)).value, won[0] ? '"first"' : '"second"');
 			}),
 	},
 	{
@@ -255,10 +255,10 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const store = await subject.open();
 				await assert.rejects(store.writeCell(changeset, undefined, disposalMark), refusal("invalidCell"));
 				assert.deepEqual(await store.readCell(changeset), {});
-				await store.writeCell(changeset, undefined, "lease");
+				await store.writeCell(changeset, undefined, '"lease"');
 				const { version } = await store.readCell(changeset);
 				await assert.rejects(store.writeCell(changeset, version, disposalMark), refusal("invalidCell"));
-				assert.equal((await store.readCell(changeset)).value, "lease");
+				assert.equal((await store.readCell(changeset)).value, '"lease"');
 				await store.add([envelope("check", "guardrails", {})]);
 				assert.equal((await store.list(changeset)).length, 1);
 			}),
@@ -268,12 +268,24 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
-				const lone = `lease ${String.fromCharCode(0xd800)}`;
+				const lone = `"lease ${String.fromCharCode(0xd800)}"`;
 				await assert.rejects(store.writeCell(changeset, undefined, lone), refusal("invalidCell"));
 				assert.deepEqual(await store.readCell(changeset), {});
-				const pair = `lease ${String.fromCharCode(0xd83d, 0xde00)}`;
+				const pair = `"lease ${String.fromCharCode(0xd83d, 0xde00)}"`;
 				assert.equal(await store.writeCell(changeset, undefined, pair), true);
 				assert.equal((await store.readCell(changeset)).value, pair);
+			}),
+	},
+	{
+		name: "writeCell: refuses a value that is not one JSON value",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const store = await subject.open();
+				for (const value of ["lease A", "", '{"lease":1', '"a" "b"'])
+					await assert.rejects(store.writeCell(changeset, undefined, value), refusal("invalidCell"));
+				assert.deepEqual(await store.readCell(changeset), {});
+				assert.equal(await store.writeCell(changeset, undefined, ' {"lease":1} '), true);
+				assert.equal((await store.readCell(changeset)).value, ' {"lease":1} ');
 			}),
 	},
 	{
@@ -283,19 +295,19 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const store = await subject.open();
 				const kept = envelope("check", "guardrails", {}, other);
 				await store.add([envelope("check", "guardrails", {}), kept]);
-				await store.writeCell(changeset, undefined, "lease");
-				await store.writeCell(other, undefined, "lease");
+				await store.writeCell(changeset, undefined, '"lease"');
+				await store.writeCell(other, undefined, '"lease"');
 				await store.dispose(changeset);
 				assert.deepEqual(await store.list(changeset), []);
 				const cell = await store.readCell(changeset);
 				assert.equal(cell.value, disposalMark);
 				await assert.rejects(store.add([envelope("check", "late", {})]), refusal("disposed"));
 				assert.deepEqual(await store.list(changeset), []);
-				await assert.rejects(store.writeCell(changeset, cell.version, "lease"), refusal("disposed"));
+				await assert.rejects(store.writeCell(changeset, cell.version, '"lease"'), refusal("disposed"));
 				await store.dispose(changeset);
 				assert.equal((await store.readCell(changeset)).value, disposalMark);
 				assert.deepEqual(ids(await store.list(other)), idsOf(kept));
-				assert.equal((await store.readCell(other)).value, "lease");
+				assert.equal((await store.readCell(other)).value, '"lease"');
 			}),
 	},
 	{
@@ -320,14 +332,14 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				for (const outside of ["../outside", "a/b", "a.", "a..b", "A"]) {
 					await assert.rejects(store.list(outside), refusal("invalidChangeset"));
 					await assert.rejects(store.readCell(outside), refusal("invalidChangeset"));
-					await assert.rejects(store.writeCell(outside, undefined, "lease"), refusal("invalidChangeset"));
+					await assert.rejects(store.writeCell(outside, undefined, '"lease"'), refusal("invalidChangeset"));
 					await assert.rejects(store.dispose(outside), refusal("invalidChangeset"));
 				}
 				const dotted = "github.melian-agent.pull-399";
 				const record = envelope("check", "guardrails", {}, dotted);
 				await store.add([record]);
 				assert.deepEqual(ids(await store.list(dotted)), idsOf(record));
-				assert.equal(await store.writeCell(dotted, undefined, "lease"), true);
+				assert.equal(await store.writeCell(dotted, undefined, '"lease"'), true);
 			}),
 	},
 ];

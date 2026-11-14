@@ -82,7 +82,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	] as const)("fails %s unreachable when the store vanishes mid-call", async (_name, call, path) => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		await store.add([envelope]);
-		await store.writeCell(changeset, undefined, "lease");
+		await store.writeCell(changeset, undefined, '"lease"');
 		const { reached, release } = pause("readdir", path);
 		const answer = call(store);
 		await reached;
@@ -114,7 +114,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 			"link",
 			"/.cell/1",
 			false,
-			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, "lease"),
+			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, '"lease"'),
 		],
 		["a directory it cannot make", "mkdir", "/check", false, (store: DirectoryRecordStore) => store.add([envelope])],
 		["a cell it cannot stat", "lstat", "/.cell", true, (store: DirectoryRecordStore) => store.readCell(changeset)],
@@ -127,7 +127,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		],
 	] as const)("fails unreachable on %s, with the cause", async (_name, call, path, seeded, act) => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		if (seeded) await store.writeCell(changeset, undefined, "seed");
+		if (seeded) await store.writeCell(changeset, undefined, '"seed"');
 		Object.assign(fault, { call, path, code: "EIO" });
 		const error = await rejection(act(store), RecordError);
 		expect(error.code).toBe("unreachable");
@@ -140,7 +140,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 	it("fails unreachable when it cannot write a temporary file, and leaves none", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		Object.assign(fault, { call: "writeFile", path: "/tmp/", code: "EIO" });
-		const error = await rejection(store.writeCell(changeset, undefined, "lease"), RecordError);
+		const error = await rejection(store.writeCell(changeset, undefined, '"lease"'), RecordError);
 		expect(error.code).toBe("unreachable");
 		expect(error.path?.startsWith(join(root, "tmp"))).toBe(true);
 		expect((error.cause as { code?: string }).code).toBe("EIO");
@@ -203,12 +203,12 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		const losing = await DirectoryRecordStore.open(root, testPayloads);
 		const winning = await DirectoryRecordStore.open(root, testPayloads);
 		const { reached, release } = pause("writeFile", "/tmp/");
-		const lost = losing.writeCell(changeset, undefined, "lease A");
+		const lost = losing.writeCell(changeset, undefined, '"lease A"');
 		await reached;
-		expect(await winning.writeCell(changeset, undefined, "lease B")).toBe(true);
+		expect(await winning.writeCell(changeset, undefined, '"lease B"')).toBe(true);
 		release();
 		expect(await lost).toBe(false);
-		expect(await winning.readCell(changeset)).toEqual({ value: "lease B", version: "1" });
+		expect(await winning.readCell(changeset)).toEqual({ value: '"lease B"', version: "1" });
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
 
@@ -218,7 +218,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		const { reached, release } = pause("link", "/.cell/1");
 		const dispose = disposing.dispose(changeset);
 		await reached;
-		expect(await writing.writeCell(changeset, undefined, "lease")).toBe(true);
+		expect(await writing.writeCell(changeset, undefined, '"lease"')).toBe(true);
 		release();
 		await dispose;
 		expect((await writing.readCell(changeset)).value).toBe('{"disposed":true}');
@@ -230,7 +230,7 @@ describe("DirectoryRecordStore with an add in flight", () => {
 			"a cell write",
 			"link",
 			"/.cell/1",
-			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, "lease"),
+			(store: DirectoryRecordStore) => store.writeCell(changeset, undefined, '"lease"'),
 		],
 		["an add", "rename", "/check/", (store: DirectoryRecordStore) => store.add([envelope])],
 	] as const)("fails %s unreachable when the store vanishes before its file lands", async (_name, call, path, act) => {
