@@ -346,10 +346,9 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		});
 	}
 
-	/** The distinct files of the generated mutants claimed as `suite`, in hash order, for the exports a sample reads. */
+	/** The distinct files of the generated mutants claimed as `suite`, for the exports a sample reads. */
 	suiteFiles(): string[] {
-		const suite = this.#probes().filter((row) => row.claim === "suite");
-		return [...new Set(suite.sort((a, b) => identityHash(a).localeCompare(identityHash(b))).map((row) => row.file))];
+		return [...new Set(this.#probes().flatMap((row) => (row.claim === "suite" ? [row.file] : [])))];
 	}
 
 	/** Refuses legacy strings and incomplete claims before a future verifier executes anything. */

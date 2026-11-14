@@ -141,6 +141,8 @@ describe("SuiteExports", () => {
 		["a list of conditions", { exports: { "./testing": [{ "@melian-agent/source": "./src/testing.ts" }] } }],
 		["exports as a string", { exports: "./src/index.ts" }],
 		["a null manifest", "null"],
+		["exports as null", { exports: null }],
+		["./testing as null", { exports: { "./testing": null } }],
 	])("refuses a package with %s", async (_name, manifest) => {
 		const suites = await suitesIn(repository({ "packages/core/package.json": manifest }));
 		expect(suites.refusal(exported)).toBe(
@@ -245,6 +247,13 @@ describe("SuiteExports", () => {
 		else expect(refusal).toMatch(reason);
 	});
 
+	it("refuses a package whose package.json is gone by the time it is read", async () => {
+		const source = { exists: async () => "file", readText: async () => undefined } as unknown as SourceReader;
+		expect((await SuiteExports.read(source, [exported])).refusal(exported)).toBe(
+			"packages/core/src/package.json does not exist",
+		);
+	});
+
 	it("lets a failure that is neither a read nor a parse failure through", async () => {
 		const broken = new TypeError("the source broke");
 		const source = {
@@ -291,7 +300,14 @@ describe("SuiteExports", () => {
 	it("refuses every file when the directory is in no repository", async () => {
 		const dir = repository({ "packages/core/package.json": { exports: testing } });
 		const suites = await SuiteExports.at(dir, "f".repeat(40), [exported]);
-		expect(suites.refusal(exported)).toMatch(/^cannot read the exports at f{40}: .*not a git repository/i);
+		expect(suites.refusal(exported)).toBe(
+			`cannot read the exports at ${"f".repeat(40)}: fatal: not a git repository (or any of the parent directories): .git`,
+		);
+	});
+
+	it("refuses every file when git cannot start in the directory", async () => {
+		const suites = await SuiteExports.at(join(tmpdir(), "melian-no-such-directory"), "f".repeat(40), [exported]);
+		expect(suites.refusal(exported)).toMatch(/^cannot read the exports at f{40}: \S/);
 	});
 
 	it("reads this repository's own exports", async () => {

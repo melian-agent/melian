@@ -818,6 +818,22 @@ describe("suite claims", () => {
 		expect(() => MutationInventory.parse(inventory)).toThrow(refusal);
 	});
 
+	it.each([
+		["a null inventory", null],
+		["a row that is null", { melianMutants: 2, ...fields(), mutants: [null] }],
+	])("refuses %s as invalid before it looks for claims", (_name, input) => {
+		expect(() => MutationInventory.parse(input)).toThrow(MutationInventoryError);
+	});
+
+	it("refuses a claim with no evidence", () => {
+		expect(() => MutationInventory.create(fields([row(0, { evidence: undefined })]))).toThrow(
+			new MutationInventoryError(
+				"invalidEvidence",
+				"claim evidence must name a structural test, or a reason for an equivalent or suite claim",
+			),
+		);
+	});
+
 	it("names the four claims when a mutant has none", () => {
 		expect(() =>
 			MutationInventory.create(fields([row(0, { claim: undefined, evidence: undefined })])).sample(),
