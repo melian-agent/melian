@@ -16,6 +16,7 @@ import {
 	userFiles,
 	visibleText,
 } from "@melian-agent/core";
+import { DecisionFiles, decisionIndexWarning } from "@melian-agent/decisions";
 import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import {
 	createReviewModels,
@@ -277,6 +278,32 @@ async function standardsCheck(cwd: string): Promise<Check | undefined> {
 	}
 }
 
+// The index the design lens reads at a review's base; doctor has no changeset, so it reads HEAD. It never fails.
+async function decisionIndexCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	const head = root && (await git(root, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => undefined));
+	if (!root || !head) return undefined;
+	try {
+		const index = await DecisionFiles.load(root, head);
+		const count = index.files().length;
+		if (count === 0) return undefined;
+		const warning = index.warning();
+		if (warning !== undefined) return { name: "decision index", state: "warn", detail: warning };
+		const bytes = Buffer.byteLength(index.render(), "utf8");
+		return {
+			name: "decision index",
+			state: "ok",
+			detail: `${bytes} bytes for ${count} decision${count === 1 ? "" : "s"} at HEAD, under ${decisionIndexWarning.bytes / 1024} KiB`,
+		};
+	} catch (error) {
+		return {
+			name: "decision index",
+			state: "warn",
+			detail: visibleText(error instanceof Error ? error.message : String(error)),
+		};
+	}
+}
+
 // A melian the checkout provides runs code the change under review can rewrite.
 async function executableCheck(cwd: string, executable: string | undefined): Promise<Check | undefined> {
 	if (executable === undefined) return undefined;
@@ -487,6 +514,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await mutationCheck(io.cwd, io.env),
 			await probeCheck(),
 			await standardsCheck(io.cwd),
+			await decisionIndexCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await resolutionChecks(io.cwd, io.env)),
 		...(await planChecks(io.cwd, io.env, secrets)),
