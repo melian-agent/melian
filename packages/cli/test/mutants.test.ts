@@ -307,6 +307,56 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(io.errors).toEqual([]);
 	});
 
+	it("samples suite claims apart, grouped by file, and refuses one in a legacy inventory", async () => {
+		const suite = {
+			file: "packages/core/src/testing.ts",
+			line: 3,
+			column: 0,
+			endLine: 3,
+			endColumn: 1,
+			mutatorName: "BlockStatement",
+			replacement: "{}",
+			status: "generated" as const,
+			claim: "suite" as const,
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		};
+		const io = output();
+		const sample = async (value: unknown) => {
+			await writeFile(join(repo, "suite.json"), JSON.stringify(value));
+			io.lines.length = 0;
+			io.errors.length = 0;
+			return main(["mutants", "sample", "suite.json"], io);
+		};
+		const accepted = MutationInventory.create({
+			range: { base, head },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		}).toJSON();
+		expect(await sample(accepted)).toBe(0);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			selected: [],
+			suite: [{ file: suite.file, mutants: [{ ...accepted.mutants[0], sampleHash: accepted.mutants[0].id }] }],
+			total: 1,
+			unmutated: [],
+			ignored: { config: [], comment: [] },
+		});
+		const legacy = {
+			mutants: [{ ...suite, evidence: "a neighbour catches it", status: undefined }],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		};
+		expect(await sample(legacy)).toBe(1);
+		expect(io.errors.join("")).toContain(
+			"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+		);
+	});
+
 	it("prints full identity coordinates and a truncation count in text", async () => {
 		const io = output();
 		expect(await main(["mutants", "list", `${base}..${head}`, "--limit", "0"], io)).toBe(0);
