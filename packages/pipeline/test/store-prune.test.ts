@@ -588,3 +588,36 @@ it("refuses a graph whose entry it may not read, rather than reading it as unrea
 	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
 	expect(await exists(`graphs/${name}`)).toBe(true);
 });
+
+it("never removes a changeset, a scripted store or a name it does not recognise, whatever changes after the plan", async () => {
+	const dead = await graph("f".repeat(40), 8 * day);
+	await mkdir(join(state, "tools", "other"), { recursive: true });
+	await writeFile(join(state, "tools", "other", "enola"), "12345");
+	const prune = await plan();
+	expect(kinds(prune)).toEqual([
+		["graph", `graphs/${dead}`, `coverage/${dead}`],
+		["unpinned tool", "tools/other"],
+	]);
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	await writeFile(join(elsewhere, "pull-9.sqlite"), "theirs");
+	await rm(join(state, "tools", "other"), { recursive: true });
+	await symlink(elsewhere, join(state, "tools", "other"));
+	const written = {
+		"pull-1.sqlite": "changeset",
+		"pull-1.sqlite-wal": "wal",
+		"pull-1.sqlite-shm": "shm",
+		"scripted/pull-2.sqlite": "scripted",
+		"notes.txt": "mine",
+		"ledger/entry": "ledger",
+	};
+	for (const [path, text] of Object.entries(written)) {
+		await mkdir(join(state, path, ".."), { recursive: true });
+		await writeFile(join(state, path), text);
+	}
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	for (const [path, text] of Object.entries(written)) expect(await readFile(join(state, path), "utf8")).toBe(text);
+	expect(await readFile(join(elsewhere, "pull-9.sqlite"), "utf8")).toBe("theirs");
+	expect(await exists("tools/other")).toBe(false);
+	expect(await exists(`graphs/${dead}`)).toBe(false);
+});
