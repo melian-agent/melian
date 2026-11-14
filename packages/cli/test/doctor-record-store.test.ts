@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as pipeline from "@melian-agent/pipeline";
@@ -8,6 +8,7 @@ import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { check, Remote } from "../../state-git/test/fixtures/remote.ts";
 import type { Io } from "../src/commands.ts";
 import { doctor } from "../src/doctor.ts";
+import { stateDirectory } from "../src/repository.ts";
 
 let directory: string;
 let repo: string;
@@ -58,6 +59,20 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 	it("leaves the line out with no origin", async () => {
 		await doctor(io);
 		expect(line()).toBeUndefined();
+	});
+
+	it("leaves the line out outside a repository", async () => {
+		await doctor({ ...io, cwd: directory });
+		expect(line()).toBeUndefined();
+	});
+
+	it("warns when the store's own repository cannot be opened", async () => {
+		origin(remote.url);
+		const state = await stateDirectory(repo, io.env);
+		mkdirSync(state, { recursive: true });
+		writeFileSync(join(state, "records.git"), "");
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toMatch(/^warn records .*records\.git is not a directory$/);
 	});
 
 	it("says the branch holds only what Melian wrote, when it is absent or clean", async () => {

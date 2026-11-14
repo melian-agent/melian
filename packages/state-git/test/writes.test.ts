@@ -218,6 +218,26 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		await expect(store.add([check("unsure")])).rejects.toMatchObject({
 			code: "unreachable",
 			message: expect.stringContaining("may have landed"),
+			cause: expect.objectContaining({ message: "gone" }),
 		});
+	});
+
+	it("counts as lost when the branch is gone, and pushes again", async () => {
+		const store = await remote.open();
+		const push = stopPush(false);
+		await store.add([check("created")]);
+		expect(push).toHaveBeenCalledTimes(2);
+		expect(keys(await store.list(changeset))).toEqual(["created"]);
+	});
+
+	it("counts as lost without deepening when the tip is still the one it was built on", async () => {
+		const store = await remote.open();
+		await store.add([check("first")]);
+		await store.add([check("second")]);
+		stopPush(false);
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+		await store.add([check("retried")]);
+		expect(fetch.mock.calls.map((call) => call[3] ?? 1)).toEqual([1, 1, 1]);
+		expect(keys(await store.list(changeset))).toEqual(["first", "retried", "second"]);
 	});
 });

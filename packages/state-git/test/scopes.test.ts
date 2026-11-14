@@ -58,6 +58,26 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		"a cell whose value is not JSON": {
 			bytes: '{"v":1,"value":"x","version":"00000000-0000-4000-8000-000000000000"}',
 		},
+		"a cell whose version has more before its UUID": {
+			bytes: '{"v":1,"value":"1","version":"x00000000-0000-4000-8000-000000000000"}',
+		},
+		"a cell whose version has more after its UUID": {
+			bytes: '{"v":1,"value":"1","version":"00000000-0000-4000-8000-000000000000x"}',
+		},
+		"a cell whose version is a list": {
+			bytes: '{"v":1,"value":"1","version":["00000000-0000-4000-8000-000000000000"]}',
+		},
+		"a cell that is null": { bytes: "null" },
+		"a cell after a byte order mark": {
+			bytes: '\uFEFF{"v":1,"value":"1","version":"00000000-0000-4000-8000-000000000000"}',
+		},
+		"a cell that is not UTF-8": {
+			bytes: Buffer.concat([
+				Buffer.from('{"v":1,"value":"\\"'),
+				Buffer.from([0xff]),
+				Buffer.from('\\"","version":"00000000-0000-4000-8000-000000000000"}'),
+			]),
+		},
 	};
 	const pathOf = (name: string) =>
 		name === "a file of another name" ? `changesets/${changeset}/notes.txt` : `changesets/${changeset}/cell.json`;
@@ -114,6 +134,14 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		expect(remote.files()).toContain(path);
 	});
 
+	it("leaves unread a file below a folder named for the cell", async () => {
+		const path = `changesets/${changeset}/cell.json/x.json`;
+		const store = await plantedBeside({ [path]: { bytes: "{}" } });
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		await expect(store.list(changeset)).rejects.toSatisfy(refusal(path));
+		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(path));
+	});
+
 	it("is judged by its path alone, and its bytes are never read", async () => {
 		const path = `changesets/${changeset}/notes.txt`;
 		const store = await plantedBeside({ [path]: { bytes: "notes" } });
@@ -125,12 +153,41 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 });
 
 describe("a stray entry outside every changeset's folder", { timeout: 60_000 }, () => {
-	for (const path of ["index.json", "changesets/Bad Name!/x.json", "changesets/a..b/cell.json"])
+	for (const path of [
+		"index.json",
+		"changesets/Bad Name!/x.json",
+		"changesets/a..b/cell.json",
+		`notes/${changeset}/x.json`,
+	])
 		it(`refuses every call on every changeset, for ${path}`, async () => {
 			const store = await plantedBeside({ [path]: { bytes: "{}" } });
 			await refusesEveryCall(store, changeset, path);
 			await refusesEveryCall(store, other, path);
 		});
+
+	it("refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset", async () => {
+		const path = "changesets/a..b/cell.json";
+		const store = await plantedBeside({
+			[path]: { bytes: '{"v":1,"value":"1","version":"00000000-0000-4000-8000-000000000000"}' },
+		});
+		await refusesEveryCall(store, changeset, path);
+		await refusesEveryCall(store, other, path);
+	});
+
+	it("refuses every changeset for a path that is not UTF-8 under a folder of another name", async () => {
+		const store = await plantedBeside({});
+		remote.plantRaw([[Buffer.concat([Buffer.from(`notes/${changeset}/`), Buffer.from([0xff])]), { bytes: "" }]]);
+		await expect(store.list(changeset)).rejects.toMatchObject({ code: "unknownFile" });
+		await expect(store.list(other)).rejects.toMatchObject({ code: "unknownFile" });
+	});
+
+	it("is judged by its path alone, and its bytes are never read", async () => {
+		const path = `notes/${changeset}/cell.json`;
+		const store = await plantedBeside({ [path]: { bytes: "{}" } });
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		await expect(store.list(other)).rejects.toSatisfy(refusal(path));
+		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(path));
+	});
 
 	it("refuses every call on every changeset when changesets is a file", async () => {
 		remote.plant({ changesets: { bytes: "{}" } });
