@@ -463,11 +463,7 @@ export class MutationEnumeration {
 				!javascript.test(path) &&
 				!dataExtension.test(path),
 		);
-		const judged =
-			paths === undefined
-				? targets.judges
-				: Object.keys(targets.changed).some(kept) || targets.unmutated.some(({ path }) => kept(path));
-		if (!judged && unknown.length > 0)
+		if (!targets.judges && unknown.length > 0)
 			throw new MutationEnumerationError("unsupported", `no mutation adapter handles ${unknown.join(", ")}`);
 		unmutated.push(...unknown.map((file) => ({ file, reason: "no mutation adapter handles this language" })));
 		const source = await openSource(repoRoot, { kind: "revision", commit: revision.head });

@@ -2145,6 +2145,17 @@ describe("mutation enumeration with named files", { timeout: 60_000 }, () => {
 		await expect(enumeration.list({ limitedTo: ["src/comment.ts"] })).rejects.toMatchObject({ code: "path" });
 	});
 
+	it("limits to a named file no adapter handles as unmutated, as the whole listing records it", async () => {
+		const mixed = commit(repo, { "src/other.scala": "source\n" });
+		const enumeration = await MutationEnumeration.open(repo, `${base}..${mixed}`);
+		const entry = { file: "src/other.scala", reason: "no mutation adapter handles this language" };
+		expect((await enumeration.list({ all: true })).toJSON().unmutated).toContainEqual(entry);
+		expect((await enumeration.list({ all: true, limitedTo: ["src/other.scala"] })).toJSON()).toMatchObject({
+			mutants: [],
+			unmutated: [entry],
+		});
+	});
+
 	it("limits to a changed file that holds no mutant as an empty listing", async () => {
 		const enumeration = await MutationEnumeration.open(repo, `${base}..${head}`);
 		const limited = (await enumeration.list({ all: true, limitedTo: ["src/value.test.ts"] })).toJSON();
