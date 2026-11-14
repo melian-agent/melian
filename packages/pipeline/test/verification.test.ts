@@ -48,7 +48,13 @@ import { LensDocument, lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
-import { candidateKey, startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
+import {
+	candidateKey,
+	startVerification,
+	type VerificationInput,
+	VerificationTask,
+	waveVersion,
+} from "../src/verification.ts";
 import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
@@ -2997,7 +3003,7 @@ describe("verification ownership and budgets", () => {
 				waves: [
 					{
 						task: indexed.verification!.task,
-						version: "reuse",
+						version: waveVersion("reuse"),
 						candidates: [{ key: candidateKey(reused), claims: reused.state.claims.map(claimKey) }],
 					},
 				],

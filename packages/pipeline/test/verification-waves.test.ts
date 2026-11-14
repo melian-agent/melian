@@ -1,7 +1,15 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Lens, ReviewPlan, Revision, type Verification } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	Lens,
+	ReviewPlan,
+	Revision,
+	requestJson,
+	type Verification,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -24,15 +32,34 @@ import {
 	scriptVerifier,
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
+import type * as LensTools from "../src/lens-tools.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { candidateKey, startVerification, startWave, type VerificationInput } from "../src/verification.ts";
+import {
+	candidateKey,
+	startVerification,
+	startWave,
+	type VerificationInput,
+	verificationRequest,
+	waveIdentity,
+	waveVersion,
+} from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
+
+// The verifier's injection policy, which a test changes to stand for a release that changes the verifier's text alone.
+const policy = vi.hoisted(() => ({ override: undefined as string | undefined }));
+vi.mock("../src/lens-tools.ts", async (importOriginal) => {
+	const original = await importOriginal<typeof LensTools>();
+	return {
+		...original,
+		verifierInjectionPolicy: (nonce: string) => policy.override ?? original.verifierInjectionPolicy(nonce),
+	};
+});
 
 let repo: string;
 let harness: Harness;
@@ -59,6 +86,7 @@ beforeEach(async () => {
 	).filter((lens) => lens.name === "correctness" || lens.name === "contracts");
 });
 afterEach(async () => {
+	policy.override = undefined;
 	await harness.close(context);
 	rmSync(repo, { recursive: true, force: true });
 });
@@ -821,7 +849,7 @@ describe("verification as each lens ends", () => {
 			(await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves = [
 				{
 					task: entry.verification!.task,
-					version: final.version,
+					version: waveVersion(final.version),
 					candidates: [{ key: heldKey, claims: held!.state.claims.map(claimKey) }],
 				},
 			];
@@ -1021,5 +1049,64 @@ describe("verification as each lens ends", () => {
 		expect(
 			await startWave(harness, { ...final, version: "held", candidates: [other] }, entry.task!, context),
 		).toBeDefined();
+	});
+
+	// Codex's adversarial review at 6a84c118: a wave stood under the verifier's version alone, so a release that changed the
+	// verifier's text, its injection policy here, reused a wave judged under the old text.
+	describe("a wave's version", () => {
+		const dropFinal = async () => {
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.verification;
+			}, context);
+		};
+
+		it("stands while the verifier's text is unchanged", async () => {
+			const asked: string[][] = [];
+			fastThenSlow(asked);
+			await review();
+			await dropFinal();
+			await review();
+			expect(asked).toHaveLength(1);
+		});
+
+		it("stands no longer once the verifier's text changes under the same version", async () => {
+			const asked: string[][] = [];
+			fastThenSlow(asked);
+			await review();
+			await dropFinal();
+			policy.override = "A changed injection policy.";
+			await review();
+			expect(asked).toHaveLength(2);
+		});
+
+		it("stands no longer for a wave an older Melian recorded under the verifier's version alone", async () => {
+			const asked: string[][] = [];
+			fastThenSlow(asked);
+			await review();
+			const root = await harness.root(context);
+			const revision = Revision.key(changeset.revision);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+				for (const wave of (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves)
+					wave.version = verifierVersion;
+			}, context);
+			await review();
+			expect(asked).toHaveLength(2);
+		});
+
+		it("hashes every input of the final verification key that no candidate's key or the revision covers", async () => {
+			const asked: string[][] = [];
+			fastThenSlow(asked);
+			await review();
+			const root = await harness.root(context);
+			const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[
+				Revision.key(changeset.revision)
+			]!;
+			const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+				.input as unknown as VerificationInput;
+			const { candidates: _, revision: __, ...rest } = verificationRequest(final).request as Record<string, unknown>;
+			expect(waveIdentity(final.version)).toEqual(requestJson(rest));
+		});
 	});
 });

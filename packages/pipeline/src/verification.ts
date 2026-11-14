@@ -346,8 +346,11 @@ export async function startVerification(
 		for (const candidate of input.candidates)
 			if (
 				(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
-				standing.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), input.version) ===
-					undefined
+				standing.standing(
+					candidateKey(candidate),
+					candidate.state.claims.map(claimKey),
+					waveVersion(input.version),
+				) === undefined
 			)
 				return undefined;
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
@@ -413,6 +416,16 @@ function verifierText(): unknown {
 	};
 }
 
+/** What a wave's outcome was judged under beyond its candidate: the verifier's version and the fixed text it is given. */
+export function waveIdentity(version: string): RecordJson {
+	return requestJson({ version, text: verifierText() });
+}
+
+/** The version a wave records and is compared under, so a wave stands only while the verifier's text is unchanged too. */
+export function waveVersion(version: string): string {
+	return KeyedRequest.of("verification.wave", waveIdentity(version)).key;
+}
+
 /**
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
  * nonce, which is drawn afresh on every review, and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
@@ -455,7 +468,11 @@ export async function startWave(
 		const waves = VerificationWaves.of(state, revision, lensTask);
 		return input.candidates.filter(
 			(candidate) =>
-				waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), input.version) === undefined,
+				waves.standing(
+					candidateKey(candidate),
+					candidate.state.claims.map(claimKey),
+					waveVersion(input.version),
+				) === undefined,
 		);
 	};
 	// Only a wave that would start unlocks its route; the commit decides again, and asks nothing the read ruled out.
@@ -486,7 +503,7 @@ export async function startWave(
 		);
 		entry.waves.push({
 			task: created,
-			version: input.version,
+			version: waveVersion(input.version),
 			candidates: fresh.map((candidate) => ({
 				key: candidateKey(candidate),
 				claims: candidate.state.claims.map(claimKey),

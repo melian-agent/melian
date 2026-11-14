@@ -148,6 +148,7 @@ import {
 	type VerificationInput,
 	type VerificationResult,
 	VerificationTask,
+	waveVersion,
 } from "./verification.ts";
 import { verifierVersion } from "./verification-instructions.ts";
 import { claimKey, VerificationWaves, VerificationWavesDocument } from "./verification-waves.ts";
@@ -2423,7 +2424,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
 			for (const candidate of candidates) {
-				const wave = waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), verifierVersion);
+				const wave = waves.standing(
+					candidateKey(candidate),
+					candidate.state.claims.map(claimKey),
+					waveVersion(verifierVersion),
+				);
 				// A wave another run started, a crashed one's included, is waited for only where it would be reused.
 				const record = wave === undefined ? undefined : await harness.waitForTask(wave as TaskId, context);
 				const outcome =
