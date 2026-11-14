@@ -87,6 +87,7 @@ import {
 	reopenDismissals,
 	type SightedFinding,
 	sightedBy,
+	sightingIn,
 } from "./findings.ts";
 import {
 	backgroundContext,
@@ -140,7 +141,7 @@ import { SummaryTask, summarizeExtension } from "./summarize.ts";
 import { triageRequest } from "./triage-request.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 import {
-	candidateIdentity,
+	candidateKey,
 	startVerification,
 	startWave,
 	type VerificationCandidate,
@@ -2042,6 +2043,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		// As the lenses reported them: a lowering stored by a verification this review attaches to must not change which
 		// finding speaks for a defect, or the candidates would read as new input and the stored judgements be cleared.
 		const storedFindings = await readFindings(harness, root, reviewed, context, { producers, asReported: true });
+		const sightings = await harness.snapshot(FindingsDocument, root, context);
 		const policies =
 			options.policy === undefined
 				? undefined
@@ -2146,6 +2148,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					coReported: !defect.lensOnly(),
 					silent: defect.silentAt(configFor),
 				},
+				reportedAt: Object.fromEntries(
+					candidateState.claims.flatMap((claim) => {
+						const severity =
+							sightings === undefined
+								? undefined
+								: sightingIn(sightings, reviewed, claim.id, claim.source)?.properties.severity;
+						return severity === undefined ? [] : [[claimKey(claim), severity]];
+					}),
+				),
 				...(restatement === undefined
 					? {}
 					: {
@@ -2412,11 +2423,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
 			for (const candidate of candidates) {
-				const wave = waves.standing(
-					JSON.stringify(candidateIdentity(candidate)),
-					candidate.state.claims.map(claimKey),
-					verifierVersion,
-				);
+				const wave = waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), verifierVersion);
 				// A wave another run started, a crashed one's included, is waited for only where it would be reused.
 				const record = wave === undefined ? undefined : await harness.waitForTask(wave as TaskId, context);
 				const outcome =
@@ -2444,7 +2451,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				for (const candidate of (
 					(await harness.getTask(wave as TaskId, context))!.input as unknown as VerificationInput
 				).candidates)
-					own.add(JSON.stringify(candidateIdentity(candidate)));
+					own.add(candidateKey(candidate));
 			const attached = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification?.task;
 			spans.end();
 			verifying = await startVerification(

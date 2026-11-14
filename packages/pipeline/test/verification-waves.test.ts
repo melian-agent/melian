@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { candidateIdentity, startVerification, startWave, type VerificationInput } from "../src/verification.ts";
+import { candidateKey, startVerification, startWave, type VerificationInput } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -813,7 +813,7 @@ describe("verification as each lens ends", () => {
 			.input as unknown as VerificationInput;
 		expect(final.candidates).toHaveLength(2);
 		const [fresh, held] = final.candidates;
-		const heldKey = JSON.stringify(candidateIdentity(held!));
+		const heldKey = candidateKey(held!);
 		// Only a wave of the held candidate stands, so the read finds the other fresh and unlocks its route alone. The
 		// final task stands in for that wave's task: it has finished, as a standing wave has.
 		await root.commit(async (tx) => {

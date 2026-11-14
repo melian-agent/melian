@@ -48,7 +48,7 @@ import { LensDocument, lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
-import { candidateIdentity, startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
+import { candidateKey, startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { claimKey, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
@@ -2606,6 +2606,53 @@ describe("verification ownership and budgets", () => {
 		expect(prompt).not.toContain("reported at undefined");
 	});
 
+	it("labels each claim with the severity its candidate recorded, which its key covers", async () => {
+		const stored = await input();
+		const candidate = stored.candidates[0]!;
+		const claim = candidate.state.claims[0]!;
+		candidate.reportedAt = { [claimKey(claim)]: "P3" };
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const task = (await startVerification(harness, stored, selection, true, context))!;
+		await harness.waitForTask(task, context);
+		const prompt = systemPromptOf(requests[verifierMarker]![0]!);
+		expect(prompt).toMatch(new RegExp(`Claim c1 finding ${claim.id}, reported at P3$`, "m"));
+	});
+
+	it("quotes no stored verdict in a claim it asks about afresh", async () => {
+		const stored = await input();
+		const claim = stored.candidates[0]!.state.claims[0]!;
+		claim.verification = {
+			verdict: "refuted",
+			reason: "An earlier verdict the verifier must not read.",
+			executor: "llm",
+			model: "openai/gpt",
+			version: stored.version,
+		};
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const task = (await startVerification(harness, stored, selection, true, context))!;
+		await harness.waitForTask(task, context);
+		const request = requests[verifierMarker]![0]!;
+		const claims = textOf(request.findLast((message) => message.role === "user")!);
+		expect(claims).toContain(claim.id);
+		expect(claims).not.toContain("An earlier verdict");
+	});
+
 	it("limits nine candidates to eight in-flight judge requests", async () => {
 		const stored = await input();
 		const template = stored.candidates[0]!;
@@ -2939,9 +2986,7 @@ describe("verification ownership and budgets", () => {
 					{
 						task: indexed.verification!.task,
 						version: "reuse",
-						candidates: [
-							{ key: JSON.stringify(candidateIdentity(reused)), claims: reused.state.claims.map(claimKey) },
-						],
+						candidates: [{ key: candidateKey(reused), claims: reused.state.claims.map(claimKey) }],
 					},
 				],
 			};

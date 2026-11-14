@@ -5,7 +5,7 @@ import type {
 	Severity,
 	StoredVerificationState,
 } from "@melian-agent/core";
-import { Revision } from "@melian-agent/core";
+import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
@@ -24,6 +24,7 @@ import {
 	type ReviewState,
 	reportVerdict,
 	type StoredBudgetEnd,
+	verifierInjectionPolicy,
 } from "./lens-tools.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
@@ -47,6 +48,9 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
+	// The severity each claim's lens reported, by claim key, read when the candidate formed; absent from a candidate an
+	// older Melian stored, whose verifier reads it from the findings at spawn.
+	reportedAt?: Record<string, Severity>;
 	// The dismissed findings the verifier judges each claim against for sameness; absent when none qualifies, so a
 	// candidate without them keeps the attach key it had before Melian asked.
 	dismissed?: DismissedPredecessor[];
@@ -116,10 +120,15 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					if (task.input.reused?.[candidate.key] !== undefined) continue;
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
-					const claims = candidate.state.claims.map(({ id, source }, index) => ({
+					const claims = candidate.state.claims.map((claim, index) => ({
 						label: `c${index + 1}`,
-						id,
-						source,
+						id: claim.id,
+						source: claim.source,
+						severity:
+							candidate.reportedAt === undefined
+								? sightingIn(findings, Revision.key(task.input.revision), claim.id, claim.source)?.properties
+										.severity
+								: candidate.reportedAt[claimKey(claim)],
 						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
 					}));
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
@@ -139,12 +148,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 										`## Design sections at base\n${quoteUntrusted("listing", candidate.designAtBase.sections, task.input.revision.nonce)}`,
 										`## Design files at base\n${quoteUntrusted("listing", candidate.designAtBase.files, task.input.revision.nonce)}`,
 									]),
-							...claims.map(({ label, id, source }) => {
-								const at = Revision.key(task.input.revision);
-								const severity = sightingIn(findings, at, id, source)?.properties.severity;
-								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
-							}),
-							...dismissed.map(({ label, id }) => `Dismissed ${label} finding ${id}`),
+							...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
+							...dismissed.map(({ label, id }) => dismissedLine(label, id)),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
@@ -154,7 +159,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						version: task.input.version,
 						role: "verifier",
 						model: `${candidate.route[0]!.provider}/${candidate.route[0]!.modelId}`,
-						claims,
+						claims: claims.map(({ severity: _, ...claim }) => claim),
 						...(dismissed.length === 0 ? {} : { dismissed }),
 						review: task.input.root,
 						revision: task.input.revision,
@@ -183,7 +188,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						attempt === 0
 							? candidate.state.claims
 									.map(
-										(claim, index) =>
+										({ verification: _, ...claim }, index) =>
 											`Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
 									)
 									.concat(
@@ -193,7 +198,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 										),
 									)
 									.join("\n\n")
-							: "Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";
+							: continueJudging;
 					const settled = await (
 						await child.submit(
 							{ type: "input", content, requestId: `verify:${candidate.key}:${attempt}` },
@@ -277,13 +282,7 @@ export async function startVerification(
 	own: ReadonlySet<string> = new Set(),
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
-	const { nonce: _, ...revision } = input.revision;
-	const key = JSON.stringify({
-		root: input.root,
-		revision,
-		version: input.version,
-		candidates: input.candidates.map(candidateIdentity),
-	});
+	const { key } = verificationRequest(input);
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
@@ -346,12 +345,9 @@ export async function startVerification(
 		);
 		for (const candidate of input.candidates)
 			if (
-				(input.reused?.[candidate.key] !== undefined || own.has(JSON.stringify(candidateIdentity(candidate)))) &&
-				standing.standing(
-					JSON.stringify(candidateIdentity(candidate)),
-					candidate.state.claims.map(claimKey),
-					input.version,
-				) === undefined
+				(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
+				standing.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), input.version) ===
+					undefined
 			)
 				return undefined;
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
@@ -387,6 +383,55 @@ export function candidateIdentity({ dismissals: _, ...candidate }: VerificationC
 	};
 }
 
+/** The key of a candidate's verification, through core's key function, which a wave outcome stands for. */
+export function candidateKey(candidate: VerificationCandidate): string {
+	return KeyedRequest.of("verification.candidate", requestJson(candidateIdentity(candidate))).key;
+}
+
+const continueJudging =
+	"Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";
+
+function claimLine(label: string, id: string, severity: Severity | undefined): string {
+	return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
+}
+
+function dismissedLine(label: string, id: string): string {
+	return `Dismissed ${label} finding ${id}`;
+}
+
+// The text a verifier is given that its version does not hash, rendered whole with placeholders for what varies.
+function verifierText(): unknown {
+	return {
+		tools: [...Object.values(lensReadTools), reportVerdict].map(({ name, description, parameters }) => ({
+			name,
+			description,
+			parameters,
+		})),
+		policy: verifierInjectionPolicy("0".repeat(24)),
+		lines: [claimLine("c1", "<id>", "P1"), claimLine("c1", "<id>", undefined), dismissedLine("d1", "<id>")],
+		continue: continueJudging,
+	};
+}
+
+/**
+ * A verification task's request, keyed by its input less the revision's nonce, which is drawn afresh on every review,
+ * and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
+ * version.
+ */
+export function verificationRequest({
+	revision: { nonce, ...revision },
+	candidates,
+	// Outcomes standing waves already reached for these candidates' identities; the commit checks each still stands.
+	reused: _,
+	...input
+}: VerificationInput): KeyedRequest<RecordJson> {
+	return KeyedRequest.of(
+		"verification",
+		requestJson({ ...input, revision, candidates: candidates.map(candidateIdentity), text: verifierText() }),
+		{ nonce },
+	);
+}
+
 /**
  * Starts a wave for `lensTask` at the input's revision: a verification task over candidates some lenses' ends formed
  * while others still run. Clears their claims' earlier verdicts, so the wave's own decide them. Returns nothing when the
@@ -408,11 +453,7 @@ export async function startWave(
 		const waves = VerificationWaves.of(state, revision, lensTask);
 		return input.candidates.filter(
 			(candidate) =>
-				waves.standing(
-					JSON.stringify(candidateIdentity(candidate)),
-					candidate.state.claims.map(claimKey),
-					input.version,
-				) === undefined,
+				waves.standing(candidateKey(candidate), candidate.state.claims.map(claimKey), input.version) === undefined,
 		);
 	};
 	// Only a wave that would start unlocks its route; the commit decides again, and asks nothing the read ruled out.
@@ -445,7 +486,7 @@ export async function startWave(
 			task: created,
 			version: input.version,
 			candidates: fresh.map((candidate) => ({
-				key: JSON.stringify(candidateIdentity(candidate)),
+				key: candidateKey(candidate),
 				claims: candidate.state.claims.map(claimKey),
 			})),
 		});
