@@ -1161,18 +1161,20 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const doctor = { status, stdout };
 
 		expect(doctor.status, doctor.stdout).toBe(0);
-		expect(doctor.stdout).toMatch(/^ok {4}node {8}\d+\.\d+\.\d+; Melian needs 22\.19\.0 or later$/m);
-		expect(doctor.stdout).toMatch(/^ok {4}git {9}\d+\.\d+(\.\d+)?, --attr-source supported$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}node {12}\d+\.\d+\.\d+; Melian needs 22\.19\.0 or later$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}git {13}\d+\.\d+(\.\d+)?, --attr-source supported$/m);
 		expect(doctor.stdout).toContain(`${join(home, "auth.json")} not found`);
-		expect(doctor.stdout).toMatch(/^ok {4}github {6}token from GITHUB_TOKEN$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}github {10}token from GITHUB_TOKEN$/m);
 		// This checkout has its own install, so the static checks use its Biome and tsc.
-		expect(doctor.stdout).toMatch(/^ok {4}static {6}biome from the checkout, tsc from the checkout$/m);
-		expect(doctor.stdout).toMatch(/^ok {4}levels {6}each lens's levels cost more from quick to deep$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}static {10}biome from the checkout, tsc from the checkout$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}levels {10}each lens's levels cost more from quick to deep$/m);
+		// This checkout has decisions, so doctor names the index; it may pass 64 KiB one day, which warns rather than fails.
+		expect(doctor.stdout).toMatch(/^(?:ok {4}|warn {2})decision index {2}\S/m);
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
 		// The test runs this checkout's own binary, so the code under review would be its reviewer.
 		expect(doctor.stdout).toContain(
-			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
+			`warn  melian          ${bin}, inside this checkout, so the change can alter its reviewer`,
 		);
 	});
 
