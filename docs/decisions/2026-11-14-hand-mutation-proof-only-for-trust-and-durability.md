@@ -22,7 +22,7 @@ What it bought is thin. First runs do find untested code: [pull request #404](ht
 - Every other change owes no inventory. Its fix starts with a failing test, its new behaviour has a test, and the tests lens reports `untested-behaviour` at its usual severity.
 - The pull request's description lists its changed files that guard trust or durability, or says there are none. The review of record checks that list against the diff, and a file left off it is a P2 finding.
 - The interim rule and convergence rule 2 now read: a fix pass proves its own commits' mutants in code that guards trust or durability, and owes none elsewhere. A shared test suite owes the proof the suite decision describes only when the port it tests is trust or durability code.
-- The inventory is the enumerator's whole output for the range, unedited, so its total still checks itself. A claim is owed on every row in the listed files and on no other row. No one deletes rows by hand.
+- The inventory is the enumerator's whole output for the range, unedited, so its total still checks itself, and no one deletes rows by hand. A claim is owed on every row in the listed files and on no other row, once the sampler can read which files those are ([issue #418](https://github.com/melian-agent/melian/issues/418)). Until then a pull request that owes an inventory claims every row, as before, so the review of record's `--sample` runs unchanged.
 - An inventory already written for a pull request in flight stands for the code it covers, and no one extends it to ordinary code. A later commit on that pull request that changes trust or durability code still appends and proves its own mutants, as every fix pass does.
 
 ## What this gives up
