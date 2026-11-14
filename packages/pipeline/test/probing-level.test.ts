@@ -1232,6 +1232,37 @@ describe("a level that probes", () => {
 		},
 	);
 
+	it("goes on to verify when a review sharing its lens task starts a rerun of the same probes again", async () => {
+		let commands = 0;
+		let taken: Promise<void> | undefined;
+		const { run, requests } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				rewrite: (command) => {
+					// The second probe on the head is Melian's rerun: a review attached to the same lens task starts its own task
+					// for the same probes, as one does once the stored task has ended.
+					if (inHeadTree(command) && ++commands === 2)
+						taken = (async () => {
+							const root = await harness!.harness.root(backgroundContext);
+							await root.commit(async (tx) => {
+								const document = await tx.doc(ProbeReruns, root.id);
+								for (const key of Object.keys(document.tasks ?? {}))
+									document.tasks![key] = { ...document.tasks![key]!, task: -1 };
+							}, backgroundContext);
+						})();
+					return command;
+				},
+			},
+		);
+		const outcome = await run.then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		await taken;
+		expect(outcome).not.toMatchObject({ code: "superseded" });
+		expect(requests["Melian adversarial verifier"] ?? []).not.toEqual([]);
+	});
+
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();
 		let heads = 0;

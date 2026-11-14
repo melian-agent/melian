@@ -1521,8 +1521,9 @@ async function rerunProbes(
 	}, context);
 	if (task === undefined) return false;
 	await harness.waitForTask(task, context);
-	// Another review can replace this one's lens task while the reruns run, and take the reruns over then or later.
-	if ((await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task !== task) return false;
+	// Another review can replace this one's lens task while the reruns run, and take the reruns over then or later with
+	// other probes. One sharing this lens task can start the same probes' rerun again, which leaves this review standing.
+	if ((await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.key !== key) return false;
 	return (await harness.snapshot(ReviewIndex, root, context))!.reviews[at]!.task === lensTask;
 }
 
