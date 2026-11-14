@@ -1,3 +1,4 @@
+import { isContextOverflow } from "@earendil-works/pi-ai";
 import type {
 	CatalogModel,
 	ModelReference,
@@ -9,6 +10,22 @@ import type {
 import type { MelianCredentialStore } from "./credentials.ts";
 import type { Api, Model, Models, MutableModels } from "./harness.ts";
 import { ReasoningCapture } from "./reasoning.ts";
+
+/** Whether a model failure's recorded text is pi-ai's reading of a request too long for the model's context window. */
+export function contextOverflowed(text: string): boolean {
+	const none = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+	return isContextOverflow({
+		role: "assistant",
+		content: [],
+		api: "unknown",
+		provider: "unknown",
+		model: "unknown",
+		usage: { ...none, totalTokens: 0, cost: { ...none, total: 0 } },
+		stopReason: "error",
+		errorMessage: text,
+		timestamp: 0,
+	});
+}
 
 /**
  * The models a review runs on: an opaque handle over pi-ai's model collection, so callers outside the pipeline never
