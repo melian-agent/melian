@@ -7,6 +7,7 @@ import { createRepository, gitIn, removeRepository } from "../../pipeline/test/f
 import type { Io } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import { stateDirectory } from "../src/repository.ts";
+import { size } from "../src/store.ts";
 
 const day = 24 * 60 * 60 * 1000;
 let repo: string;
@@ -80,16 +81,23 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		const { pinned } = await seed();
 		const io = output();
 		expect(await main(["store", "prune"], io)).toBe(0);
-		const text = io.lines.join("");
-		expect(text).toContain(`State directory: ${state}\n`);
-		expect(text).toContain("Would remove 4 entries, freeing 18 B. Nothing is removed without --apply.\n");
-		expect(text).toContain(`  unreadable graph  1 B  graphs/${"a".repeat(64)}\n`);
-		expect(text).toContain(`  orphan coverage  10 B  coverage/${"b".repeat(64)}\n`);
-		expect(text).toContain(`  mutation partition  3 B  mutation/${"c".repeat(64)}\n`);
-		expect(text).toContain("  unpinned tool  4 B  tools/gone\n");
-		expect(text).toContain("  orphan coverage: 1, 10 B\n");
-		expect(text).toContain("Kept 1 changeset file, 12 B, and scripted/.\n");
-		expect(text).toContain("Kept, not recognised: notes.txt\n");
+		expect(io.lines).toEqual([
+			[
+				`State directory: ${state}`,
+				"Would remove 4 entries, freeing 18 B. Nothing is removed without --apply.",
+				`  unreadable graph  1 B  graphs/${"a".repeat(64)}`,
+				`  orphan coverage  10 B  coverage/${"b".repeat(64)}`,
+				`  mutation partition  3 B  mutation/${"c".repeat(64)}`,
+				"  unpinned tool  4 B  tools/gone",
+				"  unreadable graph: 1, 1 B",
+				"  orphan coverage: 1, 10 B",
+				"  mutation partition: 1, 3 B",
+				"  unpinned tool: 1, 4 B",
+				"Kept 1 changeset file, 12 B, and scripted/.",
+				"Kept, not recognised: notes.txt",
+				"",
+			].join("\n"),
+		]);
 		expect(io.errors).toEqual([]);
 		for (const path of [`graphs/${"a".repeat(64)}`, `coverage/${"b".repeat(64)}`, "tools/gone", pinned])
 			expect(await exists(path)).toBe(true);
@@ -112,43 +120,98 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(again.lines.join("")).toContain("Would remove 0 entries, freeing 0 B.");
 	});
 
-	it("removes nothing beside a live static check, names it and exits 1", async () => {
-		await seed();
-		const path = join(scratch, "worktree");
-		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "base");
-		gitIn(
-			repo,
-			"worktree",
-			"add",
-			"--quiet",
-			"--detach",
-			"--lock",
-			"--reason",
-			`melian-static pid ${process.pid}`,
-			path,
+	it("counts one entry and many changeset files, lists every path an entry takes, and omits an empty kept line", async () => {
+		const name = "d".repeat(64);
+		await write("pull-1.sqlite", "one");
+		await write("pull-2.sqlite", "two");
+		await write(
+			`graphs/${name}/entry.json`,
+			JSON.stringify({
+				format_version: 1,
+				key: name,
+				parts: { tree: "e".repeat(40) },
+				created: new Date(Date.now() - 8 * day).toISOString(),
+			}),
 		);
-		worktrees.push(path);
+		await write(`coverage/${name}/index.json`, "12345");
+		const bytes = (await readFile(join(state, `graphs/${name}/entry.json`))).length + 5;
+		const shown = `${bytes} B`;
+		for (const apply of [false, true]) {
+			const io = output();
+			expect(await main(apply ? ["store", "prune", "--apply"] : ["store", "prune"], io)).toBe(0);
+			expect(io.lines).toEqual([
+				[
+					`State directory: ${state}`,
+					apply
+						? `Removed 1 entry, freeing ${shown}.`
+						: `Would remove 1 entry, freeing ${shown}. Nothing is removed without --apply.`,
+					`  graph  ${shown}  graphs/${name}, coverage/${name}`,
+					`  graph: 1, ${shown}`,
+					"Kept 2 changeset files, 6 B, and scripted/.",
+					"",
+				].join("\n"),
+			]);
+		}
+		expect(await exists(`graphs/${name}`)).toBe(false);
+		expect(await exists(`coverage/${name}`)).toBe(false);
+	});
+
+	it("removes nothing beside a live static check, names every one and exits 1", async () => {
+		await seed();
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "base");
+		const paths = [join(scratch, "worktree-a"), join(scratch, "worktree-b")];
+		for (const path of paths) {
+			gitIn(
+				repo,
+				"worktree",
+				"add",
+				"--quiet",
+				"--detach",
+				"--lock",
+				"--reason",
+				`melian-static pid ${process.pid}`,
+				path,
+			);
+			worktrees.push(path);
+		}
+		const refusal = (order: string[]) =>
+			`melian: a static check is running (${order.map((path) => `pid ${process.pid} at ${path}`).join("; ")}), so prune removes nothing; run it again once the review ends\n`;
 		for (const args of [
 			["store", "prune"],
 			["store", "prune", "--apply"],
 		]) {
 			const io = output();
 			expect(await main(args, io)).toBe(1);
-			expect(io.errors.join("")).toBe(
-				`melian: a static check is running (pid ${process.pid} at ${path}), so prune removes nothing; run it again once the review ends\n`,
-			);
+			expect([refusal(paths), refusal([...paths].reverse())]).toContain(io.errors.join(""));
 		}
 		expect(await exists(`graphs/${"a".repeat(64)}`)).toBe(true);
 		expect(await exists("tools/gone")).toBe(true);
 	});
 
-	it.each([[["store"]], [["store", "compact"]], [["store", "prune", "extra"]], [["doctor", "--apply"]]])(
-		"refuses %j as a command line it cannot read",
-		async (args) => {
-			await seed();
-			const io = output();
-			expect(await main(args, io)).toBe(64);
-			expect(await exists("tools/gone")).toBe(true);
-		},
-	);
+	it.each([
+		[["store"], "store takes prune"],
+		[["store", "compact"], "store takes prune"],
+		[["store", "prune", "extra"], "store takes prune"],
+		[["doctor", "--apply"], "--apply is only available for store prune"],
+	])("refuses %j as a command line it cannot read", async (args, message) => {
+		await seed();
+		const io = output();
+		expect(await main(args, io)).toBe(64);
+		expect(io.errors[0]).toBe(`melian: ${message}\n`);
+		expect(await exists("tools/gone")).toBe(true);
+	});
+
+	it.each([
+		[0, "0 B"],
+		[1023, "1023 B"],
+		[1024, "1.0 KiB"],
+		[1536, "1.5 KiB"],
+		[1024 ** 2, "1.0 MiB"],
+		[1024 ** 3 * 2.5, "2.5 GiB"],
+		[1024 ** 4, "1.0 TiB"],
+		[1024 ** 5, "1.0 PiB"],
+		[Number.MAX_SAFE_INTEGER, "8.0 PiB"],
+	])("prints %d bytes as %s", (bytes, shown) => {
+		expect(size(bytes)).toBe(shown);
+	});
 });

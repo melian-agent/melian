@@ -3,12 +3,13 @@ import { type LiveRun, type PruneEntry, StorePrune, ToolProvisioning } from "@me
 import type { Io } from "./commands.ts";
 import { git, stateDirectory } from "./repository.ts";
 
-function size(bytes: number): string {
-	const units = ["KiB", "MiB", "GiB", "TiB"];
+// A byte count is a safe integer, below 8 PiB, so the units never run out.
+export function size(bytes: number): string {
+	const units = ["KiB", "MiB", "GiB", "TiB", "PiB"];
 	if (bytes < 1024) return `${bytes} B`;
 	let value = bytes / 1024;
 	let unit = 0;
-	while (value >= 1024 && unit < units.length - 1) {
+	while (value >= 1024) {
 		value /= 1024;
 		unit += 1;
 	}
