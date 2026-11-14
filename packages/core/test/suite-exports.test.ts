@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openSource } from "../src/source.ts";
+import { openSource, type SourceReader } from "../src/source.ts";
 import { SuiteExports } from "../src/suite-exports.ts";
 
 const testing = { "./testing": { "@melian-agent/source": "./src/testing.ts", default: "./dist/testing.js" } };
@@ -132,6 +132,11 @@ describe("SuiteExports", () => {
 			{ workspaces: [1] },
 			/^the root package\.json lists no workspaces$/,
 		],
+		[
+			"workspaces that mix a string with a number",
+			{ workspaces: ["packages/*", 1] },
+			/^the root package\.json lists no workspaces$/,
+		],
 		["a null root package.json", "null", /^the root package\.json lists no workspaces$/],
 		[
 			"a workspace pattern Melian does not read",
@@ -166,6 +171,20 @@ describe("SuiteExports", () => {
 	])("refuses every file under %s", async (_name, root, reason) => {
 		const suites = await suitesIn(workspace({ core: { exports: testing } }, root));
 		expect(suites.refusal("packages/core/src/testing.ts")).toMatch(reason);
+	});
+
+	it("refuses every file when a wildcard's folder is a symlink, and names why", async () => {
+		const dir = workspace({ core: { exports: testing } }, { workspaces: ["linked/*"] });
+		symlinkSync(join(dir, "packages"), join(dir, "linked"));
+		expect((await suitesIn(dir)).refusal("linked/core/src/testing.ts")).toMatch(
+			/^cannot read the workspace folder linked: .*symlink/,
+		);
+	});
+
+	it("lets a failure that is neither a read nor a parse failure through", async () => {
+		const broken = new TypeError("the source broke");
+		const source = { readText: async () => Promise.reject(broken) } as unknown as SourceReader;
+		await expect(SuiteExports.read(source)).rejects.toBe(broken);
 	});
 
 	it("reads this repository's own exports", async () => {

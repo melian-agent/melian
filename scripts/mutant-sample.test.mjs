@@ -159,6 +159,13 @@ describe("mutant sampling", () => {
 		expect(checked).toEqual(["packages/core/src/testing.ts"]);
 	});
 
+	it.each([
+		[{ claim: "unknown" }, "each mutant needs a claim: killed, new-test, equivalent or suite"],
+		[{ evidence: " " }, "each claim needs evidence: a named test, or a reason for an equivalent or suite claim"],
+	])("refuses a legacy row with its own message: %j", (extra, message) => {
+		expect(() => sampleMutants(inventory([mutant(0, extra)]))).toThrow(new Error(message));
+	});
+
 	it("names the four claims when a legacy mutant has none", () => {
 		expect(() => sampleMutants(inventory([mutant(0, { claim: undefined })]))).toThrow(
 			"each mutant needs a claim: killed, new-test, equivalent or suite",

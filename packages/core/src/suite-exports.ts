@@ -49,19 +49,19 @@ function readable(folder: string): boolean {
 	}
 }
 
-async function workspaceFolders(source: SourceReader): Promise<string[] | { refused: string }> {
+async function workspacePackages(source: SourceReader): Promise<Map<string, Answer> | { refused: string }> {
 	const root = await readManifest(source, "package.json", "the root package.json");
 	if ("refused" in root) return root;
 	const patterns = (root.value as { workspaces?: unknown } | null)?.workspaces;
 	if (!Array.isArray(patterns) || !patterns.every((pattern) => typeof pattern === "string"))
 		return { refused: "the root package.json lists no workspaces" };
-	const folders: string[] = [];
+	const packages = new Map<string, Answer>();
 	for (const pattern of patterns) {
 		const parent = pattern.endsWith("/*") ? pattern.slice(0, -2) : undefined;
 		if (!readable(parent ?? pattern))
 			return { refused: `the root package.json's workspace pattern ${pattern} is not one Melian reads` };
 		if (parent === undefined) {
-			folders.push(pattern);
+			packages.set(pattern, await testingExport(source, pattern));
 			continue;
 		}
 		let entries: Awaited<ReturnType<SourceReader["list"]>>;
@@ -71,9 +71,11 @@ async function workspaceFolders(source: SourceReader): Promise<string[] | { refu
 			return { refused: `cannot read the workspace folder ${parent}: ${cause(error)}` };
 		}
 		if (entries === undefined) return { refused: `the workspace folder ${parent} does not exist` };
-		for (const entry of entries) if (entry.kind === "directory") folders.push(`${parent}/${entry.name}`);
+		for (const entry of entries)
+			if (entry.kind === "directory")
+				packages.set(`${parent}/${entry.name}`, await testingExport(source, `${parent}/${entry.name}`));
 	}
-	return folders;
+	return packages;
 }
 
 /**
@@ -92,11 +94,8 @@ export class SuiteExports {
 
 	/** Reads the root `package.json`'s `workspaces`, then each workspace package's `exports`, from `source`. */
 	static async read(source: SourceReader): Promise<SuiteExports> {
-		const folders = await workspaceFolders(source);
-		if (!Array.isArray(folders)) return new SuiteExports(new Map(), folders.refused);
-		const answers = new Map<string, Answer>();
-		for (const folder of folders) answers.set(folder, await testingExport(source, folder));
-		return new SuiteExports(answers);
+		const packages = await workspacePackages(source);
+		return "refused" in packages ? new SuiteExports(new Map(), packages.refused) : new SuiteExports(packages);
 	}
 
 	/** Why a `suite` claim on a mutant in `file` is refused, or `undefined` when `file` is a package's `./testing` export. */
