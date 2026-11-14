@@ -29,7 +29,7 @@ The cost of the tool stays. The planned build was four pull requests and 5,000 t
 ## What stands
 
 - Enumeration and sampling, as built in [issue #239](https://github.com/melian-agent/melian/issues/239).
-- The 2026-10-24 decision's intent that the `tests` lens uses the enumeration. The maintainer's idea for later is to give the lens the list of mutants on the lines it reviews ([issue #241](https://github.com/melian-agent/melian/issues/241)). It needs no mutant run.
+- The 2026-10-24 decision's intent that the `tests` lens uses the enumeration. The maintainer's idea for later is to give the lens the list of mutants on the lines it reviews ([issue #241](https://github.com/melian-agent/melian/issues/241)). Its first step, reading the list, needs no mutant run.
 - From the shards decision, its choice 1 as it applies to hand proofs and policy notices: the coordinator's standing authority of 2026-10-17 to accept equivalent mutants with reasons and hand proofs, and to read policy notices, reporting each. The maintainer confirmed it on 2026-11-14, in the coordinator's session: "I agree with allowing you to accept the written answer of a builder." Its lost-options reasoning for that choice stands too.
 - `static.mutation` as an opt-in audit, with the rules of [mutation reruns, as built](2026-10-16-mutation-reruns-later-changes.md), and the Stryker learnings in AGENTS.md.
 - The targeted-rerun scope of [the targeted-rerun decision](2026-11-07-targeted-mutant-rerun.md) for a builder who reruns claims by choice, and every other clause of the decisions above that this file does not name.
@@ -45,4 +45,4 @@ What does not stand from the shards decision: everything about the Actions job, 
 
 ## What would reopen it
 
-A defect in trust or durability code that reaches `main`, and that a mutant run would have caught. The maintainer closed [issue #240](https://github.com/melian-agent/melian/issues/240), [issue #414](https://github.com/melian-agent/melian/issues/414), [issue #415](https://github.com/melian-agent/melian/issues/415) and [issue #416](https://github.com/melian-agent/melian/issues/416) as not planned on 2026-11-14. A new issue would carry the case, starting from the archive branch.
+A defect in trust or durability code that reaches `main`, and that a mutant run would have caught. On that decision the coordinator closed [issue #240](https://github.com/melian-agent/melian/issues/240), [issue #414](https://github.com/melian-agent/melian/issues/414), [issue #415](https://github.com/melian-agent/melian/issues/415) and [issue #416](https://github.com/melian-agent/melian/issues/416) as not planned on 2026-11-14. A new issue would carry the case, starting from the archive branch.
