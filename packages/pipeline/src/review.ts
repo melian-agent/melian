@@ -162,6 +162,7 @@ import {
 	finished,
 	ReviewIndex,
 	type ReviewIndexState,
+	stillOwns,
 	undecided,
 } from "./review-index.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
@@ -1500,7 +1501,7 @@ async function rerunProbes(
 	const key = JSON.stringify(input.probes);
 	const task = await (await harness.root(context)).commit(async (tx) => {
 		// A review another has replaced takes nothing over: its claims may rest on probes the newer review no longer runs.
-		if ((await tx.doc(ReviewIndex, root)).reviews[at]?.task !== lensTask) return undefined;
+		if (!stillOwns((await tx.doc(ReviewIndex, root)).reviews[at], lensTask)) return undefined;
 		const document = await tx.doc(ProbeReruns, root);
 		const known = document.tasks?.[at];
 		if (known?.key === key && (await tx.task(known.task as TaskId))!.state.status !== "terminal")
@@ -1514,7 +1515,7 @@ async function rerunProbes(
 	// Another review can replace this one's lens task while the reruns run, and take the reruns over then or later with
 	// other probes. One sharing this lens task can start the same probes' rerun again, which leaves this review standing.
 	if ((await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.key !== key) return false;
-	return (await harness.snapshot(ReviewIndex, root, context))!.reviews[at]!.task === lensTask;
+	return stillOwns((await harness.snapshot(ReviewIndex, root, context))?.reviews[at], lensTask);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -1756,7 +1757,7 @@ async function callersFor(
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
-		if (entry?.lenses.join("\n") !== selection.join("\n") || entry.task !== task) return fresh;
+		if (entry === undefined || !stillOwns(entry, task)) return fresh;
 		if (entry.callers?.task !== task) entry.callers = fresh;
 		return JSON.parse(JSON.stringify(entry.callers)) as CallerRecord;
 	}, context);
@@ -1770,6 +1771,8 @@ async function startAdjudication(
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
 	lensTask: number | undefined,
+	// The verification task this review waited on, if any; one another review has replaced since is not this review's.
+	verification: number | undefined,
 	verificationRefused: boolean,
 	checkRun: string | undefined,
 	context: Context,
@@ -1783,7 +1786,7 @@ async function startAdjudication(
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
 		// that live run as superseded; and a repeat review with the same selection replaces a finished probing run and
 		// clears its findings, which left this one none to block on. Solution: a replaced review adjudicates nothing.
-		if (selection.length > 0 && known?.task !== lensTask) return undefined;
+		if (!stillOwns(known, lensTask, verification)) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
 			await clearVerifications(tx, input.root, revision);
@@ -2793,7 +2796,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const rule = new EscalationRule(runs.escalateAt ?? escalateAt);
 		const stored = new Map(runs.lenses.map((run) => [run.key, run]));
 		await (await harness.root(context)).commit(async (tx) => {
-			if ((await tx.doc(ReviewIndex, root)).reviews[reviewed]?.task === task)
+			if (stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], task))
 				await VerificationWaves.open(tx, root, reviewed, task);
 		}, context);
 		const watch = await harness.watchDoc(VerificationWavesDocument, root, context);
@@ -2999,6 +3002,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		context,
 	);
 	const { storedFindings, policies, candidates, restating } = await candidatesFor(producers, lensResult, ran.lenses);
+	const replaced = () =>
+		new ReviewError(
+			"superseded",
+			`a later review of ${reviewed} replaced this one's lens run or verification, so this review records no verdict`,
+			{ lenses: lenses.map((lens) => lens.name) },
+		);
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
@@ -3007,11 +3016,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
 			const owner = await harness.root(context);
-			await owner.commit(async (tx) => {
+			const owns = await owner.commit(async (tx) => {
 				const index = await tx.doc(ReviewIndex, root);
 				const entry = index.reviews[reviewed];
+				if (!stillOwns(entry, lensTask)) return false;
 				if (entry?.verification?.task === previous.task) index.reviews[reviewed] = omit(entry, "verification");
+				return true;
 			}, context);
+			if (!owns) throw replaced();
 			await abortReplacedRuns(harness, context);
 		}
 	}
@@ -3028,12 +3040,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
-			if (!(await rerunProbes(harness, root, state, candidates, lensTask, context)))
-				throw new ReviewError(
-					"superseded",
-					`a later review of ${reviewed} replaced this one's lens run, so this review records no verdict`,
-					{ lenses: lenses.map((lens) => lens.name) },
-				);
+			if (!(await rerunProbes(harness, root, state, candidates, lensTask, context))) throw replaced();
 			const reused: Record<string, VerificationResult[string]> = {};
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
@@ -3082,6 +3089,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				verifierRefuses,
 				unlockModels,
 				own,
+				lensTask,
 			);
 			verifierSuperseded = verifying === undefined;
 			// A final task this call starts stands on its reused waves' judgements, made under the dismissals each wave was
@@ -3154,12 +3162,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	// Each round re-derives every restatement link from its own stored judgements, in one commit, before adjudication
 	// reads the findings version. A verifier that did not run to the end judged no sameness, and leaves no links.
-	// A review a later one replaced, by lens selection or by verification task, leaves the links that one recorded.
-	await (await harness.root(context)).commit(async (tx) => {
-		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
-		const selection = selectionOf(lenses, escalateAt);
-		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
-		if (verifierSuperseded || (verifying !== undefined && entry?.verification?.task !== verifying)) return;
+	// A review a later one replaced, by lens task or by verification task, leaves the links that one recorded.
+	const linked = await (await harness.root(context)).commit(async (tx) => {
+		if (!stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], lensTask, verifying)) return false;
+		if (verifierSuperseded) return true;
 		await recordInheritances(
 			tx,
 			root,
@@ -3167,7 +3173,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			verificationCheck?.status === "ran" ? [...restating.values()] : [],
 			verifierVersion,
 		);
+		return true;
 	}, context);
+	if (!linked) throw replaced();
 	spans.step("adjudication.prepare");
 	const checks =
 		request.plan?.mark(
@@ -3233,17 +3241,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		input,
 		selectionOf(lenses, escalateAt),
 		lensTask,
+		verifying,
 		verificationRefused,
 		JSON.stringify(checked?.identity ?? request.checkRun),
 		context,
 	);
-	if (adjudication === undefined) {
-		throw new ReviewError(
-			"superseded",
-			`a later review of ${reviewed} replaced this one's lens run, so this review records no verdict`,
-			{ lenses: lenses.map((lens) => lens.name) },
-		);
-	}
+	if (adjudication === undefined) throw replaced();
 	const rounds = (await harness.snapshot(RoundsDocument, root, context))!;
 	spans.bindRound(Object.entries(rounds.items).find(([, round]) => round.tasks.includes(adjudication))![0]);
 	if (verificationRefused) await abortReplacedRuns(harness, context);

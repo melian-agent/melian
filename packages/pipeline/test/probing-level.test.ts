@@ -21,6 +21,7 @@ import {
 	type ProbeSandbox,
 	ReviewError,
 	type ReviewHarness,
+	recordDismissal,
 	reviewChangeset,
 	type Storage,
 	TelemetryReader,
@@ -39,10 +40,12 @@ import {
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { FindingsDocument } from "../src/findings.ts";
 import type { TaskId } from "../src/harness.ts";
 import { type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { headTreeLimits, ProbeReruns, probingHost, probingLimits } from "../src/probing.ts";
+import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -1110,6 +1113,249 @@ describe("a level that probes", () => {
 			release();
 			await second?.run.catch(() => undefined);
 		}
+	});
+
+	it("keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late", async () => {
+		const fake = createFakeModels();
+		let reached!: () => void;
+		const verified = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		let second: Awaited<ReturnType<typeof review>> | undefined;
+		let held = false;
+		let at = "";
+		// The first review unlocks its verifier only once a repeat review of the head has replaced its lens task and
+		// finished verifying.
+		const first = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				fake,
+				unlockModels: async () => {
+					const reviewer = harness!.harness;
+					const root = await reviewer.root(backgroundContext);
+					const task = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))?.reviews[at]?.task;
+					const record =
+						task === undefined ? undefined : await reviewer.getTask(task as TaskId, backgroundContext);
+					if (second !== undefined || record?.state.status !== "terminal") return;
+					second = await review({ planner: plan, prober: probing(failing) }, { fake });
+					second.run.catch(() => undefined);
+					await verified;
+				},
+			},
+		);
+		at = Revision.key(first.changeset.revision);
+		const reviewer = harness!.harness;
+		const wait = reviewer.waitForTask.bind(reviewer);
+		// The repeat review adjudicates only once the first review has ended, its late verifier commit included.
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const record = await wait(task, context);
+			const root = await reviewer.root(context);
+			const index = await reviewer.snapshot(ReviewIndex, root.id, context);
+			if (!held && second !== undefined && index?.reviews[at]?.verification?.task === task) {
+				held = true;
+				reached();
+				await first.run.catch(() => undefined);
+			}
+			return record;
+		}) as typeof reviewer.waitForTask;
+		const outcome = await first.run.then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		expect(outcome).toMatchObject({ code: "superseded" });
+		expect(second).toBeDefined();
+		const { verdict } = await second!.run;
+		expect(verdict.blocking).toBe(true);
+		expect(verdict.counted().map((each) => [each.ruleId, each.properties.verification?.verdict])).toEqual([
+			["path-traversal", "confirmed"],
+		]);
+	});
+
+	// The second review attaches to the first's live lens task and asks another verifier, so its verification has another
+	// key. It starts that verification only once the first has its own judgements, before the first records its links
+	// or before it adjudicates.
+	it.each(["links", "adjudicates"] as const)(
+		"records no verdict for a review whose verification a review sharing its lens task replaced before it %s",
+		async (before) => {
+			const fake = createFakeModels({ models: [{ id: "heavy" }, { id: "judge" }] });
+			const model = (id: string) => `${fake.ref(id).provider}/${fake.ref(id).modelId}`;
+			const at = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
+			let release!: () => void;
+			const released = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			let verification: number | undefined;
+			const first = await review(
+				{ planner: plan, prober: probing(failing) },
+				{ fake, config: { models: { heavy: { model: model("heavy") } } } },
+			);
+			const reviewer = harness!.harness;
+			const entry = async () =>
+				(await reviewer.snapshot(ReviewIndex, (await reviewer.root(backgroundContext)).id, backgroundContext))
+					?.reviews[at];
+			const second = await review(
+				{ planner: plan, prober: probing(failing) },
+				{
+					fake,
+					config: { models: { heavy: { model: model("heavy") }, verifier: { model: model("judge") } } },
+					unlockModels: async () => {
+						const lens = (await entry())?.task;
+						const record =
+							lens === undefined ? undefined : await reviewer.getTask(lens as TaskId, backgroundContext);
+						if (record?.state.status === "terminal") await released;
+					},
+				},
+			);
+			second.run.catch(() => undefined);
+			const replace = async () => {
+				verification = (await entry())?.verification?.task;
+				release();
+				await vi.waitFor(async () => expect((await entry())?.verification?.task).not.toBe(verification), {
+					timeout: 10_000,
+				});
+			};
+			const wait = reviewer.waitForTask.bind(reviewer);
+			reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+				const waits =
+					before === "links" && verification === undefined && (await entry())?.verification?.task === task;
+				const outcome = await wait(task, context);
+				if (waits) await replace();
+				return outcome;
+			}) as typeof reviewer.waitForTask;
+			const snapshot = reviewer.snapshot.bind(reviewer);
+			reviewer.snapshot = (async (...args: Parameters<typeof snapshot>) => {
+				// The read of the findings version is the last before adjudication starts.
+				const last = Object.is(args[0], FindingsDocument) && new Error().stack?.includes("findingsVersion");
+				if (before === "adjudicates" && verification === undefined && last) await replace();
+				return snapshot(...args);
+			}) as typeof reviewer.snapshot;
+			const outcome = await first.run.then(
+				() => undefined,
+				(error: unknown) => error,
+			);
+			expect(verification).toBeDefined();
+			expect(outcome).toMatchObject({ code: "superseded" });
+			expect((await second.run).verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual([
+				"confirmed",
+			]);
+		},
+	);
+
+	it("keeps a repeat review's verification when a review it replaced finds nothing to verify", async () => {
+		const fake = createFakeModels();
+		const at = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
+		let armed = false;
+		let second: Awaited<ReturnType<typeof review>> | undefined;
+		let verification: number | undefined;
+		const replaced = await review(
+			{ planner: [call("record_plan", { attacks: [] }), plan[1]!], prober: [] },
+			{ fake },
+		);
+		const reviewer = harness!.harness;
+		const wait = reviewer.waitForTask.bind(reviewer);
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const outcome = await wait(task, context);
+			const owner = (await reviewer.root(context)).id;
+			if ((await reviewer.snapshot(ReviewIndex, owner, context))?.reviews[at]?.task === task)
+				armed = second === undefined;
+			return outcome;
+		}) as typeof reviewer.waitForTask;
+		// The review that planned no attack has read its findings, none, when a repeat review replaces its lens task and
+		// verifies the finding that review's probe shows.
+		const open = Predecessors.open.bind(Predecessors);
+		const spy = vi.spyOn(Predecessors, "open").mockImplementation(async (...args) => {
+			if (armed) {
+				armed = false;
+				second = await review({ planner: plan, prober: probing(failing) }, { fake });
+				expect((await second.run).verdict.blocking).toBe(true);
+				const owner = (await reviewer.root(backgroundContext)).id;
+				verification = (await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]?.verification
+					?.task;
+			}
+			return open(...args);
+		});
+		onTestFinished(() => spy.mockRestore());
+		await expect(replaced.run).rejects.toMatchObject({ code: "superseded" });
+		expect(verification).toBeDefined();
+		const owner = (await reviewer.root(backgroundContext)).id;
+		expect((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]?.verification?.task).toBe(
+			verification,
+		);
+	});
+
+	it("keeps a repeat review's restatement link when a review it replaced, with no verifier, reaches the link commit", async () => {
+		const fake = createFakeModels();
+		const ref = fake.ref();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const [root] = (await first.run).verdict.attention();
+		const reviewer = harness!.harness;
+		await recordDismissal({
+			harness: reviewer,
+			revision: first.changeset.revision,
+			id: root!.id,
+			dismissal: { by: "Tal <tal@melian.invalid>", reason: "Only tests call load.", at: "2026-10-04T01:00:00Z" },
+			repoRoot: repo,
+		});
+		writeFiles(repo, { "src/other.ts": "export const other = 1;\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "add other");
+		const at = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
+		// The same defect cited over lines 2 to 3, so its ID differs and only the verifier can call it the same.
+		const restating: ScriptedReply[] = [
+			call("run_probe", { attack: 1, script: failing }),
+			(messages) => {
+				const id = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0";
+				return call("report_finding", { ...finding(id), line: 2, endLine: 3 });
+			},
+			fauxAssistantMessage("Reported 1 finding."),
+		];
+		const same: ScriptedReply = (messages) => {
+			const claims = [...systemPromptOf(messages).matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map(
+				(match) => match[1]!,
+			);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root!.id]: "same" } }]),
+				),
+			);
+		};
+		let second: Awaited<ReturnType<typeof review>> | undefined;
+		let links: Record<string, unknown> | undefined;
+		const wait = reviewer.waitForTask.bind(reviewer);
+		// The first review on the new head waits, once its lens task has finished, until a repeat review has replaced
+		// that task and recorded its link.
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const outcome = await wait(task, context);
+			const owner = (await reviewer.root(context)).id;
+			if (second !== undefined || (await reviewer.snapshot(ReviewIndex, owner, context))?.reviews[at]?.task !== task)
+				return outcome;
+			second = await review(
+				{
+					planner: plan,
+					prober: restating,
+					others: [{ match: "Melian adversarial verifier", replies: [same, same, same, same] }],
+				},
+				{ fake },
+			);
+			await second.run;
+			links = structuredClone((await reviewer.snapshot(FindingsDocument, owner, context))?.inherited?.[at]);
+			return outcome;
+		}) as typeof reviewer.waitForTask;
+		const replaced = await review(
+			{ planner: plan, prober: restating },
+			{
+				fake,
+				config: {
+					models: { heavy: { model: `${ref.provider}/${ref.modelId}` }, verifier: { model: "faux/absent" } },
+				},
+			},
+		);
+		await expect(replaced.run).rejects.toMatchObject({ code: "superseded" });
+		expect(second).toBeDefined();
+		expect(Object.values(links ?? {})).toMatchObject([{ from: root!.id }]);
+		const owner = (await reviewer.root(backgroundContext)).id;
+		expect((await reviewer.snapshot(FindingsDocument, owner, backgroundContext))?.inherited?.[at]).toEqual(links);
 	});
 
 	it("records no verdict for a review whose revision left the index once its lenses finished", async () => {

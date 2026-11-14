@@ -27,7 +27,7 @@ import {
 } from "./lens-tools.ts";
 import { type ClaimProbe, ProbeReruns, probeClaimKey, probeFailed, renderProbeEvidence, rerunKey } from "./probing.ts";
 import { lensExtension } from "./review.ts";
-import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
+import { ReviewIndex, type ReviewIndexState, stillOwns } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
 import {
@@ -307,6 +307,8 @@ export async function startVerification(
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
 	// The identities of the candidates the caller's own waves verified.
 	own: ReadonlySet<string> = new Set(),
+	// The lens task whose findings these are; a review whose lens task another replaced starts no verification.
+	lensTask?: number,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -356,6 +358,7 @@ export async function startVerification(
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[Revision.key(input.revision)];
 		if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
+		if (!stillOwns(known, lensTask)) return undefined;
 		const previous = known?.verification;
 		const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
 		const results =
@@ -441,7 +444,7 @@ export async function startWave(
 	// Once the final verification owns the revision, a wave would clear what it decided.
 	const freshOf = (index: ReviewIndexState | undefined, state: VerificationWavesState | undefined) => {
 		const indexed = index?.reviews[revision];
-		if (indexed?.task !== lensTask || indexed.verification !== undefined) return [];
+		if (!stillOwns(indexed, lensTask) || indexed?.verification !== undefined) return [];
 		const waves = VerificationWaves.of(state, revision, lensTask);
 		return input.candidates.filter(
 			(candidate) =>
