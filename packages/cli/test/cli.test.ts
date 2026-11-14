@@ -333,6 +333,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			"verification.prepare",
 			"adjudication.prepare",
 			"verdict.read",
+			"decision-index",
 			"output",
 		]);
 		expect(

@@ -55,6 +55,10 @@ it.each([false, true])("prints the decision index warning beside the verdict, ne
 	const printed = io.stdout.mock.calls[0]![0];
 	if (json) {
 		expect(JSON.parse(printed)).toMatchObject({ status: "passed", warnings: ["The decision log is long."] });
+		// Reading the index again costs seconds on a long log, so the review's own timing records it.
+		expect(JSON.parse(printed).telemetry.prepare.spans.map(({ name }: { name: string }) => name)).toContain(
+			"decision-index",
+		);
 	} else expect(printed).not.toContain("The decision log is long.");
 });
 
