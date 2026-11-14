@@ -2,7 +2,7 @@
 
 Amends: [suite assertions proved per case](2026-11-14-suite-assertions-proved-per-case.md), who checks that a suite claim's file is a shared suite
 
-The coordinator chose this on 2026-11-14, as its answer on approach on [issue #406](https://github.com/melian-agent/melian/issues/406). It is not a maintainer's ruling.
+The coordinator chose this on 2026-11-14, as its answer on approach on [issue #406](https://github.com/melian-agent/melian/issues/406). It is not a maintainer's ruling. It works within the maintainer's ruling of 2026-11-14 in [the suite-assertions decision](2026-11-14-suite-assertions-proved-per-case.md), that suite rows are listed and read by a reviewer, never run as proof.
 
 ## The problem
 
