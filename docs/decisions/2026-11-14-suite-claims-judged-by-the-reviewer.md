@@ -14,7 +14,13 @@ The coordinator chose this on 2026-11-14, as its answer on approach on [issue #4
 
 - The sampler reads no file to judge a `suite` claim. It accepts one in any file of a version-2 inventory, so long as the claim gives a reason.
 - `--sample` lists every `suite` row apart from the probes, grouped by file and ordered by line, with its reason.
-- The review of record checks, for each `suite` row the sample prints, that its file is a test suite kept under a source folder for other packages to import, and that a deleted-assertion row names a proved neighbour. A `suite` row in production code is a P2 finding.
+- The review of record checks three things for each `suite` row the sample prints:
+  - its file is a test suite kept under a source folder for other packages to import;
+  - its mutant deletes an assertion or changes fixture housekeeping, and nothing else, such as a helper's logic;
+  - for a deleted assertion, the neighbour it names is in the same case, is itself proved, and catches the same promise.
+
+  A row that fails any of the three is a P2 finding, and it owes an ordinary proof.
+- The reviewer's check is [the suite-assertions decision](2026-11-14-suite-assertions-proved-per-case.md)'s rule in full, not a narrower one. Removing the tool's file check changed who checks, and nothing about what is checked.
 - A legacy inventory that holds a `suite` claim is still refused when it parses.
 
 ## What this gives up
