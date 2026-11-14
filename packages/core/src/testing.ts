@@ -118,13 +118,20 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
-		name: "add: refuses an invalid record before any of its batch lands",
+		name: "add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
 		run: (fixture) =>
 			using(fixture, async (subject) => {
 				const store = await subject.open();
 				const valid = envelope("check", "guardrails", {});
-				await assert.rejects(store.add([valid, envelope("unknown", "x", {})]), refusal("unknownKind"));
-				assert.deepEqual(await store.list(changeset), []);
+				const invalid = envelope("not-a-kind", "x", {});
+				const named = (error: unknown) =>
+					refusal("unknownKind")(error) && (error as RecordError).message.includes("not-a-kind");
+				for (let attempt = 0; attempt < 2; attempt++) {
+					await assert.rejects(store.add([valid, invalid]), named);
+					assert.ok((await store.list(changeset)).every((each) => each.kind !== "not-a-kind"));
+				}
+				await store.add([valid]);
+				assert.deepEqual(ids(await store.list(changeset)), idsOf(valid));
 			}),
 	},
 	{

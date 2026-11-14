@@ -130,6 +130,7 @@ const cutOffAnswer = <T>(answer: T, code = "unreachable") =>
 
 let stale: RecordEnvelope[] | undefined;
 let staleCell: RecordCell | undefined;
+let refused: RecordEnvelope[] = [];
 
 const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 	[
@@ -164,12 +165,36 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		},
 	],
 	[
-		"add lands the valid records of a batch before it refuses an invalid one",
-		"add: refuses an invalid record before any of its batch lands",
+		"add resolves past a record it refuses",
+		"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
 		(inner) => ({
 			add: async (records) => {
-				for (const record of records) await inner.add([record]);
+				await inner.add(records).catch(() => undefined);
 			},
+		}),
+	],
+	[
+		"add refuses a record without naming it",
+		"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
+		(inner) => ({
+			add: async (records) => {
+				await inner.add(records).catch((error: RecordError) => {
+					throw new RecordError(error.code, "a record was refused");
+				});
+			},
+		}),
+	],
+	[
+		"list shows a record add refused",
+		"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
+		(inner) => ({
+			add: async (records) => {
+				await inner.add(records).catch((error) => {
+					refused.push(...records.filter((record) => record.kind === "not-a-kind"));
+					throw error;
+				});
+			},
+			list: async (name) => [...(await inner.list(name)), ...refused.filter((record) => record.changeset === name)],
 		}),
 	],
 	[
@@ -646,6 +671,7 @@ function hash(value: string): string {
 describe("each conformance case fails against an adapter that breaks its promise", () => {
 	beforeEach(() => {
 		stale = undefined;
+		refused = [];
 		staleCell = undefined;
 	});
 
