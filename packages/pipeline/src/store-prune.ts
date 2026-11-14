@@ -9,7 +9,6 @@ export const unreadableGraphAgeDays = 1;
 export const mutationAgeDays = 14;
 const entryLimit = 1024 * 1024;
 const key = /^[0-9a-f]{64}$/;
-const objectName = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 /** What kind of rebuildable cache a removal takes, as the store retention decision names it. */
 export type PruneKind = "graph" | "unreadable graph" | "orphan coverage" | "mutation partition" | "unpinned tool";
@@ -43,9 +42,7 @@ function git(repoRoot: string, env: NodeJS.ProcessEnv, args: readonly string[], 
 					? done(stdout)
 					: fail(new StorePruneError("gitFailed", `git ${args[0]} failed: ${stderr.trim() || error.message}`)),
 		);
-		// git may exit before reading its input, as it does outside a repository; the callback reports that.
-		child.stdin?.on("error", () => {});
-		child.stdin?.end(input ?? "");
+		child.stdin!.end(input);
 	});
 }
 
@@ -59,35 +56,27 @@ function alive(pid: number): boolean {
 }
 
 async function worktrees(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Worktrees> {
-	const heads: string[] = [];
+	const output = await git(repoRoot, env, ["worktree", "list", "--porcelain", "-z"]);
+	const heads = [...output.matchAll(/\0HEAD ([0-9a-f]+)/g)].map((match) => match[1]!);
 	const live: LiveRun[] = [];
-	for (const record of (await git(repoRoot, env, ["worktree", "list", "--porcelain", "-z"])).split("\0\0")) {
-		const fields = record.split("\0");
-		const path = fields.find((field) => field.startsWith("worktree "))?.slice("worktree ".length) ?? "";
-		const head = fields.find((field) => field.startsWith("HEAD "))?.slice("HEAD ".length);
-		if (head !== undefined && objectName.test(head)) heads.push(head);
-		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
-		const pid = Number(/^melian-static pid (\d+)$/.exec(lock)?.[1] ?? 0);
+	for (const record of output.split("\0\0")) {
+		const pid = Number(/\0locked melian-static pid (\d+)(?:\0|$)/.exec(record)?.[1]);
 		// Never pid 0 or 1: a signal to 0 asks about this process's own group, and a lock naming either is no run's.
-		if (pid > 1 && alive(pid)) live.push({ pid, worktree: path });
+		if (pid > 1 && alive(pid)) live.push({ pid, worktree: record.slice("worktree ".length, record.indexOf("\0")) });
 	}
 	return { heads, live };
 }
 
-// Refs under refs/melian/pull/ are left out on purpose: they outlive a merge.
+// Refs under refs/melian/pull/ are left out on purpose: they outlive a merge. A line git cannot resolve names no tree.
 async function liveTrees(repoRoot: string, env: NodeJS.ProcessEnv, heads: readonly string[]): Promise<Set<string>> {
-	const refs = (await git(repoRoot, env, ["for-each-ref", "--format=%(objectname)", "refs/heads", "refs/remotes"]))
-		.split("\n")
-		.filter((line) => objectName.test(line));
-	const commits = [...new Set([...refs, ...heads])];
-	if (commits.length === 0) return new Set();
-	const trees = await git(
-		repoRoot,
-		env,
-		["cat-file", "--batch-check=%(objectname)"],
-		commits.map((commit) => `${commit}^{tree}\n`).join(""),
-	);
-	return new Set(trees.split("\n").filter((line) => objectName.test(line)));
+	const refs = await git(repoRoot, env, [
+		"for-each-ref",
+		"--format=%(objectname)^{tree}",
+		"refs/heads",
+		"refs/remotes",
+	]);
+	const commits = refs + heads.map((head) => `${head}^{tree}\n`).join("");
+	return new Set((await git(repoRoot, env, ["cat-file", "--batch-check=%(objectname)"], commits)).split("\n"));
 }
 
 type Node = { name: string; path: string; directory: boolean; link: boolean };
@@ -100,7 +89,7 @@ async function children(path: string): Promise<Node[]> {
 		throw error;
 	}
 	return (await readdir(path, { withFileTypes: true }))
-		.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+		.sort((a, b) => (a.name < b.name ? -1 : 1))
 		.map((entry) => ({
 			name: entry.name,
 			path: join(path, entry.name),
