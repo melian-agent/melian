@@ -1035,7 +1035,16 @@ describe("a level that probes", () => {
 		});
 		// The first review's planner waits until the second review has chosen, so the first run is live throughout.
 		const first = await review(
-			{ planner: [async () => (await held, plan[0]!), ...plan.slice(1)], prober: probing(failing) },
+			{
+				planner: [
+					async () => {
+						await held;
+						return plan[0]!;
+					},
+					...plan.slice(1),
+				],
+				prober: probing(failing),
+			},
 			{ fake },
 		);
 		const firstDone = first.run.catch(() => undefined);
