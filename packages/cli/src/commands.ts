@@ -47,6 +47,7 @@ import {
 	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
+import { DecisionIndexWarning } from "./decision-index.ts";
 import {
 	decisionProviderRefusal,
 	type fallbackDecider,
@@ -382,8 +383,9 @@ export async function review(
 			});
 		};
 		let verdict: Verdict;
+		let decisionIndexWarning: string | undefined;
 		try {
-			({ verdict } = await reviewChangeset({
+			({ verdict, decisionIndexWarning } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -407,17 +409,21 @@ export async function review(
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
+			decisionIndexWarning = error.decisionIndexWarning;
 		}
 		summarize();
 		spans.end();
 		await walkthrough;
+		const indexWarning = DecisionIndexWarning.from(decisionIndexWarning, [...(verdict.ran ?? []), ...verdict.notRun]);
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
+		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
+		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
 		io.stdout(
 			options.json
-				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.report() }, null, 2)}\n`
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`
 				: outcome.render(
 						io.color,
 						await terminalEmoji(io, repoRoot),

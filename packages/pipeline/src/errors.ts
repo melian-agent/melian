@@ -94,6 +94,8 @@ export class ReviewError extends Error {
 	readonly models: readonly string[];
 	readonly findings: readonly Finding[];
 	readonly verdict?: Verdict;
+	/** The review's long-log warning for the decision index, for a review that failed after giving a reviewer the index. */
+	readonly decisionIndexWarning?: string;
 
 	constructor(
 		code: ReviewErrorCode,
@@ -103,6 +105,7 @@ export class ReviewError extends Error {
 			models?: readonly string[];
 			findings?: readonly Finding[];
 			verdict?: Verdict;
+			decisionIndexWarning?: string;
 			cause?: unknown;
 		},
 	) {
@@ -113,6 +116,7 @@ export class ReviewError extends Error {
 		this.models = options.models ?? [];
 		this.findings = options.findings ?? [];
 		if (options.verdict !== undefined) this.verdict = options.verdict;
+		if (options.decisionIndexWarning !== undefined) this.decisionIndexWarning = options.decisionIndexWarning;
 	}
 }
 

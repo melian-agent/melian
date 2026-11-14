@@ -58,8 +58,8 @@ export class DecisionFile {
 	}
 }
 
-/** Prompt bounds apply after the complete base graph has been resolved. */
-export const decisionIndexLimits = { bytes: 64 * 1024 } as const;
+/** Past this many bytes of rendered index, a review warns that the decision log is long. Nothing refuses it. */
+export const decisionIndexWarning = { bytes: 64 * 1024 } as const;
 
 /** All decisions at one revision, with superseded decisions kept as history. */
 export class DecisionFiles {
@@ -142,7 +142,7 @@ export class DecisionFiles {
 		return this.#files;
 	}
 
-	/** Renders every path and title, refusing an index beyond its byte bound. */
+	/** Renders every path and title, at any size. */
 	render(): string {
 		const rows = this.#files.map((file) => {
 			const successors = this.#successors.get(file.path);
@@ -151,15 +151,23 @@ export class DecisionFiles {
 			const status = successors === undefined ? active : `INACTIVE; superseded by ${successors.join(", ")}`;
 			return visibleText(`[${status}] ${file.path} — ${file.title}`);
 		});
-		const rendered = [
+		return [
 			...rows,
 			...(this.#amendments.size === 0 ? [] : ["Read both files; where they conflict, the amendment wins."]),
 		].join("\n");
-		if (Buffer.byteLength(rendered, "utf8") > decisionIndexLimits.bytes)
-			throw new DecisionFilesError(
-				"incomplete",
-				`Decision index exceeds ${decisionIndexLimits.bytes} bytes; ${rows.length} decisions omitted; review refused`,
-			);
-		return rendered;
+	}
+
+	/** Says the decision log is long and how to compact it, once the rendered index passes {@link decisionIndexWarning}. */
+	warning(): string | undefined {
+		const bytes = Buffer.byteLength(this.render(), "utf8");
+		if (bytes <= decisionIndexWarning.bytes) return undefined;
+		const count = `${this.#files.length} decision${this.#files.length === 1 ? "" : "s"}`;
+		return [
+			`The decision log is long: its index is ${bytes} bytes for ${count}, past ${decisionIndexWarning.bytes / 1024} KiB.`,
+			"The design lens and its verifier read the index whole, so it costs tokens and can dilute a reviewer's attention.",
+			"Compact the decision log: fold amendments into the decisions they amend, merge decisions that belong together, and delete superseded decisions with the Supersedes lines that name them; git history keeps what you delete.",
+			"Superseding a decision does not shorten the index, since inactive decisions are still listed.",
+			"See https://github.com/melian-agent/melian/blob/main/docs/guidelines/decisions.md#compacting-the-decision-log.",
+		].join(" ");
 	}
 }

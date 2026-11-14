@@ -50,7 +50,15 @@ const rowSchema = Type.Object(
 	strict,
 );
 const unmutated = Type.Array(Type.Object({ file: text, reason: text }, strict));
-const counts = { total: coordinate, omitted: coordinate, unmutated };
+const counts = {
+	total: coordinate,
+	omitted: coordinate,
+	unmutated,
+	// The files whose rows owe a claim, in an inventory that still lists the whole range.
+	claimsIn: Type.Optional(Type.Array(text, { minItems: 1 })),
+	// The files a listing was filtered to, for reading: such an inventory is never complete.
+	limitedTo: Type.Optional(Type.Array(text, { minItems: 1 })),
+};
 const inventorySchema = Type.Object(
 	{
 		melianMutants: Type.Literal(2),
@@ -247,6 +255,25 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			if (ids.has(id)) throw new MutationInventoryError("duplicateIdentity", `duplicate mutant identity: ${id}`);
 			ids.add(id);
 		}
+		for (const [field, paths] of [
+			["claimsIn", state.claimsIn],
+			["limitedTo", state.limitedTo],
+		] as const) {
+			if (paths === undefined) continue;
+			for (const path of paths) requireRepositoryPath(path);
+			if (new Set(paths).size !== paths.length)
+				throw new MutationInventoryError("invalidInventory", `the inventory's ${field} names one file twice`);
+		}
+		const limitedTo = state.limitedTo;
+		const outside =
+			limitedTo === undefined
+				? undefined
+				: [...state.mutants, ...state.unmutated].find((entry) => !limitedTo.includes(entry.file));
+		if (outside !== undefined)
+			throw new MutationInventoryError(
+				"invalidInventory",
+				`${JSON.stringify(outside.file)} is outside the files the listing was limited to`,
+			);
 		if (state.melianMutants === 2) {
 			for (const { file } of state.unmutated) requireRepositoryPath(file);
 			if (state.mutants.length > 0 && state.adapters.length === 0)
@@ -325,8 +352,8 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			this.#state.melianMutants === 2
 				? {
 						ignored: {
-							config: this.#state.mutants.filter((row) => row.ignoredBy === "config"),
-							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment"),
+							config: this.#state.mutants.filter((row) => row.ignoredBy === "config" && this.#owes(row.file)),
+							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment" && this.#owes(row.file)),
 						},
 					}
 				: {};
@@ -397,13 +424,28 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			),
 			"",
 			`${state.mutants.length} of ${state.total} mutants; ${state.omitted} omitted`,
+			...(
+				[
+					["claims owed in", state.claimsIn],
+					["limited to", state.limitedTo],
+				] as const
+			).flatMap(([label, paths]) =>
+				paths === undefined
+					? []
+					: [`${label} ${paths.map((path) => visibleText(JSON.stringify(path))).join(", ")}`],
+			),
 		].join("\n");
 	}
 
+	#owes(file: string): boolean {
+		return this.#state.claimsIn === undefined || this.#state.claimsIn.includes(file);
+	}
+
 	#probes() {
-		return this.#state.melianMutants === 2
-			? this.#state.mutants.filter((row) => row.status === "generated")
-			: this.#state.mutants;
+		const state = this.#state;
+		const rows: (MutationInventoryRow | LegacyMutationInventory["mutants"][number])[] =
+			state.melianMutants === 2 ? state.mutants.filter((row) => row.status === "generated") : state.mutants;
+		return rows.filter((row) => this.#owes(row.file));
 	}
 
 	#requireClassified(): void {
@@ -411,6 +453,17 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			throw new MutationInventoryError(
 				"incompleteInventory",
 				"sampling and verification require a complete inventory with no omitted mutants",
+			);
+		if (this.#state.limitedTo !== undefined)
+			throw new MutationInventoryError(
+				"incompleteInventory",
+				"a listing limited to some files is for reading; sample the whole range's inventory, with --claims-in to name the files that owe claims",
+			);
+		const empty = this.#state.claimsIn?.find((file) => !this.#state.mutants.some((row) => row.file === file));
+		if (empty !== undefined)
+			throw new MutationInventoryError(
+				"invalidInventory",
+				`${JSON.stringify(empty)} owes claims but has no mutant in this inventory, so nothing would prove it`,
 			);
 		for (const row of this.#probes()) {
 			if (row.claim === undefined)
