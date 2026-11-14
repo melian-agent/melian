@@ -160,6 +160,14 @@ describe("a round's manifest", () => {
 		expect(SharedRecord.parse(round(full)).manifest()).toEqual(full);
 	});
 
+	it.each(["dismissal", "post", "status", "ledger-comment", "comparison"])(
+		"takes a read entry naming a %s, a kind that supersedes",
+		(kind) => {
+			const read = { ...manifest, read: [{ ...named, kind }] };
+			expect(SharedRecord.parse(round(read)).manifest()).toEqual(read);
+		},
+	);
+
 	it.each([
 		["a payload that is not an object", null],
 		["a missing field", { read: [], walkthrough: null, replaces: [] }],
