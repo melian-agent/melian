@@ -59,14 +59,16 @@ describe("RecordSet", () => {
 	it("counts the record a trust predicate accepts and sets aside the one it rejects", () => {
 		const kept = post({ n: 1 });
 		const refused = post({ n: 2 });
-		const set = RecordSet.of([kept, refused], { counts: (each) => each.id === kept.id });
+		const set = RecordSet.of([kept, refused], { counts: (each) => each.id === kept.id, payloads: testPayloads });
 		expect(ids(set.records())).toEqual([kept.id]);
 	});
 
 	it("holds each record once, in ID order, whatever order and repeats it was given", () => {
 		const a = post({ n: 1 });
 		const b = post({ n: 2 });
-		expect(ids(RecordSet.of([b, a, b, a], { counts: everyRecordCounts }).records())).toEqual(sorted([a, b]));
+		expect(ids(RecordSet.of([b, a, b, a], { counts: everyRecordCounts, payloads: testPayloads }).records())).toEqual(
+			sorted([a, b]),
+		);
 	});
 
 	it("reads envelopes as well as records", () => {
@@ -80,7 +82,7 @@ describe("RecordSet", () => {
 		it("sets aside a record another in its slot supersedes", () => {
 			const first = post({ n: 1 });
 			const second = post({ n: 2 }, [first]);
-			const set = RecordSet.of([second, first], { counts: everyRecordCounts });
+			const set = RecordSet.of([second, first], { counts: everyRecordCounts, payloads: testPayloads });
 			expect(set.superseded(first)).toBe(true);
 			expect(set.superseded(second)).toBe(false);
 			expect(ids(set.unsuperseded())).toEqual([second.id]);
@@ -89,8 +91,12 @@ describe("RecordSet", () => {
 		it("has no effect while its target is not in the set, and applies once it lands", () => {
 			const first = post({ n: 1 });
 			const second = post({ n: 2 }, [first]);
-			expect(ids(RecordSet.of([second], { counts: everyRecordCounts }).unsuperseded())).toEqual([second.id]);
-			expect(ids(RecordSet.of([second, first], { counts: everyRecordCounts }).unsuperseded())).toEqual([second.id]);
+			expect(
+				ids(RecordSet.of([second], { counts: everyRecordCounts, payloads: testPayloads }).unsuperseded()),
+			).toEqual([second.id]);
+			expect(
+				ids(RecordSet.of([second, first], { counts: everyRecordCounts, payloads: testPayloads }).unsuperseded()),
+			).toEqual([second.id]);
 		});
 
 		it.each([
@@ -100,44 +106,61 @@ describe("RecordSet", () => {
 		])("does not reach a record of another %s", (_name, fields) => {
 			const target = post({ n: 1 }, undefined, fields);
 			const superseding = post({ n: 2 }, [target]);
-			expect(sorted(RecordSet.of([target, superseding], { counts: everyRecordCounts }).unsuperseded())).toEqual(
-				sorted([target, superseding]),
-			);
+			expect(
+				sorted(
+					RecordSet.of([target, superseding], {
+						counts: everyRecordCounts,
+						payloads: testPayloads,
+					}).unsuperseded(),
+				),
+			).toEqual(sorted([target, superseding]));
 		});
 
 		it("reaches a record of another revision in its slot", () => {
 			const target = post({ n: 1 }, undefined, { revision });
 			const superseding = post({ n: 2 }, [target], { revision: later });
-			expect(ids(RecordSet.of([target, superseding], { counts: everyRecordCounts }).unsuperseded())).toEqual([
-				superseding.id,
-			]);
+			expect(
+				ids(
+					RecordSet.of([target, superseding], {
+						counts: everyRecordCounts,
+						payloads: testPayloads,
+					}).unsuperseded(),
+				),
+			).toEqual([superseding.id]);
 		});
 
 		it("keeps applying a superseded record's own supersedes", () => {
 			const first = post({ n: 1 });
 			const second = post({ n: 2 }, [first]);
 			const third = post({ n: 3 }, [second]);
-			expect(ids(RecordSet.of([first, third, second], { counts: everyRecordCounts }).unsuperseded())).toEqual([
-				third.id,
-			]);
-			expect(sorted(RecordSet.of([first, third], { counts: everyRecordCounts }).unsuperseded())).toEqual(
-				sorted([first, third]),
-			);
+			expect(
+				ids(
+					RecordSet.of([first, third, second], {
+						counts: everyRecordCounts,
+						payloads: testPayloads,
+					}).unsuperseded(),
+				),
+			).toEqual([third.id]);
+			expect(
+				sorted(RecordSet.of([first, third], { counts: everyRecordCounts, payloads: testPayloads }).unsuperseded()),
+			).toEqual(sorted([first, third]));
 		});
 
 		it("lets two records stand when each supersedes only an earlier one", () => {
 			const first = post({ n: 1 });
 			const left = post({ n: 2 }, [first]);
 			const right = post({ n: 3 }, [first]);
-			expect(sorted(RecordSet.of([first, left, right], { counts: everyRecordCounts }).unsuperseded())).toEqual(
-				sorted([left, right]),
-			);
+			expect(
+				sorted(
+					RecordSet.of([first, left, right], { counts: everyRecordCounts, payloads: testPayloads }).unsuperseded(),
+				),
+			).toEqual(sorted([left, right]));
 		});
 
 		it("lets a record that does not count supersede nothing", () => {
 			const first = post({ n: 1 });
 			const forged = post({ n: 2 }, [first]);
-			const set = RecordSet.of([first, forged], { counts: (each) => each.id !== forged.id });
+			const set = RecordSet.of([first, forged], { counts: (each) => each.id !== forged.id, payloads: testPayloads });
 			expect(ids(set.unsuperseded())).toEqual([first.id]);
 			expect(ids(set.records())).toEqual([first.id]);
 		});
@@ -146,31 +169,46 @@ describe("RecordSet", () => {
 	describe("standing rounds", () => {
 		it("takes a round no other names as replaced", () => {
 			const only = round("1");
-			expect(ids(RecordSet.of([only], { counts: everyRecordCounts }).standingRounds(changeset, revision))).toEqual([
-				only.id,
-			]);
+			expect(
+				ids(
+					RecordSet.of([only], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
+			).toEqual([only.id]);
 		});
 
 		it("drops a round a later round of its revision replaces", () => {
 			const first = round("1");
 			const second = round("2", [first]);
 			expect(
-				ids(RecordSet.of([second, first], { counts: everyRecordCounts }).standingRounds(changeset, revision)),
+				ids(
+					RecordSet.of([second, first], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
 			).toEqual([second.id]);
 		});
 
 		it("keeps two rounds that stand together, in ID order", () => {
 			const a = round("a");
 			const b = round("b");
-			expect(ids(RecordSet.of([b, a], { counts: everyRecordCounts }).standingRounds(changeset, revision))).toEqual(
-				sorted([a, b]),
-			);
+			expect(
+				ids(
+					RecordSet.of([b, a], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
+			).toEqual(sorted([a, b]));
 		});
 
 		it("answers for the revision asked about only", () => {
 			const here = round("1");
 			const there = round("2", [], later);
-			const set = RecordSet.of([here, there], { counts: everyRecordCounts });
+			const set = RecordSet.of([here, there], { counts: everyRecordCounts, payloads: testPayloads });
 			expect(ids(set.standingRounds(changeset, revision))).toEqual([here.id]);
 			expect(ids(set.standingRounds(changeset, later))).toEqual([there.id]);
 			expect(set.standingRounds(changeset, `${"d".repeat(40)}..${"e".repeat(40)}`)).toEqual([]);
@@ -180,14 +218,19 @@ describe("RecordSet", () => {
 			const first = round("1");
 			const elsewhere = round("2", [first], later);
 			expect(
-				ids(RecordSet.of([first, elsewhere], { counts: everyRecordCounts }).standingRounds(changeset, revision)),
+				ids(
+					RecordSet.of([first, elsewhere], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
 			).toEqual([first.id]);
 		});
 
 		it("answers for the changeset asked about only, and ignores another changeset's replacement", () => {
 			const first = round("1");
 			const elsewhere = round("2", [first], revision, { changeset: "pull-fedcba9876543210" });
-			const set = RecordSet.of([first, elsewhere], { counts: everyRecordCounts });
+			const set = RecordSet.of([first, elsewhere], { counts: everyRecordCounts, payloads: testPayloads });
 			expect(ids(set.standingRounds(changeset, revision))).toEqual([first.id]);
 			expect(ids(set.standingRounds("pull-fedcba9876543210", revision))).toEqual([elsewhere.id]);
 		});
@@ -198,7 +241,10 @@ describe("RecordSet", () => {
 			const third = round("3", [second]);
 			expect(
 				ids(
-					RecordSet.of([third, first, second], { counts: everyRecordCounts }).standingRounds(changeset, revision),
+					RecordSet.of([third, first, second], {
+						counts: everyRecordCounts,
+						payloads: testPayloads,
+					}).standingRounds(changeset, revision),
 				),
 			).toEqual([third.id]);
 		});
@@ -206,7 +252,10 @@ describe("RecordSet", () => {
 		it("lets only a round that counts replace another", () => {
 			const trusted = round("trusted");
 			const forged = round("forged", [trusted]);
-			const set = RecordSet.of([trusted, forged], { counts: (each) => each.id !== forged.id });
+			const set = RecordSet.of([trusted, forged], {
+				counts: (each) => each.id !== forged.id,
+				payloads: testPayloads,
+			});
 			expect(ids(set.standingRounds(changeset, revision))).toEqual([trusted.id]);
 		});
 
@@ -214,7 +263,12 @@ describe("RecordSet", () => {
 			const only = round("1");
 			const status = post({ n: 1 }, undefined, { kind: "status", revision });
 			expect(
-				ids(RecordSet.of([only, status], { counts: everyRecordCounts }).standingRounds(changeset, revision)),
+				ids(
+					RecordSet.of([only, status], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
 			).toEqual([only.id]);
 		});
 
@@ -222,7 +276,12 @@ describe("RecordSet", () => {
 			const first = round("1");
 			const pointer = post({ replaces: [first.id] });
 			expect(
-				ids(RecordSet.of([first, pointer], { counts: everyRecordCounts }).standingRounds(changeset, revision)),
+				ids(
+					RecordSet.of([first, pointer], { counts: everyRecordCounts, payloads: testPayloads }).standingRounds(
+						changeset,
+						revision,
+					),
+				),
 			).toEqual([first.id]);
 		});
 	});
@@ -263,7 +322,7 @@ describe("RecordSet", () => {
 		const all = [r1, r2, r3, r4, r5, r6, p1, p2, p3, p4, s1, s2];
 
 		function answers(records: SharedRecord[]) {
-			const set = RecordSet.of(records, { counts: everyRecordCounts });
+			const set = RecordSet.of(records, { counts: everyRecordCounts, payloads: testPayloads });
 			return {
 				standing: ids(set.standingRounds(changeset, revision)),
 				later: ids(set.standingRounds(changeset, later)),

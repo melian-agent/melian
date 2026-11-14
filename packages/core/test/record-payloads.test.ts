@@ -1,4 +1,12 @@
-import { everyRecordCounts, type RecordEnvelope, RecordError, RecordSet, SharedRecord } from "@melian-agent/core";
+import {
+	everyRecordCounts,
+	type RecordEnvelope,
+	RecordError,
+	type RecordJson,
+	RecordSet,
+	SharedRecord,
+} from "@melian-agent/core";
+import { testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const changeset = "pull-0123456789abcdef";
@@ -26,6 +34,22 @@ describe("the round 3 findings on pull request #399", () => {
 		expect(refusal(() => SharedRecord.parse(target)).code).toBe("unvalidatedKind");
 	});
 
+	it("checks a record it is handed parsed under the set's own payload checks (e38e73c0c0a263dc)", () => {
+		const strict = {
+			dismissal: (payload: RecordJson) => ("by" in (payload as object) ? undefined : "names no dismisser"),
+		};
+		const good = SharedRecord.parse(
+			{ v: 1, changeset, kind: "dismissal", key: "finding-1", payload: { by: "maintainer" } },
+			strict,
+		);
+		const bad = SharedRecord.parse(
+			{ v: 1, changeset, kind: "dismissal", key: "finding-1", supersedes: [good.id], payload: {} },
+			{ dismissal: () => undefined },
+		);
+		const error = refusal(() => RecordSet.of([good, bad], { counts: everyRecordCounts, payloads: strict }));
+		expect(error.message).toBe("a dismissal record's payload names no dismisser");
+	});
+
 	it("refuses a round that names no manifest, so it cannot stand (689b374ee71f2b03)", () => {
 		const round: RecordEnvelope = {
 			v: 1,
@@ -36,7 +60,7 @@ describe("the round 3 findings on pull request #399", () => {
 			payload: { replaces: [] },
 		};
 		expect(refusal(() => SharedRecord.parse(round)).code).toBe("invalidRecord");
-		expect(() => RecordSet.of([round], { counts: everyRecordCounts })).toThrow(RecordError);
+		expect(() => RecordSet.of([round], { counts: everyRecordCounts, payloads: testPayloads })).toThrow(RecordError);
 	});
 });
 
@@ -221,12 +245,18 @@ describe("RecordSet.missing", () => {
 
 	it("names nothing when the set holds every record the round names", () => {
 		const { check, lens, walkthrough, round } = fixture();
-		expect(RecordSet.of([round, check, lens, walkthrough], { counts: everyRecordCounts }).missing(round)).toEqual([]);
+		expect(
+			RecordSet.of([round, check, lens, walkthrough], { counts: everyRecordCounts, payloads: testPayloads }).missing(
+				round,
+			),
+		).toEqual([]);
 	});
 
 	it("names each record the set lacks, its walkthrough included", () => {
 		const { check, lens, walkthrough, round } = fixture();
-		expect(RecordSet.of([round, check], { counts: everyRecordCounts }).missing(round)).toEqual([
+		expect(
+			RecordSet.of([round, check], { counts: everyRecordCounts, payloads: testPayloads }).missing(round),
+		).toEqual([
 			{ kind: "lens", key: "correctness", id: lens.id },
 			{ kind: "walkthrough", key: "w", id: walkthrough.id },
 		]);
@@ -239,15 +269,20 @@ describe("RecordSet.missing", () => {
 		const { lens } = fixture();
 		const named = { ...fields, id: lens.id };
 		const odd = parse({ kind: "round", key: "r2", revision, payload: { ...manifest, read: [named] } });
-		expect(RecordSet.of([odd, lens], { counts: everyRecordCounts }).missing(odd)).toEqual([named]);
+		expect(RecordSet.of([odd, lens], { counts: everyRecordCounts, payloads: testPayloads }).missing(odd)).toEqual([
+			named,
+		]);
 	});
 
 	it("counts a record of the same kind and key but another ID as missing", () => {
 		const { check, lens, walkthrough, round } = fixture();
 		const rerun = parse({ kind: "lens", key: "correctness", payload: { again: true } });
-		expect(RecordSet.of([round, check, rerun, walkthrough], { counts: everyRecordCounts }).missing(round)).toEqual([
-			{ kind: "lens", key: "correctness", id: lens.id },
-		]);
+		expect(
+			RecordSet.of([round, check, rerun, walkthrough], {
+				counts: everyRecordCounts,
+				payloads: testPayloads,
+			}).missing(round),
+		).toEqual([{ kind: "lens", key: "correctness", id: lens.id }]);
 	});
 
 	it("counts a record of another changeset as missing", () => {
@@ -255,11 +290,13 @@ describe("RecordSet.missing", () => {
 		const elsewhere = SharedRecord.parse({ ...lens.toJSON(), changeset: "pull-fedcba9876543210" }, payloads);
 		const named = { kind: "lens", key: "correctness", id: elsewhere.id };
 		const odd = parse({ kind: "round", key: "r3", revision, payload: { ...manifest, read: [named] } });
-		expect(RecordSet.of([odd, elsewhere], { counts: everyRecordCounts }).missing(odd)).toEqual([named]);
+		expect(
+			RecordSet.of([odd, elsewhere], { counts: everyRecordCounts, payloads: testPayloads }).missing(odd),
+		).toEqual([named]);
 	});
 
 	it("names nothing for a record that is no round", () => {
 		const { check } = fixture();
-		expect(RecordSet.of([check], { counts: everyRecordCounts }).missing(check)).toEqual([]);
+		expect(RecordSet.of([check], { counts: everyRecordCounts, payloads: testPayloads }).missing(check)).toEqual([]);
 	});
 });

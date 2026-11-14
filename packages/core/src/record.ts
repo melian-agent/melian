@@ -323,7 +323,8 @@ export class RecordSet {
 	}
 
 	/**
-	 * The set of `records`, each once. `counts` is required, so no caller trusts a store by leaving it out. A record for
+	 * The set of `records`, each once, each checked under `payloads` even when it was parsed before, so a record a looser
+	 * check accepted cannot enter. `counts` is required, so no caller trusts a store by leaving it out. A record for
 	 * which `counts` is false, such as one a pinned key did not sign, is set aside before every other rule: it supersedes
 	 * nothing, replaces nothing, and stands nowhere.
 	 */
@@ -339,7 +340,7 @@ export class RecordSet {
 			);
 		const byId = new Map<string, SharedRecord>();
 		for (const each of records) {
-			const record = each instanceof SharedRecord ? each : SharedRecord.parse(each, options.payloads);
+			const record = SharedRecord.parse(each instanceof SharedRecord ? each.toJSON() : each, options.payloads);
 			if (counts(record)) byId.set(record.id, record);
 		}
 		return new RecordSet([...byId.values()].sort((a, b) => (a.id < b.id ? -1 : 1)));
