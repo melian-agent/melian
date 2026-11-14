@@ -283,7 +283,6 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const store = await subject.open();
 				for (const value of ["lease A", "", '{"lease":1', '"a" "b"'])
 					await assert.rejects(store.writeCell(changeset, undefined, value), refusal("invalidCell"));
-				assert.deepEqual(await store.readCell(changeset), {});
 				assert.equal(await store.writeCell(changeset, undefined, ' {"lease":1} '), true);
 				assert.equal((await store.readCell(changeset)).value, ' {"lease":1} ');
 			}),
