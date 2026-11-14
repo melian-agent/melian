@@ -68,7 +68,8 @@ it.each(["ran", "ended"] as const)("projects recorded checks without conversatio
 		expect(telemetry.stages[0]).toMatchObject({ task: id, name: "melian.adjudication" });
 		expect(telemetry.toJSON().stages).toEqual(telemetry.stages);
 		expect(telemetry.runDetails().stages.slice(1)).toEqual([
-			{ name: "lens alpha", level: "careful", models: [], outcome: "failed", usageIncomplete: true },
+			// It failed before it opened a conversation, so it sent no request; the checks recorded as ran stay incomplete.
+			{ name: "lens alpha", level: "careful", models: [], outcome: "failed" },
 			{ name: "verification", models: [], outcome: verifier, usageIncomplete: true },
 			{ name: "check static.tsc", models: [], outcome: "timed-out" },
 			{ name: "check guardrails", models: [], outcome: "provisional" },
