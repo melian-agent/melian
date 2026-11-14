@@ -9,7 +9,7 @@ export class DecisionIndexWarning {
 		this.text = text;
 	}
 
-	/** Adds to the pipeline's `warning`, if any, which of `checks` failed on a request too long for its model. */
+	/** Adds to the pipeline's `warning`, if any, which of `checks` failed on a request too long for the model. */
 	static from(warning: string | undefined, checks: readonly CheckRecord[]): DecisionIndexWarning | undefined {
 		if (warning === undefined) return undefined;
 		const overflowed = checks.filter(
@@ -21,7 +21,7 @@ export class DecisionIndexWarning {
 		if (overflowed.length === 0) return new DecisionIndexWarning(warning);
 		const names = overflowed.map((check) => `\`${check.name}\``).join(" and ");
 		return new DecisionIndexWarning(
-			`${warning} ${names} failed on a request too long for its model, which the decision index's size may explain.`,
+			`${warning} ${names} failed on a request too long for the model, which the decision index's size may explain.`,
 		);
 	}
 }

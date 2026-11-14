@@ -31,9 +31,9 @@ describe("the decision index warning a review gives", () => {
 			[design("failed", overflow), { name: "verifier", status: "failed", reason: overflow } as const],
 			"`lens.design` and `verifier`",
 		],
-	])("says the index may be why %s failed on a request too long for its model", (_name, checks, named) => {
+	])("says the index may be why %s failed on a request too long for the model", (_name, checks, named) => {
 		expect(DecisionIndexWarning.from(long, checks)?.text).toBe(
-			`${long} ${named} failed on a request too long for its model, which the decision index's size may explain.`,
+			`${long} ${named} failed on a request too long for the model, which the decision index's size may explain.`,
 		);
 	});
 
