@@ -171,7 +171,7 @@ describe("mutant sampling", () => {
 		},
 	);
 
-	it("refuses a legacy suite claim, since a legacy inventory records no head", () => {
+	it("refuses a legacy suite claim, since a legacy inventory knows three claims", () => {
 		const suite = mutant(1, {
 			file: "packages/core/src/testing.ts",
 			claim: "suite",
@@ -179,20 +179,20 @@ describe("mutant sampling", () => {
 		});
 		const accepting = { refusal: () => undefined };
 		expect(() => sampleMutants(inventory([mutant(0), suite]), accepting)).toThrow(
-			"suite claim refused: a legacy inventory records no head to read exports at; enumerate again at version 2",
+			"each mutant needs a claim: killed, new-test or equivalent",
 		);
 	});
 
 	it.each([
-		[{ claim: "unknown" }, "each mutant needs a claim: killed, new-test, equivalent or suite"],
-		[{ evidence: " " }, "each claim needs evidence: a named test, or a reason for an equivalent or suite claim"],
+		[{ claim: "unknown" }, "each mutant needs a claim: killed, new-test or equivalent"],
+		[{ evidence: " " }, "each claim needs evidence: a named test or an equivalence reason"],
 	])("refuses a legacy row with its own message: %j", (extra, message) => {
 		expect(() => sampleMutants(inventory([mutant(0, extra)]))).toThrow(new Error(message));
 	});
 
-	it("names the four claims when a legacy mutant has none", () => {
+	it("names the three legacy claims when a legacy mutant has none", () => {
 		expect(() => sampleMutants(inventory([mutant(0, { claim: undefined })]))).toThrow(
-			"each mutant needs a claim: killed, new-test, equivalent or suite",
+			"each mutant needs a claim: killed, new-test or equivalent",
 		);
 	});
 

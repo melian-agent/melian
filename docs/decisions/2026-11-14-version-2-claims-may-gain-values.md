@@ -13,6 +13,7 @@ The maintainer ruled on 2026-11-14, in the coordinator's session, on [pull reque
 - A version-2 inventory's claims may gain values. The version names the shape the enumerator writes, and the enumerator writes no claims, so its output is unchanged.
 - A reader that does not know a claim refuses the whole inventory, and says which claim it does not know. It never reads an unknown claim as a known one, so an older build fails closed. `packages/core/test/mutation-inventory.test.ts` holds this for version 2 and for a legacy inventory.
 - Every other part of the version-2 schema stays as the sampling decision set it.
+- Version 1 keeps its historical validation and its three claims. A legacy inventory that holds `suite` is refused when it parses, with a message to enumerate again, since it records no head to read exports at.
 
 ## What this gives up
 

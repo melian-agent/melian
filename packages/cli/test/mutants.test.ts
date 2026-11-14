@@ -306,7 +306,7 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 					omitted: 0,
 					unmutated: [],
 				},
-				"suite claim refused: a legacy inventory records no head to read exports at",
+				"a legacy inventory takes no suite claim, since it records no head to read exports at",
 			],
 		] as const) {
 			expect(await sample(value)).toBe(1);

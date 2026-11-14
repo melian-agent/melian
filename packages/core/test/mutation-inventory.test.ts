@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-	type LegacyMutationInventory,
 	MutationInventory,
 	MutationInventoryError,
 	type MutationInventoryInput,
@@ -840,20 +839,19 @@ describe("suite claims", () => {
 		).toThrow("each mutant needs a claim: killed, new-test, equivalent or suite");
 	});
 
-	it("refuses a suite claim in a legacy inventory, which records no head to read exports at", async () => {
-		const stored: LegacyMutationInventory = legacy([row(1)]);
-		stored.mutants.push({
+	it("refuses a legacy inventory holding a suite claim when it parses, since it records no head to read exports at", () => {
+		const stored = legacy([row(1)]);
+		(stored.mutants as unknown[]).push({
 			...identity(5, { file: suiteFile }),
 			claim: "suite",
 			evidence: "a neighbour catches it",
 			survivorClasses: [],
 		});
 		stored.total += 1;
-		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
-		expect(() => MutationInventory.parse(stored).sample(suites)).toThrow(
+		expect(() => MutationInventory.parse(stored)).toThrow(
 			new MutationInventoryError(
-				"invalidEvidence",
-				"suite claim refused: a legacy inventory records no head to read exports at; enumerate again at version 2",
+				"invalidInventory",
+				"a legacy inventory takes no suite claim, since it records no head to read exports at; enumerate again at version 2",
 			),
 		);
 		expect(MutationInventory.parse(legacy([row(1)])).sample().selected).toHaveLength(1);

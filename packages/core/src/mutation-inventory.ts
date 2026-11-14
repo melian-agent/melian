@@ -31,12 +31,8 @@ const identity = {
 	mutatorName: text,
 	replacement: Type.String(),
 };
-const claim = Type.Union([
-	Type.Literal("killed"),
-	Type.Literal("new-test"),
-	Type.Literal("equivalent"),
-	Type.Literal("suite"),
-]);
+const legacyClaim = Type.Union([Type.Literal("killed"), Type.Literal("new-test"), Type.Literal("equivalent")]);
+const claim = Type.Union([...legacyClaim.anyOf, Type.Literal("suite")]);
 const reasoned = new Set<string>(["equivalent", "suite"]);
 const classes = Type.Array(Type.Enum(survivorClasses));
 const testIdentity = Type.Object({ file: text, path: Type.Array(text, { minItems: 1 }) }, strict);
@@ -96,7 +92,7 @@ const legacyRowSchema = Type.Object({
 	id: Type.Optional(digest),
 	status: Type.Optional(Type.String()),
 	statusReason: Type.Optional(Type.String()),
-	claim: Type.Optional(claim),
+	claim: Type.Optional(legacyClaim),
 	evidence: Type.Optional(text),
 	survivorClasses: Type.Optional(classes),
 });
@@ -169,11 +165,15 @@ export class MutationInventoryError extends Error {
 }
 
 // Version 2's claims may gain values, so an older build meets one it does not know; it refuses the file, naming it.
-function requireKnownClaims(input: unknown): void {
-	const mutants = typeof input === "object" && input !== null && "mutants" in input ? input.mutants : undefined;
+function requireKnownClaims(mutants: unknown, legacy: boolean): void {
 	if (!Array.isArray(mutants)) return;
 	for (const row of mutants) {
 		const value = typeof row === "object" && row !== null && "claim" in row ? row.claim : undefined;
+		if (legacy && value === "suite")
+			throw new MutationInventoryError(
+				"invalidInventory",
+				"a legacy inventory takes no suite claim, since it records no head to read exports at; enumerate again at version 2",
+			);
 		if (value !== undefined && !Value.Check(claim, value))
 			throw new MutationInventoryError(
 				"invalidInventory",
@@ -220,7 +220,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		const version = "melianMutants" in input ? input.melianMutants : undefined;
 		if (version !== undefined && version !== 1 && version !== 2)
 			throw new MutationInventoryError("unsupportedVersion", "unsupported melianMutants inventory version");
-		requireKnownClaims(input);
+		requireKnownClaims("mutants" in input ? input.mutants : undefined, version !== 2);
 		const schema = version === 2 ? inventorySchema : legacySchema;
 		if (!Value.Check(schema, input))
 			throw new MutationInventoryError(
@@ -276,7 +276,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 
 	/** Derives stable ids for enumerator rows and validates the version-2 document. */
 	static create(input: MutationInventoryInput): MutationInventory<MutationInventoryV2> {
-		requireKnownClaims(input);
+		requireKnownClaims(typeof input === "object" && input !== null ? input.mutants : undefined, false);
 		if (!Value.Check(inputSchema, input))
 			throw new MutationInventoryError(
 				"invalidInventory",
@@ -302,11 +302,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		const suite = all.filter((row) => row.mutant.claim === "suite");
 		for (const { mutant } of suite) {
 			const refusal =
-				this.#state.melianMutants !== 2
-					? "a legacy inventory records no head to read exports at; enumerate again at version 2"
-					: suites === undefined
-						? "no package exports were read to check it against"
-						: suites.refusal(mutant.file);
+				suites === undefined ? "no package exports were read to check it against" : suites.refusal(mutant.file);
 			if (refusal !== undefined)
 				throw new MutationInventoryError("invalidEvidence", `suite claim refused: ${visibleText(refusal)}`);
 		}
