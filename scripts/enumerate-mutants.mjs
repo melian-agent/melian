@@ -16,17 +16,31 @@ export async function enumerateMutants({
 	cwd = process.cwd(),
 	range = "origin/main...HEAD",
 	limit = defaultLimit,
+	claimsIn = [],
 } = {}) {
 	if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("limit must be a non-negative safe integer");
 	const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
 	let output;
 	try {
-		output = execFileSync(process.execPath, [cli, "mutants", "list", range, "--json", "--limit", String(limit)], {
-			cwd,
-			encoding: "utf8",
-			maxBuffer: 512 * 1024 * 1024,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		output = execFileSync(
+			process.execPath,
+			[
+				cli,
+				"mutants",
+				"list",
+				range,
+				...claimsIn.flatMap((file) => ["--claims-in", file]),
+				"--json",
+				"--limit",
+				String(limit),
+			],
+			{
+				cwd,
+				encoding: "utf8",
+				maxBuffer: 512 * 1024 * 1024,
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		);
 	} catch (error) {
 		if (error.code === "ENOBUFS") throw new Error("compatibility output exceeds its 512 MiB buffer; reduce --limit");
 		throw error;
@@ -40,6 +54,7 @@ export async function enumerateMutants({
 		total: inventory.total,
 		omitted: inventory.omitted,
 		unmutated: inventory.unmutated,
+		...(inventory.claimsIn === undefined ? {} : { claimsIn: inventory.claimsIn }),
 	};
 }
 
@@ -74,6 +89,7 @@ async function main() {
 		options: {
 			json: { type: "boolean" },
 			sample: { type: "string" },
+			"claims-in": { type: "string", multiple: true, default: [] },
 			limit: { type: "string", default: String(defaultLimit) },
 			help: { type: "boolean" },
 		},
@@ -81,17 +97,27 @@ async function main() {
 	});
 	if (values.help) {
 		console.log(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--claims-in FILE]... [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\n--claims-in FILE records a file whose mutants owe a claim; the inventory still lists the whole range.\nEach must be a file the range changes. melian mutants list <range> <file>... lists only some files, for reading.\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant, or with --claims-in to every mutant in those files.\n--json writes the legacy format, which takes no suite claim; enumerate with melian mutants list <range> --json --all for one.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', grouped by file, for a reviewer to judge each file and reason.",
 		);
 		return;
 	}
-	if (positionals.length > 1) throw new Error("expected one git range");
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
+		if (values["claims-in"].length !== 0)
+			throw new Error("--sample reads claimsIn from the inventory; pass --claims-in when you list it");
 		console.log(jsonText(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8")))));
 		return;
 	}
-	const result = await enumerateMutants({ range: positionals[0], limit: Number(values.limit) });
+	// This output's unversioned format lets an older sampler ignore limitedTo and accept a filtered listing as whole.
+	if (positionals.length > 1)
+		throw new Error(
+			"to list only some files, run melian mutants list <range> <file>...; this script lists the whole range",
+		);
+	const result = await enumerateMutants({
+		range: positionals[0],
+		claimsIn: values["claims-in"],
+		limit: Number(values.limit),
+	});
 	console.log(values.json ? jsonText(result) : renderTable(result));
 }
 
