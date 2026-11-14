@@ -2076,6 +2076,50 @@ describe("a level that probes", () => {
 		expect(again.requests[planner] ?? []).toHaveLength(0);
 	});
 
+	it("never sends a prober on a tier of its own to a fallback outside that tier's accept list", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }, { id: "backup" }] });
+		const provider = fake.ref("plan").provider;
+		const [planned, accepted, backup] = [`${provider}/plan`, `${provider}/probe`, `${provider}/backup`];
+		const heavy = { model: planned, accept: [planned], acceptOverridden: false as const };
+		// The prober's tier names a fallback its own accept list leaves out.
+		const light = { model: accepted, fallbacks: [backup], accept: [accepted], acceptOverridden: false as const };
+		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const reached: string[] = [];
+		const seen =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				reached.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const { run } = await review(
+			// The prober's first request, on the accepted model, fails as overloaded, the error a route fails over on.
+			{ planner: plan, prober: [overloaded, ...probing(failing)].map(seen) },
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: { models: { heavy, light } },
+				plan: async (config, lenses, models) => {
+					const { catalog, credentials } = await planInputs(models.review);
+					return ReviewPlan.resolve({
+						config,
+						routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+						catalog,
+						credentials,
+						lenses,
+						checks: ["lens.trust-boundary"],
+					});
+				},
+			},
+		);
+		const verdict = await run.then(
+			(done) => done.verdict,
+			(error: unknown) => (error as ReviewError).verdict!,
+		);
+		// The one request the prober made went to its accepted model, and no request reached the fallback.
+		expect(reached).toEqual(["probe"]);
+		expect(record(verdict).status).not.toBe("ran");
+	});
+
 	it("chooses the verifier against the prober's family, which reported the finding, not the planner's", async () => {
 		const fake = createFakeModels({
 			models: [
