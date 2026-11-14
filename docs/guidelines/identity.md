@@ -67,7 +67,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | --- | --- | --- | --- |
 | Lens run key | `pipeline/src/review.ts` | reuses a run's conversation and request IDs | Scope, which reaches it through the lens version |
 | `instructionFingerprint` | `pipeline/src/review.ts` | keeps the lens task a review attaches to | The real nonce. The callers listing and enclosing functions, which are best effort |
-| `selectionOf` | `pipeline/src/review.ts` | attaches a review to its existing lens task | Who set the route, and the credential, by [the run identity decision](../decisions/2026-11-08-lens-run-identity.md) |
+| `selectionOf` | `pipeline/src/review.ts` | attaches a review to its existing lens task | Who set the route, and the credential, by [the run identity decision](../decisions/2026-11-08-lens-run-identity.md). What a probing run's read paths hold, such as a reinstalled `node_modules`, a gap the maintainer accepted on 2026-11-13. Two host facts enter by name: a probing run's environment holds the platform and the sandbox its probes run under, read from that sandbox |
 | Adjudication attach key | `pipeline/src/review.ts` | attaches to an existing adjudication task | Run details, which publication projects |
 | Triage decision key | `pipeline/src/review.ts` | attaches to a recorded triage decision | The state, which carries the nonce |
 | `candidateIdentity` | `pipeline/src/verification.ts` | lets an earlier wave's outcome stand for a candidate | `dismissals`, stored verdicts and the speaker's body |
