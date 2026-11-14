@@ -734,8 +734,8 @@ describe("suite claims", () => {
 		}),
 	};
 	const source = {
+		exists: async (path: string) => (path in files ? "file" : undefined),
 		readText: async (path: string) => files[path],
-		list: async (path: string) => (path === "packages" ? [{ name: "core", kind: "directory" as const }] : undefined),
 	} as unknown as SourceReader;
 
 	it("names the distinct files of its generated suite claims, and no other", () => {
@@ -789,7 +789,7 @@ describe("suite claims", () => {
 		const inventory = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })]));
 		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
 		expect(() => inventory.sample(suites)).toThrow(
-			"suite claim refused: packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
+			"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's ./testing export, packages/core/src/testing.ts",
 		);
 	});
 

@@ -7,8 +7,9 @@ import { openSource, type SourceReader } from "../src/source.ts";
 import { SuiteExports } from "../src/suite-exports.ts";
 
 const testing = { "./testing": { "@melian-agent/source": "./src/testing.ts", default: "./dist/testing.js" } };
+const exported = "packages/core/src/testing.ts";
+const neighbour = "packages/core/src/record.ts";
 const roots: string[] = [];
-const absent = Symbol("absent");
 const gitEnv = {
 	...process.env,
 	GIT_CONFIG_COUNT: "0",
@@ -19,38 +20,35 @@ const gitEnv = {
 	GIT_COMMITTER_EMAIL: "fixture@example.test",
 };
 
-function workspace(packages: Record<string, unknown>, root: unknown = { workspaces: ["packages/*"] }): string {
+// Writes each path's content, a string as it stands and anything else as JSON.
+function repository(files: Record<string, unknown>): string {
 	const dir = mkdtempSync(join(tmpdir(), "melian-suite-exports-"));
 	roots.push(dir);
-	if (root !== absent)
-		writeFileSync(join(dir, "package.json"), typeof root === "string" ? root : JSON.stringify(root));
-	for (const [name, manifest] of Object.entries(packages)) {
-		mkdirSync(join(dir, "packages", name), { recursive: true });
-		if (manifest !== undefined)
-			writeFileSync(
-				join(dir, "packages", name, "package.json"),
-				typeof manifest === "string" ? manifest : JSON.stringify(manifest),
-			);
+	for (const [path, content] of Object.entries(files)) {
+		mkdirSync(join(dir, path, ".."), { recursive: true });
+		writeFileSync(join(dir, path), typeof content === "string" ? content : JSON.stringify(content));
 	}
 	return dir;
 }
 
-// Every file a test here asks about, so a reader that reads only what its files need still answers each.
-const asked = [
-	"packages/core/src/testing.ts",
-	"packages/core/src/record.ts",
-	"packages/cli/src/testing.ts",
-	"packages/core-extra/src/testing.ts",
-	"packages/README.md/x.ts",
-	"packages/pipeline/src/testing.ts",
-	"packages/pipeline/src/harness.ts",
-	"linked/core/src/testing.ts",
-	"scripts/testing.ts",
-	"missing/core/src/testing.ts",
-];
+async function suitesIn(dir: string, files = [exported, neighbour]): Promise<SuiteExports> {
+	return SuiteExports.read(await openSource(dir, { kind: "worktree" }), files);
+}
 
-async function suitesIn(dir: string): Promise<SuiteExports> {
-	return SuiteExports.read(await openSource(dir, { kind: "worktree" }), asked);
+// A source that answers only the paths it holds, and records every question it was asked.
+function recordingSource(files: Record<string, string>) {
+	const calls: string[] = [];
+	const source = {
+		exists: async (path: string) => {
+			calls.push(`exists ${path}`);
+			return path in files ? "file" : undefined;
+		},
+		readText: async (path: string) => {
+			calls.push(`read ${path}`);
+			return files[path];
+		},
+	} as unknown as SourceReader;
+	return { calls, source };
 }
 
 afterEach(() => {
@@ -58,16 +56,73 @@ afterEach(() => {
 });
 
 describe("SuiteExports", () => {
-	it("accepts the file a workspace package exports as ./testing under the source condition", async () => {
-		const suites = await suitesIn(workspace({ core: { exports: testing } }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
+	it("accepts the file a package exports as ./testing under the source condition", async () => {
+		const suites = await suitesIn(repository({ "packages/core/package.json": { exports: testing } }));
+		expect(suites.refusal(exported)).toBeUndefined();
 	});
 
 	it("refuses a neighbouring source file of the same package", async () => {
-		const suites = await suitesIn(workspace({ core: { exports: testing } }));
-		expect(suites.refusal("packages/core/src/record.ts")).toBe(
-			"packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
+		const suites = await suitesIn(repository({ "packages/core/package.json": { exports: testing } }));
+		expect(suites.refusal(neighbour)).toBe(
+			`${neighbour} is not packages/core/package.json's ./testing export, ${exported}`,
 		);
+	});
+
+	it("takes the nearest package.json above the file and never climbs past it", async () => {
+		const dir = repository({
+			"package.json": { exports: { "./testing": { "@melian-agent/source": `./${exported}` } } },
+			"packages/core/package.json": { name: "core" },
+		});
+		expect((await suitesIn(dir)).refusal(exported)).toBe(
+			"packages/core/package.json maps no ./testing export under @melian-agent/source",
+		);
+	});
+
+	it("accepts a file the root package exports, when no nearer package.json sits above it", async () => {
+		const dir = repository({
+			"package.json": { exports: { "./testing": { "@melian-agent/source": `./${exported}` } } },
+		});
+		expect((await suitesIn(dir)).refusal(exported)).toBeUndefined();
+	});
+
+	it("refuses a file with no package.json above it", async () => {
+		expect((await suitesIn(repository({ "README.md": "no packages" }))).refusal(exported)).toBe(
+			`no package.json sits above ${exported}`,
+		);
+	});
+
+	it.each([
+		"/packages/core/src/testing.ts",
+		"../packages/core/src/testing.ts",
+		"./packages/core/src/testing.ts",
+		"packages//core/src/testing.ts",
+		"",
+	])("refuses %j, which is not a path inside the repository, and reads nothing for it", async (file) => {
+		const { calls, source } = recordingSource({ "packages/core/package.json": JSON.stringify({ exports: testing }) });
+		const suites = await SuiteExports.read(source, [file]);
+		expect(suites.refusal(file)).toBe(`${file} is not a path inside the repository`);
+		expect(calls).toEqual([]);
+	});
+
+	it("reads one manifest for two files of one package, and asks only the paths on their way up", async () => {
+		const { calls, source } = recordingSource({ "packages/core/package.json": JSON.stringify({ exports: testing }) });
+		const suites = await SuiteExports.read(source, [exported, neighbour, "packages/core/src/deep/other.ts"]);
+		expect(calls).toEqual([
+			"exists packages/core/src/package.json",
+			"exists packages/core/package.json",
+			"read packages/core/package.json",
+			"exists packages/core/src/deep/package.json",
+		]);
+		expect(suites.refusal(exported)).toBeUndefined();
+		expect(suites.refusal(neighbour)).toMatch(/is not packages\/core\/package\.json's/);
+	});
+
+	it("reads nothing when it is asked about no file", async () => {
+		const { calls, source } = recordingSource({});
+		await SuiteExports.read(source, []);
+		expect(calls).toEqual([]);
+		const suites = await SuiteExports.at(join(tmpdir(), "melian-no-such-repository"), "f".repeat(40), []);
+		expect(suites.refusal(exported)).toBe(`${exported} was not checked against any package's exports`);
 	});
 
 	it.each([
@@ -79,11 +134,16 @@ describe("SuiteExports", () => {
 			"the source condition as a list",
 			{ exports: { "./testing": { "@melian-agent/source": ["./src/testing.ts"] } } },
 		],
+		[
+			"an object nested under the source condition",
+			{ exports: { "./testing": { "@melian-agent/source": { import: "./src/testing.ts" } } } },
+		],
+		["a list of conditions", { exports: { "./testing": [{ "@melian-agent/source": "./src/testing.ts" }] } }],
 		["exports as a string", { exports: "./src/index.ts" }],
-		["a null manifest", null],
+		["a null manifest", "null"],
 	])("refuses a package with %s", async (_name, manifest) => {
-		const suites = await suitesIn(workspace({ core: manifest }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+		const suites = await suitesIn(repository({ "packages/core/package.json": manifest }));
+		expect(suites.refusal(exported)).toBe(
 			"packages/core/package.json maps no ./testing export under @melian-agent/source",
 		);
 	});
@@ -110,12 +170,13 @@ describe("SuiteExports", () => {
 	])(
 		"refuses a ./testing export written as %s, which is not a plain relative path inside the package",
 		async (_name, target) => {
-			const suites = await suitesIn(
-				workspace({ core: { exports: { "./testing": { "@melian-agent/source": target } } } }),
-			);
+			const dir = repository({
+				"packages/core/package.json": { exports: { "./testing": { "@melian-agent/source": target } } },
+			});
 			const reason = `packages/core/package.json maps ./testing to ${JSON.stringify(target)}, which is not a plain relative path inside the package`;
-			expect(suites.refusal("packages/core/src/record.ts")).toBe(reason);
-			expect(suites.refusal("packages/core/src/testing.ts")).toBe(reason);
+			const suites = await suitesIn(dir);
+			expect(suites.refusal(neighbour)).toBe(reason);
+			expect(suites.refusal(exported)).toBe(reason);
 		},
 	);
 
@@ -123,25 +184,14 @@ describe("SuiteExports", () => {
 		"refuses a ./testing export that lists %s before the source condition",
 		async (condition) => {
 			const conditions = { [condition]: "./dist/testing.js", "@melian-agent/source": "./src/testing.ts" };
-			const suites = await suitesIn(workspace({ core: { exports: { "./testing": conditions } } }));
-			expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+			const suites = await suitesIn(
+				repository({ "packages/core/package.json": { exports: { "./testing": conditions } } }),
+			);
+			expect(suites.refusal(exported)).toBe(
 				`packages/core/package.json lists ${condition} before @melian-agent/source under ./testing, and Melian accepts the source condition only as the first key`,
 			);
 		},
 	);
-
-	it.each([
-		[
-			"an object nested under the source condition",
-			{ "./testing": { "@melian-agent/source": { import: "./src/testing.ts" } } },
-		],
-		["a list of conditions", { "./testing": [{ "@melian-agent/source": "./src/testing.ts" }] }],
-	])("refuses a ./testing export written as %s", async (_name, exports) => {
-		const suites = await suitesIn(workspace({ core: { exports } }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
-			"packages/core/package.json maps no ./testing export under @melian-agent/source",
-		);
-	});
 
 	it.each([
 		["a subpath pattern", "./*"],
@@ -149,8 +199,8 @@ describe("SuiteExports", () => {
 		["a key that only starts with a dot", ".testing"],
 	])("refuses exports that hold %s beside ./testing", async (_name, key) => {
 		const exports = { [key]: "./src/other.ts", "./testing": { "@melian-agent/source": "./src/testing.ts" } };
-		const suites = await suitesIn(workspace({ core: { exports } }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+		const suites = await suitesIn(repository({ "packages/core/package.json": { exports } }));
+		expect(suites.refusal(exported)).toBe(
 			`packages/core/package.json's exports hold ${JSON.stringify(key)}, which Melian does not resolve`,
 		);
 	});
@@ -166,28 +216,20 @@ describe("SuiteExports", () => {
 			"./testing": conditions,
 			"./package.json": "./package.json",
 		};
-		const suites = await suitesIn(workspace({ core: { exports } }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
+		const suites = await suitesIn(repository({ "packages/core/package.json": { exports } }));
+		expect(suites.refusal(exported)).toBeUndefined();
 	});
 
 	it("refuses a package whose package.json does not parse, and names why", async () => {
-		const suites = await suitesIn(workspace({ core: "{ not json" }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toMatch(
-			/^cannot read packages\/core\/package\.json: .*JSON/,
-		);
-	});
-
-	it("refuses a package with no package.json", async () => {
-		const suites = await suitesIn(workspace({ core: undefined }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBe("packages/core/package.json does not exist");
+		const suites = await suitesIn(repository({ "packages/core/package.json": "{ not json" }));
+		expect(suites.refusal(exported)).toMatch(/^cannot read packages\/core\/package\.json: .*JSON/);
 	});
 
 	it("refuses a package whose package.json is a symlink", async () => {
-		const dir = workspace({ core: undefined, real: { exports: testing } });
+		const dir = repository({ "packages/real/package.json": { exports: testing } });
+		mkdirSync(join(dir, "packages/core"), { recursive: true });
 		symlinkSync(join(dir, "packages/real/package.json"), join(dir, "packages/core/package.json"));
-		expect((await suitesIn(dir)).refusal("packages/core/src/testing.ts")).toMatch(
-			/^cannot read packages\/core\/package\.json: .*symlink/,
-		);
+		expect((await suitesIn(dir)).refusal(exported)).toMatch(/^cannot read packages\/core\/package\.json: .*symlink/);
 	});
 
 	it.each([
@@ -195,109 +237,30 @@ describe("SuiteExports", () => {
 		[1024 * 1024 + 1, /^cannot read packages\/core\/package\.json: .*1048577 bytes; the limit is 1048576$/],
 	])("reads a package.json of %i bytes against the 1 MiB bound", async (size, reason) => {
 		const text = JSON.stringify({ exports: testing });
-		const suites = await suitesIn(workspace({ core: text + " ".repeat(size - Buffer.byteLength(text)) }));
-		const refusal = suites.refusal("packages/core/src/testing.ts");
+		const suites = await suitesIn(
+			repository({ "packages/core/package.json": text + " ".repeat(size - Buffer.byteLength(text)) }),
+		);
+		const refusal = suites.refusal(exported);
 		if (reason === undefined) expect(refusal).toBeUndefined();
 		else expect(refusal).toMatch(reason);
 	});
 
-	it("keeps each package's answer to itself", async () => {
-		const suites = await suitesIn(workspace({ core: { exports: testing }, cli: { name: "cli" } }));
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
-		expect(suites.refusal("packages/cli/src/testing.ts")).toBe(
-			"packages/cli/package.json maps no ./testing export under @melian-agent/source",
-		);
-	});
-
-	it("refuses a file in no workspace package, including one whose path only starts with a package's name", async () => {
-		const suites = await suitesIn(workspace({ core: { exports: testing } }));
-		expect(suites.refusal("scripts/testing.ts")).toBe("scripts/testing.ts is in no workspace package");
-		expect(suites.refusal("packages/core-extra/src/testing.ts")).toBe(
-			"packages/core-extra/src/testing.ts is in no workspace package",
-		);
-	});
-
-	it("reads a workspace named exactly", async () => {
-		const root = workspace({ core: { exports: testing } }, { workspaces: ["packages/core"] });
-		const suites = await suitesIn(root);
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
-	});
-
-	it("counts only folders under a trailing wildcard", async () => {
-		const dir = workspace({ core: { exports: testing } });
-		writeFileSync(join(dir, "packages/README.md"), "not a package");
-		expect((await suitesIn(dir)).refusal("packages/README.md/x.ts")).toBe(
-			"packages/README.md/x.ts is in no workspace package",
-		);
-	});
-
-	it.each([
-		["a root package.json that does not parse", "{ not json", /^cannot read the root package\.json: .*JSON/],
-		["no root package.json", absent, /^the root package\.json does not exist$/],
-		["a root package.json with no workspaces", { name: "melian" }, /^the root package\.json lists no workspaces$/],
-		[
-			"workspaces that are not a list of strings",
-			{ workspaces: [1] },
-			/^the root package\.json lists no workspaces$/,
-		],
-		[
-			"workspaces that mix a string with a number",
-			{ workspaces: ["packages/*", 1] },
-			/^the root package\.json lists no workspaces$/,
-		],
-		["a null root package.json", "null", /^the root package\.json lists no workspaces$/],
-		[
-			"a workspace pattern Melian does not read",
-			{ workspaces: ["packages/**"] },
-			/^the root package\.json's workspace pattern packages\/\*\* is not one Melian reads$/,
-		],
-		[
-			"a wildcard over a folder outside the repository",
-			{ workspaces: ["../outside/*"] },
-			/^the root package\.json's workspace pattern \.\.\/outside\/\* is not one Melian reads$/,
-		],
-		[
-			"a workspace path outside the repository",
-			{ workspaces: ["../packages/core"] },
-			/^the root package\.json's workspace pattern \.\.\/packages\/core is not one Melian reads$/,
-		],
-		[
-			"a workspace path spelt with a leading ./",
-			{ workspaces: ["./packages/*"] },
-			/^the root package\.json's workspace pattern \.\/packages\/\* is not one Melian reads$/,
-		],
-		[
-			"a wildcard over the root",
-			{ workspaces: ["/*"] },
-			/^the root package\.json's workspace pattern \/\* is not one Melian reads$/,
-		],
-		[
-			"a wildcard over a folder that is missing",
-			{ workspaces: ["missing/*"] },
-			/^the workspace folder missing does not exist$/,
-			"missing/core/src/testing.ts",
-		],
-	])("refuses every file under %s", async (_name, root, reason, file = "packages/core/src/testing.ts") => {
-		const suites = await suitesIn(workspace({ core: { exports: testing } }, root));
-		expect(suites.refusal(file)).toMatch(reason);
-	});
-
-	it("refuses every file when a wildcard's folder is a symlink, and names why", async () => {
-		const dir = workspace({ core: { exports: testing } }, { workspaces: ["linked/*"] });
-		symlinkSync(join(dir, "packages"), join(dir, "linked"));
-		expect((await suitesIn(dir)).refusal("linked/core/src/testing.ts")).toMatch(
-			/^cannot read the workspace folder linked: .*symlink/,
-		);
-	});
-
 	it("lets a failure that is neither a read nor a parse failure through", async () => {
 		const broken = new TypeError("the source broke");
-		const source = { readText: async () => Promise.reject(broken) } as unknown as SourceReader;
-		await expect(SuiteExports.read(source, asked)).rejects.toBe(broken);
+		const source = {
+			exists: async () => "file",
+			readText: async () => Promise.reject(broken),
+		} as unknown as SourceReader;
+		await expect(SuiteExports.read(source, [exported])).rejects.toBe(broken);
 	});
 
-	it("reads the exports at a commit, never the working copy", async () => {
-		const dir = workspace({ core: { exports: testing } });
+	it("says that a file it was never asked about was not checked", async () => {
+		const suites = await suitesIn(repository({ "packages/core/package.json": { exports: testing } }), [exported]);
+		expect(suites.refusal(neighbour)).toBe(`${neighbour} was not checked against any package's exports`);
+	});
+
+	it("reads the exports at a commit, never the working copy, from any directory of the repository", async () => {
+		const dir = repository({ "packages/core/package.json": { exports: testing } });
 		const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8", env: gitEnv }).trim();
 		git("init", "--quiet", "-b", "main");
 		git("add", "-A");
@@ -307,60 +270,37 @@ describe("SuiteExports", () => {
 			join(dir, "packages/core/package.json"),
 			JSON.stringify({ exports: { "./testing": { "@melian-agent/source": "./src/record.ts" } } }),
 		);
-		const suites = await SuiteExports.at(dir, head, asked);
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
-		expect(suites.refusal("packages/core/src/record.ts")).toBe(
-			"packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
-		);
+		for (const from of [dir, join(dir, "packages/core")]) {
+			const suites = await SuiteExports.at(from, head, [exported, neighbour]);
+			expect(suites.refusal(exported)).toBeUndefined();
+			expect(suites.refusal(neighbour)).toBe(
+				`${neighbour} is not packages/core/package.json's ./testing export, ${exported}`,
+			);
+		}
 	});
 
 	it("refuses every file when the commit cannot be read", async () => {
-		const dir = workspace({ core: { exports: testing } });
+		const dir = repository({ "packages/core/package.json": { exports: testing } });
 		execFileSync("git", ["init", "--quiet"], { cwd: dir, env: gitEnv });
 		const missing = "f".repeat(40);
-		expect((await SuiteExports.at(dir, missing, asked)).refusal("packages/core/src/testing.ts")).toMatch(
-			new RegExp(`^cannot read the exports at ${missing}: `),
-		);
+		const suites = await SuiteExports.at(dir, missing, [exported, neighbour]);
+		for (const file of [exported, neighbour])
+			expect(suites.refusal(file)).toMatch(new RegExp(`^cannot read the exports at ${missing}: `));
 	});
 
-	it("reads nothing when it is asked about no file", async () => {
-		const calls: string[] = [];
-		const source = {
-			readText: async (path: string) => calls.push(`read ${path}`) && undefined,
-			list: async (path: string) => calls.push(`list ${path}`) && undefined,
-		} as unknown as SourceReader;
-		await SuiteExports.read(source, []);
-		expect(calls).toEqual([]);
-		const suites = await SuiteExports.at(join(tmpdir(), "melian-no-such-repository"), "f".repeat(40), []);
-		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
-			"packages/core/src/testing.ts is in no workspace package",
-		);
-	});
-
-	it("reads only the folders and manifests the asked files sit beneath", async () => {
-		const calls: string[] = [];
-		const files: Record<string, string> = {
-			"package.json": JSON.stringify({ workspaces: ["packages/*", "tools/*", "apps/web"] }),
-			"packages/core/package.json": JSON.stringify({ exports: testing }),
-		};
-		const source = {
-			readText: async (path: string) => {
-				calls.push(`read ${path}`);
-				return files[path];
-			},
-			list: async (path: string) => {
-				calls.push(`list ${path}`);
-				return ["core", "cli", "pipeline"].map((name) => ({ name, kind: "directory" }));
-			},
-		} as unknown as SourceReader;
-		const suites = await SuiteExports.read(source, ["packages/core/src/testing.ts", "packages/core/src/other.ts"]);
-		expect(calls).toEqual(["read package.json", "list packages", "read packages/core/package.json"]);
-		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
+	it("refuses every file when the directory is in no repository", async () => {
+		const dir = repository({ "packages/core/package.json": { exports: testing } });
+		const suites = await SuiteExports.at(dir, "f".repeat(40), [exported]);
+		expect(suites.refusal(exported)).toMatch(/^cannot read the exports at f{40}: .*not a git repository/i);
 	});
 
 	it("reads this repository's own exports", async () => {
-		const suites = await suitesIn(join(import.meta.dirname, "../../.."));
+		const harness = "packages/pipeline/src/harness.ts";
+		const suites = await suitesIn(join(import.meta.dirname, "../../.."), [
+			"packages/pipeline/src/testing.ts",
+			harness,
+		]);
 		expect(suites.refusal("packages/pipeline/src/testing.ts")).toBeUndefined();
-		expect(suites.refusal("packages/pipeline/src/harness.ts")).toMatch(/is not packages\/pipeline's/);
+		expect(suites.refusal(harness)).toMatch(/is not packages\/pipeline\/package\.json's/);
 	});
 });

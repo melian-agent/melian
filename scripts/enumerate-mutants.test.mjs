@@ -499,7 +499,11 @@ syncBuiltinESMExports();`,
 			}).toJSON();
 		for (const [file, status, text] of [
 			[suite.file, 0, ""],
-			["packages/core/src/record.ts", 1, "suite claim refused: packages/core/src/record.ts is not packages/core's"],
+			[
+				"packages/core/src/record.ts",
+				1,
+				"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's",
+			],
 		]) {
 			write("claims.json", JSON.stringify(inventory(file)));
 			const child = spawnSync(process.execPath, [script, "--sample", "claims.json"], {

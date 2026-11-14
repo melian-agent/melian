@@ -296,7 +296,7 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		for (const [value, text] of [
 			[
 				inventory("packages/core/src/record.ts"),
-				"suite claim refused: packages/core/src/record.ts is not packages/core's",
+				"suite claim refused: packages/core/src/record.ts is not packages/core/package.json's",
 			],
 			[inventory(suite.file, "f".repeat(40)), `suite claim refused: cannot read the exports at ${"f".repeat(40)}`],
 			[

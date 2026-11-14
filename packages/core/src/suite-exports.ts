@@ -1,4 +1,5 @@
 import { canonicalPath } from "./findings.ts";
+import { git } from "./git.ts";
 import { openSource, SourceError, type SourceReader } from "./source.ts";
 
 const manifestBytes = 1024 * 1024;
@@ -10,14 +11,13 @@ function cause(error: unknown): string {
 	throw error;
 }
 
-async function readManifest(
-	source: SourceReader,
-	path: string,
-	name: string,
-): Promise<{ value: unknown } | { refused: string }> {
-	let text: string | undefined;
+function manifestOf(dir: string): string {
+	return dir === "" ? "package.json" : `${dir}/package.json`;
+}
+
+async function readManifest(source: SourceReader, name: string): Promise<{ value: unknown } | { refused: string }> {
 	try {
-		text = await source.readText(path, manifestBytes);
+		const text = await source.readText(name, manifestBytes);
 		if (text === undefined) return { refused: `${name} does not exist` };
 		return { value: JSON.parse(text) };
 	} catch (error) {
@@ -33,125 +33,115 @@ function packageFile(target: string): string | undefined {
 		: undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // Node is the authority on what ./testing resolves to. It is not run here, since that needs head-written files on the
 // reviewer's disk, so this accepts only a target with one possible reading, the source condition first, and fails closed.
 async function testingExport(source: SourceReader, dir: string): Promise<Answer> {
-	const manifest = await readManifest(source, `${dir}/package.json`, `${dir}/package.json`);
+	const name = manifestOf(dir);
+	const manifest = await readManifest(source, name);
 	if ("refused" in manifest) return manifest;
 	const exports = (manifest.value as { exports?: unknown } | null)?.exports;
 	const conditions = isRecord(exports) ? exports["./testing"] : undefined;
 	const target = isRecord(conditions) ? conditions["@melian-agent/source"] : undefined;
 	if (!isRecord(exports) || !isRecord(conditions) || typeof target !== "string")
-		return { refused: `${dir}/package.json maps no ./testing export under @melian-agent/source` };
+		return { refused: `${name} maps no ./testing export under @melian-agent/source` };
 	const odd = Object.keys(exports).find((key) => (key !== "." && !key.startsWith("./")) || key.includes("*"));
 	if (odd !== undefined)
-		return { refused: `${dir}/package.json's exports hold ${JSON.stringify(odd)}, which Melian does not resolve` };
+		return { refused: `${name}'s exports hold ${JSON.stringify(odd)}, which Melian does not resolve` };
 	const first = Object.keys(conditions)[0];
 	if (first !== "@melian-agent/source")
 		return {
-			refused: `${dir}/package.json lists ${first} before @melian-agent/source under ./testing, and Melian accepts the source condition only as the first key`,
+			refused: `${name} lists ${first} before @melian-agent/source under ./testing, and Melian accepts the source condition only as the first key`,
 		};
 	const file = packageFile(target);
-	return file === undefined
-		? {
-				refused: `${dir}/package.json maps ./testing to ${JSON.stringify(target)}, which is not a plain relative path inside the package`,
-			}
-		: { file: `${dir}/${file}` };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-// A source reads only repository-relative paths it was handed already checked, so a pattern must be one already.
-function readable(folder: string): boolean {
-	if (/[*?[\]{}!]/.test(folder)) return false;
-	try {
-		return canonicalPath(folder) === folder;
-	} catch {
-		return false;
-	}
-}
-
-// Reads only the folders and manifests that `files` sit beneath, so the inventory, never the head, bounds the reading.
-async function workspacePackages(
-	source: SourceReader,
-	files: readonly string[],
-): Promise<Map<string, Answer> | { refused: string }> {
-	const holds = (folder: string) => files.some((file) => file.startsWith(`${folder}/`));
-	const root = await readManifest(source, "package.json", "the root package.json");
-	if ("refused" in root) return root;
-	const patterns = (root.value as { workspaces?: unknown } | null)?.workspaces;
-	if (!Array.isArray(patterns) || !patterns.every((pattern) => typeof pattern === "string"))
-		return { refused: "the root package.json lists no workspaces" };
-	const packages = new Map<string, Answer>();
-	for (const pattern of patterns) {
-		const parent = pattern.endsWith("/*") ? pattern.slice(0, -2) : undefined;
-		if (!readable(parent ?? pattern))
-			return { refused: `the root package.json's workspace pattern ${pattern} is not one Melian reads` };
-		if (parent === undefined) {
-			if (holds(pattern)) packages.set(pattern, await testingExport(source, pattern));
-			continue;
-		}
-		if (!holds(parent)) continue;
-		let entries: Awaited<ReturnType<SourceReader["list"]>>;
-		try {
-			entries = await source.list(parent);
-		} catch (error) {
-			return { refused: `cannot read the workspace folder ${parent}: ${cause(error)}` };
-		}
-		if (entries === undefined) return { refused: `the workspace folder ${parent} does not exist` };
-		for (const entry of entries) {
-			const folder = `${parent}/${entry.name}`;
-			if (entry.kind === "directory" && holds(folder)) packages.set(folder, await testingExport(source, folder));
-		}
-	}
-	return packages;
+	if (file === undefined)
+		return {
+			refused: `${name} maps ./testing to ${JSON.stringify(target)}, which is not a plain relative path inside the package`,
+		};
+	return { file: dir === "" ? file : `${dir}/${file}` };
 }
 
 /**
- * The file each workspace package exports as `./testing` under the `@melian-agent/source` condition, which is where a
- * `suite` claim in a mutation inventory may stand. A package's own `exports` say what other packages import, so this
- * reads them rather than guess from a file's name, and refuses rather than guess when they cannot be read.
+ * Whether each file of a mutation inventory's `suite` rows is the file its package exports as `./testing` under the
+ * `@melian-agent/source` condition. A row's package is the nearest directory above its file that holds a
+ * `package.json`, so the rows, never what the head writes in a manifest, bound what is read.
  */
 export class SuiteExports {
-	readonly #folders: ReadonlyMap<string, Answer>;
-	readonly #refused: string | undefined;
+	readonly #refusals: ReadonlyMap<string, string | undefined>;
 
-	private constructor(folders: ReadonlyMap<string, Answer>, refused?: string) {
-		this.#folders = folders;
-		this.#refused = refused;
+	private constructor(refusals: ReadonlyMap<string, string | undefined>) {
+		this.#refusals = refusals;
 	}
 
-	/**
-	 * Reads, from `source`, the root `package.json`'s `workspaces`, then the `exports` of each workspace package that one
-	 * of `files` sits in, and nothing at all when `files` is empty.
-	 */
+	/** Decides each of `files` from `source`, reading one manifest per package and nothing when `files` is empty. */
 	static async read(source: SourceReader, files: readonly string[]): Promise<SuiteExports> {
-		if (files.length === 0) return new SuiteExports(new Map());
-		const packages = await workspacePackages(source, files);
-		return "refused" in packages ? new SuiteExports(new Map(), packages.refused) : new SuiteExports(packages);
+		const kinds = new Map<string, ReturnType<SourceReader["exists"]>>();
+		const answers = new Map<string, Promise<Answer>>();
+		const refusals = new Map<string, string | undefined>();
+		for (const file of files) {
+			if (refusals.has(file)) continue;
+			let canonical: string | undefined;
+			try {
+				canonical = canonicalPath(file);
+			} catch {}
+			if (canonical !== file) {
+				refusals.set(file, `${file} is not a path inside the repository`);
+				continue;
+			}
+			const segments = file.split("/");
+			let dir: string | undefined;
+			for (let depth = segments.length - 1; depth >= 0; depth--) {
+				const candidate = segments.slice(0, depth).join("/");
+				if (!kinds.has(candidate)) kinds.set(candidate, source.exists(manifestOf(candidate)));
+				if ((await kinds.get(candidate)) !== undefined) {
+					dir = candidate;
+					break;
+				}
+			}
+			if (dir === undefined) {
+				refusals.set(file, `no package.json sits above ${file}`);
+				continue;
+			}
+			if (!answers.has(dir)) answers.set(dir, testingExport(source, dir));
+			const answer = await answers.get(dir)!;
+			refusals.set(
+				file,
+				"refused" in answer
+					? answer.refused
+					: answer.file === file
+						? undefined
+						: `${file} is not ${manifestOf(dir)}'s ./testing export, ${answer.file}`,
+			);
+		}
+		return new SuiteExports(refusals);
 	}
 
-	/** Reads the exports `files` need at `commit` of the repository at `repoRoot`, never its working copy. */
-	static async at(repoRoot: string, commit: string, files: readonly string[]): Promise<SuiteExports> {
+	/** Decides `files` at `commit` of the repository holding `directory`, never from its working copy. */
+	static async at(directory: string, commit: string, files: readonly string[]): Promise<SuiteExports> {
 		if (files.length === 0) return new SuiteExports(new Map());
+		const refused = (reason: string) => new SuiteExports(new Map(files.map((file) => [file, reason])));
+		const top = await git(directory, ["rev-parse", "--show-toplevel"]).catch((error: Error) => ({
+			code: 1,
+			stdout: "",
+			stderr: error.message,
+		}));
+		if (top.code !== 0) return refused(`cannot read the exports at ${commit}: ${top.stderr.trim()}`);
 		let source: SourceReader;
 		try {
-			source = await openSource(repoRoot, { kind: "revision", commit });
+			source = await openSource(top.stdout.trim(), { kind: "revision", commit });
 		} catch (error) {
-			return new SuiteExports(new Map(), `cannot read the exports at ${commit}: ${cause(error)}`);
+			return refused(`cannot read the exports at ${commit}: ${cause(error)}`);
 		}
 		return SuiteExports.read(source, files);
 	}
 
-	/** Why a `suite` claim on a mutant in `file` is refused, or `undefined` when `file` is a package's `./testing` export. */
+	/** Why a `suite` claim on a mutant in `file` is refused, or `undefined` when `file` is its package's `./testing` export. */
 	refusal(file: string): string | undefined {
-		if (this.#refused !== undefined) return this.#refused;
-		const folder = [...this.#folders.keys()].find((name) => file.startsWith(`${name}/`));
-		if (folder === undefined) return `${file} is in no workspace package`;
-		const answer = this.#folders.get(folder)!;
-		if ("refused" in answer) return answer.refused;
-		return answer.file === file ? undefined : `${file} is not ${folder}'s ./testing export, ${answer.file}`;
+		return this.#refusals.has(file)
+			? this.#refusals.get(file)
+			: `${file} was not checked against any package's exports`;
 	}
 }
