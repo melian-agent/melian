@@ -1029,14 +1029,31 @@ describe("a level that probes", () => {
 
 	it("attaches no review under another writer's word to a probing run that is still live", async () => {
 		const fake = createFakeModels();
-		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
-		const second = await review(
-			{ planner: plan, prober: probing(failing) },
-			{ fake, writer: { trusted: true, by: "writer" } },
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		// The first review's planner waits until the second review has chosen, so the first run is live throughout.
+		const first = await review(
+			{ planner: [async () => (await held, plan[0]!), ...plan.slice(1)], prober: probing(failing) },
+			{ fake },
 		);
-		await Promise.all([first.run, second.run].map((run) => run.catch(() => undefined)));
-		// The probe environment names whose head it is, so the second review plans for itself.
-		expect(second.requests[planner]?.length).toBeGreaterThan(0);
+		const firstDone = first.run.catch(() => undefined);
+		try {
+			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1));
+			const second = await review(
+				{ planner: plan, prober: probing(failing) },
+				{ fake, writer: { trusted: true, by: "writer" } },
+			);
+			second.run.catch(() => undefined);
+			// The probe environment names whose head it is, so the second review plans for itself rather than wait.
+			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 3_000 });
+			release();
+			await second.run.catch(() => undefined);
+		} finally {
+			release();
+			await firstDone;
+		}
 	});
 
 	it.each([
