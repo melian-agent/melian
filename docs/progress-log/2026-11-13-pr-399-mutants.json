@@ -2,7 +2,7 @@
 	"melianMutants": 2,
 	"range": {
 		"base": "188ee862098521d0dd9a191f9e9e9a590d2f7080",
-		"head": "43f150ded7bd35a917bd93e9f5827a9f128925a3"
+		"head": "7624e7edb209b1b53164c745db9477e104c03861"
 	},
 	"adapters": [
 		{
@@ -448,12 +448,12 @@
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 51,
 			"column": 94,
-			"endLine": 56,
+			"endLine": 60,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "d742d4f797ed419f53b828fcf6d2c9a017b78b3200664bbb1f2821c7cfb8555f",
+			"id": "9247d35a89a8bc30f8dab14b60b4ef6da75e5def9c5f413bbd34ced3049cbc03",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -469,149 +469,206 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 53,
-			"column": 29,
-			"endLine": 53,
-			"endColumn": 41,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e6f6c80ba622164d623bcbd1c4c8229182ed8381cdf1e90d787655022615cabb"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 53,
-			"column": 44,
-			"endLine": 53,
-			"endColumn": 63,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "5716a792e8b80e6f52707cc6dd986e7dfe43a518bb6c90b93ec6ea5675304b7a",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 53,
-			"column": 57,
-			"endLine": 53,
-			"endColumn": 61,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "5fb40ad9aa62957062bbc11450a382ce22d4cdf00955ae1e522a5f1f463cfa6e",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 54,
-			"column": 29,
-			"endLine": 54,
-			"endColumn": 34,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "6467779d16697885eb2760454458d4e8cee93cd68887f579d4862f9408c5dc63"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 54,
-			"column": 37,
-			"endLine": 54,
-			"endColumn": 56,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "5ad8a2ce55c216c4e4543fd2396b6c2df9d65b3e8d3d6b0e1962c106b51905ed",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 54,
-			"column": 50,
-			"endLine": 54,
-			"endColumn": 54,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "46ffe9487e9d583e88966f84e4e126b8cc65db011a95c12d7f273d9880fc15b8",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 58,
-			"column": 50,
-			"endLine": 66,
-			"endColumn": 2,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "ad1153c1fb1065af78600cf25c1089b0fc423b04cbb25eff4e234da0a3d16b7a",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 59,
 			"column": 6,
-			"endLine": 59,
+			"endLine": 56,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ab1bb86d709453cbbd3f345169b2a3045371c12ae0e1d53552bad94be9e06f16",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 54,
+			"column": 30,
+			"endLine": 54,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "66af86b67e0c069fe07831a47018cfe219b631f1fe35adc7ab5ad63a3fe60bd5"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 54,
+			"column": 45,
+			"endLine": 54,
+			"endColumn": 64,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "71432074cf56e533c9870c69bcbecc898be1f5e9597fd9b621393a186e3ad07e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 54,
+			"column": 58,
+			"endLine": 54,
+			"endColumn": 62,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ae7eccd35941011d81b42df3af07d8d08a6930575bfe8ac2a2bfcb407c3b9cdb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 55,
+			"column": 30,
+			"endLine": 55,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fb6be9e8641be8168536863ff363974b9d39a28d0fcefded1f05f9c0eeddbe3"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 55,
+			"column": 38,
+			"endLine": 55,
+			"endColumn": 57,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "656054b7e340831738cb0f21c49f2fffccc422e8962a6733bfdf0ad87c2c02e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 55,
+			"column": 51,
+			"endLine": 55,
+			"endColumn": 55,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "021109da638912eef71abb156d4fbe9365adb26b8ed8fad3d83f67dc3bae7333",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 56,
+			"column": 18,
+			"endLine": 58,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5fd78ba705470ba9319ddf74b6dbe2d617e3a64315fd17418dd2dee93486cca3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"DirectoryRecordStore",
+						"fails to open unreachable, not with a raw error, when its root cannot be a directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 57,
+			"column": 17,
+			"endLine": 57,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d928e9102dea70e207b83727c8e2092a3f4ed24294b221657fa3560f62ceae1d"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 62,
+			"column": 50,
+			"endLine": 70,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4a4fb3c00425d2be88ee784bbc9e091428c194993909e9b9994fdea9ab352b97",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 63,
+			"column": 6,
+			"endLine": 63,
 			"endColumn": 18,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "399ea2a93bf80f21829e9ed4fd72a72fd6a5f0fe4841362903755c06401997d9",
+			"id": "6dc43d6dd2f8524afdce666ccdb15bc0b962bf926946d6786c9a614ef4240517",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -626,14 +683,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 59,
+			"line": 63,
 			"column": 6,
-			"endLine": 59,
+			"endLine": 63,
 			"endColumn": 18,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "8d45768c8a4d540b6b118703547c35a5ace47a75d370d767296188f1de576893",
+			"id": "133a5c4b63ea457ec817c32027943c4b62c739d69f7da97205ab330bdd88a059",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -648,14 +705,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 59,
+			"line": 63,
 			"column": 20,
-			"endLine": 59,
+			"endLine": 63,
 			"endColumn": 82,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "55f8e699c02894e5aa398df0dcff81b67eeb0fca90609bf1e6ba76ba3f2bdd37",
+			"id": "852fe129fd0c22616f2caa897c472986309b021a0da3170da43ada29ed268a38",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -670,40 +727,40 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 59,
+			"line": 63,
 			"column": 42,
-			"endLine": 59,
+			"endLine": 63,
 			"endColumn": 50,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "49911a7c5170268da5894f13634c3350b38dfcdd0455ee09b0af77897506757c"
+			"id": "cb1a3eaa492957e3ff3bc02b1289d58786fe1b36c409356f5e25e948d396a01f"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 59,
+			"line": 63,
 			"column": 52,
-			"endLine": 59,
+			"endLine": 63,
 			"endColumn": 80,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "b0ccb46a42f24c2e9669bc59ad07d5a37378a59889c8fcdb3c7ec9d29af67ab7"
+			"id": "a808bda6feec05cae2e9065ffa98f8f79c7c1af8da4700edc18b7e7a6658cc96"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 60,
+			"line": 64,
 			"column": 2,
-			"endLine": 60,
+			"endLine": 64,
 			"endColumn": 28,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "bbe11e25e3a4a6a1615aba5f7d439895080cb7f6cc31f2f7559d3c18af419fd4",
+			"id": "cc54af1fab44a96a3ad13f604812353b7c4dc0b5e29e617cf03d31d921dceb45",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -718,27 +775,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 61,
+			"line": 65,
 			"column": 38,
-			"endLine": 61,
+			"endLine": 65,
 			"endColumn": 50,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "2054107392133fc4a0fd6d2243668511abd9c0e8d970f9f5f6c0082836703485"
+			"id": "d234c5ad9f5afcc05617c260b6eb4298ea1f4926aa2654e9031f70ebdc785088"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 62,
+			"line": 66,
 			"column": 6,
-			"endLine": 62,
+			"endLine": 66,
 			"endColumn": 70,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "(await lstat(changesets).catch(() => undefined))?.isDirectory()",
 			"status": "generated",
-			"id": "55c8d8fddbf1f1adcc736df3d64d50b0b43fcfdc50937dc4b26fead7a356d140",
+			"id": "097b2eab43bdcb37938a10ba4da0b0b7b865f9749eae06322e6298c7b2096db0",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -753,14 +810,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 62,
+			"line": 66,
 			"column": 6,
-			"endLine": 62,
+			"endLine": 66,
 			"endColumn": 70,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "8600c0b2dce1d674af7352a4f093fde775a3239cf7b33e0bde28ea0c273a01f9",
+			"id": "0d802149226d8397a95ee854ed9ec3205b2bfc9c766bbc717cdedc3e4fb5aee6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -775,14 +832,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 62,
+			"line": 66,
 			"column": 6,
-			"endLine": 62,
+			"endLine": 66,
 			"endColumn": 70,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "8b587d6d05a339948c2dfec789ab499c1540d36f7637fc3911df45f7307e9a58",
+			"id": "bd2eb75d68adb2c4ab855a3fa6d56a7dde0df2e842983dd8dbd79509dc0aaee3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -797,14 +854,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 62,
+			"line": 66,
 			"column": 7,
-			"endLine": 62,
+			"endLine": 66,
 			"endColumn": 68,
 			"mutatorName": "OptionalChaining",
 			"replacement": "(await lstat(changesets).catch(() => undefined)).isDirectory",
 			"status": "generated",
-			"id": "5d2ebcea4179227605f31b769a47ce088c75d232186da37b7ae53e91a4345a2c",
+			"id": "604262600f2e3365189df8bc77052aa823247ebdaa0ce82756dbb82c39f28fd5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -819,27 +876,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 62,
+			"line": 66,
 			"column": 86,
-			"endLine": 62,
+			"endLine": 66,
 			"endColumn": 99,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "569d11f76d0972f16dddbe536b2f6860fb1737f9102ef6cc638712ddc0ebbbbb"
+			"id": "bb8dc123165e6d8e063984f2bab4a0b85cb39ca01c35623723acb41b210fc6e1"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 69,
+			"line": 73,
 			"column": 50,
-			"endLine": 75,
+			"endLine": 79,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "3f345d66ed01b39cb2e47369000147a76b7239a656cc542bf0621318feb5695f",
+			"id": "492f8118f5bde6718a463d0bf265ac547e0d2f0da4b6071240c52bbf3abc032f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -854,14 +911,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 70,
+			"line": 74,
 			"column": 60,
-			"endLine": 72,
+			"endLine": 76,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "32beb7ad0fc1433a5f97495bb6d390b6eba346a5e80f3150a22173d0208991ec",
+			"id": "9936c2f0b91fdba3366c573daf073becc23a7042f9c5d2af28d4c899c44f0355",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -876,14 +933,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 71,
+			"line": 75,
 			"column": 7,
-			"endLine": 71,
+			"endLine": 75,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "f221c0d4ce13a52a6476fccf62f040109c71f809aa3c0920ede613d795ee19b5",
+			"id": "a3fa321d747a9323ec2d7220e884bab40f0be43c153cf69a672382ce02c24e74",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -898,14 +955,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 71,
+			"line": 75,
 			"column": 7,
-			"endLine": 71,
+			"endLine": 75,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "41e0d76e45e6a7d63adae7830fe460c844cb7b537ea5c66c2243846d2c25c228",
+			"id": "a513d6f2f7c5b9b45b4a5eae3b8d9af833f329a24502a1d4a0454ce295d77847",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -920,14 +977,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 71,
+			"line": 75,
 			"column": 7,
-			"endLine": 71,
+			"endLine": 75,
 			"endColumn": 36,
 			"mutatorName": "EqualityOperator",
 			"replacement": "errorCode(cause) === \"ENOENT\"",
 			"status": "generated",
-			"id": "a22e8eb796806c86598fba0514eca4f8999b55b87cb8c0b4d38d00ba0f2e733c",
+			"id": "2ca1a1ae8681f2dca530482d9ea9305e926702b541913750f00052120b04fa2d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -942,229 +999,40 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 71,
+			"line": 75,
 			"column": 28,
-			"endLine": 71,
+			"endLine": 75,
 			"endColumn": 36,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "469fda3d1f7d832749e41f6f9d0efc66b09ebfa0fbada3666dd6c89afe13762f"
+			"id": "614347521ed61391ef86f960b55d5b095e151698bb57d6e79ce3615db9c7e64d"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 71,
+			"line": 75,
 			"column": 52,
-			"endLine": 71,
+			"endLine": 75,
 			"endColumn": 65,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "12cb54c1084f5292246f12128859410a6fe8fb64522c87b73a7f7cf1daed886f"
+			"id": "8e102b0d0d2f18b6b046d73ad3ed3a172be77fcbf852a8f11bfe5ea28e88706a"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
+			"line": 77,
 			"column": 6,
-			"endLine": 73,
+			"endLine": 77,
 			"endColumn": 49,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "62a0903d29be9f996ec7e75584ddb5d97126003f50740fe1fcc1b79646d42ee0",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 6,
-			"endLine": 73,
-			"endColumn": 49,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "ba2f6acb12114725e87a74842cb88ae6b09695af64c0342af891ecaacdfd6f07",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"list and add refuse an entry the store did not write, and write nothing through it"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 6,
-			"endLine": 73,
-			"endColumn": 49,
-			"mutatorName": "LogicalOperator",
-			"replacement": "found !== undefined || !found.isDirectory()",
-			"status": "generated",
-			"id": "203c0018c033509bd6032061d9b0fb6bb81fa625f2c11f2ce6a2dc69421f7188",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 6,
-			"endLine": 73,
-			"endColumn": 25,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "6fa94e18aec219f2c724222ecea766571962f330e3efd73694dc7b5070c335d3",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 6,
-			"endLine": 73,
-			"endColumn": 25,
-			"mutatorName": "EqualityOperator",
-			"replacement": "found === undefined",
-			"status": "generated",
-			"id": "7333abe2d69ebf8bdb4f70e53b3c908bf876f9a9feb372f96d7f4194bc41c764",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 29,
-			"endLine": 73,
-			"endColumn": 49,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "found.isDirectory()",
-			"status": "generated",
-			"id": "d1d8b800c9e6288d463520523dd90267bae6de58a926c7b0b4ecb8d0972e241c",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 73,
-			"column": 65,
-			"endLine": 73,
-			"endColumn": 78,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7fc85d19be4cde93cc1c098c31a14b686bf3f8da6603e46049b0a7bb3a2ca556"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 74,
-			"column": 9,
-			"endLine": 74,
-			"endColumn": 28,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "64c21c1b14cf216a377b5c73ad61e1a0fd62861aea9b9c8e486dd563fd0d6b41",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 74,
-			"column": 9,
-			"endLine": 74,
-			"endColumn": 28,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "75d2460e04b6aa3447ef3aa8fa83e2ba4c658864f36f41f8ec9994c340054052",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails readCell unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 74,
-			"column": 9,
-			"endLine": 74,
-			"endColumn": 28,
-			"mutatorName": "EqualityOperator",
-			"replacement": "found === undefined",
-			"status": "generated",
-			"id": "d4003905cc8784dc51a8c35ba6f66dac9866f7f4603a7bb2e3a1c4f804a8b248",
+			"id": "d44ddce95271a5fb2744c4f5f67eea4f15989b16712bc904669bb0ae839979c4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1180,13 +1048,202 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 77,
+			"column": 6,
+			"endLine": 77,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "404bfcbac0d1a84ac7e895563860f955359c860e003bc16d54bcc0f1c2d8a811",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"list and add refuse an entry the store did not write, and write nothing through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 77,
+			"column": 6,
+			"endLine": 77,
+			"endColumn": 49,
+			"mutatorName": "LogicalOperator",
+			"replacement": "found !== undefined || !found.isDirectory()",
+			"status": "generated",
+			"id": "125798f03f970c2f143627c04e05b372b19c55495f463cb4b3070fd55883e32d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 77,
+			"column": 6,
+			"endLine": 77,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "47f939249604e40019922eb72fbe220e24b9b2bc6a03e1290766c7f174dd96a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 77,
+			"column": 6,
+			"endLine": 77,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found === undefined",
+			"status": "generated",
+			"id": "e57370833f3f894d71ca8483de03ce03576003c2ccb55b3bd299cd74da8777b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 77,
+			"column": 29,
+			"endLine": 77,
+			"endColumn": 49,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "found.isDirectory()",
+			"status": "generated",
+			"id": "ad9dbc0e87eb840fc2e0d34cd67e67a500de05e945998aca623df2fb5ad8d828",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 77,
+			"column": 65,
+			"endLine": 77,
+			"endColumn": 78,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c2ba7ed1186cd2a92bd2f87859bc1053dbb0d75ebe0b12d04e9289f76ffef6b2"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 78,
+			"column": 9,
+			"endLine": 78,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cd8e647fc22eff966a4fd692cea08279afe35db3f9608ef9805fd9aff0c99bed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 78,
+			"column": 9,
+			"endLine": 78,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "655d49975df6a34e7174f5f4fe9235c0673413724ffeef278d9f324df4c45310",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails readCell unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 78,
+			"column": 9,
+			"endLine": 78,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found === undefined",
+			"status": "generated",
+			"id": "09ef51e405e0c8a423612f7d47f247a4d1f940742078d70faba93f0744ba3c17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 81,
 			"column": 42,
-			"endLine": 83,
+			"endLine": 87,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9748988a98570c9815b5a15c02cf324ab9f97096063462ec2b3db8f631f29e3d",
+			"id": "a3e8c9dd61d40d7c44127a66ce6c84b42378ceef7b7276fe78510eed94b2a6bf",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1201,14 +1258,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 78,
+			"line": 82,
 			"column": 6,
-			"endLine": 78,
+			"endLine": 82,
 			"endColumn": 33,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "2ebc652f7db22c0a1e3a56e1398379893c355cf24b4d9d80ef1d0581f03c8842",
+			"id": "ec26f5ce27c28f7c5b5be0bfa1185b88fcbd7c03dcf7166f17b45c87e0bb4cf0",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1223,14 +1280,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 78,
+			"line": 82,
 			"column": 6,
-			"endLine": 78,
+			"endLine": 82,
 			"endColumn": 33,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "ef62404ae16c59f1ccdccbd361759f31f3aa01a8df8c9cd0767818620540b877",
+			"id": "27d12b0940f53b84360427983f5091fb07771c39cfb726f301af790570ee196f",
 			"claim": "equivalent",
 			"evidence": {
 				"reason": "The mkdir that follows tolerates EEXIST, and the directory check after it runs either way, so skipping the early return changes nothing."
@@ -1239,14 +1296,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 79,
+			"line": 83,
 			"column": 46,
-			"endLine": 81,
+			"endLine": 85,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "cc9487ea72949a24d50ffa0894cea20bddf5c090f86cc9968769b202bc4f01b5",
+			"id": "25a28e4b7383ae6319f39e99f849d5fb6edf61c61abf8b357feffb00a2dda178",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1261,14 +1318,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 80,
+			"line": 84,
 			"column": 7,
-			"endLine": 80,
+			"endLine": 84,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "b2a43e2d6aacae6eb0dfe13d7df2c8ed8cb815384f1881135ca27e5b2c882a5a",
+			"id": "8fa869f6155199011017857687a46cf9af01668a0e9175a712558b06f6339625",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1283,14 +1340,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 80,
+			"line": 84,
 			"column": 7,
-			"endLine": 80,
+			"endLine": 84,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "15fd62b457c2fc94055478c232f2f11197bfbcf18579f12673bbcb02ddcf195f",
+			"id": "4aa5841dcf066bd896a438e1b872ed4a47b4f9dbde56672f8821877a9f8c88bd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1305,14 +1362,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 80,
+			"line": 84,
 			"column": 7,
-			"endLine": 80,
+			"endLine": 84,
 			"endColumn": 36,
 			"mutatorName": "EqualityOperator",
 			"replacement": "errorCode(cause) === \"EEXIST\"",
 			"status": "generated",
-			"id": "6ec3859a6f517c621a1b3935e02792c96d4a313a0beeee6ba6b5bf98f90adea5",
+			"id": "7ecb8aaf3fd8dc579f1a377c58e37d8fd48b494539400166eaafadff6414a5d1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1327,229 +1384,40 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 80,
+			"line": 84,
 			"column": 28,
-			"endLine": 80,
+			"endLine": 84,
 			"endColumn": 36,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f243930a47db764c9120cd470b2cc1cd5f7857c8432ebbee01589eaa5f29ddaa"
+			"id": "116ed9fa83ccc82e1d782c97c764d3a1eecee0d7284ed9008e3ef8701264b44a"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 80,
+			"line": 84,
 			"column": 52,
-			"endLine": 80,
+			"endLine": 84,
 			"endColumn": 65,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "2ab7cb0432e86cde9bf94673a67a36abb2b0edd663e5752b4e472eeb530980e0"
+			"id": "bce4037553394788a4e5876c8c64e03f48d34796f897fb48883322ff1ebdb9ce"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 85,
+			"line": 89,
 			"column": 54,
-			"endLine": 92,
+			"endLine": 96,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "d40fe753ea995a00f012ca033b113801006b801ecc5f66427fb419726db61ca0",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 86,
-			"column": 6,
-			"endLine": 88,
-			"endColumn": 3,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "ea1841f3edfe061543fdecdc14c6f70ade7b1bae28e7907116f71bbe7c2e96f7",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 87,
-			"column": 35,
-			"endLine": 87,
-			"endColumn": 58,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "0f7d5c8386c9df1d90948655b54340c849a9517a153b338bc1edd83deec43fa4",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 87,
-			"column": 52,
-			"endLine": 87,
-			"endColumn": 56,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "3b29cd50faad683406b9adcd0ca04887f55a5b392892d6898bacd483f8bd1b82",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 88,
-			"column": 18,
-			"endLine": 91,
-			"endColumn": 3,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "e9f0e297a0e54f906b992de9a6fb52a3bc2243eebb68596eaf7fab8900cfd1ca",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 89,
-			"column": 7,
-			"endLine": 89,
-			"endColumn": 36,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "1bfc7df43649cf86ad5de7f5cf992321819d70d78237e8ea161bfbb49513c23d",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails unreachable on a cell it cannot list, with the cause"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 89,
-			"column": 7,
-			"endLine": 89,
-			"endColumn": 36,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "b15db97a7d85f2e7d9c1ac14b66e5f3d554e1757ae6e99000f843a6291d2c3b0",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"lists nothing when a dispose lands while it walks"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 89,
-			"column": 7,
-			"endLine": 89,
-			"endColumn": 36,
-			"mutatorName": "EqualityOperator",
-			"replacement": "errorCode(cause) !== \"ENOENT\"",
-			"status": "generated",
-			"id": "cf8d7015ecdaedd9eca81983ebf3afb5a1b412732b9172528ad7ed557d943e2a",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails unreachable on a cell it cannot list, with the cause"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 89,
-			"column": 28,
-			"endLine": 89,
-			"endColumn": 36,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "45abb565bb7151eaabd8f1b376908eb4c5886af62e9bcb47aaacb3bfe3b532b0"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 89,
-			"column": 45,
-			"endLine": 89,
-			"endColumn": 47,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[\"Stryker was here\"]",
-			"status": "generated",
-			"id": "89c1f90d97b3164837e2d33bb40583e24fd0b835289993b8ddf1d86dbe28f7a1",
+			"id": "8f8a4a09fd5ee8141611f0330cbf981a566ae122f90e48744bdb93e79d461a35",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1565,26 +1433,35 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 90,
-			"column": 17,
-			"endLine": 90,
-			"endColumn": 30,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "3fd5556736deb230c9ec64d9555088c7645b95ab8d2b472a95c399e1c1da088a"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 94,
-			"column": 44,
-			"endLine": 103,
-			"endColumn": 2,
+			"column": 6,
+			"endLine": 92,
+			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "e1e40c2d19e7a66c58c5ff3439de8cfc64fe16cdec31188947d0d875a993c06a",
+			"id": "22431e8632ae6ef955fd55e600de40f4ab0c288300fd26ff2e3a10caaf07859c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 91,
+			"column": 35,
+			"endLine": 91,
+			"endColumn": 58,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a18f55874bcc5bc53efa8ac11cad2363e5e48eb42d97984331aa51272c787407",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1599,14 +1476,194 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 95,
-			"column": 63,
-			"endLine": 97,
+			"line": 91,
+			"column": 52,
+			"endLine": 91,
+			"endColumn": 56,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "feb857149e2368e3ed20fe09442e9b4fad05313a92c21217cb94e77e81918175",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 92,
+			"column": 18,
+			"endLine": 95,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "6e287ee4a1e795a12dc6216f0b3083896d8b0788b62dd999e06f927b7dd0f9ac",
+			"id": "1a30b873bdf2c2014dd400a4cc342dc988154db25175f7341d9305afbcac0094",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 93,
+			"column": 7,
+			"endLine": 93,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fab368fe95740b0ae659af80058ca875f2977f62dfe18b3db113e944fc07d25d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails unreachable on a cell it cannot list, with the cause"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 93,
+			"column": 7,
+			"endLine": 93,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8b8b9e2182a8807ea57f2e4f6a0a3f5f9ad44998904c8c6bb3c2db2cd96b2385",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"lists nothing when a dispose lands while it walks"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 93,
+			"column": 7,
+			"endLine": 93,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "errorCode(cause) !== \"ENOENT\"",
+			"status": "generated",
+			"id": "cd8659f8a6df47589b808c3574d291c65a1a6a60c0186862c4daae10bc4df36f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails unreachable on a cell it cannot list, with the cause"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 93,
+			"column": 28,
+			"endLine": 93,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "69c773ce2df01aabe9f7fa75fd71677f6d6d9b93614dd9902af6c399dbb197e1"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 93,
+			"column": 45,
+			"endLine": 93,
+			"endColumn": 47,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "f1656d0daf65cb997a3a19b12c82c52092f509e1e38fe5e727cbf126c12caa42",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 94,
+			"column": 17,
+			"endLine": 94,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "02e9f3e903ef06c6c928d8d425b44e706a01f12326efe382a600ab8ebedc0a28"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 98,
+			"column": 44,
+			"endLine": 107,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d0010c660530346ce5b9bdf45ccfd3e008871c716bddb5c86a8bb6a6a53f5708",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 99,
+			"column": 63,
+			"endLine": 101,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9df035e6fcc60bf1a931636c49530fe2828afb7073b2ad8db4ca908a976f55af",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1621,27 +1678,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 96,
+			"line": 100,
 			"column": 17,
-			"endLine": 96,
+			"endLine": 100,
 			"endColumn": 30,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "4f5f119842566fac72443935d0b3e0d45bede241ec8c1144e4a7d9394407683e"
+			"id": "bb154a255da74b98c6080c85626a40e044f8369ef44d30bb850099a8c0aac700"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 98,
+			"line": 102,
 			"column": 6,
-			"endLine": 100,
+			"endLine": 104,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "ac98bfe8a2ab47c707b08f5adabd18d3e9862ecf4ff7d52daedaee7fefacd02b",
+			"id": "9280bf533af36412858e15dd15ae8a1c4832d7d30debf82d3eea8de242fa9888",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1656,14 +1713,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 100,
+			"line": 104,
 			"column": 18,
-			"endLine": 102,
+			"endLine": 106,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "bcd233be950c7eafe831c07b15a2b1766768be564dcf8f062a4afe5353c6e0e6",
+			"id": "a8c7013e51aab454768ef4f6becdd3e43a99f004ca33ae60ab93d8b7ba6935fe",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1678,27 +1735,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 101,
+			"line": 105,
 			"column": 17,
-			"endLine": 101,
+			"endLine": 105,
 			"endColumn": 30,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "1ea0fd74568be592a2e2a1b58f223050b4a1d63ea54e9fa56bbc57e7d045be3a"
+			"id": "9f8807e94a16858937b956c228794f470422e79bb0758458d028c63d5cfe2a73"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 105,
+			"line": 109,
 			"column": 59,
-			"endLine": 116,
+			"endLine": 120,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "c2d16c88feccf939bc884505c87064d0638ec29a622985078292ec92b10e89e1",
+			"id": "72246f2ee6116fd561d8be441c9358f1bcc9eab637dd759a0e84817003c1bd89",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1713,14 +1770,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 107,
+			"line": 111,
 			"column": 6,
-			"endLine": 107,
+			"endLine": 111,
 			"endColumn": 36,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "await this.#directory(path)",
 			"status": "generated",
-			"id": "0c8347fac9281b5e8f19c90c3dab7e4af1bfdbd9a264bf8d46907aace6ff7d5a",
+			"id": "6657a039051bc57aaf0abb172197159d760e4f73734cd9437777ef9f3cb0f58e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1735,14 +1792,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 107,
+			"line": 111,
 			"column": 6,
-			"endLine": 107,
+			"endLine": 111,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "fa31ec2219b8c8503135b4c10489c9fdad8efcc962d72f23dfa57f0b83d50bf0",
+			"id": "4a5c1580b411509867f5c678df238af0d429cd0d01219a5b183d749a3d154976",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1757,14 +1814,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 107,
+			"line": 111,
 			"column": 6,
-			"endLine": 107,
+			"endLine": 111,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "150cab40deb714e8dd99cff78185067c75f8d660d7cd9390e66270932ce3d8c8",
+			"id": "4caef06d37533587f6be7aa813d7df6b7e34d0cb806e03bd91ed64a5b659ac41",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1779,14 +1836,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 109,
+			"line": 113,
 			"column": 49,
-			"endLine": 113,
+			"endLine": 117,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "441beaa252d0d5c7c0fe8def01e492ff3ef6c46b70988500016d21733652c124",
+			"id": "a10be664a9cbad2f8f6a855165cd0682bf3bc9434d0bba0c28131a5a82d7e64e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1801,14 +1858,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 97,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "799d457bf03bea55220f2d6216e7f52751f112beaca5a2c6d0cf8a32e2144b33",
+			"id": "1e7f5011899fd606d3bbc47c6adc44702263a05a1339820333f7b234650ddf69",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1823,14 +1880,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 97,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "18651391f211743a170be051f5b59ab8f6557976fab16049d3d8def5c35b8890",
+			"id": "81c81ee2d0af686da0abececa93f9d1e448af21cd4bb87603bf5bcf3fda9ac53",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1845,14 +1902,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 97,
 			"mutatorName": "LogicalOperator",
 			"replacement": "(!cellFile.test(entry.name) || !Number.isSafeInteger(Number(entry.name))) && !entry.isFile()",
 			"status": "generated",
-			"id": "9b83eaffe05557e14f119497959f9eb50f6c642f95698c886b6c6a44b3883ae4",
+			"id": "0402af52c034d752d356afe74ca203cb692412e1e1d2520222083fa47d720ce4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1867,14 +1924,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 78,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "e85c3e12132408d402410f2302fbd860941edc67224c3c419ca9f2c877fe4bf5",
+			"id": "35da6b5ee0f8171b61f94337a65835201b1933145bec9ac8b995ba2a5fd88d00",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1889,14 +1946,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 78,
 			"mutatorName": "LogicalOperator",
 			"replacement": "!cellFile.test(entry.name) && !Number.isSafeInteger(Number(entry.name))",
 			"status": "generated",
-			"id": "9403a0faaa2ce45c8d9102ac0fc3cafcb0a660c424d3f65e1a542a9d8ca0e54c",
+			"id": "7b894ae81c74943fca7d1c09a9acceb45c9f4087b726944dca6ecb67d9b6e9ad",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1911,14 +1968,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 7,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 33,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "cellFile.test(entry.name)",
 			"status": "generated",
-			"id": "8849e38d1b65caa64ac367a30e713782ef6e59f847793569577f8988a777bdfc",
+			"id": "055ef793126d78a1ec5027857d989c7d24ddbee9f907ef793ffe8a3d1304ed18",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1933,14 +1990,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 37,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 78,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "Number.isSafeInteger(Number(entry.name))",
 			"status": "generated",
-			"id": "65c7ef1fc824f893b7f5badc05ed23ce1c682e0cb8341de31221e138167894ae",
+			"id": "7bca1c1d24b70f84c6fa8f831475a22a4e6e9faf7ccb4347f08ed20aa987bcbd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -1955,115 +2012,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 110,
+			"line": 114,
 			"column": 82,
-			"endLine": 110,
+			"endLine": 114,
 			"endColumn": 97,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "entry.isFile()",
 			"status": "generated",
-			"id": "2185f8e6b968fbea187868c82641e07157b8d8c7bb349546033f64aefc2f821d",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 111,
-			"column": 18,
-			"endLine": 111,
-			"endColumn": 31,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "f353ae6c29b6a2d3817a728068247d48de811dd5a9c3596d77964f771ba2244e"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 112,
-			"column": 14,
-			"endLine": 112,
-			"endColumn": 52,
-			"mutatorName": "MethodExpression",
-			"replacement": "Math.min(sequence, Number(entry.name))",
-			"status": "generated",
-			"id": "21cd5d7415f5808ed7048445fa93e611826d7360f955a1ab584054292c33a3de",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 114,
-			"column": 6,
-			"endLine": 114,
-			"endColumn": 20,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "3d2f3822f99c81f20e8eded848a635e7c627b0b74819b5d2b69c99af1cd3e6bb",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 114,
-			"column": 6,
-			"endLine": 114,
-			"endColumn": 20,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "7cbc8e9a816e71f889a616dfe3abe1a3e11d1bd57aacfdc2537630b1da9b5aaf",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"leaves no temporary file when it loses a cell write to a writer that read the same version"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 114,
-			"column": 6,
-			"endLine": 114,
-			"endColumn": 20,
-			"mutatorName": "EqualityOperator",
-			"replacement": "sequence !== 0",
-			"status": "generated",
-			"id": "cf45bcd7b2c9b47c48806395a812b6a20af4a663419efae3deec830d1d8f73b1",
+			"id": "7580434ca5f96ac3064b6be36d933dfe56b9bb524f1df928d4e240f38d797777",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2079,13 +2035,26 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 115,
-			"column": 9,
+			"column": 18,
 			"endLine": 115,
-			"endColumn": 76,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fa11f195d76d66a5de5e7dc72f1d680f58042108639f9366a9d7f38ed633b7f7"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 116,
+			"column": 14,
+			"endLine": 116,
+			"endColumn": 52,
+			"mutatorName": "MethodExpression",
+			"replacement": "Math.min(sequence, Number(entry.name))",
 			"status": "generated",
-			"id": "f8197154364577166cc876843dfb7af9b73945b9b0201b53a4445ab6b25db466",
+			"id": "e79e15bd4fd273babe664335ee41c19c118ad02a659a6f053526df1ebf93933b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2101,20 +2070,64 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 118,
-			"column": 50,
-			"endLine": 126,
-			"endColumn": 2,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
+			"column": 6,
+			"endLine": 118,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
 			"status": "generated",
-			"id": "953c9cb1072d65dad91628ce15cf83ed9df0cb778dacbff9ba981d5b99a26773",
+			"id": "c4d647f0213b88e1ce857db2cb15b69b3db82e25908b2c114b328fbaee3657de",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/directory-record-store-race.test.ts",
 					"path": [
 						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 118,
+			"column": 6,
+			"endLine": 118,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bcc43a8adf16c6ae57e8bdcea3c7a6e7c7df446164204177c4684ff11099f41a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"leaves no temporary file when it loses a cell write to a writer that read the same version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 118,
+			"column": 6,
+			"endLine": 118,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "sequence !== 0",
+			"status": "generated",
+			"id": "a6cde5ebadfa3fd5bacb24d860056b0d2778d029924be0dc24d7c1c5225f1e81",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
 					]
 				}
 			},
@@ -2123,26 +2136,70 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 119,
-			"column": 37,
+			"column": 9,
 			"endLine": 119,
+			"endColumn": 76,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d1734676dc56b1543a76158321f784667ce179c8f1813c51d30660c9aad427e3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 122,
+			"column": 50,
+			"endLine": 130,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3066b926cacd6e81d61f4c5c567a494d8989ac1332415c7e64e8f5cdff46c66e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 123,
+			"column": 37,
+			"endLine": 123,
 			"endColumn": 42,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "4ca6e4484ddb495165e0b0b2791c894a31025c92194363c49e5fdd0a914c8293"
+			"id": "6bbcefe036ec93354656f030eace4746813c204b3230c5e7d9bc4b34b4ce735d"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 120,
+			"line": 124,
 			"column": 6,
-			"endLine": 120,
+			"endLine": 124,
 			"endColumn": 69,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "(await lstat(directory).catch(() => undefined))?.isDirectory()",
 			"status": "generated",
-			"id": "9ff1880e4bb08da0329bdec9c4a12ba635502138eea9cce11cc34aee0644e766",
+			"id": "12c05edebad3b336b5aab7842b2e51d924ac224c94fb05799498f6146f99cf4a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2157,14 +2214,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 120,
+			"line": 124,
 			"column": 6,
-			"endLine": 120,
+			"endLine": 124,
 			"endColumn": 69,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "8137a50cdd9367958ac4449b65211cea76119be432a639790ec1aba3371e4539",
+			"id": "8aeb4f690e9063fd7efef3a934ad2be39c2ebd73ab3f44ea3894dbc6d9bec982",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2179,14 +2236,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 120,
+			"line": 124,
 			"column": 6,
-			"endLine": 120,
+			"endLine": 124,
 			"endColumn": 69,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "cd86f546e3b3fe876f07d9baaf1d5c5d4276bac4327f1075216fc645f5403406",
+			"id": "0f0f2a6fe257c9e34e7519280f4c96545259abf7fa8a66edf1b9d64e7d4edee3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2202,14 +2259,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 120,
+			"line": 124,
 			"column": 7,
-			"endLine": 120,
+			"endLine": 124,
 			"endColumn": 67,
 			"mutatorName": "OptionalChaining",
 			"replacement": "(await lstat(directory).catch(() => undefined)).isDirectory",
 			"status": "generated",
-			"id": "7b80ad106ac211938f5f1690f64cb3c585094f1455f245aa07c53746d6351a5f",
+			"id": "2f84c1948b4760f39f0a2c74a23ed35718258309221b73613deee3caf4685ead",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2224,27 +2281,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 120,
+			"line": 124,
 			"column": 85,
-			"endLine": 120,
+			"endLine": 124,
 			"endColumn": 98,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "1a0539f5fc78b4c324546bf8c135e0503b7a4407c646f5eda71fb6cb7d784924"
+			"id": "fdb82bb84cdc6a5e3946d6caacfce21bd721e36f29f2dc1f48bf940049f0ea70"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 122,
+			"line": 126,
 			"column": 31,
-			"endLine": 122,
+			"endLine": 126,
 			"endColumn": 45,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9582b67f29bdb74d7961fdb7428b258f8c0eb65217cbf03d2bda354c1e6477d8",
+			"id": "eee0eee04a620cedd032c53907ce645f39ec1420941d428443e1ac63fde695b3",
 			"claim": "equivalent",
 			"evidence": {
 				"reason": "The temporary file's name is a fresh random UUID, so exclusive creation never meets an existing file."
@@ -2253,27 +2310,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 122,
+			"line": 126,
 			"column": 39,
-			"endLine": 122,
+			"endLine": 126,
 			"endColumn": 43,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "a8ad8c5cf7c9ab57afbd4bb219dead2ff2260620dcfab5a6ada646b5bc9a0a97"
+			"id": "23e0c640b47d42e6ed4bdfb8b2ee0eb45cdad452b8af39920dfd8b66f0006b04"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 122,
+			"line": 126,
 			"column": 73,
-			"endLine": 124,
+			"endLine": 128,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "75aa236b39ca6ea2e72c25830fe3d3255d5a9e81ce84f2e79a1fa18206f3e88d",
+			"id": "9834a5f2549edb1b163c334aaaba6807c0128bd31876b4cae3e924a0cd8c1c4f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2288,27 +2345,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 123,
+			"line": 127,
 			"column": 17,
-			"endLine": 123,
+			"endLine": 127,
 			"endColumn": 30,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "7be4e7cc264eac82c8efd7318a8e0e0c280f6f95fe068ea51989365ddae53de0"
+			"id": "c8d0e407dcd43200147f40ef917578965b6a3c0882cb5e4239fd8de48ecdbaa9"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 128,
+			"line": 132,
 			"column": 89,
-			"endLine": 143,
+			"endLine": 147,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "54e854fbe712fa8de047a7b48cb5d53e41e4dbbcea1e8948c2f3ea102b2d3eda",
+			"id": "031170c4a0a04ded5d8bf7f813532b7c17909dad617e78b288ffac0595e898d5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2323,14 +2380,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 131,
+			"line": 135,
 			"column": 15,
-			"endLine": 131,
+			"endLine": 135,
 			"endColumn": 40,
 			"mutatorName": "ArithmeticOperator",
 			"replacement": "(cell?.sequence ?? 0) - 1",
 			"status": "generated",
-			"id": "dffb09cd2a9b889496df070d6a13bc74934abe6f2590401b49362bb4aacc1aad",
+			"id": "ff58106ea31f3c9daecbe5d8f7c591ed6bc53315d5aa3cc483ae747acd438953",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2345,14 +2402,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 131,
+			"line": 135,
 			"column": 16,
-			"endLine": 131,
+			"endLine": 135,
 			"endColumn": 35,
 			"mutatorName": "LogicalOperator",
 			"replacement": "cell?.sequence && 0",
 			"status": "generated",
-			"id": "081be4231beeb0d271ad378736dd6603674f22ef917d8c2ad9ae8da0b0b7d4d7",
+			"id": "cdac557c4b5883a7cd29bd9065f586033e5771babccee97afbf89b11954d31ab",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2367,14 +2424,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 131,
+			"line": 135,
 			"column": 16,
-			"endLine": 131,
+			"endLine": 135,
 			"endColumn": 30,
 			"mutatorName": "OptionalChaining",
 			"replacement": "cell.sequence",
 			"status": "generated",
-			"id": "b5468ddc6cc03ddd4f8cfcdbf395a76057e8d7e555ec64b434e73d8c7cfd76c7",
+			"id": "0fc4edc01772290a25ae3ea38245acf6a8b97f90630b9676261dfa2490b5403e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2389,14 +2446,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 132,
+			"line": 136,
 			"column": 6,
-			"endLine": 132,
+			"endLine": 136,
 			"endColumn": 33,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "Number.isSafeInteger(next)",
 			"status": "generated",
-			"id": "704b3c1d91658eeb9c69de2ceadb52fba83e188fd4a78c062bd49babe860c133",
+			"id": "0a04fea088e447c5cb6f0619e97b7a4836ff7b026c4e63da7d2bdcf1c6fcabba",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2411,14 +2468,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 132,
+			"line": 136,
 			"column": 6,
-			"endLine": 132,
+			"endLine": 136,
 			"endColumn": 33,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "45e164ab10d32d3f6acfa6ecac7672a71651c14cc785baa96578165c2337a725",
+			"id": "075cac571530ec7386384cef7aad5ad8ac1b2493c5c2f10c64e25c73681fd4f9",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2433,14 +2490,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 132,
+			"line": 136,
 			"column": 6,
-			"endLine": 132,
+			"endLine": 136,
 			"endColumn": 33,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "5476e9997e4f1e1bf5dcf1c17a4cbd556cec70e120c3f4ecee596f3815d691d9",
+			"id": "154e8f252eebda37d885898a55f55e59f99975274a0b5c44247b32d1259ec013",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2455,27 +2512,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 132,
+			"line": 136,
 			"column": 49,
-			"endLine": 132,
+			"endLine": 136,
 			"endColumn": 62,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "398cf455d863336be94316dd4100a23644646416199e47cf84c6986b82f52d34"
+			"id": "81955fc4d2b9f709cf75ca45b063616105732b5a94b6f39a35b697fea8db97bf"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 134,
+			"line": 138,
 			"column": 6,
-			"endLine": 137,
+			"endLine": 141,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "e9a58712eca68455c2767c32e7b86898e2bae0f85f8845d4ac64707b7c07cadc",
+			"id": "c2482f57f16617310cbb813a5f5f3162d9376480fc9f9e8d7cbc0b756d6b9566",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2490,14 +2547,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 136,
+			"line": 140,
 			"column": 10,
-			"endLine": 136,
+			"endLine": 140,
 			"endColumn": 14,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "03198e03f9ba50fd8856a60e69f875b08bcef43ebf5bacfbb2ed3ea224888e2d",
+			"id": "133c58ec99749ac9a5a47164992c1ab63ff3ba54e9cd185a5601a8b7e62ffbaf",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2512,14 +2569,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 137,
+			"line": 141,
 			"column": 18,
-			"endLine": 140,
+			"endLine": 144,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "1187bfa9410f7e32e892e687fef5b9f189a350a4da97f05cd79ab3f7b8f528b7",
+			"id": "8c9a2f499c78aa5a17be9eee0ff9798811804e7e54c75bc2d0417a433609e37e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2534,14 +2591,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 138,
+			"line": 142,
 			"column": 7,
-			"endLine": 138,
+			"endLine": 142,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "6565fa7a1a202340d64d32438c866e82be6f50b14a42d5b8f4e8be840cd5cbb1",
+			"id": "33da3c0f82a67fcf742c0ec7e3b47c0dcb7986690d166e1a8505c4aa94a1314a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2556,14 +2613,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 138,
+			"line": 142,
 			"column": 7,
-			"endLine": 138,
+			"endLine": 142,
 			"endColumn": 36,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "80210d166df5e4e96b01f9ada2a9971907e790668a0e2773c290cfb87a85973d",
+			"id": "77a3a126bd74d6f7b61941756b17bc4fd4f4e9741ecd8d36f2188b82dbfcecfb",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2578,14 +2635,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 138,
+			"line": 142,
 			"column": 7,
-			"endLine": 138,
+			"endLine": 142,
 			"endColumn": 36,
 			"mutatorName": "EqualityOperator",
 			"replacement": "errorCode(cause) !== \"EEXIST\"",
 			"status": "generated",
-			"id": "486d572f6911152d2368ae5458228b4cdaba0ac51f1735e967447b66ca49cf98",
+			"id": "09e8edba588128a5c7693d92cd61232087a993662c7c4986fe57ae09209a6be7",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2600,27 +2657,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 138,
+			"line": 142,
 			"column": 28,
-			"endLine": 138,
+			"endLine": 142,
 			"endColumn": 36,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ff60c4837ba25b27c38b42c41a11be6f99832b6fa7e7d2124b89c8fdcb8c458f"
+			"id": "c3af6548cbf0739740bae2831716a93182f84eac0ebb4df5b1d7cf40d5dd6559"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 138,
+			"line": 142,
 			"column": 45,
-			"endLine": 138,
+			"endLine": 142,
 			"endColumn": 50,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "true",
 			"status": "generated",
-			"id": "d2252c57939c72b2fe87c86d6bad9be5eedcca0f4120a44d03594e39f82dde64",
+			"id": "3bbb691c75c971b1f1aef0060ab0c0abd00db8c9c5cd1e0743130cd9f99bf1e0",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2635,27 +2692,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 139,
+			"line": 143,
 			"column": 17,
-			"endLine": 139,
+			"endLine": 143,
 			"endColumn": 30,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "3963dfef53c69f4de7c5c02aeaf836f6cbf7481bd13b85c55c8699df03447ba1"
+			"id": "d24b4866223feeea0f8d63827e6a711f99fff1bc504e5653030933953affc0c8"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 140,
+			"line": 144,
 			"column": 12,
-			"endLine": 142,
+			"endLine": 146,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "3da2dd2ccf172165fa3d00108380b1f65f24faa5d9dc766fd184bc223ffb00ac",
+			"id": "8766a51c23ec4c4fcf4ae8608a889633bef672c32b6a9424baf7153d95842eaf",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2670,36 +2727,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 141,
+			"line": 145,
 			"column": 23,
-			"endLine": 141,
+			"endLine": 145,
 			"endColumn": 38,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "088d9fe9ef86ab0d9c3bfac37f9be19feac21a0d507bc031da663dcb4a237e71",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails a cell write unreachable when the store vanishes before its file lands"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 141,
-			"column": 32,
-			"endLine": 141,
-			"endColumn": 36,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "false",
-			"status": "generated",
-			"id": "f80d49e1366afd4e6f774807d12424f88b921ebd53d1fec130cd89b0bc9aa282",
+			"id": "c6706f19853fb474222b8cf532ce326a1d999f143668cf40cf31b1a3213508e3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2715,13 +2750,35 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 145,
+			"column": 32,
+			"endLine": 145,
+			"endColumn": 36,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5b1b2cc61dc1ab9f5a1a43f63f94772844176208093b36970e314bd4a015fd14",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails a cell write unreachable when the store vanishes before its file lands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 149,
 			"column": 53,
-			"endLine": 165,
+			"endLine": 169,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "fc427d8ad41b6e746e6077ec6acbef8266dda635b3bb66dd5792fbb52f397b72",
+			"id": "97584e5523536aff304de61f89069b7c4a36fd453c221f1bce642e676747ab7b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2736,124 +2793,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 146,
+			"line": 150,
 			"column": 35,
-			"endLine": 146,
+			"endLine": 150,
 			"endColumn": 93,
 			"mutatorName": "ArrowFunction",
 			"replacement": "() => undefined",
 			"status": "generated",
-			"id": "83a3f06627ab97ae3c10c9d61624333b8c15910c5a60cc4030fe6113642eb549",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 146,
-			"column": 96,
-			"endLine": 164,
-			"endColumn": 3,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "5835470443f365b15195ce039b2e2b409ddb6af5e564527440f17ef6f30a04d8",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 148,
-			"column": 7,
-			"endLine": 148,
-			"endColumn": 60,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "57e97d8448fe70b8927e8965a603f7b02f5a904b3d97cfa38bceb074999e0d33",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 148,
-			"column": 7,
-			"endLine": 148,
-			"endColumn": 60,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "e3addbbf71f5740236faf29ab189c989577579b0f04335aea455e16de6f1bc4f",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"DirectoryRecordStore",
-						"makes nothing for an add to a disposed changeset"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 148,
-			"column": 7,
-			"endLine": 148,
-			"endColumn": 60,
-			"mutatorName": "EqualityOperator",
-			"replacement": "(await this.#cell(directory))?.value !== disposalMark",
-			"status": "generated",
-			"id": "15caeab9be984a438343eae7a3e82aeba8562949caec46ac18e6968ebefe3aba",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 148,
-			"column": 7,
-			"endLine": 148,
-			"endColumn": 43,
-			"mutatorName": "OptionalChaining",
-			"replacement": "(await this.#cell(directory)).value",
-			"status": "generated",
-			"id": "7458dd9e211c4bfe5e85de6528fe8d244060055ec6b786ba5f37bc4caa7dc3d9",
+			"id": "588587307b69b496ec32ba99581c5ea43a7f4e8bdd526950dc91afa26eeba68d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2869,26 +2816,35 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 150,
-			"column": 27,
-			"endLine": 150,
-			"endColumn": 31,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "48888f51b259b4961277c81b07a469249c02774806dbbc87d88cd7a77170e7fb"
+			"column": 96,
+			"endLine": 168,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c6fbb91b527acd975b2582f2ed041db50d8b0bbdf87fa9181c71ffd85de84463",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it makes the record's directory, so its file lands after dispose's sweep, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 151,
-			"column": 22,
-			"endLine": 151,
-			"endColumn": 57,
-			"mutatorName": "ArrayDeclaration",
-			"replacement": "[]",
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
 			"status": "generated",
-			"id": "fdff341aa239bcd996003b861849d0cc9d574126be397cd5cf36814de7165d66",
+			"id": "5bf7ea68af0c51468b6c8b25e47a98e2f7483d0ffba3fc3f6ac82c93a038280e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2903,34 +2859,100 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 151,
-			"column": 45,
-			"endLine": 151,
-			"endColumn": 49,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ec652800f0d7188c1d8da49a51b2d680dbf5b35d25a2a272be2a3dafc9cb51af"
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3e2dca73e945fdd01e1e22f4b573a020e16ad087eedd0d14c0142fc472d2e7eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"DirectoryRecordStore",
+						"makes nothing for an add to a disposed changeset"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 153,
+			"line": 152,
 			"column": 7,
-			"endLine": 155,
-			"endColumn": 4,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
+			"endLine": 152,
+			"endColumn": 60,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await this.#cell(directory))?.value !== disposalMark",
 			"status": "generated",
-			"id": "172ea06b5d0a2d52aba26a4d96f3946aed975cd6d2529ac1cbd9d69b2593d981",
+			"id": "40a97e503bb687accad139c4c6af7a7d31e258bf2a5709c98476b4e48bfe9235",
 			"claim": "killed",
 			"evidence": {
 				"test": {
 					"file": "packages/core/test/directory-record-store-race.test.ts",
 					"path": [
 						"DirectoryRecordStore with an add in flight",
-						"refuses an add a dispose overtook before it renames its file, after dispose swept the directory away, and leaves no record"
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 43,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(await this.#cell(directory)).value",
+			"status": "generated",
+			"id": "f328e289828db53153d55f7d21764173ab90908b8402ca8ad6301adf41e9ef51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 154,
+			"column": 27,
+			"endLine": 154,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3ff09fd2943a6ad3d702bc882dac7a573ac6fc2cfc475beb42747542deb36a02"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 155,
+			"column": 22,
+			"endLine": 155,
+			"endColumn": 57,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d96c0f8645cbed3d12130ff4fb958298b6c8ca7384297ec807bf014c8995f0de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
 					]
 				}
 			},
@@ -2939,13 +2961,48 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 155,
-			"column": 19,
+			"column": 45,
+			"endLine": 155,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "899d82c1c6eff5ae3a57f7a6c2b4089a831ab6d95882611894481d92d6bf2f00"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 157,
+			"column": 7,
 			"endLine": 159,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "83f8c9a3ef1eb79c8a2edbd60290cf2be5631f70f5ca7602391a56418293e137",
+			"id": "dc6295632f524946ccb3df4f9c48f2d1dc3a9443dd8ad63be4929a2778486dea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"refuses an add a dispose overtook before it renames its file, after dispose swept the directory away, and leaves no record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 159,
+			"column": 19,
+			"endLine": 163,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "44b92ea94eda5553e5951ad27fb54547d8b446c0756ee1c3f0212878fb396ab5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2960,14 +3017,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 156,
+			"line": 160,
 			"column": 24,
-			"endLine": 156,
+			"endLine": 160,
 			"endColumn": 39,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "5a00f4d4944c4861e00d9b5d2598827a144f32048dc29fc20283910b410b0251",
+			"id": "18359b4c3c647029dfd5c6efd93a13dd0bf2926e5fa8b345b738fd1718018c0e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -2982,14 +3039,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 156,
+			"line": 160,
 			"column": 33,
-			"endLine": 156,
+			"endLine": 160,
 			"endColumn": 37,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "5bae574f792701a2c7e53cc63ac7bcc94f3e5e07d2bd3816142e71df817680a3",
+			"id": "4274d377fc8f90ad0b611ebc2c1c0db8a2c46174f997b7bb7a1bcebf832947a4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3004,14 +3061,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 157,
+			"line": 161,
 			"column": 8,
-			"endLine": 157,
+			"endLine": 161,
 			"endColumn": 61,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "70eac4fbd670b46c1582ecdc2014a5286fee740a410799edb1ba29656f6d3a2d",
+			"id": "ae0d58c33906cc224dde41b67e21b96757506b0cbb5b3f59dc73d585b7f62436",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3026,14 +3083,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 157,
+			"line": 161,
 			"column": 8,
-			"endLine": 157,
+			"endLine": 161,
 			"endColumn": 61,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "9193d0017f7365a996e92b33518c41e0ba91c97cb166755c18a05a30ba2dca86",
+			"id": "c64ecb745e692d18eddb9e6859b78ecdbbbc880e27e306e2611cc7a1d1efce9b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3048,14 +3105,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 157,
+			"line": 161,
 			"column": 8,
-			"endLine": 157,
+			"endLine": 161,
 			"endColumn": 61,
 			"mutatorName": "EqualityOperator",
 			"replacement": "(await this.#cell(directory))?.value !== disposalMark",
 			"status": "generated",
-			"id": "4519eaa5274eb918d469ac346d4f002c522a64846660345bc3cf9dc9e2376ac1",
+			"id": "49ca79f6b4c43c77557838672cd220856681147093aa0493c018b7597f6b4b9c",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3070,14 +3127,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 157,
+			"line": 161,
 			"column": 8,
-			"endLine": 157,
+			"endLine": 161,
 			"endColumn": 44,
 			"mutatorName": "OptionalChaining",
 			"replacement": "(await this.#cell(directory)).value",
 			"status": "generated",
-			"id": "bf6815b442786be7b67bd563996e852edaa6c41c56849003aed70e1fecc1fee9",
+			"id": "c171aa447db9366c86221b572525862be30b4ba571fc1bf3775c72f58df43031",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3092,27 +3149,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 158,
+			"line": 162,
 			"column": 18,
-			"endLine": 158,
+			"endLine": 162,
 			"endColumn": 31,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "fc1fe329b76e6d0bad10999b1978b2c08522cc271a3e28d132e24558ddf8e60d"
+			"id": "0ef152d7a9076694e01080bf9fdcddec68eeb94335e2298c88e6c67284bdd119"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 160,
+			"line": 164,
 			"column": 7,
-			"endLine": 160,
+			"endLine": 164,
 			"endColumn": 60,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "36d4d2f5fa74204dffcbcaf815776dde7c825c69acf3d45fdf40eee40e9cf19d",
+			"id": "2ea6e2542742105a7630098128ad154a1253b1aeca31cba9df5797988ee6ede5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3127,14 +3184,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 160,
+			"line": 164,
 			"column": 7,
-			"endLine": 160,
+			"endLine": 164,
 			"endColumn": 60,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "74ed48b2b97c84cbcda7469c35e2f13153508ca130af2bf7a658ff01abe30863",
+			"id": "7180b3211a4d21d8e43e91ed578955c02567fc3d8759afade2b03ed478529a9d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3149,14 +3206,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 160,
+			"line": 164,
 			"column": 7,
-			"endLine": 160,
+			"endLine": 164,
 			"endColumn": 60,
 			"mutatorName": "EqualityOperator",
 			"replacement": "(await this.#cell(directory))?.value !== disposalMark",
 			"status": "generated",
-			"id": "7169be9146181c361b832e8a56dc9a36b605976d970096986f8bfb3fdee0b4ca",
+			"id": "54ee8311deb2902c4194ef0964eb36ca54c1099904a36fbd07453dc7f14258a5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3171,14 +3228,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 160,
+			"line": 164,
 			"column": 7,
-			"endLine": 160,
+			"endLine": 164,
 			"endColumn": 43,
 			"mutatorName": "OptionalChaining",
 			"replacement": "(await this.#cell(directory)).value",
 			"status": "generated",
-			"id": "74ca379e2fa877f55963f0c4817b01de175a8c2a5562aa6265ac2ea704de2c79",
+			"id": "cf98874f3dbf09f637318505b45f9c81eec86f09253be7d6bb74f84f0e793a35",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3193,14 +3250,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 160,
+			"line": 164,
 			"column": 62,
-			"endLine": 163,
+			"endLine": 167,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "bfb1d4bbfe72f4cf2f788a08067d0c7abcc7917c23f093a6cfd67e1c12a8784b",
+			"id": "eab60511c7586695acc533f93b15c5abb55fb413d1332b7aacd5d010fd59eb9f",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3215,14 +3272,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 161,
+			"line": 165,
 			"column": 19,
-			"endLine": 161,
+			"endLine": 165,
 			"endColumn": 34,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "2e5a83aa1eb0abfb75ae98b133153245dbe68f758c246bfad5048ee20e9369f0",
+			"id": "b503c4dc02bdf64eeb774654cf50e659a714944c1b93c0acb130b14315b9157a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3237,14 +3294,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 161,
+			"line": 165,
 			"column": 28,
-			"endLine": 161,
+			"endLine": 165,
 			"endColumn": 32,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "d43423a7ea135fb4f0a3154b82d598854b4348c84881703ee68a04ce1f5305c6",
+			"id": "f0cc4ad3fdd0f30775152226b37dbff68cea70c404662129e8ce35c21d03003e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3259,14 +3316,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 167,
+			"line": 171,
 			"column": 58,
-			"endLine": 185,
+			"endLine": 189,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "2f01ac0faaa6193f5d0751ea5123349c44a7bd79051f96f0422cf60a3f287c7b",
+			"id": "e2ef41d22d43fe5a84096a9ae864ceae379f422bac3fb2060a801f92808eb146",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3281,14 +3338,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 169,
+			"line": 173,
 			"column": 36,
-			"endLine": 169,
+			"endLine": 173,
 			"endColumn": 38,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[\"Stryker was here\"]",
 			"status": "generated",
-			"id": "78a8aa7433e6895c73dca472ce490189e3543ef793eb64345109c47e06528c5e",
+			"id": "7ce36820d0b03c437fed48865b476452ef7e45d04859560a98eb5f5dfb6142d6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3303,14 +3360,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 170,
+			"line": 174,
 			"column": 53,
-			"endLine": 180,
+			"endLine": 184,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "2bcc293ffe4b95b00c7c40e4d252bc03225a08a1ec7937193ad1a4adf87e6915",
+			"id": "67be91a0930f64c379519f801cedef6aa372012cef6756b4df4d1d2a8cd2cb84",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3325,14 +3382,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 171,
+			"line": 175,
 			"column": 7,
-			"endLine": 171,
+			"endLine": 175,
 			"endColumn": 34,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "d5ee672d0a792a456296fa7067be9e41f51abfd6ad1c7fc4243c0431c132562c",
+			"id": "ce2237854198b73b07a7172b05e64c5ae7309955e56df6ba7399c100845a1852",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3347,14 +3404,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 171,
+			"line": 175,
 			"column": 7,
-			"endLine": 171,
+			"endLine": 175,
 			"endColumn": 34,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "4af3388c425279d67bb4fb71489d9f9cbc2fdb98671a2a557f685cc56151c935",
+			"id": "f1a94363e687befdcc68fc807efec4c1717505c40ffea772229a1171dca0c427",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3369,14 +3426,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 171,
+			"line": 175,
 			"column": 7,
-			"endLine": 171,
+			"endLine": 175,
 			"endColumn": 34,
 			"mutatorName": "EqualityOperator",
 			"replacement": "kind.name !== cellDirectory",
 			"status": "generated",
-			"id": "79113888e7851bbf3ec675c13af2512d0f069538e1952562be2a46e6159fd7ef",
+			"id": "30334ec78f8619534df4b6f9b333c49ed95f545d2c9199272f25df2f8a1bb7de",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3391,14 +3448,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 173,
+			"line": 177,
 			"column": 7,
-			"endLine": 173,
+			"endLine": 177,
 			"endColumn": 26,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "kind.isDirectory()",
 			"status": "generated",
-			"id": "7fb571a8f780f3c1d33d40b12deb3175b5a85bca139eed12589e30c7c7305543",
+			"id": "07ed557d89ad15016133b92b641e7f393bb45288a3566705caf2cbabc9cad349",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3413,14 +3470,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 173,
+			"line": 177,
 			"column": 7,
-			"endLine": 173,
+			"endLine": 177,
 			"endColumn": 26,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "d8db9651c0c31062d41b3742a41b16aab06b61c888e2d55d6c437d3425bac8a3",
+			"id": "3b76a4e56c04a87d06d97c0fd46310994709c3c54ac06324e39ecfcccafa7528",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3435,14 +3492,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 173,
+			"line": 177,
 			"column": 7,
-			"endLine": 173,
+			"endLine": 177,
 			"endColumn": 26,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "aac284e5e2ec8f41bb61879157097e1879ceb7151ac89d60a457f446e124bde5",
+			"id": "c9e11f3252ea35370da35d5e82442438ca6a161835616e0c79f60407f44d8f62",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3457,27 +3514,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 173,
+			"line": 177,
 			"column": 42,
-			"endLine": 173,
+			"endLine": 177,
 			"endColumn": 55,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "0523267eae6cf89893e93a02bee2a8290ad81ff0c72864c5a5a3af7d690ce5df"
+			"id": "356c4a5eefbab5ce3a19c260be3b4ce746ef9bb19c3d43fca47f624ccf9efe83"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 174,
+			"line": 178,
 			"column": 53,
-			"endLine": 179,
+			"endLine": 183,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "62df587a55b434c01cdc4cb4d9be460a7094e9b9935ebc4d49c875e6c82d9f41",
+			"id": "ebf83cf562b7dfecd042897ec066bad47c72155a693bb06cb12e6767b78ca9a6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3492,14 +3549,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 176,
+			"line": 180,
 			"column": 8,
-			"endLine": 176,
+			"endLine": 180,
 			"endColumn": 27,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "slot.isDirectory()",
 			"status": "generated",
-			"id": "84648d6ff323651b6da762ee50e0a53dafe893ec59876fbf03e019217a8663d1",
+			"id": "7c189703aab5bc512d78ebef11f56fb04782a38c7f855b2b9fc781080cfafa06",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3514,14 +3571,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 176,
+			"line": 180,
 			"column": 8,
-			"endLine": 176,
+			"endLine": 180,
 			"endColumn": 27,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "e92b071521f956f14e5100c23b6b38b1e5f51ba1157a925cd989d4d73f705373",
+			"id": "02e1343b56b7df5453b89ddb3075233f36c650030e60f967c60216c3e9d2a3ea",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3536,14 +3593,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 176,
+			"line": 180,
 			"column": 8,
-			"endLine": 176,
+			"endLine": 180,
 			"endColumn": 27,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "e0eed49c2da73da5e1c7defc99a22bf8d320f347f21fc205a9dec1dc1c67a4ca",
+			"id": "2c845062403390a0fa197ea10bd54f9aae0305d21c013d6c7cd6619ab162439d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3558,27 +3615,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 176,
+			"line": 180,
 			"column": 43,
-			"endLine": 176,
+			"endLine": 180,
 			"endColumn": 56,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "c3e24833f8ef112a1184f245a63993f61595aa11d5f7379111e9a71c43513605"
+			"id": "178ded46686244478122b15a1574c811d0b4de1d9884981d011b50ea2a3ff5e2"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 178,
+			"line": 182,
 			"column": 5,
-			"endLine": 178,
+			"endLine": 182,
 			"endColumn": 71,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "e786e234cc6c2d6ab58feb3d3b21a7d220991763bd139c53ba6f46d5c1597305",
+			"id": "586f79832ea016434fe2623042ea8b15a5c5bb5cbaf40a696f970feee78afee5",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3593,14 +3650,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 183,
+			"line": 187,
 			"column": 6,
-			"endLine": 183,
+			"endLine": 187,
 			"endColumn": 78,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "b5bbc69975c29e5e8d28815112ca51c2e1247f579ff2d3dced253103e382274f",
+			"id": "2fe725f72bcdaf52baece7cc5b7131fbde5a6c1cfae7a9d612868846859d4d96",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3615,14 +3672,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 183,
+			"line": 187,
 			"column": 6,
-			"endLine": 183,
+			"endLine": 187,
 			"endColumn": 78,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "a6e683f008e9b3874788edd0dbec19e3501fc56a7a279f8a5098947da3350a97",
+			"id": "f05b8a4d6f940332e1ecb583bc50c8fab519a00a585a4fee4c09e0bcc6b39893",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3637,14 +3694,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 183,
+			"line": 187,
 			"column": 6,
-			"endLine": 183,
+			"endLine": 187,
 			"endColumn": 78,
 			"mutatorName": "EqualityOperator",
 			"replacement": "(await this.#cell(await this.#reach(changeset)))?.value !== disposalMark",
 			"status": "generated",
-			"id": "d7890172d8ca1c90fb34e16828e1f5e29c842301d054bcb36d21b2a8d631421e",
+			"id": "39bcca84320014d87ef0f34c3a3da7c9246ce256621ea01bdbfe1fe82526dd57",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3659,14 +3716,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 183,
+			"line": 187,
 			"column": 6,
-			"endLine": 183,
+			"endLine": 187,
 			"endColumn": 61,
 			"mutatorName": "OptionalChaining",
 			"replacement": "(await this.#cell(await this.#reach(changeset))).value",
 			"status": "generated",
-			"id": "f715eac088555791d590863e759f9ae4fb79a964d1cc1e1be243eae1cea473c3",
+			"id": "9d7806d7e8f5f7cf2cfce8594917f1ad3d9e04a059856d52b8a562b309169b40",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3681,14 +3738,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 183,
+			"line": 187,
 			"column": 87,
-			"endLine": 183,
+			"endLine": 187,
 			"endColumn": 89,
 			"mutatorName": "ArrayDeclaration",
 			"replacement": "[\"Stryker was here\"]",
 			"status": "generated",
-			"id": "6cd3236ccd7921c378752ea8d98c3f32d9d95eca075ac6072f0b16c15c209fbf",
+			"id": "f21c297341906fc80327c8d7954c4a13e79e9086b07ce864a3ad34ae7c402190",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3703,115 +3760,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 187,
+			"line": 191,
 			"column": 68,
-			"endLine": 198,
+			"endLine": 202,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "c46d50c26643f6f9e79ebda5eb6fb3fa422007a3bb6b927ccc01dd12c4575710",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 188,
-			"column": 6,
-			"endLine": 188,
-			"endColumn": 20,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "file.isFile()",
-			"status": "generated",
-			"id": "944c11d3e5e37b90521e5cf00e984cba7b2f89ca58184bc0f62a9af2718ae928",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 188,
-			"column": 6,
-			"endLine": 188,
-			"endColumn": 20,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "75360ddb3e1f423600d186affab6732ba2c915fe8b6267d8f5cd9d84d6f7b880",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"add: the same bytes added twice are one record, and a repeat completes a batch"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 188,
-			"column": 6,
-			"endLine": 188,
-			"endColumn": 20,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "39ce4f87677443aa7c1ee4fcb463f153b8595cb571207bd0fd6de8957c00479f",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"DirectoryRecordStore",
-						"refuses a listing that holds a symbolic link in place of a record, naming the file"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 188,
-			"column": 36,
-			"endLine": 188,
-			"endColumn": 49,
-			"mutatorName": "StringLiteral",
-			"replacement": "\"\"",
-			"status": "ignored",
-			"ignoredBy": "config",
-			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "874b6de6dfa7c3e4b88837cb2201cf90465fddff79b5aabddc59dadc655673a7"
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 191,
-			"column": 6,
-			"endLine": 193,
-			"endColumn": 3,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "4a8c22d45177269c9ebbc5efdf94668a211451d3d9b4e999d1dc55dbd2436de4",
+			"id": "1eae47de4321a8649cc1e13c7f0e12067f135df1fb260c71a6a84199b012a2f1",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3827,26 +3783,127 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 192,
-			"column": 51,
+			"column": 6,
 			"endLine": 192,
+			"endColumn": 20,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "file.isFile()",
+			"status": "generated",
+			"id": "ba05a8c7731928a37bf17543c33fb29ce27b916079ae0ae96de279453b6a8c12",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 192,
+			"column": 6,
+			"endLine": 192,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "76c48fc9da010cdcfafafeaf23db12e3a5a4f5e09a9adbc010c941c0df046737",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 192,
+			"column": 6,
+			"endLine": 192,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d2361c1eac3e2d3fdf28500c5b4a3cf83f7abdc335a0ba4b9aa09bb0465d9666",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"DirectoryRecordStore",
+						"refuses a listing that holds a symbolic link in place of a record, naming the file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 192,
+			"column": 36,
+			"endLine": 192,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5c021d86666725d68c825d8a32410836cd78f84e9924a58c0e1e940134781002"
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 195,
+			"column": 6,
+			"endLine": 197,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a3547d0d277f86d3685c43794bb91b1026cafc4d2d77131c925aec3a3b3f153e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"add: the same bytes added twice are one record, and a repeat completes a batch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 196,
+			"column": 51,
+			"endLine": 196,
 			"endColumn": 58,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "ceb7df1a2d5c724b97269abf61ee5b80b549526de41f91c5a1b82463e95634df"
+			"id": "ad36af06a36653d45546b31bf0e7592a15045027a7953d31df4bf32271aed34f"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 193,
+			"line": 197,
 			"column": 18,
-			"endLine": 195,
+			"endLine": 199,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "03b3e760cb96e804abace262ba5e92ac2ee25789cfd165efebbe18d677d3a87e",
+			"id": "446837cb0b110dfb6e332d4f5508d02a02063483b8685c92dc03b15d0cbad276",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3861,27 +3918,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 194,
+			"line": 198,
 			"column": 17,
-			"endLine": 194,
+			"endLine": 198,
 			"endColumn": 30,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "e228a4b0fa87f11edc36bb39e1b39ae556c026048b229609bc8cc0674d7d4fb1"
+			"id": "3af37eaa46d2ccf1f4db6ce2544bf87d95fed5116d356971cbd3c1c6c07f9e95"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 196,
+			"line": 200,
 			"column": 6,
-			"endLine": 196,
+			"endLine": 200,
 			"endColumn": 44,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "b468d24d7b360eca5d37d9d0eff0d823b8f9cd9b32789ada84f48928cd785a95",
+			"id": "2465c247ead4678878664a1f6ab8350f9822e7368e38f85fb4716ad5aff48249",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3896,14 +3953,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 196,
+			"line": 200,
 			"column": 6,
-			"endLine": 196,
+			"endLine": 200,
 			"endColumn": 44,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "74e15d6635ccc5508e8a82ac3a912349790ff8d46a06c059f8cee45a99ab4eeb",
+			"id": "724852c2cb6b01f36ae1147f1ea2dde6380bc24dcdade81f91568e73e41bc347",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3918,14 +3975,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 196,
+			"line": 200,
 			"column": 6,
-			"endLine": 196,
+			"endLine": 200,
 			"endColumn": 44,
 			"mutatorName": "EqualityOperator",
 			"replacement": "join(this.#root, record.path) === path",
 			"status": "generated",
-			"id": "0889db21f957121bfa63ebe9748c05ac591a9804e9d129ce80512ecd73d173b1",
+			"id": "0565fd10358bfa8352f85e13403ce210503a35eaf2e62eafb84522a570157277",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -3940,137 +3997,27 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 196,
+			"line": 200,
 			"column": 60,
-			"endLine": 196,
+			"endLine": 200,
 			"endColumn": 73,
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"status": "ignored",
 			"ignoredBy": "config",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"id": "24ce497ceff745b981d7ac2be5411202ec1e18722003269e4dce40a100dd5403"
+			"id": "996dd3dd15d5439456854f630d7e3f801c1caf37d95919185ea8ddd3a0bf341d"
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 200,
+			"line": 204,
 			"column": 56,
-			"endLine": 204,
+			"endLine": 208,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "9078ea61f4b86e07f2c74642cc7220ba067272696e574ba2b6be5fbbc16e1aaa",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails readCell unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 203,
-			"column": 9,
-			"endLine": 203,
-			"endColumn": 27,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "true",
-			"status": "generated",
-			"id": "daa319174b95bca09b5a68a941ff264d9474abc91b1b34283249b047c2892a3f",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"leaves no temporary file when it loses a cell write to a writer that read the same version"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 203,
-			"column": 9,
-			"endLine": 203,
-			"endColumn": 27,
-			"mutatorName": "ConditionalExpression",
-			"replacement": "false",
-			"status": "generated",
-			"id": "213fbb6e0587fec949bfb581526c866aaff934bf6d13bf52182a091e12168f3e",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"readCell: returns the last value a writeCell stored, on any handle"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 203,
-			"column": 9,
-			"endLine": 203,
-			"endColumn": 27,
-			"mutatorName": "EqualityOperator",
-			"replacement": "cell !== undefined",
-			"status": "generated",
-			"id": "c359fffb2db0542505f4e7fc66a5dafaeee5cc27aaffc73f2eb6e3ab66df4317",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"leaves no temporary file when it loses a cell write to a writer that read the same version"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 203,
-			"column": 35,
-			"endLine": 203,
-			"endColumn": 88,
-			"mutatorName": "ObjectLiteral",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "e2ce4ffe5277d7a9c246c0d02c334e24df5f238c6a594224236bae1041c37071",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"leaves no temporary file when it loses a cell write to a writer that read the same version"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 206,
-			"column": 106,
-			"endLine": 213,
-			"endColumn": 2,
-			"mutatorName": "BlockStatement",
-			"replacement": "{}",
-			"status": "generated",
-			"id": "21767ec47d4204fd4d1a70a53c4f54e9db6c7997ea4432fc0a28a3da8977a9b5",
+			"id": "5a3bfc785e114aa5c89fc4fb13dff21bdb9c456720a4f5bf5f3ee30698fc9de4",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4086,13 +4033,123 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 207,
-			"column": 2,
+			"column": 9,
 			"endLine": 207,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e90fc0b34c79b0b4db2bb09800debb9fa4d080b653cb2465ea166a0824a88071",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"leaves no temporary file when it loses a cell write to a writer that read the same version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 207,
+			"column": 9,
+			"endLine": 207,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d471bc8332bc2ea3c051aedefb115259795e64fe19a36d5e6603970f73fc064d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"readCell: returns the last value a writeCell stored, on any handle"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 207,
+			"column": 9,
+			"endLine": 207,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cell !== undefined",
+			"status": "generated",
+			"id": "2e7c75b8a1b84785249c0fa721fcc1f6e1d1a252a94fc5abcf9d6a5250cb1a3a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"leaves no temporary file when it loses a cell write to a writer that read the same version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 207,
+			"column": 35,
+			"endLine": 207,
+			"endColumn": 88,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "eac07ff0c57d3eeba7ffe21c79659afa8de848d9375d44d9b6a5d4fd6e1dc14f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"leaves no temporary file when it loses a cell write to a writer that read the same version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 210,
+			"column": 106,
+			"endLine": 217,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a7c663ac78ef9944ba1244d406bb907328e4b36cc94292dc58e2eca24d1b9a32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails readCell unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 211,
+			"column": 2,
+			"endLine": 211,
 			"endColumn": 24,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
 			"status": "generated",
-			"id": "9b52fe05dd1f5585599ce72e94ec0e51fb49ed2bc3d2267e42a41aa9e736a845",
+			"id": "1d935526683e80efce5f40ad68b62d03fe58d40d1477b642eec662d18a224865",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4107,14 +4164,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 210,
+			"line": 214,
 			"column": 6,
-			"endLine": 210,
+			"endLine": 214,
 			"endColumn": 34,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "1f0a4e080409ecfb6e656a8a0e6189234a86acf748cd6b2d94dc927d79a0885e",
+			"id": "fb1725c8e422bbe7716fad8dde6a88e2c29e97b5913fd2d53e79a0ace1b49bf0",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4129,14 +4186,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 210,
+			"line": 214,
 			"column": 6,
-			"endLine": 210,
+			"endLine": 214,
 			"endColumn": 34,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "e6b72cfe505d12a4b24782ec0099cb9d603dd1d4fdf5607f359795b8435f20e9",
+			"id": "fac9001060c11fa663cdac6239dd4fda691b9451201178b1cebd6a8cdfeddb38",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4151,14 +4208,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 210,
+			"line": 214,
 			"column": 6,
-			"endLine": 210,
+			"endLine": 214,
 			"endColumn": 34,
 			"mutatorName": "EqualityOperator",
 			"replacement": "cell?.value !== disposalMark",
 			"status": "generated",
-			"id": "c6d8b583db9a787a9b6ee3d2187099d56e0fadbf59c30d68b9e3ac33e94eabbe",
+			"id": "21b04bb1029a2f8e288c2e99be60bfab8cc7f101d129d6808ccf0933af981121",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4173,14 +4230,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 210,
+			"line": 214,
 			"column": 6,
-			"endLine": 210,
+			"endLine": 214,
 			"endColumn": 17,
 			"mutatorName": "OptionalChaining",
 			"replacement": "cell.value",
 			"status": "generated",
-			"id": "0bc6629884988a494a40fb4daa817366da8a5e468d0938a6aff0b0277e287d69",
+			"id": "177fbd1ddf3f6614f6d84b56d234a73bde07811e2d6969d9103ada6e6f3a168e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4195,14 +4252,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 211,
+			"line": 215,
 			"column": 6,
-			"endLine": 211,
+			"endLine": 215,
 			"endColumn": 51,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "c7ac455207a53f909248a4204f537277c3cefa4ef47a1631cd538522295d30e0",
+			"id": "59eb61305dfac2bfd8adcb6ab8f484709e3262b5f0b765a2307ffe425b2ca2a6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4217,80 +4274,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 211,
+			"line": 215,
 			"column": 6,
-			"endLine": 211,
+			"endLine": 215,
 			"endColumn": 51,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "d0d52c84e606cda24a79a6c11f092eb23357fe5397cd4f59001e461a4ed88253",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/record-store.test.ts",
-					"path": [
-						"the record store conformance suite on the directory adapter",
-						"writeCell: succeeds only while the version is still the expected one"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 211,
-			"column": 6,
-			"endLine": 211,
-			"endColumn": 51,
-			"mutatorName": "EqualityOperator",
-			"replacement": "cell?.sequence.toString() === expectedVersion",
-			"status": "generated",
-			"id": "a2ad081f7ec7840dfbef6f2c86d3f1bc951c917a6f082d6ead172a83b1319c82",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails readCell unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 211,
-			"column": 6,
-			"endLine": 211,
-			"endColumn": 20,
-			"mutatorName": "OptionalChaining",
-			"replacement": "cell.sequence",
-			"status": "generated",
-			"id": "fdc5873ccc5afc64c5464712ff2a9dc87988cb96750fc1dced95abc42a040024",
-			"claim": "killed",
-			"evidence": {
-				"test": {
-					"file": "packages/core/test/directory-record-store-race.test.ts",
-					"path": [
-						"DirectoryRecordStore with an add in flight",
-						"fails list unreachable when the store vanishes mid-call"
-					]
-				}
-			},
-			"survivorClasses": []
-		},
-		{
-			"file": "packages/core/src/directory-record-store.ts",
-			"line": 211,
-			"column": 60,
-			"endLine": 211,
-			"endColumn": 65,
-			"mutatorName": "BooleanLiteral",
-			"replacement": "true",
-			"status": "generated",
-			"id": "599100414cd5ffc0bb68e9bf13a98748c27afdf9c80bfe80718a906ad7a7ec2a",
+			"id": "65b59d98bebde7975108e91f9212f347e50874f940e19313e606c7166566d9e6",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4306,13 +4297,79 @@
 		{
 			"file": "packages/core/src/directory-record-store.ts",
 			"line": 215,
+			"column": 6,
+			"endLine": 215,
+			"endColumn": 51,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cell?.sequence.toString() === expectedVersion",
+			"status": "generated",
+			"id": "f0341ce1a7be471f197a2c54daa70bfc976a330cbf7e191f7f328a8f1a0d654e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails readCell unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 215,
+			"column": 6,
+			"endLine": 215,
+			"endColumn": 20,
+			"mutatorName": "OptionalChaining",
+			"replacement": "cell.sequence",
+			"status": "generated",
+			"id": "25b1d309c4802b752acd8feeb0023abbb7ae1cd36bef0afb878e15b41e4ed1d2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/directory-record-store-race.test.ts",
+					"path": [
+						"DirectoryRecordStore with an add in flight",
+						"fails list unreachable when the store vanishes mid-call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 215,
+			"column": 60,
+			"endLine": 215,
+			"endColumn": 65,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "210ac7f7b66838ab827418417240ab937a843d7727a4352b2400609eee2412df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the directory adapter",
+						"writeCell: succeeds only while the version is still the expected one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/directory-record-store.ts",
+			"line": 219,
 			"column": 49,
-			"endLine": 223,
+			"endLine": 227,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "4e974c5e5b01caa0eeb422e6fb3a032dbef399cd94b77217645f75d9496839f9",
+			"id": "b647e46a70a80e6ff762b19c7fc97f337b51a80bd9f8dc26ec59a1437a10d40b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4327,14 +4384,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 217,
+			"line": 221,
 			"column": 2,
-			"endLine": 220,
+			"endLine": 224,
 			"endColumn": 3,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "for (; false;) {\n  const cell = await this.#cell(directory);\n  if (cell?.value === disposalMark || (await this.#swap(directory, cell, disposalMark))) break;\n}",
 			"status": "generated",
-			"id": "3ec01e357793ea522699abbf836b53a682c0cbdba8dfdb5cc97a0103a9ac4e17",
+			"id": "8a71f8d1391d5c9e578b3d729e77bdea3ad9231bc0f01e049b79c7a8534af69b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4349,14 +4406,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 217,
+			"line": 221,
 			"column": 11,
-			"endLine": 220,
+			"endLine": 224,
 			"endColumn": 3,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "292357cf7e1014d476d4e776e8a9b4427571681cf004346bddf8a7e2dc63fa0a",
+			"id": "cbe408e3cbc55f218ac69e50d08595281db3924c4f44c3ddf4a5b1c9eb3aadcd",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4371,14 +4428,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 88,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "f90e04b4587cae5af3f548878d3e2c7bb98d5a6ba736689e0ad714a436464b41",
+			"id": "6860c190e8814f29ec4efe4bbca349bcb00f5b398da632ada7f8d5478be5079a",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4393,14 +4450,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 88,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "85cc9a808c236faf1c4f73199d023e6cdf39b53d189a1806cbf4913a321aa566",
+			"id": "e08e036400af034559a51695d33c63ac81018401ed80a60908bc77e798e55d6d",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4415,14 +4472,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 88,
 			"mutatorName": "LogicalOperator",
 			"replacement": "cell?.value === disposalMark && (await this.#swap(directory, cell, disposalMark))",
 			"status": "generated",
-			"id": "fc7135839183373fdbf341e10ba0807cdf3253aec522591687fada41c7ca9b47",
+			"id": "54f79a859dfe850fc5cdbd4af727154cf39037cfa578ade4b4601c8ece48f1cc",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4437,14 +4494,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 35,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "7d42c2279dd19bb4346fd641bf1992d02439079c6959182b8cc2ee8687eea90b",
+			"id": "ac7b1e450d5220bb9e131920b469c41d2567b37224bac907ec8844a4ffa7851e",
 			"claim": "equivalent",
 			"evidence": {
 				"reason": "A repeat dispose links the mark again under the next number; nothing reads a disposed cell's version, and add, writeCell and list read only its value."
@@ -4453,14 +4510,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 35,
 			"mutatorName": "EqualityOperator",
 			"replacement": "cell?.value !== disposalMark",
 			"status": "generated",
-			"id": "c49f4c4871061f2acdc51651bd9db3acf6f11098e9c9bc2b0c49bbfb7f95fddb",
+			"id": "55ff0949249ae5f2a598362058d19250d9cf9786cad9a2e49842049f634132ea",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4475,14 +4532,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 219,
+			"line": 223,
 			"column": 7,
-			"endLine": 219,
+			"endLine": 223,
 			"endColumn": 18,
 			"mutatorName": "OptionalChaining",
 			"replacement": "cell.value",
 			"status": "generated",
-			"id": "44f1d54ca2b92f944d39686975d2f434dee4899debd2e89f31fc2b8f1d0913c2",
+			"id": "bb2f4d5270abdfa2c64059a2b132cef9b97e63f8aff7c5e9bf69223dde6f3841",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4497,14 +4554,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 7,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 35,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "true",
 			"status": "generated",
-			"id": "2af35443357a8842b8f110e10830d147c819f66bb1e933ee378897d9e49d0915",
+			"id": "584240aeb9fdcbec86e3960af24b93ff8996ea0aa12ba2a1e6684cade198caf7",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4519,14 +4576,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 7,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 35,
 			"mutatorName": "ConditionalExpression",
 			"replacement": "false",
 			"status": "generated",
-			"id": "7159e52b726d0f7f7f8045e2e50c7f256d1e459b1fe5d18e7c5a84919e890368",
+			"id": "6b093d339f801e04c55b20bb4c233c5b5297c20caafd1ffb925273264483a929",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4541,14 +4598,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 7,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 35,
 			"mutatorName": "EqualityOperator",
 			"replacement": "entry.name === cellDirectory",
 			"status": "generated",
-			"id": "066f5234dca9e807306632ff1b177c144874bf98926ccf6fac27c4a07c608e0d",
+			"id": "b50219046e0354b6bda3570130f976e916d9b520c15d137b3516782ef00cc134",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4563,14 +4620,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 75,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 107,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "34095b3d6230fac0cadcccc7e9ec1261cadfbc0f39b70785827f7e7644aa516d",
+			"id": "6ae9caafdc36bb47097660d4f97f72bc78bc6cdc8a654e58e65f8a4b1c0ba775",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4585,14 +4642,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 88,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 92,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "8ef037b91fb7313b14b1f340837309d70757df680c94318e81b5c00cfff94a6c",
+			"id": "2f691138017d60717480fc1fd4280974b8edb7d22bbb5cc66caf5219e79562c3",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4607,14 +4664,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 222,
+			"line": 226,
 			"column": 101,
-			"endLine": 222,
+			"endLine": 226,
 			"endColumn": 105,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "435c75495bf5295471349f334a7de86f1007816bd5bfe6a4752f1b4d24330482",
+			"id": "dcbac822659a34212921f7e3964ec08847be54e1c83cf947ac4b182bb0924028",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4629,14 +4686,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 225,
+			"line": 229,
 			"column": 30,
-			"endLine": 227,
+			"endLine": 231,
 			"endColumn": 2,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
 			"status": "generated",
-			"id": "788f65421680292ddb31c81a5b9ffaab3d21c5fb491d44530579be488f3bf1a7",
+			"id": "656737545fb7896911b229e280f2f13d15d4e7378a74506122e63e3461ea240e",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -4651,14 +4708,14 @@
 		},
 		{
 			"file": "packages/core/src/directory-record-store.ts",
-			"line": 226,
+			"line": 230,
 			"column": 17,
-			"endLine": 226,
+			"endLine": 230,
 			"endColumn": 21,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
 			"status": "generated",
-			"id": "6293dad0f43c3bf9d054109cd57d0974b12475b0beddfe3c3dd70941e5075fee",
+			"id": "b6df68f3a221768df74cf2bb9035bf87b972a91352299e5768038486519b152b",
 			"claim": "killed",
 			"evidence": {
 				"test": {
@@ -24079,7 +24136,7 @@
 			"id": "fef7f43a032e44d5066b8d6cd76fc1564ac8c74eb851d55974b808a9030ccaa6"
 		}
 	],
-	"total": 1238,
+	"total": 1241,
 	"omitted": 0,
 	"unmutated": []
 }

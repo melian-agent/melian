@@ -1,6 +1,6 @@
 {
 	"pull_request": 399,
-	"head": "43f150ded7bd35a917bd93e9f5827a9f128925a3",
+	"head": "7624e7edb209b1b53164c745db9477e104c03861",
 	"ruling": "The maintainer ruled on 2026-11-14, in the coordinator's session, that these conformance-suite mutants are listed by line with a reason under the label \"suite assertion, proved per case\", never as equivalent. They stay unclaimed in 2026-11-13-pr-399-mutants.json, which fails --sample until issue #406 adds a claim for them; they then take \"claim\": \"suite\". Each row that deletes or changes something inside a case names the line that catches its case's failures under the mutant, as the decision's wording of 2026-11-14 requires.",
 	"mutants": [
 		{
