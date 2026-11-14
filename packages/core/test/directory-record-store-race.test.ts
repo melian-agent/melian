@@ -211,4 +211,17 @@ describe("DirectoryRecordStore with an add in flight", () => {
 		expect(await winning.readCell(changeset)).toEqual({ value: "lease B", version: "1" });
 		expect(readdirSync(join(root, "tmp"))).toEqual([]);
 	});
+
+	it("retries a dispose that lost its cell write to another writer, and still leaves the mark", async () => {
+		const disposing = await DirectoryRecordStore.open(root, testPayloads);
+		const writing = await DirectoryRecordStore.open(root, testPayloads);
+		const { reached, release } = pause("link", "/.cell/1");
+		const dispose = disposing.dispose(changeset);
+		await reached;
+		expect(await writing.writeCell(changeset, undefined, "lease")).toBe(true);
+		release();
+		await dispose;
+		expect((await writing.readCell(changeset)).value).toBe('{"disposed":true}');
+		expect((await rejection(writing.add([envelope]), RecordError)).code).toBe("disposed");
+	});
 });
