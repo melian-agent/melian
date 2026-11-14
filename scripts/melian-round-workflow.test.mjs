@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	chmodSync,
 	existsSync,
@@ -694,15 +695,17 @@ describe("the melian round workflow", () => {
 			actions("secrets.CODEX_AUTH_B64"),
 			actions("secrets.MELIAN_STATUS_TOKEN"),
 			actions("secrets.MELIAN_STATUS_TOKEN"),
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 		]);
 	});
 
-	it("reads the status token only in the steps that set melian/review or post the round's comment, in jobs of the melian-round Environment", () => {
+	it("reads the status token only in the steps that set melian/review or post or record the round's comment, in jobs of the melian-round Environment", () => {
 		const holding = steps.filter((step) => JSON.stringify(step).includes("secrets.MELIAN_STATUS_TOKEN"));
 		expect(holding.map((step) => [step.job, step.name, step.env.STATUS_TOKEN])).toEqual([
 			["pending", "Set melian/review to pending on the head", actions("secrets.MELIAN_STATUS_TOKEN")],
 			["report", "Comment on the pull request", actions("secrets.MELIAN_STATUS_TOKEN")],
 			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
+			["report", "Record the comment's body", actions("secrets.MELIAN_STATUS_TOKEN")],
 		]);
 		expect(workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request").env.GH_TOKEN).toBe(
 			actions("github.token"),
@@ -1283,7 +1286,7 @@ describe("the melian round workflow", () => {
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
 					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
 					'if [ "$1 $2 $3" = "api --paginate repos/o/r/commits/$HEAD/statuses?per_page=100" ]; then printf "%s" "$STATUSES" | jq -r "$5"; exit; fi',
-					'[ "$1 $2" = "api -X" ] && cat > /dev/null && echo "$3 $4 $GH_TOKEN" >> "$WRITES" && exit 0',
+					'[ "$1 $2" = "api -X" ] && cat > /dev/null && echo "$3 $4 $GH_TOKEN" >> "$WRITES" && printf "%s" "$ANSWER" && exit 0',
 					"exit 1",
 					"",
 				].join("\n"),
@@ -1301,7 +1304,11 @@ describe("the melian round workflow", () => {
 			writeFileSync(join(round, "nonce"), `${nonce}\n`);
 			const saw = join(dir, "saw.log");
 			const writes = join(dir, "writes.log");
-			for (const name of ["Comment on the pull request", "Set melian/review on the reviewed head"]) {
+			for (const name of [
+				"Comment on the pull request",
+				"Set melian/review on the reviewed head",
+				"Record the comment's body",
+			]) {
 				const { run } = workflow.jobs.report.steps.find((step) => step.name === name);
 				const ran = spawnSync("bash", ["-e", "-c", run], {
 					cwd: fileURLToPath(new URL("..", import.meta.url)),
@@ -1325,14 +1332,107 @@ describe("the melian round workflow", () => {
 						STATUS_TOKEN: "status-token",
 						NODE_SAW: saw,
 						WRITES: writes,
+						SHA: "c".repeat(40),
+						ANSWER: JSON.stringify({
+							body: "posted",
+							html_url: "https://github.com/o/r/pull/7#issuecomment-56",
+							issue_url: "https://api.github.com/repos/o/r/issues/7",
+						}),
 					},
 				});
 				expect(ran.status, `${name}: ${ran.stderr}`).toBe(0);
 			}
 			expect(existsSync(saw) ? readFileSync(saw, "utf8") : "").toBe("");
 			expect(readFileSync(writes, "utf8")).toBe(
-				`POST repos/o/r/issues/7/comments status-token\nPOST repos/o/r/statuses/${head} status-token\n`,
+				`POST repos/o/r/issues/7/comments status-token\nPOST repos/o/r/statuses/${head} status-token\nPOST repos/o/r/statuses/${"c".repeat(40)} status-token\n`,
 			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("records the body GitHub stored for the comment, on the commit this run built, after melian/review", () => {
+		const report = workflow.jobs.report.steps;
+		const index = report.findIndex((step) => step.name === "Record the comment's body");
+		expect(index).toBe(report.length - 1);
+		expect(index).toBeGreaterThan(report.findIndex((step) => step.name === "Set melian/review on the reviewed head"));
+		const { run, env, if: condition } = report[index];
+		// A comment step that failed or was skipped left no answer of this run's to record.
+		expect(condition).toBe(actions("!cancelled() && steps.comment.outcome == 'success'"));
+		expect(report.find((step) => step.name === "Comment on the pull request").id).toBe("comment");
+		expect(env).toEqual({
+			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
+			REPOSITORY: actions("github.repository"),
+			NUMBER: actions("inputs.pull_request"),
+			SHA: actions("github.sha"),
+			RUN_ID: actions("github.run_id"),
+		});
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const sha = "c".repeat(40);
+			// A fake gh answers only the status post on the run's commit when it carries the status token, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "api -X POST repos/o/r/statuses/$SHA --input $RUNNER_TEMP/record.json" ] && [ "$GH_TOKEN" = status-token ] && cp "$6" "$RECORDED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const recorded = join(dir, "recorded.json");
+			// The comment step sent this file, but the record hashes the body GitHub answered with, not the file.
+			writeFileSync(join(dir, "comment.md"), "what the job sent\n");
+			const step = ({ answer, token = "status-token", number = "7" }) => {
+				rmSync(recorded, { force: true });
+				writeFileSync(join(dir, "posted.json"), answer);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: number,
+						SHA: sha,
+						RUN_ID: "9",
+						STATUS_TOKEN: token,
+						RECORDED: recorded,
+					},
+				});
+				return [
+					ran.status,
+					ran.stdout,
+					existsSync(recorded) ? JSON.parse(readFileSync(recorded, "utf8")) : undefined,
+				];
+			};
+			const stored = "<!-- melian-round run:9 nonce:0123456789abcdef0123456789abcdef -->\r\nwhat GitHub stored";
+			const answer = JSON.stringify({
+				body: stored,
+				html_url: "https://github.com/o/r/pull/7#issuecomment-56",
+				issue_url: "https://api.github.com/repos/o/r/issues/7",
+			});
+			const description = `run 9 pull 7 body sha256 ${createHash("sha256").update(stored, "utf8").digest("hex")}`;
+			expect(step({ answer })).toEqual([
+				0,
+				`melian/round-comment on ${sha}: ${description}\n`,
+				{
+					state: "success",
+					context: "melian/round-comment",
+					description,
+					target_url: "https://github.com/o/r/pull/7#issuecomment-56",
+				},
+			]);
+			// An answer that cannot be read, or that puts the comment on another pull request, records nothing.
+			expect(step({ answer: "" })).toEqual([1, "", undefined]);
+			expect(step({ answer, number: "8" })).toEqual([1, "", undefined]);
+			expect(step({ answer, token: "" })).toEqual([
+				1,
+				"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				undefined,
+			]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
