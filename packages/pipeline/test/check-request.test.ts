@@ -8,6 +8,7 @@ const sample: CheckRequestInput = {
 	source: { kind: "revision", commit: "a".repeat(40) },
 	tools: { enola: { version: "0.4.37", sha256: "b".repeat(64) } },
 	analysers: { biome: { from: "checkout", version: "2.5.0" }, tsc: { from: "melian", version: "5.9.3" } },
+	install: { "package-lock.json": "c".repeat(64), "node_modules/.package-lock.json": "unavailable" },
 	mutation: {
 		stryker: { version: "10.0.0", installation: { core: "10.0.0" }, source: { from: "checkout", path: "/repo/x" } },
 		writer: { trusted: true, by: "writer" },

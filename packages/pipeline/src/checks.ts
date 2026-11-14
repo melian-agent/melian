@@ -39,7 +39,7 @@ import {
 } from "./harness.ts";
 import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
-import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
+import { installDigests, MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource, staticToolVersion } from "./static.ts";
 import { SupersessionReview } from "./supersession.ts";
 import { TaskTiming } from "./task-timing.ts";
@@ -655,6 +655,7 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 		source: input.source,
 		tools: (await ToolProvisioning.manifest()).toJSON(),
 		analysers: { biome: analyser("biome"), tsc: analyser("tsc") },
+		install: installDigests(repoRoot),
 		...(input.config.static.mutation.enabled
 			? {
 					mutation: {

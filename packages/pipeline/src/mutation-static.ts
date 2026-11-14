@@ -118,9 +118,36 @@ export function strykerVersion(repoRoot: string): string {
 	return "unavailable";
 }
 
-// The lockfiles of every package manager whose install Node runs Stryker from. Bun's two formats are here because Melian
-// runs Stryker under Node whichever tool installed node_modules.
-const mutationLockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"] as const;
+// The lockfiles of every package manager whose install Node runs a tool from, and npm's own record of what node_modules
+// holds, which an `npm install` of one package changes without touching package-lock.json. Bun's two formats are here
+// because Melian runs Stryker under Node whichever tool installed node_modules.
+const installRecords = [
+	"package-lock.json",
+	"pnpm-lock.yaml",
+	"yarn.lock",
+	"bun.lock",
+	"bun.lockb",
+	"node_modules/.package-lock.json",
+] as const;
+
+// A digest of each install record at `repoRoot`, or `unavailable` for one the checkout lacks, so a checkout without a
+// record cannot share a key with one that has it.
+export function installDigests(repoRoot: string): Record<string, string> {
+	return Object.fromEntries(
+		installRecords.map((name) => {
+			try {
+				return [
+					name,
+					createHash("sha256")
+						.update(readFileSync(posix.join(repoRoot, name)))
+						.digest("hex"),
+				];
+			} catch {
+				return [name, "unavailable"];
+			}
+		}),
+	);
+}
 
 export function mutationInstallation(repoRoot: string): string {
 	const require = createRequire(posix.join(repoRoot, "package.json"));
@@ -135,25 +162,10 @@ export function mutationInstallation(repoRoot: string): string {
 		}
 		return "unavailable";
 	});
-	const lockfiles = Object.fromEntries(
-		mutationLockfiles.map((name) => {
-			try {
-				return [
-					name,
-					createHash("sha256")
-						.update(readFileSync(posix.join(repoRoot, name)))
-						.digest("hex"),
-				];
-			} catch {
-				// A checkout without this lockfile cannot share a partition with one that has it.
-				return [name, "unavailable"];
-			}
-		}),
-	);
 	return createHash("sha256")
 		.update(
 			JSON.stringify({
-				lockfiles,
+				lockfiles: installDigests(repoRoot),
 				versions,
 				node: process.versions.node,
 				selectionVersion: mutationSelectionVersion,

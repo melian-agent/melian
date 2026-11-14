@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
 import {
@@ -490,6 +490,29 @@ describe("runChecks", () => {
 		const past = await run();
 		expect(past.records).toMatchObject([{ name: "guardrails", status: "failed", reason: "tooLarge" }]);
 		expect((await run()).identity.task).not.toBe(past.identity.task);
+	});
+
+	// tsc resolves types from the checkout's install, which can drift from package-lock.json, as an `npm install` of one
+	// package does. npm's record of the install keys it, and a missing record keys apart from any present one.
+	it("runs again when the checkout's install changes under the same lockfile", { timeout: 60_000 }, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "revision", commit: base };
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = async () =>
+			(await runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context))
+				.identity.task;
+		writeFileSync(join(repo, "package-lock.json"), "{}");
+		const missing = await run();
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		writeFileSync(join(repo, "node_modules", ".package-lock.json"), '{"packages":{"node_modules/@types/node":"1"}}');
+		const installed = await run();
+		expect(installed).not.toBe(missing);
+		expect(await run()).toBe(installed);
+		writeFileSync(join(repo, "node_modules", ".package-lock.json"), '{"packages":{"node_modules/@types/node":"2"}}');
+		expect(await run()).not.toBe(installed);
 	});
 
 	// A revision's policy is fixed by its commit, so its run is keyed as it was before working-tree policy was: a nested

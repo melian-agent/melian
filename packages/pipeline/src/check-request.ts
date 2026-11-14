@@ -21,6 +21,8 @@ export type CheckRequestInput = {
 	/** Melian's own tool pins, as `ToolProvisioning.manifest()` writes them. */
 	readonly tools: unknown;
 	readonly analysers: { readonly biome: AnalyserFacts; readonly tsc: AnalyserFacts };
+	/** A digest of each lockfile and of npm's record of the checkout's install, which Biome and tsc resolve from. */
+	readonly install: Readonly<Record<string, string>>;
 	/** Present only when the configuration enables `static.mutation`. */
 	readonly mutation?: {
 		readonly stryker: { readonly version: string; readonly installation: unknown; readonly source: StaticToolSource };
@@ -72,7 +74,7 @@ function strykerFrom({
 
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
- * policy source, Melian's tool pins, the version and source of each static tool, Stryker's facts and the head's trust
+ * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts and the head's trust
  * when mutation testing is on, the version of Melian's own code for each check, the host it runs on, and a working
  * tree's `melian.yaml` text. Only the paths that name the host are left out.
  */
@@ -84,6 +86,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			source: policySource(input.source),
 			tools: input.tools,
 			analysers: input.analysers,
+			install: input.install,
 			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
 			checks: checkVersions,
 			host: input.host,
