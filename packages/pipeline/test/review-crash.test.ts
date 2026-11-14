@@ -472,6 +472,34 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
 	});
 
+	it("unlocks no provider for a decider whose name only contains the fallback's prefix", async () => {
+		const decider: Decider = {
+			name: "x-llm-fallback:triage-provider/model",
+			calibrated: false,
+			decide: async () => ({ answers: [] }),
+		};
+		const reopened = await ReviewHarness.open(createMemoryStorage(), createFakeModels().review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				decisionTask(decider),
+				{
+					root: root.id,
+					revision: "r",
+					key: "0".repeat(64),
+					decider: { name: decider.name },
+					request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
+	});
+
 	it("asks a versioned decider for a legacy decision task that names it only in its key", async () => {
 		const decide = vi.fn(async () => ({ answers: [] }));
 		const decider: Decider = { name: "recorded", version: "v1", calibrated: false, decide };
