@@ -100,7 +100,7 @@ A fix for a reported defect, whether a review finding, a failing run, or a user'
   [[ "$run" = ".github/workflows/melian-round.yml workflow_dispatch $default $repo $sha" && "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "run $id is $run, not a melian round on $default"; exit 1; }
   hash=$(gh api "repos/$repo/issues/comments/$comment" | node -e '
     let text = "";
-    process.stdin.on("data", (chunk) => { text += chunk; }).on("end", () => {
+    process.stdin.setEncoding("utf8").on("data", (chunk) => { text += chunk; }).on("end", () => {
       const [repo, id, pull] = process.argv.slice(1);
       const comment = JSON.parse(text);
       if (comment.user?.login !== "melian-status-bot" || comment.user.id !== 353727783) process.exit(1);
@@ -108,8 +108,8 @@ A fix for a reported defect, whether a review finding, a failing run, or a user'
       if (typeof comment.body !== "string" || !comment.body.startsWith(`<!-- melian-round run:${id} nonce:`)) process.exit(1);
       console.log(require("node:crypto").createHash("sha256").update(comment.body, "utf8").digest("hex"));
     });' "$repo" "$id" "$pull") || { echo "comment $comment is not melian-status-bot's comment for run $id on pull request $pull"; exit 1; }
-  record=$(gh api --paginate "repos/$repo/commits/$sha/statuses?per_page=100" --jq ".[] | select(.context == \"melian/round-comment\" and .creator.login == \"melian-status-bot\" and .creator.id == 353727783 and (.description | startswith(\"run $id \"))) | \"\(.id) \(.description)\"" | sort -n | tail -n 1 | cut -d " " -f 2-) || exit 1
-  [ "$record" = "run $id pull $pull body sha256 $hash" ] || { echo "comment $comment's body is not the one run $id recorded for pull request $pull"; exit 1; }
+  record=$(gh api --paginate "repos/$repo/commits/$sha/statuses?per_page=100" --jq ".[] | select(.context == \"melian/round-comment\" and .creator.login == \"melian-status-bot\" and .creator.id == 353727783 and ((.description // \"\") | startswith(\"run $id \"))) | \"\(.id) \(.description | @json)\"" | sort -n | tail -n 1 | cut -d " " -f 2-) || exit 1
+  [ "$record" = "\"run $id pull $pull body sha256 $hash\"" ] || { echo "comment $comment's body is not the one run $id recorded for pull request $pull"; exit 1; }
   echo "comment $comment is run $id's, as it posted it on pull request $pull"
   ```
 

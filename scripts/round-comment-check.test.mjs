@@ -194,6 +194,33 @@ describe("the round comment check in AGENTS.md", () => {
 		]);
 	});
 
+	it("reads a genuine comment past 64 KiB whose character straddles a read of its answer", () => {
+		// A pipe hands node 64 KiB at a time, so a four-byte character just before byte 65,536 is split between two reads.
+		const emoji = "\u{1F600}";
+		const at = (pad) => ({ ...bot, body: `${bot.body}${"x".repeat(pad)}${emoji}\n` });
+		const offset = Buffer.from(JSON.stringify(at(0))).indexOf(Buffer.from(emoji));
+		for (const before of [1, 2, 3]) {
+			const long = at(65_536 - before - offset);
+			expect(Buffer.from(JSON.stringify(long)).indexOf(Buffer.from(emoji))).toBe(65_536 - before);
+			expect(run(long, [[recordOf(long)]]), String(before)).toEqual(passes);
+		}
+	});
+
+	it("refuses a record whose description carries a newline, so no description can add a record line", () => {
+		const genuine = recordOf(bot);
+		const wrong = { ...recordOf({ body: "another body" }), id: status.id + 1 };
+		expect(run(bot, [[{ ...genuine, description: `${genuine.description}\n` }]])).toEqual(notRecorded);
+		expect(run(bot, [[{ ...genuine, description: `${genuine.description}\n\n` }]])).toEqual(notRecorded);
+		const forged = (id) => ({ ...genuine, id, description: `run ${runId} x\n99999999999999 ${genuine.description}` });
+		expect(run(bot, [[wrong, forged(status.id + 2)]])).toEqual(notRecorded);
+		expect(run(bot, [[wrong, forged(10)]])).toEqual(notRecorded);
+	});
+
+	it("passes over a record with no description, beside the run's record", () => {
+		const blank = { ...recordOf(bot), id: status.id + 1, description: null };
+		expect(run(bot, [[blank, recordOf(bot)]])).toEqual(passes);
+	});
+
 	it("refuses an argument that is not a number before it asks GitHub anything", () => {
 		const usage = [1, "usage: <comment ID> <run ID> <pull request number>\n"];
 		expect(run(bot, [[recordOf(bot)]], { pullArg: "" })).toEqual(usage);
