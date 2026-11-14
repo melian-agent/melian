@@ -1,4 +1,4 @@
-export { DecisionFile, DecisionFiles, DecisionFilesError, decisionIndexLimits } from "./decision-files.ts";
+export { DecisionFile, DecisionFiles, DecisionFilesError, decisionIndexWarning } from "./decision-files.ts";
 export { DesignSections, designFileLimits, designIndexLimits } from "./design-sections.ts";
 export { FallbackDecider } from "./fallback.ts";
 export { type DecisionClause, type DecisionDeclaration, decisionPathPattern } from "./markdown.ts";
