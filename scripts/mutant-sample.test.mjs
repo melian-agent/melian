@@ -156,3 +156,27 @@ describe("mutant sampling", () => {
 		},
 	);
 });
+
+describe("mutant sampling with named files", () => {
+	const bare = (index, file) => {
+		const { claim: _claim, evidence: _evidence, survivorClasses: _classes, ...row } = mutant(index, { file });
+		return row;
+	};
+
+	it("checks and samples only the rows in the files that owe claims", () => {
+		const owed = [mutant(0), mutant(1)];
+		const result = sampleMutants(inventory([...owed, bare(2, "src/b.ts")], { claimsIn: ["src/a.ts"] }));
+		expect(result).toEqual({ ...sampleMutants(inventory(owed)), total: 3 });
+	});
+
+	it("refuses an unclaimed row inside those files, or anywhere when none are named", () => {
+		const rows = [mutant(0), bare(1, "src/b.ts")];
+		expect(() => sampleMutants(inventory(rows, { claimsIn: ["src/b.ts"] }))).toThrow("each mutant needs a claim");
+		expect(() => sampleMutants(inventory(rows))).toThrow("each mutant needs a claim");
+	});
+
+	it("refuses a listing limited to some files, even with every row claimed", () => {
+		expect(() => sampleMutants(inventory([mutant(0)], { limitedTo: ["src/a.ts"] }))).toThrow("for reading");
+		expect(() => sampleMutants(inventory([bare(0, "src/a.ts")], { limitedTo: ["src/a.ts"] }))).toThrow("for reading");
+	});
+});

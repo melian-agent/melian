@@ -9,7 +9,13 @@ import { fetchedPullRequest, gitHubFor, parseTarget } from "./target.ts";
 export async function listMutants(
 	io: Io,
 	argument: string,
-	options: { json: boolean; all: boolean; limit?: number },
+	options: {
+		json: boolean;
+		all: boolean;
+		limit?: number;
+		claimsIn?: readonly string[];
+		limitedTo?: readonly string[];
+	},
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let range = argument;

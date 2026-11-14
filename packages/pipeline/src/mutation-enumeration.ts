@@ -73,7 +73,7 @@ export interface MutationAdapter {
 
 /** Failure to enumerate committed source, distinct from a failed mutation test. */
 export class MutationEnumerationError extends Error {
-	readonly code: "instrumenter" | "policy" | "unsupported" | "limit";
+	readonly code: "instrumenter" | "policy" | "unsupported" | "limit" | "path";
 	constructor(code: MutationEnumerationError["code"], message: string) {
 		super(message);
 		this.name = "MutationEnumerationError";
@@ -418,18 +418,36 @@ export class MutationEnumeration {
 		);
 	}
 
-	async list(options: { limit?: number; all?: boolean } = {}): Promise<MutationInventory<MutationInventoryV2>> {
+	/**
+	 * Lists the mutants of the range's changed lines. `claimsIn` records the files whose rows owe a claim and lists every
+	 * file still; `limitedTo` lists only its files, for reading, and the inventory can never be sampled. A file the range
+	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants.
+	 */
+	async list(
+		options: { limit?: number; all?: boolean; claimsIn?: readonly string[]; limitedTo?: readonly string[] } = {},
+	): Promise<MutationInventory<MutationInventoryV2>> {
 		const deadline = performance.now() + 120_000;
 		const limit = options.all ? Number.MAX_SAFE_INTEGER : (options.limit ?? 200);
 		if (!Number.isSafeInteger(limit) || limit < 0)
 			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
 		const { repoRoot, revision } = this.#changeset;
+		const { claimsIn, limitedTo: paths } = options;
+		const changed = new Set(revision.files.filter((file) => file.status !== "deleted").map((file) => file.path));
+		const unchanged = [...(claimsIn ?? []), ...(paths ?? [])].filter((path) => !changed.has(path));
+		if (unchanged.length > 0)
+			throw new MutationEnumerationError(
+				"path",
+				`${unchanged.map((path) => JSON.stringify(path)).join(", ")} ${unchanged.length === 1 ? "is not a file" : "are not files"} this range changes`,
+			);
+		const kept = (path: string) => paths === undefined || paths.includes(path);
 		const targets = MutationTargets.select(
 			revision,
 			(path) => productionWithExtensions(path, javascript),
 			mutationUnmutated,
 		);
-		const unmutated = targets.unmutated.map(({ path, why }) => ({ file: path, reason: why }));
+		const unmutated = targets.unmutated
+			.filter(({ path }) => kept(path))
+			.map(({ path, why }) => ({ file: path, reason: why }));
 		const changedPaths = new Set([
 			...Object.keys(revision.diffLines()),
 			...revision.files
@@ -438,19 +456,24 @@ export class MutationEnumeration {
 		]);
 		const unknown = [...changedPaths].filter(
 			(path) =>
+				kept(path) &&
 				productionWithExtensions(path, /.*/) &&
 				(sourceExtension.test(path) ||
 					revision.files.some((file) => file.path === path && file.newKind === "executable")) &&
 				!javascript.test(path) &&
 				!dataExtension.test(path),
 		);
-		if (!targets.judges && unknown.length > 0)
+		const judged =
+			paths === undefined
+				? targets.judges
+				: Object.keys(targets.changed).some(kept) || targets.unmutated.some(({ path }) => kept(path));
+		if (!judged && unknown.length > 0)
 			throw new MutationEnumerationError("unsupported", `no mutation adapter handles ${unknown.join(", ")}`);
 		unmutated.push(...unknown.map((file) => ({ file, reason: "no mutation adapter handles this language" })));
 		const source = await openSource(repoRoot, { kind: "revision", commit: revision.head });
 		const files: MutationFile[] = [];
 		let retained = 0;
-		for (const [name, ranges] of Object.entries(targets.changed)) {
+		for (const [name, ranges] of Object.entries(targets.changed).filter(([name]) => kept(name))) {
 			remainingTime(deadline);
 			const bound = Math.min(maxFileBytes, maxAggregateBytes - retained);
 			let content: string | undefined;
@@ -508,6 +531,8 @@ export class MutationEnumeration {
 				head: revision.head,
 				...(this.#target === undefined ? {} : { target: this.#target }),
 			},
+			...(claimsIn === undefined ? {} : { claimsIn: [...claimsIn] }),
+			...(paths === undefined ? {} : { limitedTo: [...paths] }),
 			adapters: adapter === undefined ? [] : [adapter.identity],
 			installation: createHash("sha256")
 				.update(

@@ -710,3 +710,102 @@ describe("inventory sampling", () => {
 		});
 	});
 });
+
+describe("an inventory that owes claims in some files", () => {
+	const unclaimed = (index: number, file: string) => ({ ...identity(index), file, status: "generated" as const });
+	const owing = (extra = {}) =>
+		fields([row(0), row(1), unclaimed(2, "src/b.ts")], { claimsIn: ["src/a.ts"], ...extra });
+
+	it("samples only the rows in those files, and needs no claim outside them", () => {
+		const inventory = MutationInventory.create(owing());
+		expect(inventory.toJSON().claimsIn).toEqual(["src/a.ts"]);
+		expect(inventory.sample()).toEqual({
+			...MutationInventory.create(fields([row(0), row(1)])).sample(),
+			total: 3,
+		});
+		expect(inventory.forVerification().mutants).toHaveLength(3);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe('claims owed in "src/a.ts"');
+	});
+
+	it("refuses an unclaimed row outside them when no files are named", () => {
+		expect(() => MutationInventory.create(owing({ claimsIn: undefined })).sample()).toThrow(
+			expect.objectContaining({ code: "unclassifiedClaim" }),
+		);
+	});
+
+	it("refuses an unclaimed row inside them", () => {
+		expect(() => MutationInventory.create(owing({ claimsIn: ["src/a.ts", "src/b.ts"] })).sample()).toThrow(
+			expect.objectContaining({ code: "unclassifiedClaim" }),
+		);
+	});
+
+	it("refuses an inventory short of the enumerated total", () => {
+		const short = MutationInventory.create(owing({ total: 4, omitted: 1 }));
+		expect(() => short.sample()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+		expect(() => short.forVerification()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+	});
+
+	it("samples a legacy inventory's owed rows alone", () => {
+		const { claim: _claim, evidence: _evidence, survivorClasses: _classes, ...bare } = legacy([row(2)]).mutants[0]!;
+		const mixed = legacy([row(0), row(1)]);
+		const inventory = MutationInventory.parse({
+			...mixed,
+			mutants: [...mixed.mutants, { ...bare, file: "src/b.ts" }],
+			total: 3,
+			claimsIn: ["src/a.ts"],
+		});
+		expect(inventory.sample()).toEqual({ ...MutationInventory.parse(mixed).sample(), total: 3 });
+	});
+
+	it.each([
+		[["src/a.ts", "src/a.ts"], "the inventory's claimsIn names one file twice"],
+		[[], "fields, coordinates, claims"],
+		[["../outside.ts"], "invalid inventory file path"],
+	])("refuses claimsIn %j", (claimsIn, message) => {
+		expect(() => MutationInventory.create(owing({ claimsIn }))).toThrow(message);
+		expect(() => MutationInventory.parse({ ...legacy(), claimsIn })).toThrow(message);
+	});
+});
+
+describe("a listing limited to some files", () => {
+	const limited = (mutants: MutationInventoryRowInput[] = [row()], extra = {}) =>
+		fields(mutants, { limitedTo: ["src/a.ts", "src/link.ts"], ...extra });
+
+	it("records its files and can be neither sampled nor verified", () => {
+		const inventory = MutationInventory.create(limited([row(0), row(1)]));
+		expect(inventory.toJSON().limitedTo).toEqual(["src/a.ts", "src/link.ts"]);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe('limited to "src/a.ts", "src/link.ts"');
+		const refusal = expect.objectContaining({
+			code: "incompleteInventory",
+			message: expect.stringContaining("reading"),
+		});
+		expect(() => inventory.sample()).toThrow(refusal);
+		expect(() => inventory.forVerification()).toThrow(refusal);
+		expect(() => MutationInventory.parse({ ...legacy(), limitedTo: ["src/a.ts"] }).sample()).toThrow(refusal);
+	});
+
+	it("refuses a mutant in a file outside them, naming the file", () => {
+		expect(() => MutationInventory.create(limited([row(0, { file: "src/b.ts" })]))).toThrow(
+			'"src/b.ts" is outside the files the listing was limited to',
+		);
+	});
+
+	it("refuses an unmutated entry outside them", () => {
+		expect(() => MutationInventory.create(limited([row(0)], { limitedTo: ["src/a.ts"] }))).toThrow(
+			'"src/link.ts" is outside the files the listing was limited to',
+		);
+	});
+
+	it("refuses limitedTo that names one file twice", () => {
+		expect(() =>
+			MutationInventory.create(limited([row(0)], { limitedTo: ["src/a.ts", "src/a.ts", "src/link.ts"] })),
+		).toThrow("the inventory's limitedTo names one file twice");
+	});
+
+	it("reads an inventory with neither field as before, without either table line", () => {
+		const inventory = MutationInventory.create(fields());
+		expect("claimsIn" in inventory.toJSON()).toBe(false);
+		expect("limitedTo" in inventory.toJSON()).toBe(false);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe("1 of 1 mutants; 0 omitted");
+	});
+});

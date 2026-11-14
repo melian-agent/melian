@@ -2096,3 +2096,58 @@ finally { chmodSync(${JSON.stringify(target)},0o755); }
 		});
 	});
 });
+
+describe("mutation enumeration with named files", { timeout: 60_000 }, () => {
+	it("records the files that owe claims and still lists the whole range", async () => {
+		const enumeration = await MutationEnumeration.open(repo, `${base}..${head}`);
+		const full = (await enumeration.list({ all: true })).toJSON();
+		const owing = (await enumeration.list({ all: true, claimsIn: ["src/value.ts"] })).toJSON();
+		expect(owing).toEqual({ ...full, claimsIn: ["src/value.ts"] });
+		expect("claimsIn" in full).toBe(false);
+		expect("limitedTo" in full).toBe(false);
+	});
+
+	it("limits a listing to the named files, for reading, and records them", async () => {
+		const enumeration = await MutationEnumeration.open(repo, `${base}..${head}`);
+		const full = (await enumeration.list({ all: true })).toJSON();
+		const limited = (await enumeration.list({ all: true, limitedTo: ["src/value.ts"] })).toJSON();
+		const kept = full.mutants.filter((mutant) => mutant.file === "src/value.ts");
+		expect(kept.length).toBeGreaterThan(0);
+		expect(kept.length).toBeLessThan(full.mutants.length);
+		expect(limited).toEqual({
+			...full,
+			limitedTo: ["src/value.ts"],
+			mutants: kept,
+			total: kept.length,
+			omitted: 0,
+			unmutated: full.unmutated.filter((entry) => entry.file === "src/value.ts"),
+		});
+	});
+
+	it.each(["claimsIn", "limitedTo"] as const)(
+		"refuses a %s file the range does not change, by name, and lists nothing",
+		async (field) => {
+			const enumeration = await MutationEnumeration.open(repo, `${base}..${head}`);
+			await expect(enumeration.list({ [field]: ["src/value.ts", "src/valeu.ts"] })).rejects.toMatchObject({
+				code: "path",
+				message: '"src/valeu.ts" is not a file this range changes',
+			});
+			await expect(enumeration.list({ [field]: ["src/missing.ts", "src/other.ts"] })).rejects.toThrow(
+				'"src/missing.ts", "src/other.ts" are not files this range changes',
+			);
+		},
+	);
+
+	it("refuses a file that existed only at the base, which the range deleted", async () => {
+		const next = commit(repo, {}, ["src/comment.ts"]);
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		await expect(enumeration.list({ claimsIn: ["src/comment.ts"] })).rejects.toMatchObject({ code: "path" });
+		await expect(enumeration.list({ limitedTo: ["src/comment.ts"] })).rejects.toMatchObject({ code: "path" });
+	});
+
+	it("limits to a changed file that holds no mutant as an empty listing", async () => {
+		const enumeration = await MutationEnumeration.open(repo, `${base}..${head}`);
+		const limited = (await enumeration.list({ all: true, limitedTo: ["src/value.test.ts"] })).toJSON();
+		expect(limited).toMatchObject({ limitedTo: ["src/value.test.ts"], mutants: [], total: 0, omitted: 0 });
+	});
+});

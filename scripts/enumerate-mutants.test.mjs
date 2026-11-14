@@ -89,6 +89,41 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		write("src/.babelrc.cjs", "throw new Error('head Babel config must never run');\n");
 	});
 	afterEach(() => rmSync(root, { recursive: true, force: true }));
+	it("records files that owe claims, and limits a listing to files named after the range", async () => {
+		const full = await enumerateMutants({ cwd: root, range: "origin/main...HEAD", limit: 10000 });
+		const owing = await enumerateMutants({
+			cwd: root,
+			range: "origin/main...HEAD",
+			claimsIn: ["src/value.ts"],
+			limit: 10000,
+		});
+		expect(owing).toEqual({ ...full, claimsIn: ["src/value.ts"] });
+		const limited = await enumerateMutants({
+			cwd: root,
+			range: "origin/main...HEAD",
+			limitedTo: ["src/value.ts"],
+			limit: 10000,
+		});
+		expect(limited.limitedTo).toEqual(["src/value.ts"]);
+		expect(limited.mutants.length).toBeGreaterThan(0);
+		expect(limited.mutants.every((mutant) => mutant.file === "src/value.ts")).toBe(true);
+		expect(limited.total).toBe(limited.mutants.length);
+		const run = (...args) =>
+			spawnSync(process.execPath, [script, "origin/main...HEAD", ...args, "--json"], {
+				cwd: root,
+				encoding: "utf8",
+				timeout: 30000,
+			});
+		expect(JSON.parse(run("--claims-in", "src/value.ts").stdout)).toEqual(owing);
+		for (const args of [
+			["src/value.ts", "src/nope.ts"],
+			["--claims-in", "src/nope.ts"],
+		]) {
+			const child = run(...args);
+			expect(child.status).toBe(1);
+			expect(child.stderr).toContain('"src/nope.ts" is not a file this range changes');
+		}
+	});
 	it("forwards real safe JSON larger than the old compatibility buffer", async () => {
 		const before = git("rev-parse", "HEAD");
 		write("src/del.js", `export const value = '${String.fromCharCode(0x7f).repeat(6 * 1024 * 1024)}' + x + y + z;\n`);
@@ -643,12 +678,12 @@ syncBuiltinESMExports();`,
 			const child = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
 			expect(child.status).toBe(1);
 			expect(child.stderr.length).toBeGreaterThan(0);
-			if (args[0] === "HEAD") expect(child.stderr).toContain("expected one git range");
+			if (args[0] === "HEAD") expect(child.stderr).toContain('"HEAD" is not a file this range changes');
 		}
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range [file...]] [--claims-in FILE]... [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\n--claims-in FILE records a file whose mutants owe a claim; the inventory still lists the whole range.\nFiles after the range limit the listing, for reading only; such a listing cannot be sampled.\nEach file must be one the range changes.\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant, or with --claims-in to every mutant in those files.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\n",
 		);
 	});
 });
