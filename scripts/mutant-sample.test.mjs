@@ -43,6 +43,29 @@ describe("mutant sampling", () => {
 		});
 		expect(sampleMutants(classified.toJSON())).toEqual(classified.sample());
 	});
+	it("lists a version-2 inventory's suite claims apart, grouped by file", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			status: "generated",
+			claim: "suite",
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		});
+		const classified = MutationInventory.create({
+			range: { base: "a".repeat(40), head: "b".repeat(40) },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		});
+		const sample = sampleMutants(classified.toJSON());
+		expect(sample.suite.map((group) => [group.file, group.mutants.map((row) => row.line)])).toEqual([
+			["packages/core/src/testing.ts", [2]],
+		]);
+	});
+
 	it("keeps the checklist class names in the sampling contract", () => {
 		expect(survivorClasses).toEqual(classes);
 		const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
@@ -141,6 +164,30 @@ describe("mutant sampling", () => {
 		},
 	);
 
+	it("refuses a legacy suite claim, since a legacy inventory knows three claims", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			claim: "suite",
+			evidence: "a neighbour catches it",
+		});
+		expect(() => sampleMutants(inventory([mutant(0), suite]))).toThrow(
+			new Error("a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all"),
+		);
+	});
+
+	it.each([
+		[{ claim: "unknown" }, "each mutant needs a claim: killed, new-test or equivalent"],
+		[{ evidence: " " }, "each claim needs evidence: a named test or an equivalence reason"],
+	])("refuses a legacy row with its own message: %j", (extra, message) => {
+		expect(() => sampleMutants(inventory([mutant(0, extra)]))).toThrow(new Error(message));
+	});
+
+	it("names the three legacy claims when a legacy mutant has none", () => {
+		expect(() => sampleMutants(inventory([mutant(0, { claim: undefined })]))).toThrow(
+			"each mutant needs a claim: killed, new-test or equivalent",
+		);
+	});
+
 	it.each([undefined, "", "unknown"])("requires a classified claim: %s", (claim) => {
 		expect(() => sampleMutants(inventory([mutant(0, { claim })]))).toThrow("claim");
 	});
@@ -155,4 +202,28 @@ describe("mutant sampling", () => {
 			expect(() => sampleMutants(inventory([mutant(0, { survivorClasses })]))).toThrow("survivorClasses");
 		},
 	);
+});
+
+describe("mutant sampling with named files", () => {
+	const bare = (index, file) => {
+		const { claim: _claim, evidence: _evidence, survivorClasses: _classes, ...row } = mutant(index, { file });
+		return row;
+	};
+
+	it("checks and samples only the rows in the files that owe claims", () => {
+		const owed = [mutant(0), mutant(1)];
+		const result = sampleMutants(inventory([...owed, bare(2, "src/b.ts")], { claimsIn: ["src/a.ts"] }));
+		expect(result).toEqual({ ...sampleMutants(inventory(owed)), total: 3 });
+	});
+
+	it("refuses an unclaimed row inside those files, or anywhere when none are named", () => {
+		const rows = [mutant(0), bare(1, "src/b.ts")];
+		expect(() => sampleMutants(inventory(rows, { claimsIn: ["src/b.ts"] }))).toThrow("each mutant needs a claim");
+		expect(() => sampleMutants(inventory(rows))).toThrow("each mutant needs a claim");
+	});
+
+	it("refuses a listing limited to some files, even with every row claimed", () => {
+		expect(() => sampleMutants(inventory([mutant(0)], { limitedTo: ["src/a.ts"] }))).toThrow("for reading");
+		expect(() => sampleMutants(inventory([bare(0, "src/a.ts")], { limitedTo: ["src/a.ts"] }))).toThrow("for reading");
+	});
 });
