@@ -570,6 +570,14 @@ describe("runChecks", () => {
 			expect(await run()).not.toBe(first);
 		});
 
+		// npm writes its record even when told to write no lockfile, and the record alone identifies the install.
+		it("reuses a run beside a node_modules npm recorded without a lockfile", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("node_modules/.package-lock.json", "@types/node 1");
+			const first = await run();
+			expect(await run()).toBe(first);
+		});
+
 		// Bun writes no record of its install, so its lockfile alone is keyed, and its node_modules reuses as before.
 		it("reuses a run beside Bun's lockfile and its node_modules, which have no record to read", {
 			timeout: 60_000,
