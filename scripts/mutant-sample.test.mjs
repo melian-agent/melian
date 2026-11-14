@@ -171,22 +171,16 @@ describe("mutant sampling", () => {
 		},
 	);
 
-	it("lists a legacy suite claim apart, checked against the exports the caller passed", () => {
+	it("refuses a legacy suite claim, since a legacy inventory records no head", () => {
 		const suite = mutant(1, {
 			file: "packages/core/src/testing.ts",
 			claim: "suite",
 			evidence: "a neighbour catches it",
 		});
-		const checked = [];
-		const suites = {
-			refusal: (file) => {
-				checked.push(file);
-			},
-		};
-		const sample = sampleMutants(inventory([mutant(0), suite]), suites);
-		expect(sample.suite.map((row) => row.line)).toEqual([2]);
-		expect(lines(sample)).toEqual([1]);
-		expect(checked).toEqual(["packages/core/src/testing.ts"]);
+		const accepting = { refusal: () => undefined };
+		expect(() => sampleMutants(inventory([mutant(0), suite]), accepting)).toThrow(
+			"suite claim refused: a legacy inventory records no head to read exports at; enumerate again at version 2",
+		);
 	});
 
 	it.each([

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Changeset, MutationInventory, type PullRequest } from "@melian-agent/core";
@@ -247,13 +247,13 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(io.errors).toEqual([]);
 	});
 
-	it("samples a suite claim only in a package's ./testing export, read from the checkout", async () => {
-		await writeFile(join(repo, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
-		await mkdir(join(repo, "packages/core"), { recursive: true });
-		await writeFile(
-			join(repo, "packages/core/package.json"),
-			JSON.stringify({ exports: { "./testing": { "@melian-agent/source": "./src/testing.ts" } } }),
-		);
+	it("samples a suite claim only in a package's ./testing export, read at the inventory's head", async () => {
+		const exported = (file: string) => JSON.stringify({ exports: { "./testing": { "@melian-agent/source": file } } });
+		const at = commit(repo, {
+			"package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+			"packages/core/package.json": exported("./src/testing.ts"),
+		});
+		await writeFile(join(repo, "packages/core/package.json"), exported("./src/record.ts"));
 		const suite = {
 			file: "packages/core/src/testing.ts",
 			line: 3,
@@ -262,30 +262,55 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 			endColumn: 1,
 			mutatorName: "BlockStatement",
 			replacement: "{}",
-			claim: "suite",
-			evidence: "a neighbouring assertion in the same case also catches it",
+			status: "generated" as const,
+			claim: "suite" as const,
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
 			survivorClasses: [],
 		};
+		const inventory = (file: string, head = at) =>
+			MutationInventory.create({
+				range: { base, head },
+				adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+				installation: "c".repeat(64),
+				mutants: [{ ...suite, file }],
+				total: 1,
+				omitted: 0,
+				unmutated: [],
+			}).toJSON();
 		const io = output();
-		for (const [file, code, text] of [
-			[suite.file, 0, undefined],
-			["packages/core/src/record.ts", 1, "suite claim refused: packages/core/src/record.ts is not packages/core's"],
-		] as const) {
-			await writeFile(
-				join(repo, "suite.json"),
-				JSON.stringify({ mutants: [{ ...suite, file }], total: 1, omitted: 0, unmutated: [] }),
-			);
+		const sample = async (value: unknown) => {
+			await writeFile(join(repo, "suite.json"), JSON.stringify(value));
 			io.lines.length = 0;
 			io.errors.length = 0;
-			expect(await main(["mutants", "sample", "suite.json"], io)).toBe(code);
-			if (text === undefined)
-				expect(JSON.parse(io.lines.join(""))).toEqual({
-					selected: [],
-					suite: [{ ...suite, sampleHash: expect.stringMatching(/^[a-f0-9]{64}$/) }],
+			return main(["mutants", "sample", "suite.json"], io);
+		};
+		const accepted = inventory(suite.file);
+		expect(await sample(accepted)).toBe(0);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			selected: [],
+			suite: [{ ...accepted.mutants[0], sampleHash: accepted.mutants[0].id }],
+			total: 1,
+			unmutated: [],
+			ignored: { config: [], comment: [] },
+		});
+		for (const [value, text] of [
+			[
+				inventory("packages/core/src/record.ts"),
+				"suite claim refused: packages/core/src/record.ts is not packages/core's",
+			],
+			[inventory(suite.file, "f".repeat(40)), `suite claim refused: cannot read the exports at ${"f".repeat(40)}`],
+			[
+				{
+					mutants: [{ ...suite, evidence: "a neighbour catches it", status: undefined }],
 					total: 1,
+					omitted: 0,
 					unmutated: [],
-				});
-			else expect(io.errors.join("")).toContain(text);
+				},
+				"suite claim refused: a legacy inventory records no head to read exports at",
+			],
+		] as const) {
+			expect(await sample(value)).toBe(1);
+			expect(io.errors.join("")).toContain(text);
 		}
 	});
 

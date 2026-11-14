@@ -796,7 +796,7 @@ describe("suite claims", () => {
 		).toThrow("each mutant needs a claim: killed, new-test, equivalent or suite");
 	});
 
-	it("still samples a legacy inventory whose suite claim gives its reason as text", async () => {
+	it("refuses a suite claim in a legacy inventory, which records no head to read exports at", async () => {
 		const stored: LegacyMutationInventory = legacy([row(1)]);
 		stored.mutants.push({
 			...identity(5, { file: suiteFile }),
@@ -805,10 +805,14 @@ describe("suite claims", () => {
 			survivorClasses: [],
 		});
 		stored.total += 1;
-		const sample = MutationInventory.parse(stored).sample(await SuiteExports.read(source));
-		expect(sample.suite?.map((mutant) => mutant.line)).toEqual([6]);
-		expect(MutationInventory.parse(stored).toJSON()).not.toHaveProperty("melianMutants");
-		expect(sample.selected.map((mutant) => mutant.line)).toEqual([2]);
+		const suites = await SuiteExports.read(source);
+		expect(() => MutationInventory.parse(stored).sample(suites)).toThrow(
+			new MutationInventoryError(
+				"invalidEvidence",
+				"suite claim refused: a legacy inventory records no head to read exports at; enumerate again at version 2",
+			),
+		);
+		expect(MutationInventory.parse(legacy([row(1)])).sample().selected).toHaveLength(1);
 	});
 
 	it.each([

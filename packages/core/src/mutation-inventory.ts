@@ -286,7 +286,11 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		const suite = all.filter((row) => row.mutant.claim === "suite");
 		for (const { mutant } of suite) {
 			const refusal =
-				suites === undefined ? "no package exports were read to check it against" : suites.refusal(mutant.file);
+				this.#state.melianMutants !== 2
+					? "a legacy inventory records no head to read exports at; enumerate again at version 2"
+					: suites === undefined
+						? "no package exports were read to check it against"
+						: suites.refusal(mutant.file);
 			if (refusal !== undefined)
 				throw new MutationInventoryError("invalidEvidence", `suite claim refused: ${visibleText(refusal)}`);
 		}

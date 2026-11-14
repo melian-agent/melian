@@ -2,7 +2,7 @@ import { MutationInventory, survivorClasses } from "../packages/core/src/mutatio
 
 export { survivorClasses };
 
-// `suites` is a SuiteExports read from the checkout; a suite claim stands only in a package's ./testing export.
+// `suites` is a SuiteExports read at the inventory's head; a suite claim stands only in a package's ./testing export.
 export function sampleMutants(inventory, suites) {
 	if (inventory.melianMutants === 2) return MutationInventory.parse(inventory).sample(suites);
 	if (inventory.omitted !== 0 || inventory.total !== inventory.mutants.length)

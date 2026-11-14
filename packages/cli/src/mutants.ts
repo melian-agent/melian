@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { MutationInventory, openSource, SuiteExports } from "@melian-agent/core";
+import { MutationInventory, SuiteExports } from "@melian-agent/core";
 import { MutationEnumeration } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { pullRequestRefs } from "./repository.ts";
@@ -29,7 +29,8 @@ export async function listMutants(
 
 export async function sampleMutants(io: Io, path: string): Promise<number> {
 	const inventory = MutationInventory.parse(JSON.parse(await readFile(resolve(io.cwd, path), "utf8")));
-	const suites = await SuiteExports.read(await openSource(io.cwd, { kind: "worktree" }));
+	const state = inventory.toJSON();
+	const suites = state.melianMutants === 2 ? await SuiteExports.at(io.cwd, state.range.head) : undefined;
 	io.stdout(`${inventory.renderSampleJson(suites)}\n`);
 	return 0;
 }
