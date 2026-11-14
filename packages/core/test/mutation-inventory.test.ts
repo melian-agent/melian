@@ -739,6 +739,33 @@ describe("an inventory that owes claims in some files", () => {
 		);
 	});
 
+	it("refuses a named file that holds no mutant, since nothing would prove it", () => {
+		const refusal = expect.objectContaining({
+			code: "invalidInventory",
+			message: expect.stringContaining('"src/c.ts"'),
+		});
+		const typo = MutationInventory.create(owing({ claimsIn: ["src/a.ts", "src/c.ts"] }));
+		expect(() => typo.sample()).toThrow(refusal);
+		expect(() => typo.forVerification()).toThrow(refusal);
+		expect(() =>
+			MutationInventory.parse({ ...legacy([row(0)]), claimsIn: ["src/a.ts", "src/c.ts"] }).sample(),
+		).toThrow(refusal);
+	});
+
+	it("notes the ignored rows of the named files alone", () => {
+		const ignore = (index: number, file: string) =>
+			row(index, { file, status: "ignored", ignoredBy: "config", statusReason: "policy" });
+		const inventory = MutationInventory.create(
+			fields([row(0), ignore(1, "src/a.ts"), ignore(2, "src/b.ts"), ignore(3, "src/c.ts")], {
+				claimsIn: ["src/a.ts", "src/c.ts"],
+			}),
+		);
+		expect(inventory.sample().ignored).toEqual({
+			config: [inventory.toJSON().mutants[1], inventory.toJSON().mutants[3]],
+			comment: [],
+		});
+	});
+
 	it("refuses an inventory short of the enumerated total", () => {
 		const short = MutationInventory.create(owing({ total: 4, omitted: 1 }));
 		expect(() => short.sample()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));

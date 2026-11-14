@@ -315,8 +315,8 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			this.#state.melianMutants === 2
 				? {
 						ignored: {
-							config: this.#state.mutants.filter((row) => row.ignoredBy === "config"),
-							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment"),
+							config: this.#state.mutants.filter((row) => row.ignoredBy === "config" && this.#owes(row.file)),
+							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment" && this.#owes(row.file)),
 						},
 					}
 				: {};
@@ -397,11 +397,15 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		].join("\n");
 	}
 
+	#owes(file: string): boolean {
+		return this.#state.claimsIn === undefined || this.#state.claimsIn.includes(file);
+	}
+
 	#probes() {
-		const { claimsIn, ...state } = this.#state;
+		const state = this.#state;
 		const rows: (MutationInventoryRow | LegacyMutationInventory["mutants"][number])[] =
 			state.melianMutants === 2 ? state.mutants.filter((row) => row.status === "generated") : state.mutants;
-		return claimsIn === undefined ? rows : rows.filter((row) => claimsIn.includes(row.file));
+		return rows.filter((row) => this.#owes(row.file));
 	}
 
 	#requireClassified(): void {
@@ -414,6 +418,12 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			throw new MutationInventoryError(
 				"incompleteInventory",
 				"a listing limited to some files is for reading; sample the whole range's inventory, with --claims-in to name the files that owe claims",
+			);
+		const empty = this.#state.claimsIn?.find((file) => !this.#state.mutants.some((row) => row.file === file));
+		if (empty !== undefined)
+			throw new MutationInventoryError(
+				"invalidInventory",
+				`${JSON.stringify(empty)} owes claims but has no mutant in this inventory, so nothing would prove it`,
 			);
 		for (const row of this.#probes()) {
 			if (row.claim === undefined)
