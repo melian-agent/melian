@@ -28,7 +28,7 @@ import {
 } from "./lens-tools.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
-import { quoteUntrusted } from "./untrusted.ts";
+import { identityNonce, quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
 import {
 	claimKey,
@@ -135,22 +135,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
-						instructions: [
-							verifierInstructions,
-							...(candidate.decisionsAtBase === undefined
-								? []
-								: [
-										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
-									]),
-							...(candidate.designAtBase === undefined
-								? []
-								: [
-										`## Design sections at base\n${quoteUntrusted("listing", candidate.designAtBase.sections, task.input.revision.nonce)}`,
-										`## Design files at base\n${quoteUntrusted("listing", candidate.designAtBase.files, task.input.revision.nonce)}`,
-									]),
-							...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
-							...dismissed.map(({ label, id }) => dismissedLine(label, id)),
-						].join("\n\n"),
+						instructions: verifierPrompt(candidate, claims, dismissed, task.input.revision.nonce),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
 					});
@@ -186,18 +171,11 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						return { status: "unanswered", reason: "superseded" };
 					const content =
 						attempt === 0
-							? candidate.state.claims
-									.map(
-										({ verification: _, ...claim }, index) =>
-											`Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
-									)
-									.concat(
-										(candidate.dismissed ?? []).map(
-											({ id: _, ...claim }, index) =>
-												`Dismissed d${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), task.input.revision.nonce)}`,
-										),
-									)
-									.join("\n\n")
+							? verifierInput(
+									candidate.state.claims.map(({ verification: _, ...claim }) => claim),
+									(candidate.dismissed ?? []).map(({ id: _, ...claim }) => claim),
+									task.input.revision.nonce,
+								)
 							: continueJudging;
 					const settled = await (
 						await child.submit(
@@ -402,16 +380,60 @@ function dismissedLine(label: string, id: string): string {
 	return `Dismissed ${label} finding ${id}`;
 }
 
-// The text a verifier is given that its version does not hash, rendered whole with placeholders for what varies.
+function verifierPrompt(
+	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
+	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
+	dismissed: readonly { label: string; id: string }[],
+	nonce: string,
+): string {
+	return [
+		verifierInstructions,
+		...(decisionsAtBase === undefined
+			? []
+			: [`## Decisions at base\n${quoteUntrusted("listing", decisionsAtBase, nonce)}`]),
+		...(designAtBase === undefined
+			? []
+			: [
+					`## Design sections at base\n${quoteUntrusted("listing", designAtBase.sections, nonce)}`,
+					`## Design files at base\n${quoteUntrusted("listing", designAtBase.files, nonce)}`,
+				]),
+		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
+		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
+	].join("\n\n");
+}
+
+function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[], nonce: string): string {
+	return claims
+		.map((claim, index) => `Claim c${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), nonce)}`)
+		.concat(
+			dismissed.map(
+				(claim, index) => `Dismissed d${index + 1}\n${quoteUntrusted("findings", JSON.stringify(claim), nonce)}`,
+			),
+		)
+		.join("\n\n");
+}
+
+// The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
+// for what varies, so every fixed fragment it is shown reaches the key.
 function verifierText(): unknown {
+	const nonce = identityNonce;
 	return {
 		tools: [...Object.values(lensReadTools), reportVerdict].map(({ name, description, parameters }) => ({
 			name,
 			description,
 			parameters,
 		})),
-		policy: verifierInjectionPolicy("0".repeat(24)),
-		lines: [claimLine("c1", "<id>", "P1"), claimLine("c1", "<id>", undefined), dismissedLine("d1", "<id>")],
+		policy: verifierInjectionPolicy(nonce),
+		prompt: verifierPrompt(
+			{ decisionsAtBase: "<decisions>", designAtBase: { sections: "<sections>", files: "<files>" } },
+			[
+				{ label: "c1", id: "<id>", severity: "P1" },
+				{ label: "c2", id: "<id>", severity: undefined },
+			],
+			[{ label: "d1", id: "<id>" }],
+			nonce,
+		),
+		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
 		continue: continueJudging,
 	};
 }

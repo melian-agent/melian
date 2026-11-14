@@ -96,9 +96,9 @@ describe("verificationRequest", () => {
 		expect(moved.request).not.toHaveProperty("revision.repoRoot");
 	});
 
-	it("keys the tools and the line templates the verifier is given", () => {
+	it("keys the tools and the prompt the verifier is given", () => {
 		const { text } = verificationRequest(sample).request as {
-			text: { tools: { name: string }[]; lines: string[] };
+			text: { tools: { name: string }[]; prompt: string };
 		};
 		expect(text.tools.map(({ name }) => name)).toEqual(["read_file", "search", "list_files", "report_verdict"]);
 		for (const tool of text.tools)
@@ -107,11 +107,25 @@ describe("verificationRequest", () => {
 				description: expect.stringMatching(/\S/),
 				parameters: expect.objectContaining({ type: "object" }),
 			});
-		expect(text.lines).toEqual([
+		expect(text.prompt.split("\n\n").slice(-3)).toEqual([
 			"Claim c1 finding <id>, reported at P1",
-			"Claim c1 finding <id>",
+			"Claim c2 finding <id>",
 			"Dismissed d1 finding <id>",
 		]);
+	});
+
+	// Round two of pull request #436: the headings around the base decisions and design, and the bodies' prefixes, were
+	// shown to the verifier and keyed nowhere, so a changed heading reused a verification made under the old one.
+	it("keys the headings and body prefixes the verifier is shown", () => {
+		const keyed = JSON.stringify(verificationRequest(sample).request);
+		for (const fragment of [
+			"## Decisions at base\\n",
+			"## Design sections at base\\n",
+			"## Design files at base\\n",
+			"Claim c1\\n",
+			"Dismissed d1\\n",
+		])
+			expect(keyed).toContain(fragment);
 	});
 });
 
