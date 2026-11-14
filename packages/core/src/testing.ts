@@ -6,7 +6,7 @@ import { DirectoryRecordStore } from "./directory-record-store.ts";
 import { RecordError, type RecordErrorCode } from "./errors.ts";
 import { type PayloadChecks, type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
 import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } from "./record-store.ts";
-import type { KeyedRequest } from "./request-key.ts";
+import type { KeyedRequest, UnkeyedInput } from "./request-key.ts";
 
 /** One store under test, with as many handles on it as a case asks for. */
 export interface RecordStoreSubject {
@@ -489,7 +489,7 @@ function kindOf(value: unknown): string {
  * a field nobody tests, and the helper reports the empty list; give the sample every optional field.
  */
 export function keyCoverage<Input>(
-	build: (input: Input) => KeyedRequest,
+	build: (input: Input) => KeyedRequest<unknown, UnkeyedInput>,
 	sample: Input,
 	options: KeyCoverageOptions = {},
 ): string[] {

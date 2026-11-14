@@ -28,7 +28,7 @@ const exclusionList = Object.keys(requestExclusions).join(", ");
  * of the producer's name and the request. A producer reads the request and the unkeyed input from here, so nothing
  * reaches it that the key does not cover or an exclusion does not name.
  */
-export class KeyedRequest<Request extends RecordJson = RecordJson, Unkeyed extends UnkeyedInput = UnkeyedInput> {
+export class KeyedRequest<Request = RecordJson, Unkeyed extends UnkeyedInput = UnkeyedInput> {
 	/** The kind of producer asked, such as `lens` or `check`. */
 	readonly producer: string;
 	/** Everything the producer is asked that decides its answer. */
@@ -50,7 +50,7 @@ export class KeyedRequest<Request extends RecordJson = RecordJson, Unkeyed exten
 	 * lower-case dotted words, an unkeyed field {@link requestExclusions} does not name, or a request
 	 * {@link canonicalJson} refuses.
 	 */
-	static of<Request extends RecordJson, Unkeyed extends UnkeyedInput = Record<never, never>>(
+	static of<Request, Unkeyed extends UnkeyedInput = Record<never, never>>(
 		producer: string,
 		request: Request,
 		unkeyed?: Unkeyed,
@@ -69,7 +69,7 @@ export class KeyedRequest<Request extends RecordJson = RecordJson, Unkeyed exten
 	}
 
 	/** Whether `other` asks the same producer the same thing. */
-	matches(other: KeyedRequest): boolean {
+	matches(other: KeyedRequest<unknown, UnkeyedInput>): boolean {
 		return this.key === other.key;
 	}
 }

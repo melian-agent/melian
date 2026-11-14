@@ -8,7 +8,6 @@ import {
 	configLookup,
 	type Decider,
 	type Decision,
-	type DecisionRequest,
 	defaultScrutinyLevel,
 	describeLineage,
 	EscalationRule,
@@ -66,6 +65,7 @@ import {
 	DecisionDocument,
 	type DecisionResult,
 	type DecisionTaskInput,
+	deciderOf,
 	decisionExtension,
 	decisionTask,
 	decisionTaskName,
@@ -137,7 +137,8 @@ import {
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
-import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
+import { triageRequest } from "./triage-request.ts";
+import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 import {
 	candidateIdentity,
 	startVerification,
@@ -725,9 +726,8 @@ export class ReviewHarness {
 				);
 			}
 			if (record.kind === decisionTaskName) {
-				const { key } = record.input as unknown as DecisionTaskInput;
-				const { decider } = JSON.parse(key) as { decider: string };
-				return /^llm-fallback:([^/]+)\//.exec(decider)?.slice(1) ?? [];
+				const { name } = deciderOf(record.input as unknown as DecisionTaskInput);
+				return /^llm-fallback:([^/]+)\//.exec(name)?.slice(1) ?? [];
 			}
 			return [];
 		});
@@ -1547,26 +1547,22 @@ async function triage(
 	harness: Harness,
 	revision: string,
 	decider: Decider,
-	request: DecisionRequest,
-	inputCut: boolean,
+	asked: ReturnType<typeof triageRequest>,
 	rerun: boolean,
 	context: Context,
 	providers: readonly string[],
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
+	const request = asked.unkeyed.nonce;
+	const { inputCut } = asked.request;
 	const set = request.questionSet.name;
-	// What was asked, without the state: the state carries this review's boundary nonce, which differs on every call.
-	const key = JSON.stringify({
-		decider: decider.name,
-		questionSet: request.questionSet,
-		questions: request.questions,
-		...(inputCut ? { inputCut: true } : {}),
-	});
+	const { key } = asked;
 	const input: DecisionTaskInput = {
 		root: root.id,
 		revision,
 		key,
+		decider: { name: decider.name, ...(decider.version === undefined ? {} : { version: decider.version }) },
 		request: structuredClone(request) as DecisionTaskInput["request"],
 		...(inputCut ? { inputCut: true } : {}),
 	};
@@ -1820,14 +1816,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					harness,
 					reviewed,
 					options.decider,
-					{
+					triageRequest({
+						decider: options.decider,
 						questionSet: triageQuestionSet,
-						state: [triageBoundary(nonce), "## The change", triageInput.text].join("\n\n"),
 						questions: sharedQuestions(
 							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
 						),
-					},
-					triageInput.cut,
+						change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
+						nonce,
+					}),
 					options.rerun === true,
 					context,
 					options.triageProviders ?? [],
