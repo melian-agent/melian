@@ -1,5 +1,5 @@
 import { canonicalPath } from "./findings.ts";
-import { SourceError, type SourceReader } from "./source.ts";
+import { openSource, SourceError, type SourceReader } from "./source.ts";
 
 const manifestBytes = 1024 * 1024;
 
@@ -36,19 +36,23 @@ function packageFile(target: string): string | undefined {
 		: undefined;
 }
 
+// Node is the authority on what ./testing resolves to, and it cannot run here without the revision's files on disk.
+// So this accepts only the one shape whose answer needs no resolution, the source condition first, and refuses the rest.
 async function testingExport(source: SourceReader, dir: string): Promise<Answer> {
 	const manifest = await readManifest(source, `${dir}/package.json`, `${dir}/package.json`);
 	if ("refused" in manifest) return manifest;
-	const conditions = (manifest.value as { exports?: { "./testing"?: Record<string, unknown> } } | null)?.exports?.[
-		"./testing"
-	];
-	const target = conditions?.["@melian-agent/source"];
-	if (typeof target !== "string")
+	const exports = (manifest.value as { exports?: unknown } | null)?.exports;
+	const conditions = isRecord(exports) ? exports["./testing"] : undefined;
+	const target = isRecord(conditions) ? conditions["@melian-agent/source"] : undefined;
+	if (!isRecord(exports) || !isRecord(conditions) || typeof target !== "string")
 		return { refused: `${dir}/package.json maps no ./testing export under @melian-agent/source` };
-	const keys = Object.keys(conditions as object);
-	if (keys.slice(0, keys.indexOf("@melian-agent/source")).includes("default"))
+	const odd = Object.keys(exports).find((key) => (key !== "." && !key.startsWith("./")) || key.includes("*"));
+	if (odd !== undefined)
+		return { refused: `${dir}/package.json's exports hold ${JSON.stringify(odd)}, which Melian does not resolve` };
+	const first = Object.keys(conditions)[0];
+	if (first !== "@melian-agent/source")
 		return {
-			refused: `${dir}/package.json lists the default condition before @melian-agent/source under ./testing, so Node never reaches it`,
+			refused: `${dir}/package.json lists ${first} before @melian-agent/source under ./testing, and Melian accepts the source condition only as the first key`,
 		};
 	const file = packageFile(target);
 	return file === undefined
@@ -56,6 +60,10 @@ async function testingExport(source: SourceReader, dir: string): Promise<Answer>
 				refused: `${dir}/package.json maps ./testing to ${JSON.stringify(target)}, which Node does not resolve to one file in the package`,
 			}
 		: { file: `${dir}/${file}` };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // A source reads only repository-relative paths it was handed already checked, so a pattern must be one already.
@@ -115,6 +123,17 @@ export class SuiteExports {
 	static async read(source: SourceReader): Promise<SuiteExports> {
 		const packages = await workspacePackages(source);
 		return "refused" in packages ? new SuiteExports(new Map(), packages.refused) : new SuiteExports(packages);
+	}
+
+	/** Reads the exports at `commit` of the repository at `repoRoot`, never its working copy. */
+	static async at(repoRoot: string, commit: string): Promise<SuiteExports> {
+		let source: SourceReader;
+		try {
+			source = await openSource(repoRoot, { kind: "revision", commit });
+		} catch (error) {
+			return new SuiteExports(new Map(), `cannot read the exports at ${commit}: ${cause(error)}`);
+		}
+		return SuiteExports.read(source);
 	}
 
 	/** Why a `suite` claim on a mutant in `file` is refused, or `undefined` when `file` is a package's `./testing` export. */

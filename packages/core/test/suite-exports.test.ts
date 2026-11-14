@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,15 @@ import { SuiteExports } from "../src/suite-exports.ts";
 const testing = { "./testing": { "@melian-agent/source": "./src/testing.ts", default: "./dist/testing.js" } };
 const roots: string[] = [];
 const absent = Symbol("absent");
+const gitEnv = {
+	...process.env,
+	GIT_CONFIG_COUNT: "0",
+	GIT_CONFIG_GLOBAL: "/dev/null",
+	GIT_AUTHOR_NAME: "Fixture",
+	GIT_AUTHOR_EMAIL: "fixture@example.test",
+	GIT_COMMITTER_NAME: "Fixture",
+	GIT_COMMITTER_EMAIL: "fixture@example.test",
+};
 
 function workspace(packages: Record<string, unknown>, root: unknown = { workspaces: ["packages/*"] }): string {
 	const dir = mkdtempSync(join(tmpdir(), "melian-suite-exports-"));
@@ -89,27 +99,54 @@ describe("SuiteExports", () => {
 		},
 	);
 
-	it("refuses a ./testing export whose default condition comes before the source condition", async () => {
-		const suites = await suitesIn(
-			workspace({
-				core: {
-					exports: { "./testing": { default: "./dist/testing.js", "@melian-agent/source": "./src/testing.ts" } },
-				},
-			}),
-		);
+	it.each(["import", "default", "node", "types"])(
+		"refuses a ./testing export that lists %s before the source condition",
+		async (condition) => {
+			const conditions = { [condition]: "./dist/testing.js", "@melian-agent/source": "./src/testing.ts" };
+			const suites = await suitesIn(workspace({ core: { exports: { "./testing": conditions } } }));
+			expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+				`packages/core/package.json lists ${condition} before @melian-agent/source under ./testing, and Melian accepts the source condition only as the first key`,
+			);
+		},
+	);
+
+	it.each([
+		[
+			"an object nested under the source condition",
+			{ "./testing": { "@melian-agent/source": { import: "./src/testing.ts" } } },
+		],
+		["a list of conditions", { "./testing": [{ "@melian-agent/source": "./src/testing.ts" }] }],
+	])("refuses a ./testing export written as %s", async (_name, exports) => {
+		const suites = await suitesIn(workspace({ core: { exports } }));
 		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
-			"packages/core/package.json lists the default condition before @melian-agent/source under ./testing, so Node never reaches it",
+			"packages/core/package.json maps no ./testing export under @melian-agent/source",
 		);
 	});
 
-	it("accepts a ./testing export whose other conditions come before the source condition", async () => {
-		const suites = await suitesIn(
-			workspace({
-				core: {
-					exports: { "./testing": { types: "./dist/testing.d.ts", "@melian-agent/source": "./src/testing.ts" } },
-				},
-			}),
+	it.each([
+		["a subpath pattern", "./*"],
+		["a key that is not a subpath", "import"],
+		["a key that only starts with a dot", ".testing"],
+	])("refuses exports that hold %s beside ./testing", async (_name, key) => {
+		const exports = { [key]: "./src/other.ts", "./testing": { "@melian-agent/source": "./src/testing.ts" } };
+		const suites = await suitesIn(workspace({ core: { exports } }));
+		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+			`packages/core/package.json's exports hold ${JSON.stringify(key)}, which Melian does not resolve`,
 		);
+	});
+
+	it("accepts the source condition as the first key with others after it", async () => {
+		const conditions = {
+			"@melian-agent/source": "./src/testing.ts",
+			types: "./dist/testing.d.ts",
+			default: "./dist/testing.js",
+		};
+		const exports = {
+			".": { "@melian-agent/source": "./src/index.ts" },
+			"./testing": conditions,
+			"./package.json": "./package.json",
+		};
+		const suites = await suitesIn(workspace({ core: { exports } }));
 		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
 	});
 
@@ -225,6 +262,33 @@ describe("SuiteExports", () => {
 		const broken = new TypeError("the source broke");
 		const source = { readText: async () => Promise.reject(broken) } as unknown as SourceReader;
 		await expect(SuiteExports.read(source)).rejects.toBe(broken);
+	});
+
+	it("reads the exports at a commit, never the working copy", async () => {
+		const dir = workspace({ core: { exports: testing } });
+		const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8", env: gitEnv }).trim();
+		git("init", "--quiet", "-b", "main");
+		git("add", "-A");
+		git("commit", "--quiet", "-m", "head");
+		const head = git("rev-parse", "HEAD");
+		writeFileSync(
+			join(dir, "packages/core/package.json"),
+			JSON.stringify({ exports: { "./testing": { "@melian-agent/source": "./src/record.ts" } } }),
+		);
+		const suites = await SuiteExports.at(dir, head);
+		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
+		expect(suites.refusal("packages/core/src/record.ts")).toBe(
+			"packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
+		);
+	});
+
+	it("refuses every file when the commit cannot be read", async () => {
+		const dir = workspace({ core: { exports: testing } });
+		execFileSync("git", ["init", "--quiet"], { cwd: dir, env: gitEnv });
+		const missing = "f".repeat(40);
+		expect((await SuiteExports.at(dir, missing)).refusal("packages/core/src/testing.ts")).toMatch(
+			new RegExp(`^cannot read the exports at ${missing}: `),
+		);
 	});
 
 	it("reads this repository's own exports", async () => {
