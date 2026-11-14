@@ -31,10 +31,10 @@ export type CheckRequestInput = {
 	};
 	readonly host: HostFacts;
 	/**
-	 * For a working-tree source, every `melian.yaml` the guardrails would read for the touched paths, or a value no
-	 * other run holds when they could not be read whole, so that run is never reused.
+	 * For a working-tree source, every `melian.yaml` the guardrails would read for the touched paths, or `unread` when
+	 * they could not be read whole, which makes the run not reusable.
 	 */
-	readonly policy?: readonly PolicyText[] | { readonly unread: string };
+	readonly policy?: readonly PolicyText[] | "unread";
 };
 
 /** The most UTF-8 a check request keys from a working tree's `melian.yaml` files together; past it a run is not reused. */
@@ -70,6 +70,14 @@ function strykerFrom({
 	...mutation
 }: NonNullable<CheckRequestInput["mutation"]>): unknown {
 	return { ...mutation, stryker: { ...stryker, source: { from: source.from } } };
+}
+
+/**
+ * Whether a run of this request may stand for a later one with the same key. A key holds what was read, so an input
+ * that could not be read leaves nothing to compare, and the run is not reused.
+ */
+export function checkReusable(input: CheckRequestInput): boolean {
+	return input.policy !== "unread";
 }
 
 /**

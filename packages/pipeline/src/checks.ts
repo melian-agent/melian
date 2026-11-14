@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
 	type Changeset,
 	type ChangesetFields,
@@ -23,7 +22,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
-import { checkRequest, maxKeyedPolicyBytes } from "./check-request.ts";
+import { type CheckRequestInput, checkRequest, checkReusable, maxKeyedPolicyBytes } from "./check-request.ts";
 import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
@@ -642,15 +641,19 @@ export interface RunChecksInput {
 }
 
 // What decides a run's results: both commits, the tier, and the request every check of the run answers, so a build
-// that pins another tool, a bumped install, another host, or a change of the head's trust runs it again.
-async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
+// that pins another tool, a bumped install, another host, or a change of the head's trust runs it again. A run whose
+// request is not reusable never stands for a later one.
+async function runIdentity(
+	input: RunChecksInput,
+	tier: string,
+): Promise<{ identity: Omit<RunIdentity, "task">; reusable: boolean }> {
 	const { base, head } = input.changeset.revision;
 	const { repoRoot } = input.changeset;
 	const analyser = (tool: "biome" | "tsc") => ({
 		from: staticToolSource(repoRoot, tool).from,
 		version: staticToolVersion(repoRoot, tool),
 	});
-	const request = checkRequest({
+	const facts: CheckRequestInput = {
 		config: input.config,
 		source: input.source,
 		tools: (await ToolProvisioning.manifest()).toJSON(),
@@ -673,19 +676,19 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 		// The local environment runs every tool on this host. One that runs tools elsewhere must supply its own host facts.
 		host: hostFacts(),
 		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
-	});
-	const policy = request.key.slice(0, 16);
-	return { base, head, tier, policy };
+	};
+	const policy = checkRequest(facts).key.slice(0, 16);
+	return { identity: { base, head, tier, policy }, reusable: checkReusable(facts) };
 }
 
 // A working tree's melian.yaml files are no commit's, so their text is keyed as the guardrails read it for the touched
-// paths, both sides of a rename. A file they cannot read whole keys a value no other run holds, so the run is not
-// reused and the guardrails report the failure as before. The text can still change between keying and running.
-async function worktreePolicy(input: RunChecksInput): Promise<readonly PolicyText[] | { readonly unread: string }> {
+// paths, both sides of a rename. A file they cannot read whole makes the run not reusable, and the guardrails report the
+// failure as before. The text can still change between keying and running.
+async function worktreePolicy(input: RunChecksInput): Promise<readonly PolicyText[] | "unread"> {
 	return configLookup(input.changeset.repoRoot, input.source)
 		.policyText(Revision.from(input.changeset.revision).paths(), maxKeyedPolicyBytes)
 		.catch((error: unknown) => {
-			if (error instanceof ConfigError) return { unread: randomUUID() };
+			if (error instanceof ConfigError) return "unread";
 			throw error;
 		});
 }
@@ -729,7 +732,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const identity = await runIdentity(input, tier);
+	const { identity, reusable } = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
@@ -755,7 +758,8 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			const existing = runs.tasks[key];
-			if (existing !== undefined && existing !== stale && !restart) return existing as TaskId<CheckRunRecord[]>;
+			if (existing !== undefined && existing !== stale && !restart && reusable)
+				return existing as TaskId<CheckRunRecord[]>;
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});

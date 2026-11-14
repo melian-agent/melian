@@ -1,7 +1,7 @@
 import { defaultConfig, deterministicChecks } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
-import { type CheckRequestInput, checkRequest } from "../src/check-request.ts";
+import { type CheckRequestInput, checkRequest, checkReusable } from "../src/check-request.ts";
 
 const sample: CheckRequestInput = {
 	config: defaultConfig,
@@ -67,10 +67,12 @@ describe("checkRequest", () => {
 		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
 	});
 
-	it("keys a working tree's unread policy apart from every other run, and leaves a request with none unchanged", () => {
-		const unread = (nonce: string) => checkRequest({ ...sample, policy: { unread: nonce } }).key;
-		expect(unread("one")).not.toBe(unread("two"));
+	it("marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged", () => {
+		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
+		expect(checkReusable(sample)).toBe(true);
+		expect(checkRequest({ ...sample, policy: "unread" }).key).not.toBe(checkRequest(sample).key);
 		const { policy: _, ...revision } = sample;
+		expect(checkReusable(revision)).toBe(true);
 		expect(checkRequest(revision).request).not.toHaveProperty("policy");
 		expect(checkRequest({ ...revision, policy: undefined }).key).toBe(checkRequest(revision).key);
 	});
