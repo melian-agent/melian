@@ -249,7 +249,9 @@ export class StorePrune {
 	/**
 	 * Removes every planned entry, stopping at the first live static run it reads before a removal. Refs and graph entries
 	 * are not read again, so a race costs a rebuild; that holds only while every entry is rebuildable cache. A path goes
-	 * by a `.prune-<pid>-` rename beside it, so a crashed prune leaves only scratch for `CacheScratch` to sweep.
+	 * by a `.prune-<pid>-` rename beside it, so a crashed prune leaves only scratch for `CacheScratch` to sweep. A folder
+	 * swapped for a link between its check and its rename is the one race that can remove more; the retention decision
+	 * accepts it because the swap needs write access to the state directory.
 	 */
 	async apply(): Promise<{ removed: PruneEntry[]; live: LiveRun[] }> {
 		const removed: PruneEntry[] = [];
