@@ -753,17 +753,23 @@ describe("an inventory that owes claims in some files", () => {
 	});
 
 	it("notes the ignored rows of the named files alone", () => {
-		const ignore = (index: number, file: string) =>
-			row(index, { file, status: "ignored", ignoredBy: "config", statusReason: "policy" });
+		const ignore = (index: number, file: string, ignoredBy: "config" | "comment" = "config") =>
+			row(index, { file, status: "ignored", ignoredBy, statusReason: "policy" });
 		const inventory = MutationInventory.create(
-			fields([row(0), ignore(1, "src/a.ts"), ignore(2, "src/b.ts"), ignore(3, "src/c.ts")], {
-				claimsIn: ["src/a.ts", "src/c.ts"],
-			}),
+			fields(
+				[
+					row(0),
+					ignore(1, "src/a.ts"),
+					ignore(2, "src/b.ts"),
+					ignore(3, "src/c.ts"),
+					ignore(4, "src/a.ts", "comment"),
+					ignore(5, "src/b.ts", "comment"),
+				],
+				{ claimsIn: ["src/a.ts", "src/c.ts"] },
+			),
 		);
-		expect(inventory.sample().ignored).toEqual({
-			config: [inventory.toJSON().mutants[1], inventory.toJSON().mutants[3]],
-			comment: [],
-		});
+		const { mutants } = inventory.toJSON();
+		expect(inventory.sample().ignored).toEqual({ config: [mutants[1], mutants[3]], comment: [mutants[4]] });
 	});
 
 	it("refuses an inventory short of the enumerated total", () => {
