@@ -1,0 +1,2239 @@
+{
+ "mutants": [
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 419,
+   "column": 90,
+   "endLine": 422,
+   "endColumn": 3,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 420,
+   "column": 7,
+   "endLine": 420,
+   "endColumn": 24,
+   "mutatorName": "LogicalOperator",
+   "replacement": "verdict.ran && []",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 420,
+   "column": 22,
+   "endLine": 420,
+   "endColumn": 24,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A fresh review's verdict always has ran; only a stored verdict from before Melian kept it lacks one, so the fallback never applies here.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 423,
+   "column": 6,
+   "endLine": 423,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 423,
+   "column": 6,
+   "endLine": 423,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 423,
+   "column": 6,
+   "endLine": 423,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "indexWarning === undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 423,
+   "column": 34,
+   "endLine": 423,
+   "endColumn": 78,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 423,
+   "column": 44,
+   "endLine": 423,
+   "endColumn": 76,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 424,
+   "column": 19,
+   "endLine": 424,
+   "endColumn": 45,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 424,
+   "column": 19,
+   "endLine": 424,
+   "endColumn": 45,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 424,
+   "column": 19,
+   "endLine": 424,
+   "endColumn": 45,
+   "mutatorName": "EqualityOperator",
+   "replacement": "indexWarning !== undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 424,
+   "column": 53,
+   "endLine": 424,
+   "endColumn": 86,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 424,
+   "column": 65,
+   "endLine": 424,
+   "endColumn": 84,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 427,
+   "column": 6,
+   "endLine": 427,
+   "endColumn": 119,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 427,
+   "column": 24,
+   "endLine": 427,
+   "endColumn": 105,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 9,
+   "column": 35,
+   "endLine": 11,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 21,
+   "column": 46,
+   "endLine": 39,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 6,
+   "endLine": 22,
+   "endColumn": 89,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "checks.some(check => check.name === \"lens.design\" && check.status !== \"skipped\")",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 6,
+   "endLine": 22,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 6,
+   "endLine": 22,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 7,
+   "endLine": 22,
+   "endColumn": 89,
+   "mutatorName": "MethodExpression",
+   "replacement": "checks.every(check => check.name === \"lens.design\" && check.status !== \"skipped\")",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 19,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 30,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 30,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 30,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "LogicalOperator",
+   "replacement": "check.name === \"lens.design\" || check.status !== \"skipped\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 30,
+   "endLine": 22,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when no design lens ran, since the review read no index",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when no design lens ran, since the review read no index",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 30,
+   "endLine": 22,
+   "endColumn": 58,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.name !== \"lens.design\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 45,
+   "endLine": 22,
+   "endColumn": 58,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 62,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 62,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.status === \"skipped\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 22,
+   "column": 79,
+   "endLine": 22,
+   "endColumn": 88,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 24,
+   "column": 3,
+   "endLine": 24,
+   "endColumn": 29,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 27,
+   "column": 6,
+   "endLine": 27,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 27,
+   "column": 6,
+   "endLine": 27,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for an index under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for an index under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 27,
+   "column": 6,
+   "endLine": 27,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "warning !== undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 28,
+   "column": 21,
+   "endLine": 33,
+   "endColumn": 3,
+   "mutatorName": "MethodExpression",
+   "replacement": "checks",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 29,
+   "column": 3,
+   "endLine": 32,
+   "endColumn": 56,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 4,
+   "endLine": 32,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 4,
+   "endLine": 32,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 4,
+   "endLine": 32,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(check.name === \"lens.design\" || check.name === \"verifier\") && check.status === \"failed\" || contextOverflowed(check.error ?? check.reason ?? \"\")",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens failed",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens failed",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 4,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 4,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "LogicalOperator",
+   "replacement": "check.name === \"lens.design\" || check.name === \"verifier\" || check.status === \"failed\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 5,
+   "endLine": 30,
+   "endColumn": 62,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 5,
+   "endLine": 30,
+   "endColumn": 62,
+   "mutatorName": "LogicalOperator",
+   "replacement": "check.name === \"lens.design\" && check.name === \"verifier\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 5,
+   "endLine": 30,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 5,
+   "endLine": 30,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.name !== \"lens.design\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 20,
+   "endLine": 30,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 37,
+   "endLine": 30,
+   "endColumn": 62,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 37,
+   "endLine": 30,
+   "endColumn": 62,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.name !== \"verifier\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 30,
+   "column": 52,
+   "endLine": 30,
+   "endColumn": 62,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 31,
+   "column": 4,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a design lens its budget ended rather than a failure, even on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a design lens its budget ended rather than a failure, even on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 31,
+   "column": 4,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.status !== \"failed\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 31,
+   "column": 21,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 32,
+   "column": 22,
+   "endLine": 32,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(check.error ?? check.reason) && \"\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 32,
+   "column": 22,
+   "endLine": 32,
+   "endColumn": 49,
+   "mutatorName": "LogicalOperator",
+   "replacement": "check.error && check.reason",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > reads a failed lens's error, as a lens records its failure, before its reason",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > reads a failed lens's error, as a lens records its failure, before its reason",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 32,
+   "column": 53,
+   "endLine": 32,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 34,
+   "column": 6,
+   "endLine": 34,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 34,
+   "column": 6,
+   "endLine": 34,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 34,
+   "column": 6,
+   "endLine": 34,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "overflowed.length !== 0",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 35,
+   "column": 31,
+   "endLine": 35,
+   "endColumn": 61,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 35,
+   "column": 42,
+   "endLine": 35,
+   "endColumn": 61,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 35,
+   "column": 68,
+   "endLine": 35,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/decision-index.ts",
+   "line": 37,
+   "column": 3,
+   "endLine": 37,
+   "endColumn": 113,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 282,
+   "column": 75,
+   "endLine": 305,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 283,
+   "column": 29,
+   "endLine": 283,
+   "endColumn": 61,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 283,
+   "column": 30,
+   "endLine": 283,
+   "endColumn": 41,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 283,
+   "column": 43,
+   "endLine": 283,
+   "endColumn": 60,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 14,
+   "endLine": 284,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 14,
+   "endLine": 284,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 14,
+   "endLine": 284,
+   "endColumn": 108,
+   "mutatorName": "LogicalOperator",
+   "replacement": "root || (await git(root, [\"rev-parse\", \"--verify\", \"--quiet\", \"HEAD\"]).catch(() => undefined))",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 39,
+   "endLine": 284,
+   "endColumn": 83,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 40,
+   "endLine": 284,
+   "endColumn": 51,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 53,
+   "endLine": 284,
+   "endColumn": 63,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 65,
+   "endLine": 284,
+   "endColumn": 74,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 284,
+   "column": 76,
+   "endLine": 284,
+   "endColumn": 82,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 285,
+   "column": 5,
+   "endLine": 285,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 285,
+   "column": 5,
+   "endLine": 285,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 285,
+   "column": 5,
+   "endLine": 285,
+   "endColumn": 19,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!root && !head",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 285,
+   "column": 5,
+   "endLine": 285,
+   "endColumn": 10,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "root",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 285,
+   "column": 14,
+   "endLine": 285,
+   "endColumn": 19,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "head",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 286,
+   "column": 5,
+   "endLine": 298,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 289,
+   "column": 6,
+   "endLine": 289,
+   "endColumn": 17,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 289,
+   "column": 6,
+   "endLine": 289,
+   "endColumn": 17,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 289,
+   "column": 6,
+   "endLine": 289,
+   "endColumn": 17,
+   "mutatorName": "EqualityOperator",
+   "replacement": "count !== 0",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 6,
+   "endLine": 291,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "warning === undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 36,
+   "endLine": 291,
+   "endColumn": 94,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 44,
+   "endLine": 291,
+   "endColumn": 60,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 291,
+   "column": 69,
+   "endLine": 291,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 292,
+   "column": 50,
+   "endLine": 292,
+   "endColumn": 56,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 293,
+   "column": 9,
+   "endLine": 297,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 294,
+   "column": 9,
+   "endLine": 294,
+   "endColumn": 25,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 295,
+   "column": 10,
+   "endLine": 295,
+   "endColumn": 14,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 11,
+   "endLine": 296,
+   "endColumn": 130,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 50,
+   "endLine": 296,
+   "endColumn": 61,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 50,
+   "endLine": 296,
+   "endColumn": 61,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 50,
+   "endLine": 296,
+   "endColumn": 61,
+   "mutatorName": "EqualityOperator",
+   "replacement": "count !== 1",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 64,
+   "endLine": 296,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 69,
+   "endLine": 296,
+   "endColumn": 72,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 296,
+   "column": 91,
+   "endLine": 296,
+   "endColumn": 124,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "decisionIndexWarning.bytes * 1024",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 298,
+   "column": 17,
+   "endLine": 304,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 299,
+   "column": 9,
+   "endLine": 303,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 300,
+   "column": 9,
+   "endLine": 300,
+   "endColumn": 25,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 301,
+   "column": 10,
+   "endLine": 301,
+   "endColumn": 16,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 162,
+   "column": 49,
+   "endLine": 162,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 41,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 41,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 41,
+   "mutatorName": "EqualityOperator",
+   "replacement": "bytes < decisionIndexWarning.bytes",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 41,
+   "mutatorName": "EqualityOperator",
+   "replacement": "bytes > decisionIndexWarning.bytes",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 16,
+   "endLine": 164,
+   "endColumn": 86,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 49,
+   "endLine": 164,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 49,
+   "endLine": 164,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 49,
+   "endLine": 164,
+   "endColumn": 73,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.#files.length !== 1",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 76,
+   "endLine": 164,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 164,
+   "column": 81,
+   "endLine": 164,
+   "endColumn": 84,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 165,
+   "column": 9,
+   "endLine": 171,
+   "endColumn": 3,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 166,
+   "column": 3,
+   "endLine": 166,
+   "endColumn": 119,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 166,
+   "column": 79,
+   "endLine": 166,
+   "endColumn": 112,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "decisionIndexWarning.bytes * 1024",
+   "claim": "killed",
+   "evidence": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 167,
+   "column": 3,
+   "endLine": 167,
+   "endColumn": 117,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 168,
+   "column": 3,
+   "endLine": 168,
+   "endColumn": 224,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 169,
+   "column": 3,
+   "endLine": 169,
+   "endColumn": 98,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 170,
+   "column": 3,
+   "endLine": 170,
+   "endColumn": 115,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/decisions/src/decision-files.ts",
+   "line": 171,
+   "column": 9,
+   "endLine": 171,
+   "endColumn": 12,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 15,
+   "column": 57,
+   "endLine": 28,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 16,
+   "column": 14,
+   "endLine": 16,
+   "endColumn": 66,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "isContextOverflow reads only stopReason, errorMessage and provider when no context window is passed, as contextOverflowed passes none, so the zeroed usage fields are never read.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 17,
+   "column": 26,
+   "endLine": 27,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
+   "survivorClasses": [],
+   "run": {
+    "head": "0028a248",
+    "test": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 18,
+   "column": 8,
+   "endLine": 18,
+   "endColumn": 19,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 19,
+   "column": 11,
+   "endLine": 19,
+   "endColumn": 13,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "isContextOverflow reads only stopReason, errorMessage and provider when no context window is passed, as contextOverflowed passes none, so the message's content is never read.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 20,
+   "column": 7,
+   "endLine": 20,
+   "endColumn": 16,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 21,
+   "column": 12,
+   "endLine": 21,
+   "endColumn": 21,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 22,
+   "column": 9,
+   "endLine": 22,
+   "endColumn": 18,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 23,
+   "column": 9,
+   "endLine": 23,
+   "endColumn": 65,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "isContextOverflow reads only stopReason, errorMessage and provider when no context window is passed, as contextOverflowed passes none, so the usage object is never read.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 23,
+   "column": 42,
+   "endLine": 23,
+   "endColumn": 63,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "isContextOverflow reads only stopReason, errorMessage and provider when no context window is passed, as contextOverflowed passes none, so the usage object is never read.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 24,
+   "column": 14,
+   "endLine": 24,
+   "endColumn": 21,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 135,
+ "omitted": 0,
+ "unmutated": []
+}
