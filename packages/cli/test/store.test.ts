@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GraphSnapshot } from "@melian-agent/core";
+import { GraphCache } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRepository, gitIn, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import type { Io } from "../src/commands.ts";
@@ -117,22 +119,27 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 	});
 
 	it("counts one entry and many changeset files, lists every path an entry takes, and omits an empty kept line", async () => {
-		const name = "d".repeat(64);
 		await write("pull-1.sqlite", "one");
 		await write("pull-2.sqlite", "two");
-		await write(
-			`graphs/${name}/entry.json`,
-			JSON.stringify({
-				format_version: 1,
-				key: name,
-				parts: { tree: "e".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
-				snapshotId: `sha256:${"a".repeat(64)}`,
-				created: new Date(Date.now() - 8 * day).toISOString(),
-				artifacts: {},
-			}),
+		const snapshot = GraphSnapshot.create(
+			{ tree: "e".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
+			{
+				"facts.jsonl": '{"id":"a","kind":"symbol","name":"Alpha"}\n',
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			},
+			new Date(Date.now() - 8 * day),
 		);
+		await (await GraphCache.open(state)).store(snapshot);
+		const name = snapshot.key;
 		await write(`coverage/${name}/index.json`, "12345");
-		const bytes = (await readFile(join(state, `graphs/${name}/entry.json`))).length + 5;
+		let bytes = 5;
+		for (const file of await readdir(join(state, "graphs", name)))
+			bytes += (await readFile(join(state, "graphs", name, file))).length;
 		const shown = `${bytes} B`;
 		for (const apply of [false, true]) {
 			const io = output();
@@ -172,10 +179,10 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 			for (const [name, value] of Object.entries(saved))
 				if (value === undefined) delete process.env[name];
 				else process.env[name] = value;
+			removeRepository(other);
 		}
-		expect(await exists(orphan)).toBe(false);
 		expect(await readFile(join(otherState, orphan), "utf8")).toBe("0123456789");
-		removeRepository(other);
+		expect(await exists(orphan)).toBe(false);
 	});
 
 	it("removes nothing beside a live static check, names every one and exits 1", async () => {

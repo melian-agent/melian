@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import {
-	chmod,
 	lstat,
 	mkdir,
 	mkdtemp,
@@ -184,82 +183,66 @@ it("removes a graph with no readable entry once it is more than a day old, and k
 	]);
 });
 
-// An entry the graph contract accepts in every field but `created`, for a graph of an old tree no ref holds.
-function contractEntry(created: string): object {
-	const entry = GraphSnapshot.create(
-		{ tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
-		graphFiles,
-	).toJSON();
-	return { ...entry, created };
-}
-
-it.each([
-	["no entry.json", undefined],
-	["text that is not JSON", "{"],
-	["JSON that is not an object", "null"],
+// Each kind of graph directory, for a dead tree's graph created 30 days ago. Prune plans by the graph cache's class alone.
+it.each<[string, "hit" | "miss" | "later", (key: string) => Promise<void>, (key: string) => string[][]]>([
+	["a graph the cache reads", "hit", async () => {}, (key) => [["graph", `graphs/${key}`, `coverage/${key}`]]],
 	[
-		"an entry naming another key",
-		JSON.stringify({ ...contractEntry("2020-01-01T00:00:00.000Z"), key: "2".repeat(64) }),
-	],
-	["an entry whose creation time is not a date", JSON.stringify(contractEntry("not a date"))],
-	[
-		"an entry with no tree",
-		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: {}, created: "2020-01-01T00:00:00Z" }),
-	],
-	["JSON that is a number", "1"],
-	[
-		"an entry with no parts",
-		JSON.stringify({ format_version: 1, key: "1".repeat(64), created: "2020-01-01T00:00:00Z" }),
+		"an entry.json past prune's old 1 MiB limit, which the cache still reads",
+		"hit",
+		async (key) => {
+			const path = join(state, "graphs", key, "entry.json");
+			await writeFile(path, (await readFile(path, "utf8")).padEnd(2 * 1024 * 1024, " "));
+		},
+		(key) => [["graph", `graphs/${key}`, `coverage/${key}`]],
 	],
 	[
-		"an entry whose creation time is a number",
-		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: { tree: "f".repeat(40) }, created: 0 }),
+		"an entry created in the future",
+		"hit",
+		async (key) => {
+			const snapshot = GraphSnapshot.create(
+				{ tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
+				graphFiles,
+				new Date("2099-01-01T00:00:00.000Z"),
+			);
+			// The key hashes the parts alone, so the future graph takes the same directory.
+			await rm(join(state, "graphs", key), { recursive: true });
+			await (await GraphCache.open(state)).store(snapshot);
+		},
+		() => [],
 	],
 	[
-		"an entry with no creation time",
-		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: { tree: "f".repeat(40) } }),
+		"an artifact that no longer matches its entry",
+		"miss",
+		async (key) => writeFile(join(state, "graphs", key, "facts.jsonl"), "swapped"),
+		(key) => [
+			["unreadable graph", `graphs/${key}`],
+			["orphan coverage", `coverage/${key}`],
+		],
 	],
-])("reads a graph with %s as unreadable", async (_, text) => {
-	const name = "1".repeat(64);
-	await mkdir(join(state, "graphs", name), { recursive: true });
-	if (text !== undefined) await writeFile(join(state, "graphs", name, "entry.json"), text);
-	await age(`graphs/${name}`, 2 * day);
-	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
-});
-
-it("reads as unreadable an entry the graph contract refuses, though it names its key, a live tree and a future time", async () => {
-	const name = "1".repeat(64);
-	await mkdir(join(state, "graphs", name), { recursive: true });
-	await writeFile(
-		join(state, "graphs", name, "entry.json"),
-		JSON.stringify({
-			format_version: 1,
-			key: name,
-			parts: { tree: tree("HEAD") },
-			created: "2099-01-01T00:00:00.000Z",
-		}),
-	);
-	await age(`graphs/${name}`, 2 * day);
-	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
-});
-
-it("keeps an old graph whose entry is a format it does not know, and its coverage", async () => {
-	const name = "3".repeat(64);
-	await mkdir(join(state, "graphs", name), { recursive: true });
-	await mkdir(join(state, "coverage", name), { recursive: true });
-	await writeFile(
-		join(state, "graphs", name, "entry.json"),
-		JSON.stringify({
-			format_version: 2,
-			key: name,
-			parts: { tree: "f".repeat(40) },
-			created: "2020-01-01T00:00:00Z",
-		}),
-	);
-	await age(`graphs/${name}`, 30 * day);
+	[
+		"an entry no format can read",
+		"miss",
+		async (key) => writeFile(join(state, "graphs", key, "entry.json"), "{}"),
+		(key) => [
+			["unreadable graph", `graphs/${key}`],
+			["orphan coverage", `coverage/${key}`],
+		],
+	],
+	[
+		"an entry in a later format",
+		"later",
+		async (key) => writeFile(join(state, "graphs", key, "entry.json"), JSON.stringify({ format_version: 2 })),
+		() => [],
+	],
+])("plans a graph directory holding %s as the graph cache classifies it, a %s", async (_, judged, change, planned) => {
+	const key = await graph("f".repeat(40), 30 * day);
+	await change(key);
+	await age(`graphs/${key}`, 2 * day);
+	const entry = await GraphCache.openReadOnly(state).classify(key);
+	expect(typeof entry === "string" ? entry : "hit").toBe(judged);
 	const prune = await plan();
-	expect(prune.entries).toEqual([]);
-	expect(prune.kept).toEqual([`graphs/${name}`]);
+	expect(kinds(prune)).toEqual(planned(key));
+	expect(prune.kept).toEqual(judged === "later" ? [`graphs/${key}`] : []);
 });
 
 it("removes coverage whose graph is gone and keeps coverage of a kept graph", async () => {
@@ -479,13 +462,6 @@ it("refuses when git cannot answer", async () => {
 	);
 });
 
-it("reads a graph whose entry.json is not a file as unreadable", async () => {
-	const name = "9".repeat(64);
-	await mkdir(join(state, "graphs", name, "entry.json"), { recursive: true });
-	await age(`graphs/${name}`, 2 * day);
-	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
-});
-
 it("refuses with the reason git could not start when no git is on the path it was given", async () => {
 	const empty = await mkdtemp(join(tmpdir(), "melian-prune-path-"));
 	outside.push(empty);
@@ -570,24 +546,6 @@ it("refuses a state directory that is a file inside, rather than planning nothin
 	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
 });
 
-it("reads an entry.json of exactly the size limit and refuses one a byte past it", async () => {
-	const limit = 1024 * 1024;
-	const snapshot = GraphSnapshot.create(
-		{ tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
-		graphFiles,
-		new Date(now - 30 * day),
-	);
-	const name = snapshot.key;
-	const json = JSON.stringify(snapshot.toJSON());
-	await mkdir(join(state, "graphs", name), { recursive: true });
-	await writeFile(join(state, "graphs", name, "entry.json"), json.padEnd(limit, " "));
-	await age(`graphs/${name}`, 2 * day);
-	expect(kinds(await plan())).toEqual([["graph", `graphs/${name}`, `coverage/${name}`]]);
-	await writeFile(join(state, "graphs", name, "entry.json"), json.padEnd(limit + 1, " "));
-	await age(`graphs/${name}`, 2 * day);
-	expect(kinds(await plan())).toEqual([["unreadable graph", `graphs/${name}`]]);
-});
-
 it("lists entries in name order, whatever order the directory returns", async () => {
 	const names = ["e", "c", "f", "a", "b", "d"].map((letter) => letter.repeat(64));
 	for (const name of names) await mkdir(join(state, "coverage", name), { recursive: true });
@@ -599,20 +557,6 @@ it("orders names as JavaScript compares them, not as the directory's bytes do", 
 	const names = ["\u{FFFD}", "\u{10000}"];
 	for (const name of names) await mkdir(join(state, name), { recursive: true });
 	expect((await plan()).kept).toEqual(["\u{10000}", "\u{FFFD}"]);
-});
-
-it("refuses a graph whose entry it may not read, rather than reading it as unreadable", async (test) => {
-	if (process.getuid?.() === 0) {
-		process.stderr.write("skipped: root reads a file of mode 0\n");
-		test.skip();
-	}
-	const name = "b".repeat(64);
-	await mkdir(join(state, "graphs", name), { recursive: true });
-	await writeFile(join(state, "graphs", name, "entry.json"), "{}");
-	await chmod(join(state, "graphs", name, "entry.json"), 0);
-	await age(`graphs/${name}`, 2 * day);
-	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
-	expect(await exists(`graphs/${name}`)).toBe(true);
 });
 
 it("never removes a changeset, a scripted store or a name it does not recognise, whatever changes after the plan", async () => {

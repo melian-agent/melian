@@ -225,3 +225,103 @@ it("reads an entry that changes between stat and read as a miss", async () => {
 	});
 	expect(await cache.read(parts)).toBeUndefined();
 });
+
+it("classifies a graph it reads as a hit with its entry's tree and creation time, whenever that time is", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const created = new Date("2099-01-01T00:00:00.000Z");
+	const snapshot = GraphSnapshot.create(parts, files, created);
+	await cache.store(snapshot);
+	expect(await cache.classify(snapshot.key)).toEqual({ tree: parts.tree, created: created.getTime() });
+	expect(await GraphCache.openReadOnly(root).classify(snapshot.key)).toEqual({
+		tree: parts.tree,
+		created: created.getTime(),
+	});
+});
+
+it("classifies as a miss a directory whose entry names another key that is a hit", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const first = GraphSnapshot.create(parts, files);
+	const second = GraphSnapshot.create({ ...parts, tree: "e".repeat(40) }, files);
+	await cache.store(first);
+	await cache.store(second);
+	await writeFile(join(root, "graphs", first.key, "entry.json"), JSON.stringify(second.toJSON()));
+	expect(await cache.classify(second.key)).toMatchObject({ tree: "e".repeat(40) });
+	expect(await cache.classify(first.key)).toBe("miss");
+});
+
+it.each<[string, (directory: string, entry: string) => Promise<unknown>]>([
+	["no directory", (directory) => rm(directory, { recursive: true })],
+	["no entry.json", (directory) => rm(join(directory, "entry.json"))],
+	[
+		"an entry.json that is a directory",
+		async (directory) => {
+			await rm(join(directory, "entry.json"));
+			await mkdir(join(directory, "entry.json"));
+		},
+	],
+	[
+		"an entry.json that is a link to a valid entry",
+		async (directory, entry) => {
+			const outside = join(root, "outside.json");
+			await writeFile(outside, entry);
+			await rm(join(directory, "entry.json"));
+			await symlink(outside, join(directory, "entry.json"));
+		},
+	],
+	["text that is not JSON", (directory) => writeFile(join(directory, "entry.json"), "{")],
+	["JSON null", (directory) => writeFile(join(directory, "entry.json"), "null")],
+	["a JSON number", (directory) => writeFile(join(directory, "entry.json"), "1")],
+	["a JSON array", (directory) => writeFile(join(directory, "entry.json"), "[]")],
+	["an object with no format", (directory) => writeFile(join(directory, "entry.json"), "{}")],
+	[
+		"format 1 that the contract refuses",
+		(directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 1 })),
+	],
+	[
+		"a format that is a string",
+		(directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: "2" })),
+	],
+	[
+		"a format that is not an integer",
+		(directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 2.5 })),
+	],
+	[
+		"a format past the safe integers",
+		(directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 2 ** 53 })),
+	],
+	["format 0", (directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 0 }))],
+	["an entry whose artifact was swapped", (directory) => writeFile(join(directory, "facts.jsonl"), "swapped")],
+	[
+		"an entry.json of the cache's size limit",
+		async (directory, entry) => writeFile(join(directory, "entry.json"), entry.padEnd(limit, " ")),
+	],
+])("classifies a graph directory with %s as a miss", async (_, change) => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await cache.store(snapshot);
+	const directory = join(root, "graphs", snapshot.key);
+	await change(directory, await readFile(join(directory, "entry.json"), "utf8"));
+	expect(await cache.classify(snapshot.key)).toBe("miss");
+});
+
+it("classifies an entry.json a byte under the cache's size limit as a hit", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await cache.store(snapshot);
+	const path = join(root, "graphs", snapshot.key, "entry.json");
+	await writeFile(path, (await readFile(path, "utf8")).padEnd(limit - 1, " "));
+	expect(await cache.classify(snapshot.key)).toMatchObject({ tree: parts.tree });
+});
+
+it.each([2, 3])("classifies an entry in format %s, a later one, as later and never as a miss", async (format) => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await cache.store(snapshot);
+	await writeFile(join(root, "graphs", snapshot.key, "entry.json"), JSON.stringify({ format_version: format }));
+	expect(await cache.classify(snapshot.key)).toBe("later");
+});

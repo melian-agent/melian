@@ -1,14 +1,13 @@
 import { execFile } from "node:child_process";
-import { lstat, readdir, readFile, rename, rm } from "node:fs/promises";
+import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { type GraphEntryState, GraphSnapshot } from "@melian-agent/core";
 import { running } from "./cache-scratch.ts";
+import { GraphCache } from "./graph-cache.ts";
 
 const day = 86_400_000;
 export const graphAgeDays = 7;
 export const unreadableGraphAgeDays = 1;
 export const mutationAgeDays = 14;
-const entryLimit = 1024 * 1024;
 const key = /^[0-9a-f]{64}$/;
 
 /** What kind of rebuildable cache a removal takes, as the store retention decision names it. */
@@ -114,35 +113,6 @@ function scratch(name: string): boolean {
 	return name.startsWith(".") || /\.[0-9a-f-]{36}\.tmp$/.test(name);
 }
 
-// The tree and creation time a graph's entry records, "unreadable" when every reader of this format treats it as a miss,
-// or "unknown" for a format a later build may read.
-async function graphEntry(
-	directory: string,
-	name: string,
-): Promise<{ tree: string; created: number } | "unreadable" | "unknown"> {
-	let text: string;
-	try {
-		const path = join(directory, "entry.json");
-		const info = await lstat(path);
-		if (!info.isFile() || info.size > entryLimit) return "unreadable";
-		text = await readFile(path, "utf8");
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return "unreadable";
-		throw error;
-	}
-	let entry: GraphEntryState;
-	try {
-		const value: unknown = JSON.parse(text);
-		if (typeof value === "object" && value !== null && (value as { format_version?: unknown }).format_version !== 1)
-			return "unknown";
-		entry = GraphSnapshot.entry(value);
-	} catch {
-		return "unreadable";
-	}
-	if (entry.key !== name) return "unreadable";
-	return { tree: entry.parts.tree, created: Date.parse(entry.created) };
-}
-
 /** A plan to remove one state directory's rebuildable cache, read without changing anything. */
 export class StorePrune {
 	readonly root: string;
@@ -214,19 +184,25 @@ export class StorePrune {
 					kept.push(node.name);
 			}
 			const graphs = new Set<string>();
+			const cache = GraphCache.openReadOnly(root);
 			for (const node of await children(join(root, "graphs"))) {
 				if (scratch(node.name)) continue;
 				if (node.link || !node.directory || !key.test(node.name)) {
 					kept.push(relative(node.path));
 					continue;
 				}
-				const entry = await graphEntry(node.path, node.name);
-				if (entry === "unknown") kept.push(relative(node.path));
-				if (entry === "unreadable") {
+				const entry = await cache.classify(node.name);
+				if (entry === "later") kept.push(relative(node.path));
+				if (entry === "miss") {
 					if (now - (await lstat(node.path)).mtimeMs > unreadableGraphAgeDays * day)
 						await add("unreadable graph", [`graphs/${node.name}`]);
 					else graphs.add(node.name);
-				} else if (entry !== "unknown" && now - entry.created > graphAgeDays * day && !trees.has(entry.tree)) {
+				} else if (
+					// A creation time in the future is not older than seven days, so the graph stays until the clock passes it.
+					entry !== "later" &&
+					now - entry.created > graphAgeDays * day &&
+					!trees.has(entry.tree)
+				) {
 					// A file or link at the coverage path, or a linked coverage folder, is listed as not recognised, so it
 					// must not go with the graph.
 					const coverage = await lstat(join(root, "coverage", node.name)).catch(() => undefined);

@@ -1,7 +1,13 @@
 import { constants } from "node:fs";
 import { mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { type GraphFiles, type GraphKeyParts, GraphSnapshot, graphFiles } from "@melian-agent/core";
+import {
+	type GraphEntryState,
+	type GraphFiles,
+	type GraphKeyParts,
+	GraphSnapshot,
+	graphFiles,
+} from "@melian-agent/core";
 import { CacheScratch } from "./cache-scratch.ts";
 
 const limit = 16 * 1024 * 1024;
@@ -18,6 +24,12 @@ async function bounded(path: string): Promise<string> {
 		await file.close();
 	}
 }
+/**
+ * What a graph directory holds, judged as `GraphCache.read` judges it: a hit with the tree and creation time its entry
+ * records, a miss, or an entry in a later format that this build cannot read.
+ */
+export type GraphEntryClass = { tree: string; created: number } | "miss" | "later";
+
 /** A disposable graph cache under the same root as tool binaries. */
 export class GraphCache {
 	readonly root: string;
@@ -56,6 +68,26 @@ export class GraphCache {
 		} catch {
 			return undefined;
 		}
+	}
+	/** Classifies the graph directory named `key` through the same bounded reads and checks as `read`. */
+	async classify(key: string): Promise<GraphEntryClass> {
+		let value: unknown;
+		try {
+			value = JSON.parse(await bounded(join(this.root, "graphs", key, "entry.json")));
+		} catch {
+			return "miss";
+		}
+		const version = (value as { format_version?: unknown } | null)?.format_version;
+		if (Number.isSafeInteger(version) && (version as number) > 1) return "later";
+		let entry: GraphEntryState;
+		try {
+			entry = GraphSnapshot.entry(value);
+		} catch {
+			return "miss";
+		}
+		// `read` looks under the key its parts compute, so an entry naming another key would judge that directory instead.
+		if (entry.key !== key || !(await this.read(entry.parts))) return "miss";
+		return { tree: entry.parts.tree, created: Date.parse(entry.created) };
 	}
 	/** Publishes a complete directory atomically; concurrent valid writers share the winner. */
 	async store(snapshot: GraphSnapshot): Promise<void> {
