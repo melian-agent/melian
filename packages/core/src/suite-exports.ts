@@ -25,19 +25,16 @@ async function readManifest(
 	}
 }
 
-// Node's own rule for an export target: "./" then segments, none of them empty, ".", ".." or node_modules in any case.
-// A percent sign or a backslash is refused outright, so no escape can hide such a segment.
+// A target of "./" and plain segments has one reading, in Node and in git; any other character could read two ways.
 function packageFile(target: string): string | undefined {
-	if (!target.startsWith("./") || /[%\\]/.test(target)) return undefined;
-	const rest = target.slice(2);
-	const segments = rest.split("/");
-	return segments.every((segment) => !["", ".", "..", "node_modules"].includes(segment.toLowerCase()))
+	const rest = /^\.\/((?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+)$/.exec(target)?.[1];
+	return rest?.split("/").every((segment) => ![".", "..", "node_modules"].includes(segment.toLowerCase()))
 		? rest
 		: undefined;
 }
 
-// Node is the authority on what ./testing resolves to, and it cannot run here without the revision's files on disk.
-// So this accepts only the one shape whose answer needs no resolution, the source condition first, and refuses the rest.
+// Node is the authority on what ./testing resolves to. It is not run here, since that needs head-written files on the
+// reviewer's disk, so this accepts only a target with one possible reading, the source condition first, and fails closed.
 async function testingExport(source: SourceReader, dir: string): Promise<Answer> {
 	const manifest = await readManifest(source, `${dir}/package.json`, `${dir}/package.json`);
 	if ("refused" in manifest) return manifest;
@@ -57,7 +54,7 @@ async function testingExport(source: SourceReader, dir: string): Promise<Answer>
 	const file = packageFile(target);
 	return file === undefined
 		? {
-				refused: `${dir}/package.json maps ./testing to ${JSON.stringify(target)}, which Node does not resolve to one file in the package`,
+				refused: `${dir}/package.json maps ./testing to ${JSON.stringify(target)}, which is not a plain relative path inside the package`,
 			}
 		: { file: `${dir}/${file}` };
 }

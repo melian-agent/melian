@@ -87,13 +87,19 @@ describe("SuiteExports", () => {
 		["a percent escape", "./src/%2e%2e/record.ts"],
 		["a backslash", "./src\\record.ts"],
 		["only the package itself", "./"],
+		["a query", "./src/testing.ts?case/production.ts"],
+		["a fragment", "./src/testing.ts#case/production.ts"],
+		["a space", "./src/test ing.ts"],
+		["a trailing slash", "./src/testing/"],
+		["a non-ASCII letter", "./src/tésting.ts"],
+		["a colon", "./src/testing.ts:x"],
 	])(
-		"refuses a ./testing export written as %s, which Node does not resolve to one file in the package",
+		"refuses a ./testing export written as %s, which is not a plain relative path inside the package",
 		async (_name, target) => {
 			const suites = await suitesIn(
 				workspace({ core: { exports: { "./testing": { "@melian-agent/source": target } } } }),
 			);
-			const reason = `packages/core/package.json maps ./testing to ${JSON.stringify(target)}, which Node does not resolve to one file in the package`;
+			const reason = `packages/core/package.json maps ./testing to ${JSON.stringify(target)}, which is not a plain relative path inside the package`;
 			expect(suites.refusal("packages/core/src/record.ts")).toBe(reason);
 			expect(suites.refusal("packages/core/src/testing.ts")).toBe(reason);
 		},
