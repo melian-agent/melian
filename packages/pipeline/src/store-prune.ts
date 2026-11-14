@@ -266,12 +266,14 @@ export class StorePrune {
 				const { newest } = await measure(join(this.root, entry.paths[0] ?? ""));
 				if (this.#now - newest <= mutationAgeDays * day) continue;
 			}
-			const sources = entry.paths.map((path) => join(this.root, path));
-			// A folder swapped for a link since the plan would carry the rename out of the state directory.
-			let swapped = await linked(this.root);
-			for (const source of sources) swapped ||= await linked(dirname(source));
-			if (swapped) continue;
-			for (const source of sources) {
+			let kept = false;
+			for (const path of entry.paths) {
+				const source = join(this.root, path);
+				// A folder swapped for a link since the plan would carry the rename out of the state directory.
+				if ((await linked(this.root)) || (await linked(dirname(source)))) {
+					kept = true;
+					continue;
+				}
 				const moved = join(dirname(source), `.prune-${process.pid}-${crypto.randomUUID()}`);
 				try {
 					await rename(source, moved);
@@ -281,7 +283,7 @@ export class StorePrune {
 				}
 				await rm(moved, { recursive: true, force: true });
 			}
-			removed.push(entry);
+			if (!kept) removed.push(entry);
 		}
 		return { removed, live: [] };
 	}

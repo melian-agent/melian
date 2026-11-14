@@ -675,7 +675,7 @@ it("keeps a planned mutation partition written exactly fourteen days before the 
 	expect(await exists(`mutation/${name}`)).toBe(true);
 });
 
-it("keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names", async () => {
+it("does not report an entry whose cache folder became a link after the plan, and leaves what the link names", async () => {
 	const key = await graph("f".repeat(40), 30 * day);
 	const prune = await plan();
 	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
@@ -687,7 +687,7 @@ it("keeps and does not report an entry whose cache folder became a link after th
 	expect(await prune.apply()).toEqual({ removed: [], live: [] });
 	expect(await readFile(join(elsewhere, key, "index.json"), "utf8")).toBe("theirs");
 	expect(await readdir(elsewhere)).toEqual([key]);
-	expect(await exists(`graphs/${key}`)).toBe(true);
+	expect(await exists(`graphs/${key}`)).toBe(false);
 });
 
 it("removes and reports nothing through a state directory swapped for a link after the plan", async () => {
