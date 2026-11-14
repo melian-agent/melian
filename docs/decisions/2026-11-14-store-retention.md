@@ -48,6 +48,14 @@ A static run registers its worktrees with `git worktree add --lock --reason "mel
 
 What remains is a run that registers in the moment between that read and a removal. Each removal renames the entry to a `.prune-<pid>-` name in its own directory, then deletes it, and `CacheScratch` sweeps a dead pruner's leftovers as it sweeps a dead fetch's. A reader that loses the race fails closed: `static.enola` fails its coverage store on a graph that has gone, the review reads not reviewed, and a rerun rebuilds the graph. A tool binary that is running survives its unlink on Linux and macOS.
 
+`apply` decides once. Before each removal it reads again only the static-run locks and a mutation partition's age; it does not read refs or graph entries again. Codex's adversarial review on [pull request #426](https://github.com/melian-agent/melian/pull/426) named three races this leaves, and each costs a rebuild:
+
+- A tree that becomes live during the prune, such as a branch created at an old commit, loses its graph, and its next review rebuilds it.
+- A static run that starts and finishes inside one removal loses the graph or coverage it just wrote, and the next run rebuilds it.
+- A graph that a run repairs during the prune is removed, and rebuilt.
+
+Reading every entry again would narrow these windows, not close them, and this decision adds no lock. They are acceptable for one reason: prune removes only what Melian can rebuild. If a later change lets prune remove anything durable, these races stop being acceptable, and that change needs its own exclusion first. A comment beside `apply` says so.
+
 A lens round reads the head's graph with no lock held, since the static checks have finished by then. Prune can take that graph only when it was built more than seven days ago and no branch, remote-tracking ref or worktree `HEAD` holds its tree, as when a pull request's head sits only under `refs/melian/pull/`. This case does not fail closed. The graph tool reads the graph on its first call and keeps it in memory, so a removal after that call changes nothing. A removal before it makes the tool tell the lens to use search and `read_file` instead. The lens carries on, its record reads `ran`, and the verdict stands, as it does for any unreadable graph today. The next review rebuilds the graph, because every review builds its caller context afresh. No lock is added for this: a missed graph costs the lens search time, not a wrong verdict.
 
 ### 4. Merged changesets wait for the shared record

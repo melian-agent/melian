@@ -275,9 +275,9 @@ export class StorePrune {
 	}
 
 	/**
-	 * Removes every planned entry. It reads git's worktree list again before each removal, and stops at the first live
-	 * static run it finds. Each path is renamed to a `.prune-<pid>-` name beside it first, so a crashed prune leaves only
-	 * scratch for `CacheScratch` to sweep.
+	 * Removes every planned entry, stopping at the first live static run it reads before a removal. Refs and graph entries
+	 * are not read again, so a race costs a rebuild; that holds only while every entry is rebuildable cache. A path goes
+	 * by a `.prune-<pid>-` rename beside it, so a crashed prune leaves only scratch for `CacheScratch` to sweep.
 	 */
 	async apply(): Promise<{ removed: PruneEntry[]; live: LiveRun[] }> {
 		const removed: PruneEntry[] = [];
