@@ -62,6 +62,7 @@ async function seed(): Promise<{ pinned: string }> {
 	await write(`mutation/${hex("c")}/report.json`, "old", 15 * day);
 	await write("tools/gone/1.0.0/linux-x64/file", "tool");
 	await write("notes.txt", "mine");
+	await write("todo.txt", "also");
 	const [name, pin] = Object.entries((await ToolProvisioning.manifest()).toJSON().tools)[0]!;
 	const [platform, artifact] = Object.entries(pin.platforms)[0]!;
 	const pinned = `tools/${name}/${pin.version}/${platform}/${artifact.sha256}/binary`;
@@ -94,7 +95,7 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 				"  mutation partition: 1, 3 B",
 				"  unpinned tool: 1, 4 B",
 				"Kept 1 changeset file, 12 B, and scripted/.",
-				"Kept, not recognised: notes.txt",
+				"Kept, not recognised: notes.txt, todo.txt",
 				"",
 			].join("\n"),
 		]);
