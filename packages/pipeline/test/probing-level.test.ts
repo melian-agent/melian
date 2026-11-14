@@ -1112,6 +1112,33 @@ describe("a level that probes", () => {
 		}
 	});
 
+	it("records no verdict for a review whose revision left the index once its lenses finished", async () => {
+		const first = await review({
+			planner: [
+				fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [] })], { stopReason: "toolUse" }),
+				fauxAssistantMessage("Planned 0 attacks."),
+			],
+			prober: [],
+		});
+		const reviewer = harness!.harness;
+		const at = Revision.key(first.changeset.revision);
+		const wait = reviewer.waitForTask.bind(reviewer);
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const record = await wait(task, context);
+			const root = await reviewer.root(context);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				if (index.reviews[at]?.task === task) delete index.reviews[at];
+			}, context);
+			return record;
+		}) as typeof reviewer.waitForTask;
+		const outcome = await first.run.then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
+	});
+
 	it.each([
 		["runs no probe once another review has taken the revision", [failing, failing], 0],
 		["prunes nothing when every probe it holds already stands", [], 0],

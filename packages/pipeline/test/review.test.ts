@@ -1407,6 +1407,17 @@ describe("reviewChangeset", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("decides a review that runs no lens after a review of the head whose lenses ran", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
+		// It records a verdict, as on a head no lens reviewed, rather than read as replaced by the earlier lens run.
+		await expect(reviewed({ config: off })).resolves.toMatchObject({ verdict: { status: "not-reviewed" } });
+	});
+
 	it("refuses a finding outside the paths a lens covers", async () => {
 		const narrow = lenses.map((lens) =>
 			lens.name === "correctness" ? Lens.from({ ...lens.toJSON(), paths: ["src/user.ts"] }) : lens,
