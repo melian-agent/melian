@@ -162,9 +162,14 @@ function readOr(path, fallback) {
 // tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
 // tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
 // place but not its text. Null for anything that is not a verdict, which the comment reads as no verdict.
+// A round's duration, tokens and cost leave as numbers alone: Melian computed them, and no tool or model wrote them.
+// They leave even from a review that failed, which spent them all the same, alone in a copy the comment reads as no
+// verdict.
 export function publicVerdict(text) {
+	let spend;
 	try {
 		const verdict = JSON.parse(text);
+		spend = spendOf(verdict);
 		const check = ({ name, status, lineage }) => ({ name, status, lineage });
 		const finding = ({ ruleId, message, locations, properties }) => {
 			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
@@ -205,10 +210,75 @@ export function publicVerdict(text) {
 			),
 			notRun: Array.isArray(verdict.notRun) ? verdict.notRun.map(check) : undefined,
 			...(Array.isArray(verdict.ran) ? { ran: verdict.ran.map(check) } : {}),
+			...(spend === undefined ? {} : { spend }),
 		};
 	} catch {
-		return null;
+		return spend === undefined ? null : { spend };
 	}
+}
+
+// A finite, non-negative number, or undefined: anything else is refused. Number.isFinite coerces nothing, so a string
+// of digits is refused too.
+const amount = (value) => (Number.isFinite(value) && value >= 0 ? value : undefined);
+const field = (object, key) => (typeof object === "object" && object !== null ? object[key] : undefined);
+
+// One figure summed across the ledger's run rows. A row that holds it must hold a valid number or the figure is
+// refused, and with no row holding it there is none.
+function sumOf(rows, key) {
+	const held = rows.filter((row) => Object.hasOwn(row, key)).map((row) => amount(row[key]));
+	if (held.length === 0 || held.includes(undefined)) return undefined;
+	return amount(held.reduce((sum, value) => sum + value, 0));
+}
+
+// A round's duration in whole seconds, its tokens and its cost in dollars: from what `melian review --json` writes
+// beside the verdict, or from a public verdict's own `spend` on a second pass. Tokens and cost come from the ledger's
+// run, `telemetry.run`, whose rows count nothing for a stage the review reused, never from the revision's whole total.
+// A number that is not finite and non-negative is left out, and with none left the spend is left out whole. Tokens
+// and cost are left out too when a row says its usage was recorded in part, since the sum would read as exact.
+function spendOf(verdict) {
+	let seconds;
+	let tokens;
+	let cost;
+	if (field(verdict, "telemetry") !== undefined) {
+		const prepare = field(verdict.telemetry, "prepare");
+		const startedAt = amount(field(prepare, "startedAt"));
+		const endedAt = amount(field(prepare, "endedAt"));
+		// A missing end or start makes NaN, which amount refuses as it refuses a clock that ran backwards. A failed review
+		// reports no duration: the CLI then keeps an earlier decided review's preparation, which is not this round's time.
+		seconds = field(verdict, "error") === undefined ? amount(Math.round((endedAt - startedAt) / 1000)) : undefined;
+		const rows = field(field(verdict.telemetry, "run"), "stages");
+		const measured =
+			Array.isArray(rows) &&
+			rows.every((row) => typeof row === "object" && row !== null && row.usageIncomplete !== true);
+		// The ledger writes a row's tokens and cost together, for a model stage this run ran. With neither on any row,
+		// every stage was reused or ran no model, so the run spent nothing. A run with no row at all is the CLI's
+		// fallback when it cannot read the telemetry, so it proves nothing.
+		const spentNothing =
+			measured && rows.length > 0 && !rows.some((row) => Object.hasOwn(row, "tokens") || Object.hasOwn(row, "cost"));
+		tokens = spentNothing ? 0 : measured ? sumOf(rows, "tokens") : undefined;
+		cost = spentNothing ? 0 : measured ? sumOf(rows, "cost") : undefined;
+	} else {
+		const spent = field(verdict, "spend");
+		seconds = amount(field(spent, "seconds"));
+		tokens = amount(field(spent, "tokens"));
+		cost = amount(field(spent, "cost"));
+	}
+	const spend = {
+		...(seconds === undefined ? {} : { seconds }),
+		...(tokens === undefined ? {} : { tokens }),
+		...(cost === undefined ? {} : { cost }),
+	};
+	return Object.keys(spend).length === 0 ? undefined : spend;
+}
+
+// The comment's line for a round's spend, which the pull request timeline reads back.
+export function spendLine({ seconds, tokens, cost }) {
+	const parts = [
+		...(seconds === undefined ? [] : [`${seconds} s`]),
+		...(tokens === undefined ? [] : [`${tokens} tokens`]),
+		...(cost === undefined ? [] : [`$${cost.toFixed(2)}`]),
+	];
+	return `Spend: ${parts.join(", ")}`;
 }
 
 const staticText = "A static check's finding; a local run shows its text.";
@@ -258,17 +328,28 @@ export class RoundComment {
 		// The exit code and commits sit outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
 		const header = `${marker(this.runId, this.nonce)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
+		// A round spent its time and tokens whether or not it may post its findings, so every outcome shows the spend.
+		const spent = this.verdict?.spend === undefined ? [] : [spendLine(this.verdict.spend)];
+		const unposted = (why) => `${header}\n\n${why}\n${spent.length === 0 ? "" : `\n${fenced(spent)}`}`;
 		if (this.current === undefined)
-			return `${header}\n\nThe pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				"The pull request could not be read again before posting, so this round posts no findings. Start a new round.",
+			);
 		if (this.current.base !== this.base || this.current.head !== this.head) {
 			const moved = `${commit(this.current.base)}...${commit(this.current.head)}`;
-			return `${header}\n\nThe pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				`The pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.`,
+			);
 		}
 		if (this.reviewed === undefined)
-			return `${header}\n\nThe round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				"The round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.",
+			);
 		if (this.reviewed.head !== this.head || this.reviewed.base !== this.mergeBase) {
 			const other = `${commit(this.reviewed.base)}...${commit(this.reviewed.head)}`;
-			return `${header}\n\nMelian reviewed ${other}, not the pull request the gate approved, so this round posts no findings. Start a new round.\n`;
+			return unposted(
+				`Melian reviewed ${other}, not the pull request the gate approved, so this round posts no findings. Start a new round.`,
+			);
 		}
 		const verdict = this.verdict;
 		const problem =
@@ -277,9 +358,9 @@ export class RoundComment {
 				? undefined
 				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
 		if (problem !== undefined) {
-			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`])}`;
+			return `${header}\n\n${fenced(["Verdict: not reviewed", ...spent, "", `${problem}; a local run of melian review says why.`])}`;
 		}
-		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
+		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`, ...spent];
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);
