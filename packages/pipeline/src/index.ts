@@ -142,6 +142,16 @@ export {
 export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";
+export {
+	graphAgeDays,
+	type LiveRun,
+	mutationAgeDays,
+	type PruneEntry,
+	type PruneKind,
+	StorePrune,
+	StorePruneError,
+	unreadableGraphAgeDays,
+} from "./store-prune.ts";
 export { summarizeReview } from "./summarize.ts";
 export { type Stage, StageTelemetry, TelemetryReader, type Untimed } from "./telemetry.ts";
 export { TokenUsage, type UsageSummary } from "./token-usage.ts";

@@ -99,18 +99,21 @@ export class GraphSnapshot {
 			structuredClone(files),
 		);
 	}
+	/** Checks a parsed `entry.json` against the entry contract alone, without its artifacts. */
+	static entry(value: unknown): GraphEntryState {
+		if (!Value.Check(entrySchema, value) || !Number.isFinite(Date.parse(value.created)))
+			throw new GraphError("Invalid graph entry");
+		return value;
+	}
 	/** Reads an entry only when all inputs and artifact hashes agree. */
 	static parse(text: string, files: GraphFiles, parts: GraphKeyParts): GraphSnapshot {
-		const entry: unknown = JSON.parse(text);
-		if (!Value.Check(entrySchema, entry)) throw new GraphError("Invalid graph entry");
+		const stored = GraphSnapshot.entry(JSON.parse(text));
 		const computed = GraphSnapshot.create(parts, files);
-		const stored = entry as GraphEntryState;
 		if (
 			stored.key !== computed.key ||
 			JSON.stringify(stored.parts) !== JSON.stringify(computed.#entry.parts) ||
 			stored.snapshotId !== computed.snapshotId ||
-			JSON.stringify(stored.artifacts) !== JSON.stringify(computed.#entry.artifacts) ||
-			!Number.isFinite(Date.parse(stored.created))
+			JSON.stringify(stored.artifacts) !== JSON.stringify(computed.#entry.artifacts)
 		)
 			throw new GraphError("Graph entry does not match its inputs or artifacts");
 		return new GraphSnapshot(stored, structuredClone(files));
