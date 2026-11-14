@@ -1024,6 +1024,14 @@ describe("DirectoryRecordStore", () => {
 		expect((await rejection(store.readCell(changeset), RecordError)).code).toBe("unknownFile");
 	});
 
+	it("fails to open unreachable, not with a raw error, when its root cannot be a directory", async () => {
+		const file = join(root, "file");
+		writeFileSync(file, "");
+		const error = await rejection(DirectoryRecordStore.open(file), RecordError);
+		expect(error.code).toBe("unreachable");
+		expect(error.path).toBe(file);
+	});
+
 	it("keeps a cell value that starts with a byte order mark", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
 		const cell = join(root, "changesets", changeset, ".cell");

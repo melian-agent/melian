@@ -50,8 +50,12 @@ export class DirectoryRecordStore implements RecordStore {
 	/** Opens the store at `root`, creating it when it is not there, to take the kinds `payloads` can check and a round. */
 	static async open(root: string, payloads: PayloadChecks = {}): Promise<DirectoryRecordStore> {
 		const absolute = resolve(root);
-		await mkdir(join(absolute, "changesets"), { recursive: true });
-		await mkdir(join(absolute, "tmp"), { recursive: true });
+		try {
+			await mkdir(join(absolute, "changesets"), { recursive: true });
+			await mkdir(join(absolute, "tmp"), { recursive: true });
+		} catch (cause) {
+			throw failure("unreachable", absolute, cause);
+		}
 		return new DirectoryRecordStore(absolute, payloads);
 	}
 
