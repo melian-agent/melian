@@ -1061,9 +1061,19 @@ describe("DirectoryRecordStore", () => {
 });
 
 describe("a store with no payload check for a kind", () => {
+	let root: string | undefined;
+	const directory = () => {
+		root = temporaryDirectory();
+		return root;
+	};
+	afterEach(() => {
+		if (root !== undefined) removeDirectory(root);
+		root = undefined;
+	});
+
 	it.each([
 		["memory", async () => new MemoryRecordStore()],
-		["directory", async () => DirectoryRecordStore.open(temporaryDirectory())],
+		["directory", async () => DirectoryRecordStore.open(directory())],
 	])("refuses to add or list it on the %s adapter", async (_name, open) => {
 		const store = await open();
 		const check: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: {} };
@@ -1081,14 +1091,13 @@ describe("a store with no payload check for a kind", () => {
 	});
 
 	it("refuses to list a record it has no check for on the directory adapter", async () => {
-		const root = temporaryDirectory();
-		const writer = await DirectoryRecordStore.open(root, testPayloads);
+		const path = directory();
+		const writer = await DirectoryRecordStore.open(path, testPayloads);
 		await writer.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]);
-		const reader = await DirectoryRecordStore.open(root);
+		const reader = await DirectoryRecordStore.open(path);
 		const error = await rejection(reader.list(changeset), RecordError);
 		expect(error.code).toBe("unknownFile");
 		expect((error.cause as RecordError).code).toBe("unvalidatedKind");
-		removeDirectory(root);
 	});
 
 	it("refuses to list a record it has no check for on the memory adapter", async () => {
