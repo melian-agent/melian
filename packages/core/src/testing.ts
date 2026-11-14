@@ -6,6 +6,7 @@ import { DirectoryRecordStore } from "./directory-record-store.ts";
 import { RecordError, type RecordErrorCode } from "./errors.ts";
 import { type PayloadChecks, type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
 import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } from "./record-store.ts";
+import type { KeyedRequest } from "./request-key.ts";
 
 /** One store under test, with as many handles on it as a case asks for. */
 export interface RecordStoreSubject {
@@ -422,4 +423,114 @@ export function directoryRecordStoreFixture(): RecordStoreFixture {
 			},
 		};
 	};
+}
+
+/** How {@link keyCoverage} treats a builder's input. */
+export type KeyCoverageOptions = {
+	/**
+	 * Input paths the key must not follow, each as dotted segments with array indices, such as `state.nonce`. A path
+	 * covers everything under it. Each must name something in the sample.
+	 */
+	excluded?: readonly string[];
+	/**
+	 * A changed value for the leaf at `path`, for a leaf whose default change the builder would refuse, such as a
+	 * commit, or one the helper cannot change, such as a class instance. `undefined` keeps the default.
+	 */
+	vary?: (path: string, value: unknown) => unknown;
+};
+
+function plainContainer(value: unknown): value is { [key: string]: unknown } | unknown[] {
+	if (Array.isArray(value)) return true;
+	if (typeof value !== "object" || value === null) return false;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+function leaves(value: unknown, path: readonly string[], out: (readonly string[])[]): void {
+	if (plainContainer(value)) {
+		const entries = Object.entries(value);
+		if (entries.length > 0) {
+			for (const [key, field] of entries) leaves(field, [...path, key], out);
+			return;
+		}
+	}
+	out.push(path);
+}
+
+function replaced(value: unknown, path: readonly string[], leaf: unknown): unknown {
+	if (path.length === 0) return leaf;
+	const [head, ...rest] = path;
+	const container = value as { [key: string]: unknown } | unknown[];
+	const copy: { [key: string]: unknown } | unknown[] = Array.isArray(container) ? [...container] : { ...container };
+	(copy as { [key: string]: unknown })[head] = replaced((container as { [key: string]: unknown })[head], rest, leaf);
+	return copy;
+}
+
+function defaultChange(value: unknown): unknown {
+	if (typeof value === "string") return `${value}~`;
+	if (typeof value === "number") return value + 1;
+	if (typeof value === "boolean") return !value;
+	if (value === null) return "~";
+	return undefined;
+}
+
+function kindOf(value: unknown): string {
+	if (Array.isArray(value)) return "an empty list";
+	if (plainContainer(value)) return "an empty object";
+	if (typeof value === "object" && value !== null) return `a ${value.constructor?.name ?? "class"} instance`;
+	return typeof value;
+}
+
+/**
+ * Checks a request builder against its key, field by field, as [the identity guideline](../../../docs/guidelines/identity.md#tests-a-key-needs)
+ * asks: it changes each leaf of `sample` in turn and expects the key to change, unless the leaf is under an
+ * `excluded` path, where it expects the key to stay. It returns one line for each leaf that broke that, and for each
+ * leaf it could not change, so a test asserts the list is empty. A field the sample leaves out, or an empty list, is
+ * a field nobody tests, and the helper reports the empty list; give the sample every optional field.
+ */
+export function keyCoverage<Input>(
+	build: (input: Input) => KeyedRequest,
+	sample: Input,
+	options: KeyCoverageOptions = {},
+): string[] {
+	const failures: string[] = [];
+	const excluded = options.excluded ?? [];
+	const base = build(sample).key;
+	if (build(sample).key !== base) failures.push("the key differs between two builds of the same input");
+	const paths: (readonly string[])[] = [];
+	leaves(sample, [], paths);
+	const named = paths.map((path) => path.join("."));
+	for (const exclusion of excluded) {
+		if (!named.some((name) => name === exclusion || name.startsWith(`${exclusion}.`))) {
+			failures.push(`${exclusion} is excluded but names nothing in the sample`);
+		}
+	}
+	for (const [index, path] of paths.entries()) {
+		const name = named[index];
+		const value = path.reduce<unknown>((at, segment) => (at as { [key: string]: unknown })[segment], sample);
+		const change = options.vary?.(name, value) ?? defaultChange(value);
+		if (change === undefined) {
+			failures.push(
+				`${name || "the input"} holds ${kindOf(value)}, which the helper cannot change; give vary a value`,
+			);
+			continue;
+		}
+		if (Object.is(change, value)) {
+			failures.push(`${name || "the input"} was varied to the value it holds`);
+			continue;
+		}
+		let key: string;
+		try {
+			key = build(replaced(sample, path, change) as Input).key;
+		} catch (error) {
+			failures.push(
+				`${name || "the input"}: the builder refused the changed value (${(error as Error).message}); give vary one it takes`,
+			);
+			continue;
+		}
+		const out = excluded.some((exclusion) => name === exclusion || name.startsWith(`${exclusion}.`));
+		if (out && key !== base) failures.push(`${name} is excluded, but changing it changed the key`);
+		if (!out && key === base) failures.push(`${name} reaches the builder, but changing it left the key alone`);
+	}
+	return failures;
 }

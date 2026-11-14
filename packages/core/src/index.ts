@@ -509,6 +509,12 @@ export {
 	type RecordStore,
 } from "./record-store.ts";
 export {
+	KeyedRequest,
+	type RequestExclusion,
+	requestExclusions,
+	type UnkeyedInput,
+} from "./request-key.ts";
+export {
 	costText,
 	durationText,
 	RunDetails,
