@@ -1,0 +1,896 @@
+{
+	"total": 55,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "be2c915d",
+	"head": "0f3a16df",
+	"command": "node scripts/enumerate-mutants.mjs be2c915d...0f3a16df --json --limit 10000",
+	"note": "Fix pass 36 of pull request #296. By the maintainer's ruling of 2026-11-14, an inventory is owed only for changed code that guards trust or durability: here the attach rule in runLenses and the verifier's evidence renderings. Each claim ran against its named test alone. Three first claims for review.ts:1639 named the unlock test in probing-level.test.ts and survived it; the rows name the tests that kill them. The fourteen rows in notOwed are code this pass moved or trimmed without changing what it decides. Beyond the enumeration, the coordinator asked for the mutant that drops probesWith from selectionOf: it survived the live-writer test, which let the first run finish before the second review looked, so b977c4ff holds the first run live; the mutant then fails it (expected 0 to be greater than 0).",
+	"counts": {
+		"killed": 40,
+		"equivalent": 1,
+		"notOwed": 14
+	},
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 619,
+			"column": 29,
+			"endLine": 626,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 620,
+			"column": 49,
+			"endLine": 620,
+			"endColumn": 53,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 43,
+			"endLine": 621,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 56,
+			"endLine": 621,
+			"endColumn": 72,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 67,
+			"endLine": 621,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 622,
+			"column": 42,
+			"endLine": 622,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 622,
+			"column": 59,
+			"endLine": 622,
+			"endColumn": 86,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 622,
+			"column": 82,
+			"endLine": 622,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 623,
+			"column": 45,
+			"endLine": 623,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 623,
+			"column": 62,
+			"endLine": 623,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 623,
+			"column": 74,
+			"endLine": 623,
+			"endColumn": 78,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 624,
+			"column": 39,
+			"endLine": 624,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 624,
+			"column": 56,
+			"endLine": 624,
+			"endColumn": 75,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 624,
+			"column": 69,
+			"endLine": 624,
+			"endColumn": 73,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 625,
+			"column": 45,
+			"endLine": 625,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 625,
+			"column": 62,
+			"endLine": 625,
+			"endColumn": 99,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 625,
+			"column": 88,
+			"endLine": 625,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 627,
+			"column": 7,
+			"endLine": 627,
+			"endColumn": 53,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 627,
+			"column": 25,
+			"endLine": 627,
+			"endColumn": 53,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 628,
+			"column": 8,
+			"endLine": 628,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-evidence-renderings.test.ts > renders every probe evidence on every branch as the golden holds it, the same on a second call",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1630,
+			"column": 16,
+			"endLine": 1630,
+			"endColumn": 75,
+			"mutatorName": "MethodExpression",
+			"replacement": "runsOf(input.lenses).every(run => run.probe !== undefined)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans again when the review's other lens does not probe",
+			"survivorClasses": [
+				"some-every"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1630,
+			"column": 42,
+			"endLine": 1630,
+			"endColumn": 74,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1630,
+			"column": 51,
+			"endLine": 1630,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > attaches a repeat review whatever caller context it supplies, and keeps the first call's caller section",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1630,
+			"column": 51,
+			"endLine": 1630,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1630,
+			"column": 51,
+			"endLine": 1630,
+			"endColumn": 74,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run.probe === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 4,
+			"endLine": 1639,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 4,
+			"endLine": 1639,
+			"endColumn": 82,
+			"mutatorName": "LogicalOperator",
+			"replacement": "record.state.status !== \"terminal\" && !probes && finished(record, undecided)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 4,
+			"endLine": 1639,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review-crash.test.ts > report_finding across a crash > keeps the abandoned provider locked while a live lens-failover task attaches after a real kill",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 4,
+			"endLine": 1639,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record.state.status === \"terminal\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 28,
+			"endLine": 1639,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 43,
+			"endLine": 1639,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > unlocking credentials > runs once, before any lens asks a model, and not for a repeat review that spends no tokens",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 43,
+			"endLine": 1639,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!probes || finished(record, undecided)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1639,
+			"column": 43,
+			"endLine": 1639,
+			"endColumn": 50,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probes",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 3,
+			"endLine": 1656,
+			"endColumn": 82,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probes && (await tx.task(known.task as TaskId))?.state.status === \"terminal\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > attaches a repeat review whatever caller context it supplies, and keeps the first call's caller section",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 5,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > attaches a repeat review whatever caller context it supplies, and keeps the first call's caller section",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 5,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 5,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probes || (await tx.task(known.task as TaskId))?.state.status === \"terminal\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > attaches a repeat review whatever caller context it supplies, and keeps the first call's caller section",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 15,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 15,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await tx.task(known.task as TaskId))?.state.status !== \"terminal\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 15,
+			"endLine": 1656,
+			"endColumn": 59,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(await tx.task(known.task as TaskId)).state",
+			"claim": "equivalent",
+			"evidence": "attachable, the operand before it in the same transaction, returns true only when tx.task finds the record, so the record is never undefined here.",
+			"survivorClasses": [
+				"optional-chain"
+			],
+			"run": {
+				"head": "5878548e",
+				"result": "survived",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1656,
+			"column": 71,
+			"endLine": 1656,
+			"endColumn": 81,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "4fe05bd3",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"notOwed": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1620,
+			"column": 52,
+			"endLine": 1620,
+			"endColumn": 63,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"reason": "The default for refused, unchanged but for the role parameter this pass removed; it decides no reuse or trust."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1620,
+			"column": 58,
+			"endLine": 1620,
+			"endColumn": 63,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"reason": "As above."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 2,
+			"endLine": 1724,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 19,
+			"endLine": 1724,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 19,
+			"endLine": 1724,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 19,
+			"endLine": 1724,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.status !== \"done\" && lens.model !== undefined && refused(key, lens.model)",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 19,
+			"endLine": 1724,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 19,
+			"endLine": 1724,
+			"endColumn": 41,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lens.status === \"done\"",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 35,
+			"endLine": 1724,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 46,
+			"endLine": 1724,
+			"endColumn": 98,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 46,
+			"endLine": 1724,
+			"endColumn": 98,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.model !== undefined || refused(key, lens.model)",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 46,
+			"endLine": 1724,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1724,
+			"column": 46,
+			"endLine": 1724,
+			"endColumn": 70,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lens.model === undefined",
+			"reason": "lensFailed's condition as main has it; this pass only deleted the prober's branch, and the condition decides what --rerun replaces, not trust or durability."
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2575,
+			"column": 21,
+			"endLine": 2575,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"reason": "A fixed nonce in the instruction rendering, unchanged; the line moved when the probing fingerprint's lines were deleted."
+		}
+	],
+	"extra": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1599,
+			"mutation": "[probesWith(lens.probe)] -> []",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > attaches no review under another writer's word to a probing run that is still live",
+			"run": {
+				"head": "b977c4ff",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	]
+}
