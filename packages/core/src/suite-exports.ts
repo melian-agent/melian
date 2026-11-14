@@ -73,7 +73,12 @@ function readable(folder: string): boolean {
 	}
 }
 
-async function workspacePackages(source: SourceReader): Promise<Map<string, Answer> | { refused: string }> {
+// Reads only the folders and manifests that `files` sit beneath, so the inventory, never the head, bounds the reading.
+async function workspacePackages(
+	source: SourceReader,
+	files: readonly string[],
+): Promise<Map<string, Answer> | { refused: string }> {
+	const holds = (folder: string) => files.some((file) => file.startsWith(`${folder}/`));
 	const root = await readManifest(source, "package.json", "the root package.json");
 	if ("refused" in root) return root;
 	const patterns = (root.value as { workspaces?: unknown } | null)?.workspaces;
@@ -85,9 +90,10 @@ async function workspacePackages(source: SourceReader): Promise<Map<string, Answ
 		if (!readable(parent ?? pattern))
 			return { refused: `the root package.json's workspace pattern ${pattern} is not one Melian reads` };
 		if (parent === undefined) {
-			packages.set(pattern, await testingExport(source, pattern));
+			if (holds(pattern)) packages.set(pattern, await testingExport(source, pattern));
 			continue;
 		}
+		if (!holds(parent)) continue;
 		let entries: Awaited<ReturnType<SourceReader["list"]>>;
 		try {
 			entries = await source.list(parent);
@@ -95,9 +101,10 @@ async function workspacePackages(source: SourceReader): Promise<Map<string, Answ
 			return { refused: `cannot read the workspace folder ${parent}: ${cause(error)}` };
 		}
 		if (entries === undefined) return { refused: `the workspace folder ${parent} does not exist` };
-		for (const entry of entries)
-			if (entry.kind === "directory")
-				packages.set(`${parent}/${entry.name}`, await testingExport(source, `${parent}/${entry.name}`));
+		for (const entry of entries) {
+			const folder = `${parent}/${entry.name}`;
+			if (entry.kind === "directory" && holds(folder)) packages.set(folder, await testingExport(source, folder));
+		}
 	}
 	return packages;
 }
@@ -116,21 +123,26 @@ export class SuiteExports {
 		this.#refused = refused;
 	}
 
-	/** Reads the root `package.json`'s `workspaces`, then each workspace package's `exports`, from `source`. */
-	static async read(source: SourceReader): Promise<SuiteExports> {
-		const packages = await workspacePackages(source);
+	/**
+	 * Reads, from `source`, the root `package.json`'s `workspaces`, then the `exports` of each workspace package that one
+	 * of `files` sits in, and nothing at all when `files` is empty.
+	 */
+	static async read(source: SourceReader, files: readonly string[]): Promise<SuiteExports> {
+		if (files.length === 0) return new SuiteExports(new Map());
+		const packages = await workspacePackages(source, files);
 		return "refused" in packages ? new SuiteExports(new Map(), packages.refused) : new SuiteExports(packages);
 	}
 
-	/** Reads the exports at `commit` of the repository at `repoRoot`, never its working copy. */
-	static async at(repoRoot: string, commit: string): Promise<SuiteExports> {
+	/** Reads the exports `files` need at `commit` of the repository at `repoRoot`, never its working copy. */
+	static async at(repoRoot: string, commit: string, files: readonly string[]): Promise<SuiteExports> {
+		if (files.length === 0) return new SuiteExports(new Map());
 		let source: SourceReader;
 		try {
 			source = await openSource(repoRoot, { kind: "revision", commit });
 		} catch (error) {
 			return new SuiteExports(new Map(), `cannot read the exports at ${commit}: ${cause(error)}`);
 		}
-		return SuiteExports.read(source);
+		return SuiteExports.read(source, files);
 	}
 
 	/** Why a `suite` claim on a mutant in `file` is refused, or `undefined` when `file` is a package's `./testing` export. */

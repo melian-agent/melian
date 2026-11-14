@@ -35,8 +35,22 @@ function workspace(packages: Record<string, unknown>, root: unknown = { workspac
 	return dir;
 }
 
+// Every file a test here asks about, so a reader that reads only what its files need still answers each.
+const asked = [
+	"packages/core/src/testing.ts",
+	"packages/core/src/record.ts",
+	"packages/cli/src/testing.ts",
+	"packages/core-extra/src/testing.ts",
+	"packages/README.md/x.ts",
+	"packages/pipeline/src/testing.ts",
+	"packages/pipeline/src/harness.ts",
+	"linked/core/src/testing.ts",
+	"scripts/testing.ts",
+	"missing/core/src/testing.ts",
+];
+
 async function suitesIn(dir: string): Promise<SuiteExports> {
-	return SuiteExports.read(await openSource(dir, { kind: "worktree" }));
+	return SuiteExports.read(await openSource(dir, { kind: "worktree" }), asked);
 }
 
 afterEach(() => {
@@ -261,10 +275,11 @@ describe("SuiteExports", () => {
 			"a wildcard over a folder that is missing",
 			{ workspaces: ["missing/*"] },
 			/^the workspace folder missing does not exist$/,
+			"missing/core/src/testing.ts",
 		],
-	])("refuses every file under %s", async (_name, root, reason) => {
+	])("refuses every file under %s", async (_name, root, reason, file = "packages/core/src/testing.ts") => {
 		const suites = await suitesIn(workspace({ core: { exports: testing } }, root));
-		expect(suites.refusal("packages/core/src/testing.ts")).toMatch(reason);
+		expect(suites.refusal(file)).toMatch(reason);
 	});
 
 	it("refuses every file when a wildcard's folder is a symlink, and names why", async () => {
@@ -278,7 +293,7 @@ describe("SuiteExports", () => {
 	it("lets a failure that is neither a read nor a parse failure through", async () => {
 		const broken = new TypeError("the source broke");
 		const source = { readText: async () => Promise.reject(broken) } as unknown as SourceReader;
-		await expect(SuiteExports.read(source)).rejects.toBe(broken);
+		await expect(SuiteExports.read(source, asked)).rejects.toBe(broken);
 	});
 
 	it("reads the exports at a commit, never the working copy", async () => {
@@ -292,7 +307,7 @@ describe("SuiteExports", () => {
 			join(dir, "packages/core/package.json"),
 			JSON.stringify({ exports: { "./testing": { "@melian-agent/source": "./src/record.ts" } } }),
 		);
-		const suites = await SuiteExports.at(dir, head);
+		const suites = await SuiteExports.at(dir, head, asked);
 		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
 		expect(suites.refusal("packages/core/src/record.ts")).toBe(
 			"packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
@@ -303,9 +318,44 @@ describe("SuiteExports", () => {
 		const dir = workspace({ core: { exports: testing } });
 		execFileSync("git", ["init", "--quiet"], { cwd: dir, env: gitEnv });
 		const missing = "f".repeat(40);
-		expect((await SuiteExports.at(dir, missing)).refusal("packages/core/src/testing.ts")).toMatch(
+		expect((await SuiteExports.at(dir, missing, asked)).refusal("packages/core/src/testing.ts")).toMatch(
 			new RegExp(`^cannot read the exports at ${missing}: `),
 		);
+	});
+
+	it("reads nothing when it is asked about no file", async () => {
+		const calls: string[] = [];
+		const source = {
+			readText: async (path: string) => calls.push(`read ${path}`) && undefined,
+			list: async (path: string) => calls.push(`list ${path}`) && undefined,
+		} as unknown as SourceReader;
+		await SuiteExports.read(source, []);
+		expect(calls).toEqual([]);
+		const suites = await SuiteExports.at(join(tmpdir(), "melian-no-such-repository"), "f".repeat(40), []);
+		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
+			"packages/core/src/testing.ts is in no workspace package",
+		);
+	});
+
+	it("reads only the folders and manifests the asked files sit beneath", async () => {
+		const calls: string[] = [];
+		const files: Record<string, string> = {
+			"package.json": JSON.stringify({ workspaces: ["packages/*", "tools/*", "apps/web"] }),
+			"packages/core/package.json": JSON.stringify({ exports: testing }),
+		};
+		const source = {
+			readText: async (path: string) => {
+				calls.push(`read ${path}`);
+				return files[path];
+			},
+			list: async (path: string) => {
+				calls.push(`list ${path}`);
+				return ["core", "cli", "pipeline"].map((name) => ({ name, kind: "directory" }));
+			},
+		} as unknown as SourceReader;
+		const suites = await SuiteExports.read(source, ["packages/core/src/testing.ts", "packages/core/src/other.ts"]);
+		expect(calls).toEqual(["read package.json", "list packages", "read packages/core/package.json"]);
+		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
 	});
 
 	it("reads this repository's own exports", async () => {

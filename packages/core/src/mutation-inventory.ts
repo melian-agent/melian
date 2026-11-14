@@ -330,6 +330,12 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		});
 	}
 
+	/** The distinct files of the generated mutants claimed as `suite`, in hash order, for the exports a sample reads. */
+	suiteFiles(): string[] {
+		const suite = this.#probes().filter((row) => row.claim === "suite");
+		return [...new Set(suite.sort((a, b) => identityHash(a).localeCompare(identityHash(b))).map((row) => row.file))];
+	}
+
 	/** Refuses legacy strings and incomplete claims before a future verifier executes anything. */
 	forVerification(): MutationInventoryV2 {
 		if (this.#state.melianMutants !== 2)

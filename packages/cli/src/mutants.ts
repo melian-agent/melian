@@ -30,7 +30,8 @@ export async function listMutants(
 export async function sampleMutants(io: Io, path: string): Promise<number> {
 	const inventory = MutationInventory.parse(JSON.parse(await readFile(resolve(io.cwd, path), "utf8")));
 	const state = inventory.toJSON();
-	const suites = state.melianMutants === 2 ? await SuiteExports.at(io.cwd, state.range.head) : undefined;
+	const suites =
+		state.melianMutants === 2 ? await SuiteExports.at(io.cwd, state.range.head, inventory.suiteFiles()) : undefined;
 	io.stdout(`${inventory.renderSampleJson(suites)}\n`);
 	return 0;
 }

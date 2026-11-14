@@ -738,6 +738,20 @@ describe("suite claims", () => {
 		list: async (path: string) => (path === "packages" ? [{ name: "core", kind: "directory" as const }] : undefined),
 	} as unknown as SourceReader;
 
+	it("names the distinct files of its generated suite claims, and no other", () => {
+		const inventory = MutationInventory.create(
+			fields([
+				suiteRow(0),
+				suiteRow(1),
+				suiteRow(2, { file: "packages/cli/src/testing.ts" }),
+				suiteRow(3, { file: "packages/ignored/src/testing.ts", status: "ignored", ignoredBy: "config" }),
+				row(4, { file: "packages/core/src/record.ts" }),
+			]),
+		);
+		expect(inventory.suiteFiles()).toEqual([suiteFile, "packages/cli/src/testing.ts"]);
+		expect(MutationInventory.create(fields([row()])).suiteFiles()).toEqual([]);
+	});
+
 	it("parses a suite claim whose evidence is a reason", () => {
 		const stored = MutationInventory.create(fields([suiteRow()])).toJSON();
 		expect(stored.mutants[0]).toMatchObject({ claim: "suite", evidence: { reason } });
@@ -754,7 +768,7 @@ describe("suite claims", () => {
 	it("lists every suite row apart from the probes, for a reviewer to read", async () => {
 		const killed = Array.from({ length: 6 }, (_, index) => row(index + 1));
 		const inventory = MutationInventory.create(fields([suiteRow(0), suiteRow(10), ...killed]));
-		const suites = await SuiteExports.read(source);
+		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
 		const sample = inventory.sample(suites);
 		expect(sample.suite?.map((mutant) => mutant.line)).toEqual(
 			inventory
@@ -773,7 +787,7 @@ describe("suite claims", () => {
 
 	it("refuses a suite claim in a source file that is no package's ./testing export", async () => {
 		const inventory = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })]));
-		const suites = await SuiteExports.read(source);
+		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
 		expect(() => inventory.sample(suites)).toThrow(
 			"suite claim refused: packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
 		);
@@ -805,7 +819,7 @@ describe("suite claims", () => {
 			survivorClasses: [],
 		});
 		stored.total += 1;
-		const suites = await SuiteExports.read(source);
+		const suites = await SuiteExports.read(source, [suiteFile, "packages/core/src/record.ts"]);
 		expect(() => MutationInventory.parse(stored).sample(suites)).toThrow(
 			new MutationInventoryError(
 				"invalidEvidence",

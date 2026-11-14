@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-
+import { MutationInventory } from "../packages/core/src/mutation-inventory.ts";
 import { visibleText } from "../packages/core/src/render.ts";
 import { SuiteExports } from "../packages/core/src/suite-exports.ts";
 import { sampleMutants } from "./mutant-sample.mjs";
@@ -91,7 +91,13 @@ async function main() {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
 		const inventory = JSON.parse(readFileSync(values.sample, "utf8"));
 		const suites =
-			inventory?.melianMutants === 2 ? await SuiteExports.at(process.cwd(), inventory.range?.head) : undefined;
+			inventory?.melianMutants === 2
+				? await SuiteExports.at(
+						process.cwd(),
+						inventory.range?.head,
+						MutationInventory.parse(inventory).suiteFiles(),
+					)
+				: undefined;
 		console.log(jsonText(sampleMutants(inventory, suites)));
 		return;
 	}
