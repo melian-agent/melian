@@ -220,7 +220,7 @@ describe("verification as each lens ends", () => {
 				],
 			},
 		]);
-		await review();
+		await expect(review()).rejects.toMatchObject({ code: "superseded" });
 		const root = await harness.root(context);
 		const entry = (await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[key];
 		expect(entry?.ended).toEqual({});
