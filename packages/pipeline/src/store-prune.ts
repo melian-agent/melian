@@ -195,7 +195,7 @@ export class StorePrune {
 		};
 		try {
 			for (const node of await children(root)) {
-				if (node.name.includes(".sqlite") && !node.link) {
+				if (/\.sqlite(?:-wal|-shm)?$/.test(node.name) && !node.link) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
 				} else if (

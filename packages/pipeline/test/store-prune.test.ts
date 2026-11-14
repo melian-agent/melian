@@ -336,6 +336,15 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 	expect(await exists("tools/linked")).toBe(true);
 });
 
+it("lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count", async () => {
+	await writeFile(join(state, "pull-1.sqlite"), "12345");
+	for (const name of ["pull-1.sqlite.bak", "pull-1.sqlite-walx", "pull-1.sqlite-journal"])
+		await writeFile(join(state, name), "1");
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual(["pull-1.sqlite-journal", "pull-1.sqlite-walx", "pull-1.sqlite.bak"]);
+	expect(prune.changesets).toEqual({ files: 1, bytes: 5 });
+});
+
 it("leaves a changeset store byte for byte as it was, and the store reopens", async () => {
 	const file = join(state, "pull-9.sqlite");
 	const Note = defineDoc<{ text: string }>({
