@@ -73,4 +73,11 @@ Compacting means fewer, shorter files, since every file is a line:
 
 Superseding a decision does not shorten the index. The superseded decision stays listed as inactive, and the new one adds a line.
 
-Compacting is a deliberate pass a maintainer chooses to make. Day to day, [the decision log's rule](../decisions/README.md) still holds: a new decision is a new file, and no one edits another decision's file.
+Compacting edits and deletes decision files, so make it a pull request of its own that does nothing else. Before it merges, check:
+
+- No remaining file names a deleted one in a `Supersedes:` or `Amends:` line.
+- The index builds: `melian doctor` prints a `decision index` line that names no error.
+
+An open pull request that names a deleted file in `Supersedes:` or `Amends:` breaks the index once both land. Warn whoever has a pull request open before you compact. If it happens, the review that needs the index is refused with an error naming both files, such as `docs/decisions/2026-10-02-c.md supersedes absent docs/decisions/2026-10-01-b.md`. Point that line at the file that now holds the decision, or remove it.
+
+A repository whose own rule forbids editing a decision file, as Melian's does, records an exception for the compaction pass before making it.

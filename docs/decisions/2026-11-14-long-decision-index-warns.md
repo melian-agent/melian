@@ -1,6 +1,7 @@
 # A long decision index warns instead of refusing the review
 
 Amends: [Written decisions and design sections share the unified Markdown grammar](2026-10-08-decisions-package-markdown-on-mdast.md), its statement that the active-base decision's byte-bound choices remain, for the decision index alone: no 64 KiB UTF-8 bound holds it, and an oversized decision index no longer refuses review. The design-section index keeps its own bound.
+Amends: [One file per log entry](2026-10-03-one-file-per-log-entry.md), for the decision log alone: a maintainer may compact it in a pull request that does nothing else.
 
 The 64 KiB bound and the refusal were set by [the active-base decision](2026-10-08-design-lens-active-decisions-at-base.md). That decision is inactive in the index, since the Markdown decision supersedes it; its byte-bound choice survived only through the Markdown decision's statement, which this decision amends.
 
@@ -17,5 +18,9 @@ The warning reaches the user in three places: a `melian: ` line on stderr from `
 Why superseding is not the advice: the index lists every decision file, inactive ones included. A probe superseded 50 of 100 decisions with one new file, and the index grew from 5,789 to 8,349 bytes. A test holds the claim the warning makes: the advised steps give a shorter index, and superseding alone a longer one.
 
 What this gives up: a review of a repository with a very long decision log costs more tokens, and a provider's context window, not Melian, now bounds it. The round workflow's comment does not carry the warning, since the public verdict keeps only the fields it lists. `melian status --json` reopens a stored verdict and does not carry it either. Leaving inactive decisions out of the index would let superseding shrink it, but it changes what the lens sees and the instruction fingerprint, so it is a question of its own.
+
+Compacting edits and deletes decision files, which the one-file rule forbids, so this decision makes one exception for this repository. The maintainer ruled for it on 2026-11-14, in the coordinator's session. A maintainer may compact the decision log in a pull request of its own that does nothing else. Every other pull request still never edits another entry's file, and the progress log has no exception. Before such a pull request merges, no remaining file may name a deleted one in `Supersedes:` or `Amends:`, and the index must build; the gate's test of this repository's own index checks both. An open pull request that names a deleted file fails that test once it merges `main`, so the maintainer warns the open lanes first. A user's repository with no such test meets the same case in review: the review that needs the index is refused with an error naming the file and the missing file it names, such as `docs/decisions/2026-10-02-c.md supersedes absent docs/decisions/2026-10-01-b.md`.
+
+The warning Melian prints speaks to any repository, so it gives the advice and links the guideline, and never cites this repository's rule.
 
 An attacking review of the rule before it was built confirmed that a pull request's head cannot grow the index a model reads: the index always comes from the base side, and a head adding 5,000 decision files left the base index at 47 bytes.
