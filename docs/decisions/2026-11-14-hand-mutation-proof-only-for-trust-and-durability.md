@@ -3,6 +3,9 @@
 Amends: [Tested means a failing mutation](2026-10-07-tested-means-a-failing-mutation.md), which guards must be proved by a run mutation before a commit
 Amends: [Builders enumerate Stryker mutants before claiming coverage](2026-10-21-builder-mutant-inventory.md), which changes owe an inventory
 Amends: [a mutation proof runs each claim against its named test alone](2026-11-04-mutation-proof-scope.md), which mutants a builder proves
+Amends: [Stryker leaves this repository's review rounds](2026-10-24-stryker-off-the-hot-path.md), the interim rule that the builder's inventory proves every changed guard
+Amends: [the review loop's convergence rules](2026-10-15-review-loop-convergence-rules.md), rule 2, the mutation check on fix commits
+Amends: [a shared test suite's duplicate assertions are listed, not proved one by one](2026-11-14-suite-assertions-proved-per-case.md), which suites owe any proof
 
 The maintainer ruled on 2026-11-14, in the coordinator's session: "Lets narrow it."
 
@@ -18,6 +21,8 @@ What it bought is thin. First runs do find untested code: [pull request #404](ht
 - Trust code decides who or what Melian trusts, what a verdict blocks, what runs with a credential or outside a sandbox, or what a key matches. Durability code writes or migrates a stored shape, resumes after a crash, or publishes.
 - Every other change owes no inventory. Its fix starts with a failing test, its new behaviour has a test, and the tests lens reports `untested-behaviour` at its usual severity.
 - The pull request's description lists its changed files that guard trust or durability, or says there are none. The review of record checks that list against the diff, and a file left off it is a P2 finding.
+- The interim rule and convergence rule 2 now read: a fix pass proves its own commits' mutants in code that guards trust or durability, and owes none elsewhere. A shared test suite owes the proof the suite decision describes only when the port it tests is trust or durability code.
+- The inventory is the enumerator's whole output for the range, unedited, so its total still checks itself. A claim is owed on every row in the listed files and on no other row. No one deletes rows by hand.
 - An inventory already written for a pull request in flight stands for the code it covers, and no one extends it to ordinary code. A later commit on that pull request that changes trust or durability code still appends and proves its own mutants, as every fix pass does.
 
 ## What this gives up
