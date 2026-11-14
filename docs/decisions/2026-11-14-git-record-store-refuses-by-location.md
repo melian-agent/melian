@@ -39,7 +39,7 @@ An unknown entry's bytes are read only to judge it, and only where it sits at a 
 
 Melian keeps a bare repository of its own at `records.git` in the clone's state directory, and fetches `melian/state` into it from the URL of the clone's `origin`. Rule 12's commits are built there, with git's plumbing, instead of in the clone's object database. The clone's hooks, configuration and refs stay the user's, and a fetch writes nothing into them.
 
-Melian writes that repository's configuration when it creates it, and checks the bytes before every command; a repository whose configuration has changed is refused, with the advice to delete `records.git`. Every command also passes the settings that would run a program, sign or pack in the background, such as `core.hooksPath` and `commit.gpgSign`, on its command line.
+Melian writes that repository's configuration when it creates it, and checks the bytes before every command; a repository whose configuration has changed is refused, with the advice to delete `records.git`. Every command also passes the settings that would run a program, sign or pack in the background, such as `core.hooksPath` and `push.gpgSign`, on its command line.
 
 ## What this gives up
 

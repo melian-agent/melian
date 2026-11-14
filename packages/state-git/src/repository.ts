@@ -4,20 +4,15 @@ import { dirname, join } from "node:path";
 import { type GitResult, git, RecordError } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 
-// Settings that would run a program, sign, or start work in the background, set on every command so that no
-// configuration of the user's or this repository's turns them back on. The configuration check covers the keys a
-// command line cannot clear, such as a credential helper or `include.path`.
+// Settings that would run a program, set on every command so that no configuration of the user's or this repository's
+// turns them back on. The configuration check covers the keys a command line cannot clear, such as a credential helper
+// or `include.path`. A bare repository runs no fsmonitor and has no submodules, the fetch passes `--no-auto-gc` and
+// `--no-auto-maintenance`, and the plumbing that builds a commit never starts either, so those need no setting here.
 const overrides = [
 	// A hook, such as reference-transaction, would run as Melian on every ref this repository updates.
 	"core.hooksPath=/dev/null",
-	"core.fsmonitor=false",
-	// commit-tree and push sign when these ask, which runs `gpg.program`.
-	"commit.gpgSign=false",
+	// A push signs when this asks, which runs `gpg.program`. commit-tree never reads `commit.gpgSign`.
 	"push.gpgSign=false",
-	// A fetch starts gc or maintenance, which can detach and outlive the call's deadline.
-	"gc.auto=0",
-	"maintenance.auto=false",
-	"fetch.recurseSubmodules=false",
 	// An `ext::` URL runs a command, and the URL is the clone's `origin`, which Melian did not write.
 	"protocol.ext.allow=never",
 ].flatMap((setting) => ["-c", setting]);
@@ -32,7 +27,8 @@ const environment = {
 };
 
 // Another process's fetch or ref update on this repository holds these locks for a moment.
-const contention = /shallow\.lock|cannot lock ref|Unable to create '.*\.lock'/;
+const contention =
+	/shallow\.lock|shallow file has changed since we read it|cannot lock ref|Unable to create '.*\.lock'/;
 
 // A refusal because the branch moved: the client saw a newer tip than its lease, or the remote's ref moved, or was
 // locked by another push, between its advertisement and the update. Anything else, such as a hook that declined, is
