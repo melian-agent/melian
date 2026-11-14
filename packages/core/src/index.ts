@@ -450,6 +450,16 @@ export {
 export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
+	answerHash,
+	type MutantAnswer,
+	type MutantOutcome,
+	MutantsVerdict,
+	MutantsVerifyError,
+	type MutantsVerifyErrorCode,
+	type MutantsVerifyInput,
+	type MutantVerdictLine,
+} from "./mutants-verify.ts";
+export {
 	type MutationReportInput,
 	type MutationSkipCause,
 	mutationNotJudged,
