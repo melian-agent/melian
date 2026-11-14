@@ -688,6 +688,28 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
+		"add stores a record its payload check refuses",
+		"add refuses a record this handle's payload check refuses, and never lists it",
+		(inner, shared, payloads) => {
+			const kept = (shared.get("refused") ?? shared.set("refused", []).get("refused")) as RecordEnvelope[];
+			return {
+				add: async (records) => {
+					const passed = records.filter((each) => {
+						try {
+							SharedRecord.parse(each, payloads);
+							return true;
+						} catch {
+							kept.push(SharedRecord.parseEnvelope(each).toJSON());
+							return false;
+						}
+					});
+					await inner.add(passed);
+				},
+				list: async (name) => [...(await inner.list(name)), ...kept.filter((each) => each.changeset === name)],
+			};
+		},
+	],
+	[
 		"a changeset name reaches the adapter unchecked",
 		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		() => ({ list: async () => [] }),
@@ -1157,34 +1179,6 @@ describe("DirectoryRecordStore", () => {
 		const error = await rejection(store.add([envelope]), RecordError);
 		expect(error.code).toBe("unknownFile");
 		expect(error.path).toBe(join(root, "changesets", changeset, "check"));
-	});
-});
-
-describe("a store whose payload check refuses a record", () => {
-	let root: string | undefined;
-	const directory = () => {
-		root = temporaryDirectory();
-		return root;
-	};
-	afterEach(() => {
-		if (root !== undefined) removeDirectory(root);
-		root = undefined;
-	});
-	const refusing = { ...testPayloads, check: () => "is refused by this writer" };
-	const record: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: {} };
-
-	it("refuses to add it on the directory adapter, and never lists it", async () => {
-		const path = directory();
-		const store = await DirectoryRecordStore.open(path, refusing);
-		expect((await rejection(store.add([record]), RecordError)).code).toBe("invalidRecord");
-		expect(await (await DirectoryRecordStore.open(path, testPayloads)).list(changeset)).toEqual([]);
-	});
-
-	it("refuses to add it on the memory adapter, and never lists it", async () => {
-		const space = new MemoryRecordSpace();
-		const store = new MemoryRecordStore({ space, payloads: refusing });
-		expect((await rejection(store.add([record]), RecordError)).code).toBe("invalidRecord");
-		expect(await new MemoryRecordStore({ space, payloads: testPayloads }).list(changeset)).toEqual([]);
 	});
 });
 

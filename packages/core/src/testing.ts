@@ -342,6 +342,16 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
+		name: "add refuses a record this handle's payload check refuses, and never lists it",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const writer = await subject.open({ ...testPayloads, check: () => "is refused by this writer" });
+				const reader = await subject.open();
+				await assert.rejects(writer.add([envelope("check", "guardrails", {})]), refusal("invalidRecord"));
+				assert.deepEqual(await reader.list(changeset), []);
+			}),
+	},
+	{
 		name: "every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		run: (fixture) =>
 			using(fixture, async (subject) => {
