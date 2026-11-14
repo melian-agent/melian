@@ -1,0 +1,421 @@
+{
+ "total": 24,
+ "omitted": 0,
+ "unmutated": [],
+ "base": "6d4ce6a5",
+ "head": "180bbe62",
+ "command": "node scripts/enumerate-mutants.mjs 6d4ce6a5...180bbe62 --json --limit 10000",
+ "note": "Fix pass 22 of pull request #296: the review of record's findings at e1280f1a. Each claim was run at 180bbe62 against its named test alone. One ignored literal is left out.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 755,
+   "column": 19,
+   "endLine": 755,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "A run that is not done holds no probing, so the prober reads as absent either way.",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 755,
+   "column": 19,
+   "endLine": 755,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > lets the prober refute a finding a quick run carried, with a probe that passed",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 755,
+   "column": 19,
+   "endLine": 755,
+   "endColumn": 42,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rerun.status !== \"done\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > lets the prober refute a finding a quick run carried, with a probe that passed",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 755,
+   "column": 45,
+   "endLine": 755,
+   "endColumn": 66,
+   "mutatorName": "OptionalChaining",
+   "replacement": "rerun.probing.prober",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/triage.test.ts > escalation > counts a quick finding the escalated run restates once, with the escalated run speaking for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 758,
+   "column": 23,
+   "endLine": 759,
+   "endColumn": 101,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 759,
+   "column": 17,
+   "endLine": 759,
+   "endColumn": 100,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(await runtime.snapshot(LensDocument, conversation, context))?.spend?.reports && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 759,
+   "column": 17,
+   "endLine": 759,
+   "endColumn": 94,
+   "mutatorName": "OptionalChaining",
+   "replacement": "(await runtime.snapshot(LensDocument, conversation, context))?.spend.reports",
+   "claim": "equivalent",
+   "evidence": "The planner's and the prober's lens documents exist by the time an escalation reads them, each written when its conversation called its first tool.",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 759,
+   "column": 17,
+   "endLine": 759,
+   "endColumn": 85,
+   "mutatorName": "OptionalChaining",
+   "replacement": "(await runtime.snapshot(LensDocument, conversation, context)).spend",
+   "claim": "equivalent",
+   "evidence": "The planner's and the prober's lens documents exist by the time an escalation reads them, each written when its conversation called its first tool.",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 760,
+   "column": 20,
+   "endLine": 760,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 760,
+   "column": 20,
+   "endLine": 760,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/triage.test.ts > escalation > counts a quick finding the escalated run restates once, with the escalated run speaking for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 760,
+   "column": 20,
+   "endLine": 760,
+   "endColumn": 44,
+   "mutatorName": "EqualityOperator",
+   "replacement": "next.probe !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 760,
+   "column": 47,
+   "endLine": 760,
+   "endColumn": 49,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A seeded ID is never a sighting's ID, so the filter keeps the same sightings.",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 761,
+   "column": 19,
+   "endLine": 761,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "A snapshot of no conversation returns nothing, which reads as no reports, as the empty list does.",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 761,
+   "column": 19,
+   "endLine": 761,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 761,
+   "column": 19,
+   "endLine": 761,
+   "endColumn": 39,
+   "mutatorName": "EqualityOperator",
+   "replacement": "prober !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 761,
+   "column": 42,
+   "endLine": 761,
+   "endColumn": 44,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A seeded ID is never a sighting's ID, so the filter keeps the same sightings.",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 764,
+   "column": 19,
+   "endLine": 766,
+   "endColumn": 5,
+   "mutatorName": "MethodExpression",
+   "replacement": "await sighted(next)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 765,
+   "column": 5,
+   "endLine": 765,
+   "endColumn": 69,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/triage.test.ts > escalation > counts a quick finding the escalated run restates once, with the escalated run speaking for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 765,
+   "column": 15,
+   "endLine": 765,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 765,
+   "column": 15,
+   "endLine": 765,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/triage.test.ts > escalation > counts a quick finding the escalated run restates once, with the escalated run speaking for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 765,
+   "column": 15,
+   "endLine": 765,
+   "endColumn": 69,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!planned.includes(each.id) && probed.includes(each.id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/triage.test.ts > escalation > counts a quick finding the escalated run restates once, with the escalated run speaking for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 765,
+   "column": 15,
+   "endLine": 765,
+   "endColumn": 41,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "planned.includes(each.id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a quick run's finding at its severity when the planner it escalates to reports it again lower",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 316,
+   "column": 16,
+   "endLine": 316,
+   "endColumn": 116,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(await harness.snapshot(ProbeReruns, input.root, context))?.runs[Revision.key(input.revision)] && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > starts no rerun for a review whose lens task another review has replaced",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 316,
+   "column": 16,
+   "endLine": 316,
+   "endColumn": 80,
+   "mutatorName": "OptionalChaining",
+   "replacement": "(await harness.snapshot(ProbeReruns, input.root, context)).runs",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > starts no rerun for a review whose lens task another review has replaced",
+   "survivorClasses": [],
+   "run": {
+    "head": "180bbe62",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "equivalent": 6,
+  "killed": 18
+ }
+}

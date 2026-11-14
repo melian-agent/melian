@@ -809,6 +809,94 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it("reads a level that probes, keeps it whole through extends and a retier, and leaves other levels' versions alone", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"levels:",
+				"  deep: { tier: heavy, probe: { prober: light, timeout: 5000 } }",
+			]),
+		});
+		const [lens] = named(await load(["src/index.ts"]), "security");
+		expect(lens!.levels.deep).toEqual({
+			tier: "heavy",
+			reads: "hunks",
+			verify: true,
+			budget: { findings: 10 },
+			probe: { prober: "light", timeout: 5000 },
+		});
+		expect(lens!.levels.careful).toEqual({ tier: "medium", reads: "hunks", verify: true, budget: { findings: 10 } });
+		expect(lens!.levels.careful).not.toHaveProperty("probe");
+		expect(lens!.configured({ tier: "light" }).levels.deep?.probe).toEqual({ prober: "light", timeout: 5000 });
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([...security, "levels:", "  deep: { tier: heavy }"]),
+		});
+		const [plain] = named(await load(["src/index.ts"]), "security");
+		expect(plain!.version).not.toBe(lens!.version);
+		expect(plain!.levels.deep).not.toHaveProperty("probe");
+	});
+
+	it("inherits a level's probe through extends, and replaces it whole when the extending lens sets one", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"levels:",
+				"  deep: { tier: heavy, probe: { prober: light } }",
+			]),
+			"pkg/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security"]),
+			"pkg/x.ts": lines("export {};"),
+		});
+		const [inherited] = named(await load(["pkg/x.ts"]), "security");
+		expect(inherited!.levels.deep?.probe).toEqual({ prober: "light" });
+		expect(inherited!.levels.careful).not.toHaveProperty("probe");
+		writeFiles(repo, {
+			"pkg/.melian/lenses/security/LENS.md": lensFile([
+				"name: security",
+				"extends: security",
+				"levels:",
+				"  deep: { probe: { timeout: 9000 } }",
+			]),
+		});
+		const [replaced] = named(await load(["pkg/x.ts"]), "security");
+		expect(replaced!.levels.deep?.probe).toEqual({ timeout: 9000 });
+		expect(replaced!.levels.deep?.tier).toBe("heavy");
+	});
+
+	it("ships no level that probes, until the measurement picks its routes", async () => {
+		for (const lens of await Lens.builtins())
+			for (const level of lens.declaredLevels()) expect(lens.level(level)).not.toHaveProperty("probe");
+	});
+
+	it("refuses an unknown probe field, a prober outside the tiers, and a timeout below a millisecond or past ten minutes", async () => {
+		for (const [probe, field] of [
+			["{ count: 3 }", "levels.deep.probe.count"],
+			["{ prober: verifier }", "levels.deep.probe.prober"],
+			["{ timeout: 0 }", "levels.deep.probe.timeout"],
+			["{ timeout: 600001 }", "levels.deep.probe.timeout"],
+		] as const) {
+			writeFiles(repo, {
+				".melian/lenses/security/LENS.md": lensFile([...security, "levels:", `  deep: { probe: ${probe} }`]),
+			});
+			expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({
+				field,
+				lens: "security",
+				level: "deep",
+			});
+		}
+	});
+
+	it("takes a probe timeout of ten minutes, the longest a probe may run", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"levels:",
+				"  deep: { probe: { timeout: 600000 } }",
+			]),
+		});
+		const lens = (await load(["src/index.ts"])).find((each) => each.name === "security");
+		expect(lens!.level("deep").probe).toEqual({ timeout: 600_000 });
+	});
+
 	it("names the lens and the level for a level with no tier anywhere", async () => {
 		writeFiles(repo, {
 			".melian/lenses/style/LENS.md": lensFile([
@@ -1216,6 +1304,16 @@ describe("Lens.renderInstructions", () => {
 			expect(policy).toContain(`Severities you may report: ${lens.severities.join(", ")}.`);
 			expect(policy).toContain(`Budget: at most ${lens.levels.careful.budget.findings} findings,`);
 		}
+	});
+
+	it("renders a level's policy alone, as its instructions end before the standards", async () => {
+		const [trust] = named(await Lens.load(repo, { kind: "worktree" }, []), "trust-boundary");
+		const policy = trust!.renderPolicy("deep");
+		expect(trust!.renderInstructions([], "deep")).toBe(`${trust!.instructions}\n\n${policy}`);
+		expect(policy).toContain("Budget: at most 12 findings, 60 tool calls");
+		expect(policy).not.toContain(trust!.instructions);
+		const [design] = named(await Lens.load(repo, { kind: "worktree" }, []), "design");
+		expect(() => design!.renderPolicy("deep")).toThrow(expect.objectContaining({ code: "unknownLevel" }));
 	});
 
 	it("renders the level's budget and reading scope, careful unless named", async () => {

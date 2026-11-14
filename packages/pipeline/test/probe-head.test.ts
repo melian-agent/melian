@@ -41,6 +41,7 @@ let head: string;
 
 const sandbox = {
 	platform: "linux" as const,
+	kind: "fake",
 	unavailable: () => undefined,
 	open: async () => {},
 	wrap: async (command: string) => ["/bin/bash", "-c", command],

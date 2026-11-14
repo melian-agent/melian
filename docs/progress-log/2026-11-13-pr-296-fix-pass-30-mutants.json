@@ -1,0 +1,150 @@
+{
+	"total": 8,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "28ae9b20",
+	"head": "e7ef9d2e",
+	"command": "node scripts/enumerate-mutants.mjs 28ae9b20...e7ef9d2e --json --limit 10000",
+	"note": "Fix pass 30 of pull request #296: what the Opus review of record at 28ae9b20 found. Each claim was run at its head against its named test alone. One ignored literal is left out.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 617,
+			"column": 10,
+			"endLine": 617,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 617,
+			"column": 10,
+			"endLine": 617,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "An empty plan then spawns a prober conversation that the level never asks anything, since the check after the commit ends it with no attacks: the outcome, the verdict and every model request are the same.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 617,
+			"column": 10,
+			"endLine": 617,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "plan.length !== 0",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 629,
+			"column": 8,
+			"endLine": 629,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 629,
+			"column": 8,
+			"endLine": 629,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > counts the attacks of the plan the planner ends with, after a crash inside a reminder that recorded none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 629,
+			"column": 8,
+			"endLine": 629,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "plan.length !== 0",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 629,
+			"column": 34,
+			"endLine": 629,
+			"endColumn": 104,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > counts the attacks of the plan the planner ends with, after a crash inside a reminder that recorded none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 629,
+			"column": 100,
+			"endLine": 629,
+			"endColumn": 102,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs no prober for an empty plan",
+			"survivorClasses": [],
+			"run": {
+				"head": "e7ef9d2e",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 7,
+		"equivalent": 1
+	}
+}

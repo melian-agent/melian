@@ -1,0 +1,115 @@
+{
+ "total": 6,
+ "omitted": 0,
+ "base": "e1280f1a",
+ "head": "13dc1399",
+ "command": "node scripts/enumerate-mutants.mjs e1280f1a...13dc1399 --json --limit 10000",
+ "note": "Fix pass 20 of pull request #296: the probing protocol holds the source of every prompt function. Each claim was run at 13dc1399 against its named test alone. Two ignored literals are left out.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 269,
+   "column": 111,
+   "endLine": 274,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > plans from the base's decisions and the findings of the change's earlier revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 270,
+   "column": 8,
+   "endLine": 273,
+   "endColumn": 2,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > plans from the base's decisions and the findings of the change's earlier revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 401,
+   "column": 43,
+   "endLine": 415,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds the source of every function that renders the planner's and the prober's fixed wording",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 402,
+   "column": 8,
+   "endLine": 414,
+   "endColumn": 2,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds the source of every function that renders the planner's and the prober's fixed wording",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 403,
+   "column": 5,
+   "endLine": 411,
+   "endColumn": 3,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds the source of every function that renders the planner's and the prober's fixed wording",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2498,
+   "column": 13,
+   "endLine": 2498,
+   "endColumn": 76,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > plans from the base's decisions and the findings of the change's earlier revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "13dc1399",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 6
+ }
+}

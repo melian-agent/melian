@@ -1,0 +1,133 @@
+{
+	"total": 7,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "70104721",
+	"head": "327e7395",
+	"command": "node scripts/enumerate-mutants.mjs 70104721...327e7395 --json --limit 10000",
+	"note": "Fix pass 32 of pull request #296: one host value in the probing reuse key, which Codex's review at 70104721 raised and the coordinator chose. Each claim was run at 327e7395 against its named test alone. Five ignored literals are left out.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 226,
+			"column": 64,
+			"endLine": 229,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 228,
+			"column": 8,
+			"endLine": 228,
+			"endColumn": 110,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 286,
+			"column": 26,
+			"endLine": 286,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "sandbox && Probe.sandbox",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 287,
+			"column": 5,
+			"endLine": 287,
+			"endColumn": 47,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "isDeepStrictEqual(environment.host, here)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 287,
+			"column": 5,
+			"endLine": 287,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 287,
+			"column": 5,
+			"endLine": 287,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another platform than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 609,
+			"column": 9,
+			"endLine": 609,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's host changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "327e7395",
+				"result": "survived"
+			}
+		}
+	],
+	"counts": {
+		"killed": 6,
+		"equivalent": 1
+	}
+}

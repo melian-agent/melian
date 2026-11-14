@@ -383,7 +383,8 @@ describe("reviewChangeset", () => {
 		expect((await entry())!.task).not.toBe(stale);
 
 		gates[0]!.resolve();
-		await expect(firstCall).resolves.toMatchObject({ code: "lensFailed" });
+		// The rerun replaced its lens task, so the first review records no verdict.
+		await expect(firstCall).resolves.toMatchObject({ code: "superseded" });
 		expect((await entry())!.callers).toBeUndefined();
 
 		gates[1]!.resolve();
@@ -1404,6 +1405,17 @@ describe("reviewChangeset", () => {
 		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
 		expect(await review({ config: off })).toEqual([]);
 		expect(fake.provider.state.callCount).toBe(0);
+	});
+
+	it("decides a review that runs no lens after a review of the head whose lenses ran", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
+		// It records a verdict, as on a head no lens reviewed, rather than read as replaced by the earlier lens run.
+		await expect(reviewed({ config: off })).resolves.toMatchObject({ verdict: { status: "not-reviewed" } });
 	});
 
 	it("refuses a finding outside the paths a lens covers", async () => {

@@ -1,0 +1,187 @@
+=== evidence, not run again ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. Melian did not run it again.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+</untrusted-0123456789abcdef01234567>
+
+=== evidence, refused ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. Melian could not run it again; why is in the probe's block below.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+
+Melian could not run it again: R
+</untrusted-0123456789abcdef01234567>
+
+=== evidence, passed ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. When Melian ran it again it passed, exiting 0.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+
+when Melian ran it again, it printed:
+(nothing)
+</untrusted-0123456789abcdef01234567>
+
+=== evidence, timed out ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. When Melian ran it again it timed out.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+
+when Melian ran it again, it printed:
+(nothing)
+</untrusted-0123456789abcdef01234567>
+
+=== evidence, cut ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. When Melian ran it again it printed past its output limit and was ended.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+
+when Melian ran it again, it printed:
+(nothing)
+</untrusted-0123456789abcdef01234567>
+
+=== evidence, signalled ===
+## Claim c1's probe
+
+Claim c1 rests on probe p7, which the lens's prober wrote for attack 1 of the plan below. It failed, exiting 1 when the prober ran it. When Melian ran it again it was ended by SIGKILL.
+
+Judge the claim by what the probe shows, not by the lens's account. A probe shows the defect only when it failed again, and only when it exercises the claim: it reaches the code this change wrote, the way the code's callers reach it, with the hostile input the attack names, and fails because of the defect rather than for a reason of its own, such as a syntax error or a missing file. Refute a claim whose probe passed again or does not exercise it, unless code you read shows the defect another way; then answer plausible. Lower one whose probe shows a narrower failure than its severity says. A claim whose probe did not fail again cannot be confirmed.
+
+<untrusted-0123456789abcdef01234567 label="plan">
+1. t\u001b[31m
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+2. second
+   Why: r
+   A passing probe shows: p
+   A failing probe shows: f
+</untrusted-0123456789abcdef01234567>
+
+<untrusted-0123456789abcdef01234567 label="probe">
+script:
+S
+
+file f:
+F
+
+when the prober ran it, it failed, exiting 1 and printed:
+O
+
+when Melian ran it again, it printed:
+(nothing)
+</untrusted-0123456789abcdef01234567>

@@ -1,0 +1,83 @@
+{
+ "total": 4,
+ "omitted": 0,
+ "base": "6f2fd2e1",
+ "head": "94c236e3",
+ "command": "node scripts/enumerate-mutants.mjs 6f2fd2e1...HEAD --json --limit 10000",
+ "note": "Fix pass 6 of pull request #296: the mutants of the two fixes for Codex's seventh review, each run against its named test alone; the optional chain needed the test of a level without probes.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 804,
+   "column": 49,
+   "endLine": 806,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/cli/test/rounds.test.ts > keeps r1's passing verdict after r2 blocks the same revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "94c236e3",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2542,
+   "column": 18,
+   "endLine": 2542,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a prober's finding on the prober's route when no verifier route is named",
+   "survivorClasses": [],
+   "run": {
+    "head": "94c236e3",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2542,
+   "column": 23,
+   "endLine": 2542,
+   "endColumn": 52,
+   "mutatorName": "LogicalOperator",
+   "replacement": "run.probe?.route && run.route",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a prober's finding on the prober's route when no verifier route is named",
+   "survivorClasses": [],
+   "run": {
+    "head": "94c236e3",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2542,
+   "column": 23,
+   "endLine": 2542,
+   "endColumn": 39,
+   "mutatorName": "OptionalChaining",
+   "replacement": "run.probe.route",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a finding from a level without probes on its lens's route when no verifier route is named",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "94c236e3",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 4
+ }
+}

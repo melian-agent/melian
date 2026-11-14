@@ -1,0 +1,221 @@
+{
+	"total": 12,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "12423ddb",
+	"head": "2e1aafcf",
+	"command": "node scripts/enumerate-mutants.mjs 12423ddb...HEAD --json --limit 10000",
+	"note": "Fix pass 39 of pull request #296. Every changed line decides whether a review that another replaced may launch another probe rerun, so every mutant is owed. Each killed or new-test claim ran against its named test alone, with exactly one test collected, and its test failed. The equivalent claim did not run; it gives its reason.",
+	"counts": {
+		"killed": 5,
+		"new-test": 6,
+		"equivalent": 1
+	},
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 9,
+			"endLine": 1438,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a claim's probe again once, and a repeat review probes and runs it again afresh",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 9,
+			"endLine": 1438,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 9,
+			"endLine": 1438,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "document.tasks![at]!.task !== runtime.taskId && !stillOwns(entry, lensTask)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 9,
+			"endLine": 1438,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > writes nothing from a rerun task another review took the revision from: runs no probe once another review has taken the revision",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 9,
+			"endLine": 1438,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "document.tasks![at]!.task === runtime.taskId",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > writes nothing from a rerun task another review took the revision from: runs no probe once another review has taken the revision",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1438,
+			"column": 57,
+			"endLine": 1438,
+			"endColumn": 84,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(entry, lensTask)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1504,
+			"column": 32,
+			"endLine": 1509,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a claim's probe again once, and a repeat review probes and runs it again afresh",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1507,
+			"column": 6,
+			"endLine": 1507,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1507,
+			"column": 6,
+			"endLine": 1507,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "Differs only when lensTask is undefined, which never reaches rerunProbes: its candidates come from a lens task, so lensTask is always defined there, and the input is { lensTask } either way.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1507,
+			"column": 6,
+			"endLine": 1507,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lensTask !== undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1507,
+			"column": 36,
+			"endLine": 1507,
+			"endColumn": 48,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > launches no further rerun once another review with nothing to verify replaces its lens task",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1508,
+			"column": 10,
+			"endLine": 1508,
+			"endColumn": 30,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a claim's probe again once, and a repeat review probes and runs it again afresh",
+			"run": {
+				"head": "2e1aafcf",
+				"result": "killed",
+				"tests": 1
+			},
+			"survivorClasses": []
+		}
+	]
+}

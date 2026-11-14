@@ -256,6 +256,7 @@ export {
 	type LensLevel,
 	type LensLevels,
 	type LensNeighbour,
+	type LensProbing,
 	type LensReads,
 	type LensRule,
 	type LensSelection,

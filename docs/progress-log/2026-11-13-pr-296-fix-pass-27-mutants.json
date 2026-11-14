@@ -1,0 +1,275 @@
+{
+	"total": 15,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "965afc56",
+	"head": "426e063d",
+	"command": "node scripts/enumerate-mutants.mjs 965afc56...426e063d --json --limit 10000",
+	"note": "Fix pass 27 of pull request #296: what the Opus review of record at 965afc56 found. Each claim was run against its named test alone, at the head its run names; lens-tools.ts has not changed since bf8ddcf0. Two ignored literals are left out.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 91,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records a prober's injection attempt without a probe",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 91,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 91,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.role === \"prober\" && probe === undefined || !injection || refuted !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.role === \"prober\" || probe === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 5,
+			"endLine": 476,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lens.role !== \"prober\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 31,
+			"endLine": 476,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 31,
+			"endLine": 476,
+			"endColumn": 50,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probe !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 55,
+			"endLine": 476,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records a prober's injection attempt without a probe",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 55,
+			"endLine": 476,
+			"endColumn": 90,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!injection && refuted !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's injection attempt below the injection severity with no probe, and keeps the carried one",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 55,
+			"endLine": 476,
+			"endColumn": 65,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "injection",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records a prober's injection attempt without a probe",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 69,
+			"endLine": 476,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 476,
+			"column": 69,
+			"endLine": 476,
+			"endColumn": 90,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refuted === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records a prober's injection attempt without a probe",
+			"survivorClasses": [],
+			"run": {
+				"head": "bf8ddcf0",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 316,
+			"column": 16,
+			"endLine": 316,
+			"endColumn": 116,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] && {}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probe again on a repeat review when its stored rerun timed out",
+			"survivorClasses": [],
+			"run": {
+				"head": "426e063d",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 15
+	}
+}

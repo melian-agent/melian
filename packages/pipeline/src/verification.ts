@@ -25,8 +25,9 @@ import {
 	reportVerdict,
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
+import { type ClaimProbe, ProbeReruns, probeClaimKey, probeFailed, renderProbeEvidence, rerunKey } from "./probing.ts";
 import { lensExtension } from "./review.ts";
-import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
+import { ReviewIndex, type ReviewIndexState, stillOwns } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
 import {
@@ -47,6 +48,9 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
+	// The probe each claim of a probing level rests on, by `probeClaimKey`, with what its own run ran probes under. The review
+	// runs each again into `ProbeReruns` before the task starts. Absent from a candidate of a level that does not probe.
+	probes?: Record<string, ClaimProbe>;
 	// The dismissed findings the verifier judges each claim against for sameness; absent when none qualifies, so a
 	// candidate without them keeps the attach key it had before Melian asked.
 	dismissed?: DismissedPredecessor[];
@@ -90,7 +94,10 @@ async function replaced(
 
 export const VerificationTask = defineTask<VerificationInput, Checkpoint, VerificationResult>({
 	name: "melian.verification",
-	version: 3,
+	// Version 3, on main, lets a task reuse a wave's outcomes. Version 4 lets a candidate carry its claims' probes, so a
+	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
+	// optional, so a version 2 or 3 task reads unchanged.
+	version: 4,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -111,17 +118,36 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				// Read before any write. The severity each lens reported goes on the claim's label line, which Melian
 				// writes outside the boundary: a lowering is one step from it, and the claim itself does not hold it.
 				const findings = await tx.doc(FindingsDocument, task.input.root);
+				const reruns = (await tx.doc(ProbeReruns, task.input.root)).runs[Revision.key(task.input.revision)] ?? {};
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					if (task.input.reused?.[candidate.key] !== undefined) continue;
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
-					const claims = candidate.state.claims.map(({ id, source }, index) => ({
-						label: `c${index + 1}`,
-						id,
-						source,
-						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
-					}));
+					const probed = (claim: { id: string; source: { check: string; version?: string } }) => {
+						const probe = candidate.probes?.[probeClaimKey(claim)];
+						return probe === undefined ? undefined : { probe, again: reruns[rerunKey(claim, probe)] };
+					};
+					const claims = candidate.state.claims.map(({ id, source }, index) => {
+						const probe = probed({ id, source });
+						return {
+							label: `c${index + 1}`,
+							id,
+							source,
+							...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
+							// Confirmed only when the probe failed again, so a claim stands on what its probe shows now.
+							...(probe === undefined
+								? {}
+								: {
+										probe: {
+											reproduced:
+												probe.again !== undefined &&
+												"result" in probe.again &&
+												probeFailed(probe.again.result),
+										},
+									}),
+						};
+					});
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
 					await configure(tx, child.id, {
 						model: candidate.route[0],
@@ -145,6 +171,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
 							}),
 							...dismissed.map(({ label, id }) => `Dismissed ${label} finding ${id}`),
+							...claims.flatMap(({ label, id, source }) => {
+								const probe = probed({ id, source });
+								return probe === undefined
+									? []
+									: [renderProbeEvidence(label, probe.probe, probe.again, task.input.revision.nonce)];
+							}),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
@@ -275,14 +307,21 @@ export async function startVerification(
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
 	// The identities of the candidates the caller's own waves verified.
 	own: ReadonlySet<string> = new Set(),
+	// The lens task whose findings these are; a review whose lens task another replaced starts no verification.
+	lensTask?: number,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
+	// A rerun the sandbox refused runs again on a repeat review, so a verification attaches only to the reruns it read.
+	// A review with none keeps the key it had before reruns joined it, so its stored verifications still attach. The
+	// reruns document exists: a review starts verification only after its rerun task, and stops if another replaced it.
+	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const key = JSON.stringify({
 		root: input.root,
 		revision,
 		version: input.version,
 		candidates: input.candidates.map(candidateIdentity),
+		...(Object.keys(reruns).length === 0 ? {} : { reruns }),
 	});
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
 	if (unlockModels !== undefined) {
@@ -319,6 +358,7 @@ export async function startVerification(
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[Revision.key(input.revision)];
 		if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
+		if (!stillOwns(known, lensTask)) return undefined;
 		const previous = known?.verification;
 		const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
 		const results =
@@ -404,7 +444,7 @@ export async function startWave(
 	// Once the final verification owns the revision, a wave would clear what it decided.
 	const freshOf = (index: ReviewIndexState | undefined, state: VerificationWavesState | undefined) => {
 		const indexed = index?.reviews[revision];
-		if (indexed?.task !== lensTask || indexed.verification !== undefined) return [];
+		if (!stillOwns(indexed, lensTask) || indexed?.verification !== undefined) return [];
 		const waves = VerificationWaves.of(state, revision, lensTask);
 		return input.candidates.filter(
 			(candidate) =>

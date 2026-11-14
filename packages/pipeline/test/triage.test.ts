@@ -1916,9 +1916,17 @@ describe("escalation", () => {
 			],
 			{ stopReason: "toolUse" },
 		);
-		scriptConversations(fake, [{ match: correctness, replies: [reads, done, done] }]);
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [reads, done, done] }]);
 
 		const reviewed = await review({ decider, lenses: tight });
+		// Nothing was carried, so the escalated run's input lists no findings.
+		const inputs = (requests[correctness] ?? []).flatMap((messages) =>
+			messages.filter((message) => message.role === "user").map(textOf),
+		);
+		expect(inputs.length).toBeGreaterThan(0);
+		expect(
+			inputs.some((text) => text.includes("Findings a quicker look reported") || /\bundefined\b/.test(text)),
+		).toBe(false);
 
 		expect(lensRecord(reviewed)).toEqual({
 			name: "lens.correctness",
@@ -2407,7 +2415,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(5);
+		expect(definition.version).toBe(6);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,

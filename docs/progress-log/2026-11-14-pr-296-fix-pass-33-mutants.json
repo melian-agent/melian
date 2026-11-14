@@ -1,0 +1,133 @@
+{
+	"total": 7,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "bd9d3f8b",
+	"head": "6b7a71ad",
+	"command": "node scripts/enumerate-mutants.mjs bd9d3f8b...6b7a71ad --json --limit 10000",
+	"note": "Fix pass 33 of pull request #296: what Codex's adversarial review at bd9d3f8b found. Each claim was run at 6b7a71ad against its named test alone.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1509,
+			"column": 5,
+			"endLine": 1509,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1509,
+			"column": 5,
+			"endLine": 1509,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its reruns alone, as a review attached to its lens task with other probes can",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1509,
+			"column": 5,
+			"endLine": 1509,
+			"endColumn": 84,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task === task",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1509,
+			"column": 93,
+			"endLine": 1509,
+			"endColumn": 98,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its reruns alone, as a review attached to its lens task with other probes can",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1510,
+			"column": 8,
+			"endLine": 1510,
+			"endColumn": 92,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its lens task alone, before taking the reruns",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1510,
+			"column": 8,
+			"endLine": 1510,
+			"endColumn": 92,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1510,
+			"column": 8,
+			"endLine": 1510,
+			"endColumn": 92,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await harness.snapshot(ReviewIndex, root, context))!.reviews[at]!.task !== lensTask",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "6b7a71ad",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 7
+	}
+}

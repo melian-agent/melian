@@ -23,7 +23,7 @@ const recorded = JSON.parse(
 	tasks: { kind: string; version: number; input: JsonObject; initial: { phase: string } & JsonObject }[];
 };
 
-it("reopens main's version-2 verification task under version 3, asking for every candidate", async () => {
+it("reopens main's version-2 verification task under version 4, asking for every candidate", async () => {
 	const [previous] = recorded.tasks;
 	expect(previous).toMatchObject({ kind: "melian.verification", version: 2 });
 	const repo = crashRepository();
@@ -80,7 +80,7 @@ it("reopens main's version-2 verification task under version 3, asking for every
 			second.resume();
 			await second.waitForTask(id, context);
 			const migrated = await second.getTask(id, context);
-			expect(migrated).toMatchObject({ version: 3, input, state: { status: "terminal" } });
+			expect(migrated).toMatchObject({ version: 4, input, state: { status: "terminal" } });
 			expect(migrated!.input).not.toHaveProperty("reused");
 			// No outcome is reused from a task that has none, so its one candidate asks the model.
 			expect(asked).toHaveLength(1);

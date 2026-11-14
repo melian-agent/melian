@@ -1,0 +1,166 @@
+{
+ "total": 9,
+ "omitted": 0,
+ "base": "7d600745",
+ "head": "0b7017b8",
+ "command": "node scripts/enumerate-mutants.mjs 7d600745...HEAD --json --limit 10000",
+ "note": "Fix pass 9 of pull request #296: the mutants of the two fixes for Codex's tenth review, after a refactor dropped the two conditionals whose mutants were equivalent; each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 135,
+   "column": 9,
+   "endLine": 135,
+   "endColumn": 72,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > lets a probe read what the base policy's probe.read allows beyond the head's tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1245,
+   "column": 3,
+   "endLine": 1245,
+   "endColumn": 20,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1261,
+   "column": 58,
+   "endLine": 1265,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1263,
+   "column": 15,
+   "endLine": 1263,
+   "endColumn": 90,
+   "mutatorName": "MethodExpression",
+   "replacement": "Object.entries(document.runs[at] ?? {})",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1263,
+   "column": 30,
+   "endLine": 1263,
+   "endColumn": 53,
+   "mutatorName": "LogicalOperator",
+   "replacement": "document.runs[at] && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1263,
+   "column": 62,
+   "endLine": 1263,
+   "endColumn": 89,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1264,
+   "column": 18,
+   "endLine": 1264,
+   "endColumn": 70,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2217,
+   "column": 18,
+   "endLine": 2222,
+   "endColumn": 6,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > lets a probe read what the base policy's probe.read allows beyond the head's tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2221,
+   "column": 12,
+   "endLine": 2221,
+   "endColumn": 34,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > lets a probe read what the base policy's probe.read allows beyond the head's tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "0b7017b8",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 9
+ }
+}

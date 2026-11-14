@@ -1,0 +1,98 @@
+{
+ "total": 5,
+ "omitted": 0,
+ "base": "6da004ce",
+ "head": "480b3703",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000",
+ "note": "Fix pass 7 of pull request #296: the mutants of the fix for Codex's eighth review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 275,
+   "column": 28,
+   "endLine": 281,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it",
+   "survivorClasses": [],
+   "run": {
+    "head": "480b3703",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 280,
+   "column": 6,
+   "endLine": 280,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it",
+   "survivorClasses": [],
+   "run": {
+    "head": "480b3703",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 280,
+   "column": 6,
+   "endLine": 280,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > attaches a repeat review to a verification stored before reruns joined its key, for a level without probes",
+   "survivorClasses": [],
+   "run": {
+    "head": "480b3703",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 280,
+   "column": 6,
+   "endLine": 280,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Object.keys(reruns).length !== 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > attaches a repeat review to a verification stored before reruns joined its key, for a level without probes",
+   "survivorClasses": [],
+   "run": {
+    "head": "480b3703",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 280,
+   "column": 46,
+   "endLine": 280,
+   "endColumn": 56,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it",
+   "survivorClasses": [],
+   "run": {
+    "head": "480b3703",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 5
+ }
+}
