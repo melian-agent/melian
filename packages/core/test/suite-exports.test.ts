@@ -170,6 +170,17 @@ describe("SuiteExports", () => {
 		);
 	});
 
+	it.each([
+		[1024 * 1024, undefined],
+		[1024 * 1024 + 1, /^cannot read packages\/core\/package\.json: .*1048577 bytes; the limit is 1048576$/],
+	])("reads a package.json of %i bytes against the 1 MiB bound", async (size, reason) => {
+		const text = JSON.stringify({ exports: testing });
+		const suites = await suitesIn(workspace({ core: text + " ".repeat(size - Buffer.byteLength(text)) }));
+		const refusal = suites.refusal("packages/core/src/testing.ts");
+		if (reason === undefined) expect(refusal).toBeUndefined();
+		else expect(refusal).toMatch(reason);
+	});
+
 	it("keeps each package's answer to itself", async () => {
 		const suites = await suitesIn(workspace({ core: { exports: testing }, cli: { name: "cli" } }));
 		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
