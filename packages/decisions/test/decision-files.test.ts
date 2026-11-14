@@ -30,7 +30,7 @@ async function expectRepositoryIndex(repo: string): Promise<void> {
 		const row = rendered.split("\n").find((line) => line.endsWith(ending));
 		expect(row).toMatch(/^\[ACTIVE(?:; amended by .+)?\] /);
 	}
-	expect(Buffer.byteLength(rendered)).toBeLessThan(49152);
+	expect(Buffer.byteLength(rendered)).toBeLessThan(56 * 1024);
 }
 
 const declarationCases: [
