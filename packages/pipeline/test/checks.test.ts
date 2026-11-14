@@ -571,7 +571,9 @@ describe("runChecks", () => {
 		});
 
 		// Removing the unrecorded node_modules leaves every digest as it was, so the run made beside it must not answer.
-		it("never reuses a run made beside an unrecorded node_modules once it is removed", { timeout: 60_000 }, async () => {
+		it("never reuses a run made beside an unrecorded node_modules once it is removed", {
+			timeout: 60_000,
+		}, async () => {
 			const run = await fixture();
 			write("node_modules/@types/node/index.d.ts", "export {};");
 			const unrecorded = await run();
