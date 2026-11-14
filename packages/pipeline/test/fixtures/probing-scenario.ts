@@ -4,7 +4,13 @@ import { Changeset, defaultConfig, Lens, type MelianConfig } from "@melian-agent
 import { openSqliteStorage } from "../../src/harness.ts";
 import type { ProbeSandbox } from "../../src/probe.ts";
 import { ReviewHarness, reviewChangeset } from "../../src/review.ts";
-import { createFakeModels, fauxAssistantMessage, type ScriptedReply, scriptConversations, unconfinedSandbox } from "../../src/testing.ts";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	type ScriptedReply,
+	scriptConversations,
+	unconfinedSandbox,
+} from "../../src/testing.ts";
 
 export const plannerMatch = "Your role at this level: the attack planner";
 export const proberMatch = "You are the prober for the trust-boundary lens";
