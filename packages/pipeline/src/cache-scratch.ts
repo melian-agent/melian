@@ -37,7 +37,8 @@ export class CacheScratch {
 			if (entry.isSymbolicLink() || entry.name.startsWith("entry-")) continue;
 			const path = join(directory, entry.name);
 			const pid =
-				/^\.(?:fetch|graph)-(\d+)-/.exec(entry.name)?.[1] ?? /\.(\d+)\.[0-9a-f-]{36}\.tmp$/.exec(entry.name)?.[1];
+				/^\.(?:fetch|graph|prune)-(\d+)-/.exec(entry.name)?.[1] ??
+				/\.(\d+)\.[0-9a-f-]{36}\.tmp$/.exec(entry.name)?.[1];
 			if (pid !== undefined && Number(pid) > 1) {
 				try {
 					process.kill(Number(pid), 0);
@@ -47,7 +48,7 @@ export class CacheScratch {
 				continue;
 			}
 			if (
-				/^\.(?:fetch|graph)-/.test(entry.name) ||
+				/^\.(?:fetch|graph|prune)-/.test(entry.name) ||
 				/^\..+-[0-9a-f-]{36}\.json$/.test(entry.name) ||
 				/\.[0-9a-f-]{36}\.tmp$/.test(entry.name)
 			) {
