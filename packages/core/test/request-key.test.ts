@@ -217,7 +217,7 @@ describe("keyCoverage", () => {
 
 describe("requestJson", () => {
 	it("drops a field left undefined, at any depth, and keeps null", () => {
-		expect(requestJson({ a: undefined, b: { c: undefined, d: null }, e: [{ f: undefined }] })).toEqual({
+		expect(requestJson({ a: undefined, b: { c: undefined, d: null }, e: [{ f: undefined }] })).toStrictEqual({
 			b: { d: null },
 			e: [{}],
 		});
