@@ -1,0 +1,21 @@
+# A long decision index warns instead of refusing the review
+
+Amends: [Written decisions and design sections share the unified Markdown grammar](2026-10-08-decisions-package-markdown-on-mdast.md), its statement that the active-base decision's byte-bound choices remain, for the decision index alone: no 64 KiB UTF-8 bound holds it, and an oversized decision index no longer refuses review. The design-section index keeps its own bound.
+
+The 64 KiB bound and the refusal were set by [the active-base decision](2026-10-08-design-lens-active-decisions-at-base.md). That decision is inactive in the index, since the Markdown decision supersedes it; its byte-bound choice survived only through the Markdown decision's statement, which this decision amends.
+
+The maintainer ruled on 2026-11-14, in the coordinator's session: "Remove the limit, warn the user when context gets too long, recommend they compact their decision log." The maintainer agreed the same day that the warning fires past 64 KiB, the size where Melian refused a review.
+
+Problem: a long decision log refused every review that read the index. On 2026-11-14 this repository's index was 49,034 bytes for 316 decisions. It grows by about 155 bytes a decision, and 61 decisions landed in two weeks, so it would have hit the refusal in about three and a half weeks. Every review with the design lens would then have been refused. A customer with a long decision log meets the same wall, and a refused review is a worse outcome than a long prompt.
+
+Choice: `DecisionFiles.render()` builds the index whole at any size, and the design lens and its verifier read it whole, as before. Past 64 KiB of rendered UTF-8, `DecisionFiles.warning()` says the decision log is long, with the index's size and decision count. It says long context costs tokens and can dilute a reviewer's attention, and recommends compacting the decision log in steps that shrink the index: fold amendments into the decisions they amend, merge decisions that belong together, and delete superseded decisions with the `Supersedes:` lines that name them, which git history keeps. It says superseding a decision does not shorten the index, since inactive decisions are still listed.
+
+The warning reaches the user in three places: a `melian: ` line on stderr from `melian review`, a `warnings` array beside the verdict in `melian review --json`, and a `warn` line from `melian doctor`, which reads the index at `HEAD`. It is never a finding, never changes the verdict or the exit code, and never blocks. When the design lens or the verifier failed on a request pi-ai reads as too long for its model's context window, the warning adds that the index's size may explain it. A provider's context limit still fails the check as it did.
+
+`melian review` gives the warning only when the verdict records the design lens as having run, failed or ended, and reads the index at the changeset's base, as the lens does. A review without the design lens never loads the index, so an index that cannot be read gives no warning rather than a new refusal. The index text does not change, so the instruction fingerprint and the verifier's version do not either.
+
+Why superseding is not the advice: the index lists every decision file, inactive ones included. A probe superseded 50 of 100 decisions with one new file, and the index grew from 5,789 to 8,349 bytes. A test holds the claim the warning makes: the advised steps give a shorter index, and superseding alone a longer one.
+
+What this gives up: a review of a repository with a very long decision log costs more tokens, and a provider's context window, not Melian, now bounds it. The round workflow's comment does not carry the warning, since the public verdict keeps only the fields it lists. `melian status --json` reopens a stored verdict and does not carry it either. Leaving inactive decisions out of the index would let superseding shrink it, but it changes what the lens sees and the instruction fingerprint, so it is a question of its own.
+
+An attacking review of the rule before it was built confirmed that a pull request's head cannot grow the index a model reads: the index always comes from the base side, and a head adding 5,000 decision files left the base index at 47 bytes.

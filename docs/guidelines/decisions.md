@@ -27,7 +27,7 @@ The state is text about the change under review, and the change's author control
 
 DecisionFile.parse reads a title and Markdown filenames on prose Supersedes and Amends lines through MarkdownDocument’s mdast tree. Only CommonMark paragraphs whose parent is the root supply declarations; fenced and indented code and inline code examples create no edges. Link labels remain opaque, including code spans inside them. DecisionFiles.load reads the complete docs/decisions tree from the comparison base through core’s source reader, with 256 KiB per file. DecisionFiles.from resolves supersession before rendering. Missing targets and cycles throw DecisionFilesError. Source errors, including oversized files and symlinks, propagate rather than dropping a baseline.
 
-DecisionFiles.render lists every path and full title, with active status or direct successors. The complete UTF-8 index is bounded at 64 KiB. Exceeding it throws an incomplete-baseline error naming the count omitted; no row or candidate is silently shortened. Repository-scale coverage checks every active decision at the commit under test and leaves headroom. It resolves HEAD once and reads both the expected decisions and rendered index from that commit. A single-commit fixture without remote refs proves that the check needs no main branch.
+DecisionFiles.render lists every path and full title, with active status or direct successors, at any size; no row or candidate is shortened. Past 64 KiB of UTF-8, `decisionIndexWarning.bytes`, DecisionFiles.warning returns the warning `melian review` and `melian doctor` print, and nothing refuses the review, as [the long-index decision](../decisions/2026-11-14-long-decision-index-warns.md) records. Repository-scale coverage checks every active decision at the commit under test, and that the warning fires exactly when the index passes 64 KiB. It resolves HEAD once and reads both the expected decisions and rendered index from that commit. A single-commit fixture without remote refs proves that the check needs no main branch.
 
 A Supersedes line declares no edge when its first token is “none” or “no decision file”, ignoring case and leading whitespace. The token ends at the line end, whitespace, a comma or a semicolon. A full stop ends it only before the line end or whitespace. Later links on that line are context. Without that check, the committed-routes decision incorrectly deactivates the review-plan decision it cites.
 
@@ -60,3 +60,17 @@ No GFM table extension is installed. A paragraph containing a table delimiter su
 Declaration exclusion uses CommonMark physical lines. Finding locations and clause evidence use LF coordinates, matching read_file. Keep both: CR-only sources occupy one evidence line even when the parser sees several physical lines.
 
 A cooked inline-code span crossing a declaration line refuses evidence extraction. mdast has replaced its internal line endings with spaces, so there is no decoded line map for removing only that line. Code on an excluded line is omitted; code on other lines stays whole.
+
+## Compacting the decision log
+
+The design lens and its verifier read the decision index whole: one line per decision file, active or not. Past 64 KiB, Melian warns that the decision log is long and recommends compacting it. A long index costs tokens on every review that reads it, and can dilute a reviewer's attention.
+
+Compacting means fewer, shorter files, since every file is a line:
+
+- Fold each amendment into the decision it amends, then delete the amendment and its `Amends:` line.
+- Merge decisions that belong together into one file.
+- Delete decisions that have been superseded, together with the `Supersedes:` lines that name them. A `Supersedes:` line that names a missing file refuses the review, so remove both. Git history keeps what you delete.
+
+Superseding a decision does not shorten the index. The superseded decision stays listed as inactive, and the new one adds a line.
+
+Compacting is a deliberate pass a maintainer chooses to make. Day to day, [the decision log's rule](../decisions/README.md) still holds: a new decision is a new file, and no one edits another decision's file.
