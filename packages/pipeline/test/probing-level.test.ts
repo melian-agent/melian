@@ -1150,39 +1150,49 @@ describe("a level that probes", () => {
 		expect(requests["Melian adversarial verifier"] ?? []).toEqual([]);
 	});
 
-	it("stops a review that another replaces while its probe runs again, before it verifies", async () => {
-		let commands = 0;
-		let taken: Promise<void> | undefined;
-		const { run, requests, heads } = await review(
-			{ planner: plan, prober: probing(failing) },
-			{
-				rewrite: (command) => {
-					// The second probe on the head is Melian's rerun: another review takes the lens task and the reruns as it starts.
-					if (inHeadTree(command) && ++commands === 2)
-						taken = (async () => {
-							const root = await harness!.harness.root(backgroundContext);
-							await root.commit(async (tx) => {
-								const index = await tx.doc(ReviewIndex, root.id);
-								for (const key of Object.keys(index.reviews))
-									index.reviews[key] = { ...index.reviews[key]!, task: -1 };
-								const reruns = await tx.doc(ProbeReruns, root.id);
-								for (const key of Object.keys(reruns.tasks ?? {}))
-									reruns.tasks![key] = { task: -1, key: "another review's probes" };
-							}, backgroundContext);
-						})();
-					return command;
+	it.each([
+		["its lens task and its reruns", true, true],
+		["its lens task alone, before taking the reruns", true, false],
+		["its reruns alone, as a review attached to its lens task with other probes can", false, true],
+	])(
+		"stops a review that another replaces while its probe runs again, before it verifies: %s",
+		async (_, lens, reruns) => {
+			let commands = 0;
+			let taken: Promise<void> | undefined;
+			const { run, requests, heads } = await review(
+				{ planner: plan, prober: probing(failing) },
+				{
+					rewrite: (command) => {
+						// The second probe on the head is Melian's rerun: another review takes the lens task, and the reruns too when
+						// asked, as it starts.
+						if (inHeadTree(command) && ++commands === 2)
+							taken = (async () => {
+								const root = await harness!.harness.root(backgroundContext);
+								await root.commit(async (tx) => {
+									const index = await tx.doc(ReviewIndex, root.id);
+									const document = await tx.doc(ProbeReruns, root.id);
+									if (lens)
+										for (const key of Object.keys(index.reviews))
+											index.reviews[key] = { ...index.reviews[key]!, task: -1 };
+									if (!reruns) return;
+									for (const key of Object.keys(document.tasks ?? {}))
+										document.tasks![key] = { task: -1, key: "another review's probes" };
+								}, backgroundContext);
+							})();
+						return command;
+					},
 				},
-			},
-		);
-		const outcome = await run.then(
-			() => undefined,
-			(error: unknown) => error,
-		);
-		await taken;
-		expect(heads).toHaveLength(2);
-		expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
-		expect(requests["Melian adversarial verifier"] ?? []).toEqual([]);
-	});
+			);
+			const outcome = await run.then(
+				() => undefined,
+				(error: unknown) => error,
+			);
+			await taken;
+			expect(heads).toHaveLength(2);
+			expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
+			expect(requests["Melian adversarial verifier"] ?? []).toEqual([]);
+		},
+	);
 
 	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
 		const fake = createFakeModels();

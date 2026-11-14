@@ -1505,8 +1505,9 @@ async function rerunProbes(
 	}, context);
 	if (task === undefined) return false;
 	await harness.waitForTask(task, context);
-	// A review that took the reruns over while they ran replaced this one's lens task too.
-	return (await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task === task;
+	// Another review can replace this one's lens task while the reruns run, and take the reruns over then or later.
+	if ((await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task !== task) return false;
+	return (await harness.snapshot(ReviewIndex, root, context))!.reviews[at]!.task === lensTask;
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
