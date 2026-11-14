@@ -43,6 +43,29 @@ describe("mutant sampling", () => {
 		});
 		expect(sampleMutants(classified.toJSON())).toEqual(classified.sample());
 	});
+	it("lists a version-2 inventory's suite claims apart, grouped by file", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			status: "generated",
+			claim: "suite",
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		});
+		const classified = MutationInventory.create({
+			range: { base: "a".repeat(40), head: "b".repeat(40) },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		});
+		const sample = sampleMutants(classified.toJSON());
+		expect(sample.suite.map((group) => [group.file, group.mutants.map((row) => row.line)])).toEqual([
+			["packages/core/src/testing.ts", [2]],
+		]);
+	});
+
 	it("keeps the checklist class names in the sampling contract", () => {
 		expect(survivorClasses).toEqual(classes);
 		const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
@@ -140,6 +163,30 @@ describe("mutant sampling", () => {
 			expect(() => sampleMutants(inventory([mutant(0)], extra))).toThrow("complete inventory");
 		},
 	);
+
+	it("refuses a legacy suite claim, since a legacy inventory knows three claims", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			claim: "suite",
+			evidence: "a neighbour catches it",
+		});
+		expect(() => sampleMutants(inventory([mutant(0), suite]))).toThrow(
+			new Error("a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all"),
+		);
+	});
+
+	it.each([
+		[{ claim: "unknown" }, "each mutant needs a claim: killed, new-test or equivalent"],
+		[{ evidence: " " }, "each claim needs evidence: a named test or an equivalence reason"],
+	])("refuses a legacy row with its own message: %j", (extra, message) => {
+		expect(() => sampleMutants(inventory([mutant(0, extra)]))).toThrow(new Error(message));
+	});
+
+	it("names the three legacy claims when a legacy mutant has none", () => {
+		expect(() => sampleMutants(inventory([mutant(0, { claim: undefined })]))).toThrow(
+			"each mutant needs a claim: killed, new-test or equivalent",
+		);
+	});
 
 	it.each([undefined, "", "unknown"])("requires a classified claim: %s", (claim) => {
 		expect(() => sampleMutants(inventory([mutant(0, { claim })]))).toThrow("claim");

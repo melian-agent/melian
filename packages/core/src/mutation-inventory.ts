@@ -30,7 +30,9 @@ const identity = {
 	mutatorName: text,
 	replacement: Type.String(),
 };
-const claim = Type.Union([Type.Literal("killed"), Type.Literal("new-test"), Type.Literal("equivalent")]);
+const legacyClaim = Type.Union([Type.Literal("killed"), Type.Literal("new-test"), Type.Literal("equivalent")]);
+const claim = Type.Union([...legacyClaim.anyOf, Type.Literal("suite")]);
+const reasoned = new Set<string>(["equivalent", "suite"]);
 const classes = Type.Array(Type.Enum(survivorClasses));
 const testIdentity = Type.Object({ file: text, path: Type.Array(text, { minItems: 1 }) }, strict);
 const evidence = Type.Union([Type.Object({ test: testIdentity }, strict), Type.Object({ reason: text }, strict)]);
@@ -97,7 +99,7 @@ const legacyRowSchema = Type.Object({
 	id: Type.Optional(digest),
 	status: Type.Optional(Type.String()),
 	statusReason: Type.Optional(Type.String()),
-	claim: Type.Optional(claim),
+	claim: Type.Optional(legacyClaim),
 	evidence: Type.Optional(text),
 	survivorClasses: Type.Optional(classes),
 });
@@ -116,7 +118,7 @@ export type MutationIdentity = Pick<
 export type MutationAdapterIdentity = Static<typeof inventorySchema>["adapters"][number];
 /** A component array from the runner, rather than its ambiguous fullName string. */
 export type MutationTestIdentity = Static<typeof testIdentity>;
-/** A claimed kill, a planned test, or a reason for equivalence. */
+/** A claimed kill, a planned test, a reason for equivalence, or a shared suite's assertion proved per case. */
 export type MutationClaim = Static<typeof claim>;
 /** Structural evidence which future verification can resolve without parsing a display name. */
 export type MutationEvidence = Static<typeof evidence>;
@@ -136,9 +138,14 @@ export type MutationInventoryState = MutationInventoryV2 | LegacyMutationInvento
 export type MutationInventoryInput = Omit<MutationInventoryV2, "melianMutants" | "mutants"> & {
 	mutants: MutationInventoryRowInput[];
 };
-/** A reproducible set of probes ordered by the full mutant identity's hash. */
+type SampledMutant = (MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string };
+/**
+ * A reproducible set of probes ordered by the full mutant identity's hash, and every shared suite's assertion, grouped
+ * by file in line order, which a reviewer judges by its file and reason and does not run.
+ */
 export type MutationSample = {
-	selected: ((MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string })[];
+	selected: SampledMutant[];
+	suite?: { file: string; mutants: SampledMutant[] }[];
 	total: number;
 	unmutated: MutationInventoryV2["unmutated"];
 	ignored?: { config: MutationInventoryRow[]; comment: MutationInventoryRow[] };
@@ -162,6 +169,29 @@ export class MutationInventoryError extends Error {
 		this.name = "MutationInventoryError";
 		this.code = code;
 	}
+}
+
+// Version 2's claims may gain values, so an older build meets one it does not know; it refuses the file, naming it.
+function requireKnownClaims(mutants: unknown, legacy: boolean): void {
+	if (!Array.isArray(mutants)) return;
+	for (const row of mutants) {
+		const value = typeof row === "object" && row !== null && "claim" in row ? row.claim : undefined;
+		if (legacy && value === "suite")
+			throw new MutationInventoryError(
+				"invalidInventory",
+				"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+			);
+		if (value !== undefined && !Value.Check(claim, value))
+			throw new MutationInventoryError(
+				"invalidInventory",
+				`mutant claim ${JSON.stringify(value)} is not one this build knows: killed, new-test, equivalent or suite`,
+			);
+	}
+}
+
+function suiteGroups(rows: SampledMutant[]): { file: string; mutants: SampledMutant[] }[] {
+	const ordered = rows.toSorted((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column);
+	return [...Map.groupBy(ordered, (row) => row.file)].map(([file, mutants]) => ({ file, mutants }));
 }
 
 function identityHash(row: MutationIdentity): string {
@@ -202,6 +232,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		const version = "melianMutants" in input ? input.melianMutants : undefined;
 		if (version !== undefined && version !== 1 && version !== 2)
 			throw new MutationInventoryError("unsupportedVersion", "unsupported melianMutants inventory version");
+		requireKnownClaims("mutants" in input ? input.mutants : undefined, version !== 2);
 		const schema = version === 2 ? inventorySchema : legacySchema;
 		if (!Value.Check(schema, input))
 			throw new MutationInventoryError(
@@ -261,10 +292,10 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 					if (row.evidence !== undefined)
 						throw new MutationInventoryError("invalidEvidence", "evidence requires a classified claim");
 				} else {
-					if (row.evidence === undefined || (row.claim === "equivalent") !== "reason" in row.evidence)
+					if (row.evidence === undefined || reasoned.has(row.claim) !== "reason" in row.evidence)
 						throw new MutationInventoryError(
 							"invalidEvidence",
-							"claim evidence must name a structural test or an equivalence reason",
+							"claim evidence must name a structural test, or a reason for an equivalent or suite claim",
 						);
 					if (row.survivorClasses === undefined)
 						throw new MutationInventoryError("invalidInventory", "each claim needs survivorClasses");
@@ -276,6 +307,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 
 	/** Derives stable ids for enumerator rows and validates the version-2 document. */
 	static create(input: MutationInventoryInput): MutationInventory<MutationInventoryV2> {
+		requireKnownClaims(typeof input === "object" && input !== null ? input.mutants : undefined, false);
 		if (!Value.Check(inputSchema, input))
 			throw new MutationInventoryError(
 				"invalidInventory",
@@ -288,12 +320,17 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		}) as MutationInventory<MutationInventoryV2>;
 	}
 
-	/** Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script. */
+	/**
+	 * Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script, and lists every
+	 * suite claim apart, grouped by file. No file is read: a reviewer judges whether each suite claim's file is a suite.
+	 */
 	sample(): MutationSample {
 		this.#requireClassified();
-		const ranked = this.#probes()
+		const all = this.#probes()
 			.map((mutant) => ({ mutant, hash: identityHash(mutant) }))
 			.sort((a, b) => a.hash.localeCompare(b.hash));
+		const suite = all.filter((row) => row.mutant.claim === "suite");
+		const ranked = all.filter((row) => row.mutant.claim !== "suite");
 		const selected = new Set(ranked.filter((row) => row.mutant.claim !== "killed"));
 		const classGroups = Map.groupBy(
 			ranked.flatMap((row) => row.mutant.survivorClasses!.map((name) => ({ name, row }))),
@@ -322,6 +359,9 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 				: {};
 		return structuredClone({
 			selected: ranked.filter((row) => selected.has(row)).map((row) => ({ ...row.mutant, sampleHash: row.hash })),
+			...(suite.length > 0
+				? { suite: suiteGroups(suite.map((row) => ({ ...row.mutant, sampleHash: row.hash }))) }
+				: {}),
 			total: this.#state.total,
 			unmutated: this.#state.unmutated,
 			...ignored,
@@ -429,12 +469,12 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			if (row.claim === undefined)
 				throw new MutationInventoryError(
 					"unclassifiedClaim",
-					"each mutant needs a claim: killed, new-test or equivalent",
+					"each mutant needs a claim: killed, new-test, equivalent or suite",
 				);
 			if (row.evidence === undefined)
 				throw new MutationInventoryError(
 					"invalidEvidence",
-					"each claim needs evidence: a named test or an equivalence reason",
+					"each claim needs evidence: a named test, or a reason for an equivalent or suite claim",
 				);
 			if (row.survivorClasses === undefined)
 				throw new MutationInventoryError("invalidInventory", "each claim needs survivorClasses");

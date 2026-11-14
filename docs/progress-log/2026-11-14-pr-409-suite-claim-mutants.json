@@ -1,0 +1,1719 @@
+{
+ "mutants": [
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 33,
+   "column": 31,
+   "endLine": 33,
+   "endColumn": 109,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 33,
+   "column": 45,
+   "endLine": 33,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 33,
+   "column": 69,
+   "endLine": 33,
+   "endColumn": 79,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 33,
+   "column": 95,
+   "endLine": 33,
+   "endColumn": 107,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 34,
+   "column": 25,
+   "endLine": 34,
+   "endColumn": 70,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 34,
+   "column": 61,
+   "endLine": 34,
+   "endColumn": 68,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 35,
+   "column": 33,
+   "endLine": 35,
+   "endColumn": 56,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 35,
+   "column": 34,
+   "endLine": 35,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 35,
+   "column": 48,
+   "endLine": 35,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 167,
+   "column": 69,
+   "endLine": 182,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 28,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "Array.isArray(mutants)",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 168,
+   "column": 5,
+   "endLine": 168,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 169,
+   "column": 28,
+   "endLine": 181,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 73,
+   "mutatorName": "LogicalOperator",
+   "replacement": "typeof row === \"object\" && row !== null || \"claim\" in row",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "typeof row === \"object\" || row !== null",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[\"row\"],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784 with this commit's tests",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[\"row\"],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 16,
+   "endLine": 170,
+   "endColumn": 39,
+   "mutatorName": "EqualityOperator",
+   "replacement": "typeof row !== \"object\"",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 31,
+   "endLine": 170,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 43,
+   "endLine": 170,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 43,
+   "endLine": 170,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "row === null",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: {\"range\":{\"base\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"head\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"target\":\"https://github.com/example/repo/pull/1\"},\"adapters\":[{\"name\":\"typescript\",\"version\":\"1\",\"toolVersion\":\"stryker-instrumenter@10.0.0\",\"source\":\"checkout\"}],\"installation\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"mutants\":[null],\"total\":1,\"omitted\":0,\"unmutated\":[{\"file\":\"src/link.ts\",\"reason\":\"symlink\"}]}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 170,
+   "column": 59,
+   "endLine": 170,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 6,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 6,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 6,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "LogicalOperator",
+   "replacement": "legacy || value === \"suite\"",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 16,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 16,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "value !== \"suite\"",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 171,
+   "column": 26,
+   "endLine": 171,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 172,
+   "column": 3,
+   "endLine": 175,
+   "endColumn": 5,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 173,
+   "column": 4,
+   "endLine": 173,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 174,
+   "column": 4,
+   "endLine": 174,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 6,
+   "endLine": 176,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 6,
+   "endLine": 176,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 6,
+   "endLine": 176,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "value !== undefined || !Value.Check(claim, value)",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 6,
+   "endLine": 176,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > keeps unclassified config and comment rows as owned full-row v2 notes",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > keeps unclassified config and comment rows as owned full-row v2 notes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 6,
+   "endLine": 176,
+   "endColumn": 25,
+   "mutatorName": "EqualityOperator",
+   "replacement": "value === undefined",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > keeps unclassified config and comment rows as owned full-row v2 notes",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > keeps unclassified config and comment rows as owned full-row v2 notes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 176,
+   "column": 29,
+   "endLine": 176,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "Value.Check(claim, value)",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 177,
+   "column": 3,
+   "endLine": 180,
+   "endColumn": 5,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 178,
+   "column": 4,
+   "endLine": 178,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 179,
+   "column": 4,
+   "endLine": 179,
+   "endColumn": 110,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 184,
+   "column": 90,
+   "endLine": 187,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 31,
+   "endLine": 185,
+   "endColumn": 111,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 41,
+   "endLine": 185,
+   "endColumn": 111,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 41,
+   "endLine": 185,
+   "endColumn": 111,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 41,
+   "endLine": 185,
+   "endColumn": 111,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(a.file.localeCompare(b.file) || a.line - b.line) && a.column - b.column",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 41,
+   "endLine": 185,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 41,
+   "endLine": 185,
+   "endColumn": 88,
+   "mutatorName": "LogicalOperator",
+   "replacement": "a.file.localeCompare(b.file) && a.line - b.line",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 73,
+   "endLine": 185,
+   "endColumn": 88,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "a.line + b.line",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > orders suite rows on one line by column",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > orders suite rows on one line by column",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 185,
+   "column": 92,
+   "endLine": 185,
+   "endColumn": 111,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "a.column + b.column",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > orders suite rows on one line by column",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > orders suite rows on one line by column",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 186,
+   "column": 8,
+   "endLine": 186,
+   "endColumn": 52,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 186,
+   "column": 33,
+   "endLine": 186,
+   "endColumn": 50,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 186,
+   "column": 57,
+   "endLine": 186,
+   "endColumn": 97,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 186,
+   "column": 79,
+   "endLine": 186,
+   "endColumn": 96,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 227,
+   "column": 21,
+   "endLine": 227,
+   "endColumn": 30,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 227,
+   "column": 69,
+   "endLine": 227,
+   "endColumn": 82,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 227,
+   "column": 69,
+   "endLine": 227,
+   "endColumn": 82,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses a legacy inventory holding a suite claim when it parses",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 227,
+   "column": 69,
+   "endLine": 227,
+   "endColumn": 82,
+   "mutatorName": "EqualityOperator",
+   "replacement": "version === 2",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 9,
+   "endLine": 268,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 9,
+   "endLine": 268,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\",\"evidence\":{\"reason\":\"wrong kind\"}}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\",\"evidence\":{\"reason\":\"wrong kind\"}}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 9,
+   "endLine": 268,
+   "endColumn": 91,
+   "mutatorName": "LogicalOperator",
+   "replacement": "row.evidence === undefined && reasoned.has(row.claim) !== \"reason\" in row.evidence",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\"}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784 with this commit's tests",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\"}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 9,
+   "endLine": 268,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\"}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784 with this commit's tests",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\"}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 9,
+   "endLine": 268,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "row.evidence !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 39,
+   "endLine": 268,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\",\"evidence\":{\"reason\":\"wrong kind\"}}",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses generated classification gaps for sampling and future verification: {\"claim\":\"killed\",\"evidence\":{\"reason\":\"wrong kind\"}}",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 39,
+   "endLine": 268,
+   "endColumn": 91,
+   "mutatorName": "EqualityOperator",
+   "replacement": "reasoned.has(row.claim) === \"reason\" in row.evidence",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > samples structural version-2 evidence through the compatibility entry",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 268,
+   "column": 67,
+   "endLine": 268,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 271,
+   "column": 7,
+   "endLine": 271,
+   "endColumn": 97,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 21,
+   "endLine": 283,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 21,
+   "endLine": 283,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 21,
+   "endLine": 283,
+   "endColumn": 64,
+   "mutatorName": "LogicalOperator",
+   "replacement": "typeof input === \"object\" || input !== null",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 21,
+   "endLine": 283,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: undefined",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784 with this commit's tests",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: undefined",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 21,
+   "endLine": 283,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "typeof input !== \"object\"",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > refuses version 2 whole when a row holds a claim this build does not know, and names it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 38,
+   "endLine": 283,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 50,
+   "endLine": 283,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 50,
+   "endLine": 283,
+   "endColumn": 64,
+   "mutatorName": "EqualityOperator",
+   "replacement": "input === null",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > MutationInventory > refuses malformed factory inputs before deriving ids: null",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 283,
+   "column": 94,
+   "endLine": 283,
+   "endColumn": 99,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 16,
+   "endLine": 305,
+   "endColumn": 65,
+   "mutatorName": "MethodExpression",
+   "replacement": "all",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 27,
+   "endLine": 305,
+   "endColumn": 64,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 36,
+   "endLine": 305,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 36,
+   "endLine": 305,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 36,
+   "endLine": 305,
+   "endColumn": 64,
+   "mutatorName": "EqualityOperator",
+   "replacement": "row.mutant.claim !== \"suite\"",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 305,
+   "column": 57,
+   "endLine": 305,
+   "endColumn": 64,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 17,
+   "endLine": 306,
+   "endColumn": 66,
+   "mutatorName": "MethodExpression",
+   "replacement": "all",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 28,
+   "endLine": 306,
+   "endColumn": 65,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 37,
+   "endLine": 306,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "packages/core/test/mutation-inventory.test.ts > suite claims > lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 37,
+   "endLine": 306,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 37,
+   "endLine": 306,
+   "endColumn": 65,
+   "mutatorName": "EqualityOperator",
+   "replacement": "row.mutant.claim === \"suite\"",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 306,
+   "column": 58,
+   "endLine": 306,
+   "endColumn": 65,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "suite.length >= 0",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > selects deterministically by full identity regardless of input order",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 335,
+   "column": 7,
+   "endLine": 335,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "suite.length <= 0",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 336,
+   "column": 6,
+   "endLine": 336,
+   "endColumn": 91,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 336,
+   "column": 37,
+   "endLine": 336,
+   "endColumn": 87,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 336,
+   "column": 47,
+   "endLine": 336,
+   "endColumn": 86,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+   "survivorClasses": [],
+   "run": {
+    "head": "57c09784",
+    "test": "scripts/mutant-sample.test.mjs > mutant sampling > lists a version-2 inventory's suite claims apart, grouped by file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 419,
+   "column": 5,
+   "endLine": 419,
+   "endColumn": 71,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/mutation-inventory.ts",
+   "line": 424,
+   "column": 5,
+   "endLine": 424,
+   "endColumn": 92,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  },
+  {
+   "file": "scripts/enumerate-mutants.mjs",
+   "line": 84,
+   "column": 3,
+   "endLine": 84,
+   "endColumn": 1026,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
+  }
+ ],
+ "total": 100,
+ "omitted": 0,
+ "unmutated": []
+}
