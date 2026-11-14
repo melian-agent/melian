@@ -27,7 +27,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -38,7 +41,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -49,7 +55,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -78,7 +87,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -107,7 +119,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -118,7 +133,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -345,7 +363,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -392,7 +413,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -493,7 +517,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -522,7 +549,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -533,7 +563,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -670,7 +703,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -681,7 +717,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "``",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -926,7 +965,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1117,7 +1159,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1128,7 +1173,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1229,7 +1277,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1384,7 +1435,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1485,7 +1539,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1622,7 +1679,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "packages/core/src/mutation-inventory.ts",
@@ -1633,7 +1693,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   },
   {
    "file": "scripts/enumerate-mutants.mjs",
@@ -1644,7 +1707,10 @@
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored"
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration (Ignored because of excluded mutation \"StringLiteral\")",
+   "survivorClasses": []
   }
  ],
  "total": 100,
