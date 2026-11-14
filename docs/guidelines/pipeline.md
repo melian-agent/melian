@@ -629,7 +629,21 @@ Every worktree command, including cleanup, passes through `Run.worktreeCommand`.
 
 ## Graph cache
 
-`GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and trusted policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing ages out by clock, and nothing enters the state branch.
+`GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and trusted policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing enters the state branch. Only `melian store prune` ages an entry out, as Pruning the store below says.
+
+## Pruning the store
+
+`StorePrune.open(repoRoot, { root, manifest })` reads a state directory and git, and plans what [the retention decision](../decisions/2026-11-14-store-retention.md) lets it remove; `apply()` removes it. It removes five kinds of cache:
+
+- a graph created more than `graphAgeDays` ago whose tree no branch, remote-tracking ref or worktree `HEAD` holds, with its coverage;
+- a graph directory with no readable `entry.json`, once `unreadableGraphAgeDays` old;
+- coverage whose graph is gone;
+- a mutation partition with nothing written for `mutationAgeDays`;
+- a tool entry the manifest does not pin.
+
+It keeps everything else, and lists what it does not recognise in `kept`. A changeset file, its `-wal` and `-shm`, and `scripted/` are never entries. `open` strips `GIT_*` from the environment it runs git with, so a caller inside a git hook cannot point it at another repository. Refs under `refs/melian/pull/` hold no tree live: they outlive a merge, and the age bound spares a fork head reviewed that week.
+
+`live` lists each worktree locked with `melian-static pid <pid>` whose process is alive. While one exists, `apply` removes nothing, and it reads the worktree list again before each entry, so a run that starts mid-prune stops it. It checks a mutation partition's age again before removing it. Each path is renamed to `.prune-<pid>-<uuid>` beside it and then removed, so a crash leaves scratch that `CacheScratch` sweeps by the dead pid. A path already gone is skipped. Test it only on scratch state directories, never on a real store.
 
 ## Per-file graph coverage
 
