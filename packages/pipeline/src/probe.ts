@@ -539,35 +539,6 @@ function environmentFor({ scratch, node, lang }: { scratch: string; node: string
 	return { PATH: `${dirname(node)}:/usr/bin:/bin`, HOME: join(run, "home"), TMPDIR: join(run, "tmp"), LANG: lang };
 }
 
-/**
- * What Melian's probe runner gives a probe, over fixed paths, so a key that holds it changes when the runner does: the
- * modules it generates, the command and environment it starts, and the policy it hands the sandbox on each platform.
- * The paths are placeholders, so the value names no host. How the head's tree is written is left out, since it writes
- * the head's own tracked files, which a review pins by commit.
- */
-export function probeRunnerSample(): unknown {
-	const scratch = "/scratch";
-	const node = "/node/bin/node";
-	const paths = (platform: "darwin" | "linux") =>
-		policyFor({
-			platform,
-			scratch,
-			installs: ["/install/node_modules"],
-			node: ["/node"],
-			npmrc: "/node/lib/node_modules/npm/npmrc",
-			runtime: "/sandbox-runtime",
-			system: systemReads[platform],
-		});
-	return {
-		runner: runnerSource(),
-		watchdog: watchdogSource(1000),
-		command: commandFor({ scratch, node, timeout: 30_000 }),
-		environment: environmentFor({ scratch, node, lang: "C.UTF-8" }),
-		policy: { darwin: paths("darwin"), linux: paths("linux") },
-		denyGlobs,
-	};
-}
-
 /** The parts of sandbox-runtime's manager a probe uses. */
 export type SandboxRuntime = Pick<
 	typeof SandboxManager,

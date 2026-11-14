@@ -3,7 +3,7 @@ import { verificationQuestions } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { reportVerdict } from "../src/lens-tools.ts";
-import { probeEvidenceWording, probingRenderings, probingWording } from "../src/probing.ts";
+import { probeEvidenceRenderings, probeEvidenceWording, probingWording } from "../src/probing.ts";
 import {
 	computeVerifierVersion,
 	reportVerdictSchema,
@@ -27,7 +27,7 @@ describe("the production verifier version", () => {
 		const wording = {
 			...probeEvidenceWording,
 			planRow: probingWording.planRow,
-			renderings: probingRenderings().evidence,
+			renderings: probeEvidenceRenderings(),
 		};
 		expect(verifierVersion).toBe(
 			computeVerifierVersion(verifierInstructions, reportVerdictSchema, verificationQuestions, wording),
@@ -39,17 +39,6 @@ describe("the production verifier version", () => {
 					[key]: `${wording[key]} `,
 				}),
 			).not.toBe(verifierVersion);
-	});
-
-	it("holds how a claim's probe evidence is put together, as the probing golden renders it", () => {
-		const golden = readFileSync(new URL("./golden/probing-prompts.txt", import.meta.url), "utf8");
-		expect(verifierVersion).toBe(
-			computeVerifierVersion(verifierInstructions, reportVerdictSchema, verificationQuestions, {
-				...probeEvidenceWording,
-				planRow: probingWording.planRow,
-				renderings: golden.slice(golden.indexOf("=== evidence, ")),
-			}),
-		);
 	});
 
 	it("judges a re-implemented authority by code that supports a stated gap, never by the head's comment", () => {

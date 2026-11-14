@@ -126,23 +126,20 @@ import {
 	reportFinding,
 	reportVerdict,
 	reviewFiles,
-	roleTools,
 	runProbe,
 	runProbeTool,
 	type StoredBudgetEnd,
 	skipAttack,
 } from "./lens-tools.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
-import { Probe, type ProbeSandbox, probeLimits, probeRunnerSample } from "./probe.ts";
+import { Probe, type ProbeSandbox, probeLimits } from "./probe.ts";
 import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
 	carriedFindings,
 	type EarlierFinding,
-	earlierLimits,
 	headRefusal,
-	headTreeLimits,
 	ProbeReruns,
 	ProbingDocument,
 	type ProbingEnvironment,
@@ -152,9 +149,6 @@ import {
 	probeConclusive,
 	proberInstructions,
 	probingHost,
-	probingLimits,
-	probingRenderings,
-	probingWording,
 	recordPlanPrompt,
 	renderPlan,
 	rerunKey,
@@ -1224,28 +1218,6 @@ function planned(options: ReviewOptions): ReviewOptions {
 	return { ...options, config: { ...options.config, models: plan.routes() }, checks };
 }
 
-/**
- * Every fixed input a probing run's planner and prober receive, as this build holds them: each role tool's name,
- * description and schema, the fixed limits, the wording table, and each prompt rendered over fixed samples, which holds
- * how it is put together. A release that changes any of them runs the level again; the plan and its earlier findings,
- * which move between reviews of one head, stay out.
- */
-export function probingProtocol(runner: unknown = probeRunnerSample()): string {
-	return JSON.stringify({
-		tools: [recordPlan, runProbe, skipAttack, reportFinding].map(({ name, description, parameters }) => ({
-			name,
-			description,
-			parameters,
-		})),
-		roles: roleTools,
-		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits, earlier: earlierLimits },
-		renderings: probingRenderings().prompts,
-		runner,
-		// The findings a quick run carries reach the planner and the prober too.
-		wording: probingWording,
-	});
-}
-
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
 // names the model that ran.
 function ranOn(
@@ -1645,7 +1617,7 @@ async function runLenses(
 	input: StoredLensTaskInput,
 	rerun: boolean,
 	context: Context,
-	refused: (key: string, model: string, role?: "prober") => boolean = () => false,
+	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
 	started?: () => void,
@@ -1653,6 +1625,9 @@ async function runLenses(
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
+	// A finished probing run is never reused: a repeat review probes again, so every finding rests on a probe of its own
+	// review. A live one is attached to, which is how a review resumes its own run after a crash.
+	const probes = runsOf(input.lenses).some((run) => run.probe !== undefined);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1661,7 +1636,7 @@ async function runLenses(
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
 			record !== undefined &&
-			(record.state.status !== "terminal" || finished(record, undecided)) &&
+			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
 		if (!attaches)
 			await unlockModels(
@@ -1678,6 +1653,7 @@ async function runLenses(
 		const attach =
 			same &&
 			(await attachable(tx, known.task, undecided)) &&
+			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
@@ -1726,7 +1702,7 @@ async function runLenses(
 async function anyLensFailed(
 	tx: Tx,
 	id: number | undefined,
-	refused: (key: string, model: string, role?: "prober") => boolean,
+	refused: (key: string, model: string) => boolean,
 ): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
 	return record !== undefined && lensFailed(record, refused);
@@ -1739,16 +1715,13 @@ function lensFailed(
 			readonly outcome?: { readonly status: string; readonly result?: unknown };
 		};
 	},
-	refused: (key: string, model: string, role?: "prober") => boolean,
+	refused: (key: string, model: string) => boolean,
 ): boolean {
 	const { outcome } = record.state;
 	if (record.state.status !== "terminal" || outcome === undefined) return false;
 	if (outcome.status !== "completed") return true;
 	return Object.entries(outcome.result as LensResult).some(
-		([key, lens]) =>
-			lens.status !== "done" ||
-			(lens.model !== undefined && refused(key, lens.model)) ||
-			(lens.probing?.model !== undefined && refused(key, lens.probing.model, "prober")),
+		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
 	);
 }
 
@@ -2599,10 +2572,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									neighbours,
 									(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
 									standardsSource,
-								) +
-								// The planner's decisions and earlier findings move between reviews of one head, as caller context
-								// does, so they stay out of the key; the probe field below holds the fixed probing protocol.
-								baseline("0".repeat(24)),
+								) + baseline("0".repeat(24)),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,
@@ -2613,10 +2583,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							budget: settings.budget,
 							coverage,
 							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
-							probe:
-								probing === undefined
-									? undefined
-									: { ...probing.run, environment: undefined, protocol: probingProtocol() },
 						}),
 					)
 					.digest("hex"),
@@ -2890,10 +2856,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lensInput,
 				options.rerun === true,
 				context,
-				(key, model, role) => {
+				(key, model) => {
 					const run = runsOf(lenses).find((each) => each.key === key);
-					// A prober on a tier of its own is held to that tier by its route, as adjudication judges it.
-					if (role === "prober" && run?.probe?.onLevelTier !== true) return false;
 					const judged =
 						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
 					return judged?.refusal !== undefined;

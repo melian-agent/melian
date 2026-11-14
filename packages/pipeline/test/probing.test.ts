@@ -20,8 +20,7 @@ import {
 } from "typescript/unstable/ast";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeadProgram } from "../src/compiler-graph.ts";
-import { roleTools } from "../src/lens-tools.ts";
-import { Probe, probeLimits, probeRunnerSample } from "../src/probe.ts";
+import { Probe, probeLimits } from "../src/probe.ts";
 import * as probing from "../src/probing.ts";
 import {
 	type Attack,
@@ -43,7 +42,6 @@ import {
 	runHeadProbe,
 	type StoredProbeResult,
 } from "../src/probing.ts";
-import { probingProtocol } from "../src/review.ts";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 // Each test's scratch in a directory of its own, so the trees other test files write never count as this one's.
@@ -613,74 +611,6 @@ describe("filling a wording", () => {
 });
 
 describe("the fixed wording each role reads", () => {
-	it("renders every prompt on every branch as this release words it", async () => {
-		const { prompts, evidence } = probing.probingRenderings();
-		await expect(`${prompts}\n${evidence}`).toMatchFileSnapshot("./golden/probing-prompts.txt");
-	});
-});
-
-describe("the probing protocol a probing run's fingerprint holds", () => {
-	it("holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call", () => {
-		const protocol = JSON.parse(probingProtocol()) as { roles: unknown; wording: unknown; limits: unknown };
-		expect(protocol.roles).toEqual(roleTools);
-		expect(protocol.wording).toEqual(probing.probingWording);
-		// The limits on what a plan reads of earlier findings change the planner's prompt as its wording does.
-		expect(protocol.limits).toEqual({
-			probing: probingLimits,
-			probe: probeLimits,
-			head: headTreeLimits,
-			earlier: { findings: 40, bytes: 8 * 1024 },
-		});
-	});
-
-	it("holds how each planner and prober prompt is put together, as the golden renders it", () => {
-		const golden = readFileSync(new URL("./golden/probing-prompts.txt", import.meta.url), "utf8");
-		const { renderings } = JSON.parse(probingProtocol()) as { renderings: unknown };
-		expect(renderings).toBe(golden.slice(0, golden.indexOf("=== evidence, ") - 1));
-	});
-
-	it("holds what the probe runner gives a probe, over fixed paths", () => {
-		const { runner } = JSON.parse(probingProtocol()) as { runner: Record<string, unknown> };
-		expect(runner).toMatchObject({
-			runner: 'import "./watchdog.mjs";\nimport "./probe.mjs";\n',
-			watchdog: "setTimeout(() => process.exit(124), 1000).unref();\n",
-			environment: { PATH: "/node/bin:/usr/bin:/bin", HOME: "/scratch/run/home", TMPDIR: "/scratch/run/tmp" },
-		});
-		expect(runner).toHaveProperty("policy.linux.deny", expect.arrayContaining(["/", "/node/etc"]));
-		expect(runner).toHaveProperty("policy.linux.read", expect.arrayContaining(["/install/node_modules", "/node"]));
-		expect(runner).toHaveProperty("policy.darwin.read", expect.arrayContaining(["/scratch/tree"]));
-	});
-
-	it("changes when any part of what the runner gives a probe changes, and only then", () => {
-		const sample = probeRunnerSample();
-		expect(probingProtocol(structuredClone(sample))).toBe(probingProtocol());
-		// Every leaf of the sample, by its path: the generated modules, each variable, each read and deny entry.
-		const leaves: (string | number)[][] = [];
-		const walk = (value: unknown, path: (string | number)[]) => {
-			if (value !== null && typeof value === "object")
-				for (const [key, child] of Object.entries(value))
-					walk(child, [...path, Array.isArray(value) ? Number(key) : key]);
-			else leaves.push(path);
-		};
-		walk(sample, []);
-		expect(leaves.map((path) => path.join("."))).toEqual(
-			expect.arrayContaining([
-				"runner",
-				"watchdog",
-				"environment.PATH",
-				"policy.linux.read.0",
-				"policy.linux.deny.0",
-			]),
-		);
-		for (const path of leaves) {
-			const changed = structuredClone(sample) as Record<string | number, unknown>;
-			let at = changed;
-			for (const key of path.slice(0, -1)) at = at[key] as Record<string | number, unknown>;
-			at[path.at(-1)!] = `${String(at[path.at(-1)!])} changed`;
-			expect(probingProtocol(changed), path.join(".")).not.toBe(probingProtocol());
-		}
-	});
-
 	it("tells no role to ignore or disregard other instructions", () => {
 		const told = Object.entries({ ...probing.probingWording, ...probing.probeEvidenceWording }).filter(([, text]) =>
 			/\b(ignore|disregard)\b/i.test(text),
@@ -691,14 +621,14 @@ describe("the probing protocol a probing run's fingerprint holds", () => {
 	it("holds no wording in probing.ts outside its two tables, but in code that renders no prompt", () => {
 		// The top-level declarations whose literals no planner, prober or verifier reads, each with why.
 		const notPrompts: Record<string, string> = {
-			probingWording: "is the table the probing protocol hashes",
+			probingWording: "is the table the planner's and prober's prompts take their wording from",
 			probeEvidenceWording: "is the table the verifier's version hashes",
 			ProbingDocument: "names a stored document",
 			ProbeReruns: "names a stored document",
 			boundedHead: "runs git and says why the head is too large",
 			headRefusal: "opens a probe on the head and says why it cannot",
 			runHeadProbe: "runs a probe and says why its cleanup failed",
-			probingRenderings: "renders the prompts over fixed samples for the keys",
+			probeEvidenceRenderings: "renders the probe evidence over fixed samples for the verifier's version",
 			openHeadProbe: "opens a probe on the head and says why it cannot",
 		};
 		const path = fileURLToPath(new URL("../src/probing.ts", import.meta.url));

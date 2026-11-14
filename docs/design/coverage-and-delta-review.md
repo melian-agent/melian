@@ -24,7 +24,7 @@ The review-coverage artifacts already record, from durable transcripts, which li
 4. **Runs the checks.** Guardrails and static tools run over the whole range. Mutation evidence is read from verification records at the current head; nothing mutates in a round, and the tests lens probes what has no record.
 5. **Adjudicates the whole head**, carried and new findings together, with one more check record, `review.coverage`: `ran` when the ledger now covers every changed line, otherwise `skipped` without leave naming the gaps, which leaves the review not reviewed. It joins every manifest without a tier entry, and a file naming it in a tier or `checks.allowSkip` is refused in every layer the loader reads, nested and preference files included.
 
-A repeat review whose delta is empty under an unchanged identity attaches to the current round and spends nothing. `--rerun` runs the failed checks and lenses again. `--cold` reviews the whole diff from nothing.
+A repeat review whose delta is empty under an unchanged identity attaches to the current round and spends nothing, unless its lenses include a level that probes: a finished probing run is never reused, so that review runs every lens again, as [the decision](../decisions/2026-11-14-probing-runs-not-reused.md) records. `--rerun` runs the failed checks and lenses again. `--cold` reviews the whole diff from nothing.
 
 ## Voids
 

@@ -7,7 +7,7 @@ import {
 	verificationSchema,
 } from "@melian-agent/core";
 import Type, { type Static } from "typebox";
-import { probeEvidenceWording, probingRenderings, probingWording } from "./probing.ts";
+import { probeEvidenceRenderings, probeEvidenceWording, probingWording } from "./probing.ts";
 
 const answer = Type.Union([Type.Literal("yes"), Type.Literal("no"), Type.Literal("unknown")]);
 const strict = { additionalProperties: false } as const;
@@ -59,7 +59,7 @@ export function computeVerifierVersion(
 	probeEvidence: unknown = {
 		...probeEvidenceWording,
 		planRow: probingWording.planRow,
-		renderings: probingRenderings().evidence,
+		renderings: probeEvidenceRenderings(),
 	},
 ): string {
 	return createHash("sha256")

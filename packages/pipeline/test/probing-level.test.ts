@@ -723,7 +723,7 @@ describe("a level that probes", () => {
 		expect(requests[planner]).toEqual([]);
 	});
 
-	it("unlocks the prober's providers with the planner's, and runs the lens again for another prober", async () => {
+	it("unlocks the prober's providers with the planner's, on a first review and on a repeat that probes again", async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }] });
 		const other = createFakeModels({ provider: "probing", models: [{ id: "probing" }] }, fake.review);
 		const unlocked: string[][] = [];
@@ -744,49 +744,12 @@ describe("a level that probes", () => {
 		const first = await review({ planner: [...empty, ...empty], prober: [] }, options);
 		await first.run;
 		expect(unlocked.flat()).toContain("probing");
+		unlocked.length = 0;
 		const again = await review({ planner: [...empty, ...empty], prober: [] }, options);
 		await again.run;
-		expect(again.requests[planner]).toHaveLength(0);
-		const moved = await review(
-			{ planner: [...empty, ...empty], prober: [] },
-			{ ...options, lens: probingWith({ prober: "light", timeout: 999 }) },
-		);
-		await moved.run;
-		expect(moved.requests[planner]).toHaveLength(2);
-		// Another time limit, and another thinking level for the prober's tier, each run the lens again.
-		const longer = await review(
-			{ planner: [...empty, ...empty], prober: [] },
-			{ ...options, lens: probingWith({ prober: "light", timeout: 1000 }) },
-		);
-		await longer.run;
-		expect(longer.requests[planner]).toHaveLength(2);
-		const thought = await review(
-			{ planner: [...empty, ...empty], prober: [] },
-			{
-				...options,
-				lens: probingWith({ prober: "light", timeout: 1000 }),
-				config: {
-					models: { ...options.config.models, light: { ...options.config.models.light, thinking: "low" } },
-				},
-			},
-		);
-		await thought.run;
-		expect(thought.requests[planner]).toHaveLength(2);
-		// A head another writer vouches for runs the lens again, since the prober's trust is part of its selection.
-		const vouched = await review(
-			{ planner: [...empty, ...empty], prober: [] },
-			{
-				...options,
-				lens: probingWith({ prober: "light", timeout: 1000 }),
-				config: {
-					models: { ...options.config.models, light: { ...options.config.models.light, thinking: "low" } },
-				},
-				writer: { trusted: true, by: "writer" },
-			},
-		);
-		await vouched.run;
-		expect(vouched.requests[planner]).toHaveLength(2);
-	}, 60_000);
+		expect(again.requests[planner]).toHaveLength(2);
+		expect(unlocked.flat()).toContain("probing");
+	});
 
 	it("names the probing run's providers while it waits on its planner", async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }] });
@@ -984,15 +947,17 @@ describe("a level that probes", () => {
 		);
 	});
 
-	it("runs a claim's probe again once, and a repeat review reads the stored run", async () => {
+	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
 		const fake = createFakeModels();
 		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
 		await first.run;
 		const heads = () => first.heads.length;
 		expect(heads()).toBe(2);
-		const again = await review({ planner: [], prober: [] }, { fake });
+		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
-		expect(heads()).toBe(2);
+		expect(again.requests[planner]).toHaveLength(2);
+		// The repeat review's own probe and its rerun: an earlier review's results are never its evidence.
+		expect(heads()).toBe(4);
 	});
 
 	it("runs a probe again once however many findings cite it", async () => {
@@ -1062,6 +1027,18 @@ describe("a level that probes", () => {
 		expect(first.heads).toHaveLength(2);
 	});
 
+	it("attaches no review under another writer's word to a probing run that is still live", async () => {
+		const fake = createFakeModels();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const second = await review(
+			{ planner: plan, prober: probing(failing) },
+			{ fake, writer: { trusted: true, by: "writer" } },
+		);
+		await Promise.all([first.run, second.run].map((run) => run.catch(() => undefined)));
+		// The probe environment names whose head it is, so the second review plans for itself.
+		expect(second.requests[planner]?.length).toBeGreaterThan(0);
+	});
+
 	it.each([
 		["runs no probe once another review has taken the revision", [failing, failing], 0],
 		["prunes nothing when every probe it holds already stands", [], 0],
@@ -1110,6 +1087,54 @@ describe("a level that probes", () => {
 		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
 		expect(Object.keys(runs).sort()).toEqual([...standing, "another review's"].sort());
 		expect(heads.length - headsBefore).toBe(ran);
+	});
+
+	it.each([
+		["was refused", { refused: "the sandbox hiccuped" }, 1],
+		["timed out", { result: { exitCode: null, signal: null, output: "", truncated: false, timedOut: true } }, 1],
+		["was cut", { result: { exitCode: 1, signal: null, output: "", truncated: true, timedOut: false } }, 1],
+		[
+			"ended by a signal",
+			{ result: { exitCode: null, signal: "SIGKILL", output: "", truncated: false, timedOut: false } },
+			1,
+		],
+		["failed", { result: { exitCode: 1, signal: null, output: "", truncated: false, timedOut: false } }, 0],
+		["passed", { result: { exitCode: 0, signal: null, output: "", truncated: false, timedOut: false } }, 0],
+	] as const)("runs a probe again whose stored rerun %s only when that run showed nothing", async (_, stored, ran) => {
+		const { run, changeset, heads } = await review({ planner: plan, prober: probing(failing) });
+		await run;
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!;
+		const lensTask = await reviewer.getTask(index.task as TaskId, backgroundContext);
+		const { revision } = lensTask!.input as unknown as { revision: ReviewState };
+		const [key] = Object.keys((await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!);
+		const environment = {
+			writer: { trusted: true, by: "reviewer" } as const,
+			trustWriters: true,
+			read: [],
+			host: probingHost(unconfinedSandbox()),
+		};
+		// A second review sharing the lens task starts its own rerun task once the first's has ended, over the runs it stored.
+		const task = await root.commit(async (tx) => {
+			const document = await tx.doc(ProbeReruns, root.id);
+			document.runs = { ...document.runs, [at]: { [key!]: { ...structuredClone(stored), milliseconds: 1 } } };
+			const created = await tx.createTask(
+				probeRerunTask(),
+				{ root: root.id, revision, probes: [{ key: key!, script: failing, files: [], environment }] },
+				{ ownership: { kind: "conversation" } },
+			);
+			document.tasks = { ...document.tasks, [at]: { task: created, key: "a second review's probes" } };
+			return created;
+		}, backgroundContext);
+		const headsBefore = heads.length;
+		await reviewer.waitForTask(task, backgroundContext);
+		expect(heads.length - headsBefore).toBe(ran);
+		const runs = (await reviewer.snapshot(ProbeReruns, root.id, backgroundContext))!.runs[at]!;
+		expect(Object.keys(runs)).toEqual([key]);
+		if (ran === 1) expect(runs[key!]).toMatchObject({ result: { exitCode: 1, timedOut: false, truncated: false } });
+		else expect(runs[key!]).toEqual({ ...stored, milliseconds: 1 });
 	});
 
 	it("writes no rerun from a task another review takes the revision from while its probe runs", async () => {
@@ -1261,81 +1286,6 @@ describe("a level that probes", () => {
 		await taken;
 		expect(outcome).not.toMatchObject({ code: "superseded" });
 		expect(requests["Melian adversarial verifier"] ?? []).not.toEqual([]);
-	});
-
-	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
-		const fake = createFakeModels();
-		let heads = 0;
-		const base = unconfinedSandbox();
-		const sandbox: ProbeSandbox = {
-			...base,
-			wrap: async (command, policy) => {
-				if (inHeadTree(command) && ++heads === 2) throw new Error("the sandbox hiccuped");
-				return base.wrap(command, policy);
-			},
-		};
-		const first = await review({ planner: plan, prober: probing(failing) }, { fake, sandbox });
-		expect((await failure(first.run)).code).toBe("verifierFailed");
-		const again = await review({ planner: [], prober: [] }, { fake });
-		await again.run.catch(() => undefined);
-		const root = (await harness!.harness.root(backgroundContext)).id;
-		const runs = Object.values(
-			(await harness!.harness.snapshot(ProbeReruns, root, backgroundContext))!.runs[
-				Revision.key(again.changeset.revision)
-			]!,
-		);
-		expect(heads).toBe(3);
-		expect(runs).toHaveLength(1);
-		expect(runs[0]).toHaveProperty("result");
-	});
-
-	it("runs a probe again on a repeat review when its stored rerun timed out", async () => {
-		const fake = createFakeModels();
-		let heads = 0;
-		const lens = probingWith({ timeout: 2_000 });
-		const first = await review(
-			{ planner: plan, prober: probing(failing) },
-			{ fake, lens, rewrite: (command) => (inHeadTree(command) && ++heads === 2 ? "sleep 10" : command) },
-		);
-		// The scripted verifier confirms, which a rerun that showed nothing refuses.
-		expect((await failure(first.run)).code).toBe("verifierFailed");
-		expect(first.heads).toHaveLength(2);
-		const again = await review({ planner: [], prober: [] }, { fake, lens });
-		const found = (await again.run).verdict.counted();
-		expect(first.heads).toHaveLength(3);
-		expect(found.map((each) => each.properties.verification?.verdict)).toEqual(["confirmed"]);
-	});
-
-	it("judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it", async () => {
-		const fake = createFakeModels();
-		let heads = 0;
-		const base = unconfinedSandbox();
-		const sandbox: ProbeSandbox = {
-			...base,
-			wrap: async (command, policy) => {
-				if (inHeadTree(command) && ++heads === 2) throw new Error("the sandbox hiccuped");
-				return base.wrap(command, policy);
-			},
-		};
-		const judge: ScriptedReply = (messages) => {
-			if (messages.some((message) => message.role === "toolResult")) return fauxAssistantMessage("Judged.");
-			const prompt = systemPromptOf(messages);
-			const reproduced = prompt.includes("When Melian ran it again it failed");
-			return call("report_verdict", {
-				claim: /Claim (c[0-9]+) finding/.exec(prompt)![1]!,
-				answers: { code: "yes", guard: "no", base: "no" },
-				verdict: reproduced ? "confirmed" : "plausible",
-				reason: reproduced ? "The probe failed again." : "Melian could not run the probe again.",
-			});
-		};
-		const verifier = { match: "Melian adversarial verifier", replies: [judge, judge] };
-		const first = await review({ planner: plan, prober: probing(failing), others: [verifier] }, { fake, sandbox });
-		const verified = (verdict: Awaited<typeof first.run>["verdict"]) =>
-			verdict.counted().map((each) => each.properties.verification?.verdict);
-		expect(verified((await first.run).verdict)).toEqual(["plausible"]);
-		const again = await review({ planner: [], prober: [], others: [verifier] }, { fake });
-		expect(verified((await again.run).verdict)).toEqual(["confirmed"]);
-		expect(heads).toBe(3);
 	});
 
 	it("keeps the later of two plans recorded in one turn, so the prober answers the plan the planner meant", async () => {
@@ -1886,44 +1836,6 @@ describe("a level that probes", () => {
 		expect(ran.reason).toContain("models.heavy.acceptOverridden is false");
 	});
 
-	it("runs a moved lens again under --rerun when only its prober finished on a model the committed tier refuses", async () => {
-		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "backup" }] });
-		const provider = fake.ref("plan").provider;
-		const [accepted, backup] = [`${provider}/plan`, `${provider}/backup`];
-		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
-		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
-		const options = (rerun: boolean): Parameters<typeof review>[1] => ({
-			fake,
-			rerun,
-			config: {
-				lenses: { "trust-boundary": { tier: "light", level: { floor: "deep" } } },
-				models: { heavy: committed, light: { model: accepted, fallbacks: [backup] } },
-			},
-			plan: async (config, lenses, models) => {
-				const { catalog, credentials } = await planInputs(models.review);
-				return ReviewPlan.resolve({
-					config,
-					routes: {
-						committed: { heavy: committed },
-						overridden: { light: "melian.local.yaml" },
-						lensTiers: {},
-						retiered: { "trust-boundary": "melian.local.yaml" },
-					},
-					catalog,
-					credentials,
-					lenses,
-					checks: ["lens.trust-boundary"],
-				});
-			},
-		});
-		const first = await review({ planner: plan, prober: [() => overloaded, ...probing(failing)] }, options(false));
-		await first.run.catch(() => undefined);
-		const again = await review({ planner: plan, prober: probing(failing) }, options(true));
-		await again.run.catch(() => undefined);
-		expect(again.requests[planner]).toHaveLength(2);
-		expect(record((await again.run).verdict)).toMatchObject({ status: "ran" });
-	});
-
 	it.each([
 		["the root's", false],
 		["the scoped variant's", true],
@@ -2070,10 +1982,6 @@ describe("a level that probes", () => {
 		});
 		const { run } = await review({ planner: plan, prober: probing(failing) }, options(false));
 		expect(record((await run).verdict)).toMatchObject({ status: "ran", level: "deep" });
-		// --rerun runs again only what failed, and this prober did not.
-		const again = await review({ planner: plan, prober: probing(failing) }, options(true));
-		await again.run;
-		expect(again.requests[planner] ?? []).toHaveLength(0);
 	});
 
 	it("never sends a prober on a tier of its own to a fallback outside that tier's accept list", async () => {
@@ -2279,36 +2187,6 @@ describe("a level that probes", () => {
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(judged).toBe(2);
 		expect(await verification()).toBe(stored);
-	});
-
-	it("runs a probing level again when the probing protocol changes, as a release that lowers a fixed limit does", async () => {
-		const fake = createFakeModels();
-		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
-		await first.run.catch(() => undefined);
-		const limits = probingLimits as { probes: number };
-		const probes = limits.probes;
-		limits.probes = probes - 1;
-		onTestFinished(() => {
-			limits.probes = probes;
-		});
-		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
-		await again.run.catch(() => undefined);
-		expect(again.requests[planner]).toHaveLength(2);
-	});
-
-	it("runs a probing level again when a role tool's contract changes, as a release that rewrites one does", async () => {
-		const fake = createFakeModels();
-		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
-		await first.run.catch(() => undefined);
-		const tool = skipAttack as { description: string };
-		const description = tool.description;
-		tool.description = `${description} Name the attack's number.`;
-		onTestFinished(() => {
-			tool.description = description;
-		});
-		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
-		await again.run.catch(() => undefined);
-		expect(again.requests[planner]).toHaveLength(2);
 	});
 
 	it("runs as many probes as a prober may, and refuses one past them whatever its budget", async () => {
@@ -2772,29 +2650,6 @@ describe("a level that probes", () => {
 		const again = await review(scripts, { fake, writer: { trusted: true, by: "writer" } });
 		await again.run;
 		expect(systemPromptOf(again.requests[planner]![0]!)).not.toContain("load reads any path");
-	});
-
-	it("attaches a repeat review of a head whose earlier revision's findings changed since", async () => {
-		const fake = createFakeModels();
-		const scripts = { planner: plan, prober: probing(failing) };
-		await (await review(scripts, { fake })).run;
-		const first = gitIn(repo, "rev-parse", "HEAD");
-		writeFiles(repo, { "src/other.ts": "export const other = 1;\n" });
-		gitIn(repo, "add", "--all");
-		gitIn(repo, "commit", "--quiet", "-m", "later");
-		const later = gitIn(repo, "rev-parse", "HEAD");
-		await (await review(scripts, { fake })).run;
-		// The first revision is reviewed again under another writer's word and now reports nothing.
-		gitIn(repo, "reset", "--quiet", "--hard", first);
-		const quiet = {
-			planner: plan,
-			prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
-		};
-		await (await review(quiet, { fake, writer: { trusted: true, by: "writer" } })).run;
-		gitIn(repo, "reset", "--quiet", "--hard", later);
-		const again = await review(scripts, { fake });
-		await again.run;
-		expect(again.requests[planner] ?? []).toHaveLength(0);
 	});
 
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
