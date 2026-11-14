@@ -783,6 +783,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		writeFileSync(fails, "");
 		const tsc = join(repo, "node_modules/.bin/tsc");
 		mkdirSync(dirname(tsc), { recursive: true });
+		// npm's record of the install, as a real install writes, so the stored run can be reused.
+		writeFileSync(join(repo, "node_modules/.package-lock.json"), "{}");
 		writeFileSync(
 			tsc,
 			`#!/bin/sh\nif [ -f '${fails}' ] && [ "$1" != "--version" ]; then echo segfault; exit 139; fi\nexec node '${join(root, "node_modules/typescript/bin/tsc")}' "$@"\n`,
