@@ -14,9 +14,10 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GraphSnapshot } from "@melian-agent/core";
+import { GraphSnapshot, TestCoverage } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CoverageCache } from "../src/coverage-cache.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 import {
 	type ConversationId,
@@ -123,6 +124,21 @@ it("removes a graph older than seven days whose tree no live commit holds, with 
 	expect(await exists(`graphs/${dead}`)).toBe(false);
 	expect(await exists(`coverage/${dead}`)).toBe(false);
 	expect((await readdir(join(state, "graphs"))).filter((name) => name.startsWith(".prune-"))).toEqual([]);
+});
+
+it("leaves a read of pruned coverage by its content ID a miss, even once the graph is rebuilt", async () => {
+	const parts = { tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
+	const old = GraphSnapshot.create(parts, graphFiles, new Date(now - 7 * day - 1));
+	await (await GraphCache.open(state)).store(old);
+	const coverage = await CoverageCache.open(state);
+	const id = await coverage.store(parts, TestCoverage.unavailable(parts.tree, parts.version));
+	expect((await coverage.read(parts, "test", { id }))?.id).toBe(id);
+	const prune = await plan();
+	expect(kinds(prune)).toEqual([["graph", `graphs/${old.key}`, `coverage/${old.key}`]]);
+	await prune.apply();
+	await expect(coverage.read(parts, "test", { id })).resolves.toBeUndefined();
+	await (await GraphCache.open(state)).store(GraphSnapshot.create(parts, graphFiles, new Date(now)));
+	await expect(coverage.read(parts, "test", { id })).resolves.toBeUndefined();
 });
 
 it("keeps a dead tree's graph created exactly seven days ago and removes it a millisecond later", async () => {

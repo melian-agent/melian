@@ -2,6 +2,10 @@
 
 Recorded by a builder agent on 2026-11-14 for [issue #348](https://github.com/melian-agent/melian/issues/348). The maintainer ruled on 2026-11-14, in the coordinator's session, that merged changesets wait for the shared record rather than being compacted. Everything else here is the builder's design, settled with the coordinator, whose answers are not rulings.
 
+Amends: [2026-10-06-immutable-coverage-evidence.md](2026-10-06-immutable-coverage-evidence.md), for a content ID whose graph `melian store prune` removed.
+
+Amends: [2026-10-06-graph-cache.md](2026-10-06-graph-cache.md), for expiry.
+
 ## Problem
 
 Melian keeps one state directory per clone: `.git/melian/` by default, or `<MELIAN_STATE_DIR>/<clone hash>/`, as `CacheLocation.open` in `packages/pipeline/src/tool-provisioning.ts` resolves it. Nothing ever removes anything from it. On the coordinator's host on 2026-11-14 it held 15.7 GB of changeset files and 7.8 GB of cache, and it grows by about 0.4 GB a day on a disk with 28 GB free. A review round refuses to start when space runs low.
@@ -58,7 +62,13 @@ Reading every entry again would narrow these windows, not close them, and this d
 
 A lens round reads the head's graph with no lock held, since the static checks have finished by then. Prune can take that graph only when it was built more than seven days ago and no branch, remote-tracking ref or worktree `HEAD` holds its tree, as when a pull request's head sits only under `refs/melian/pull/`. This case does not fail closed. The graph tool reads the graph on its first call and keeps it in memory, so a removal after that call changes nothing. A removal before it makes the tool tell the lens to use search and `read_file` instead. The lens carries on, its record reads `ran`, and the verdict stands, as it does for any unreadable graph today. The next review rebuilds the graph, because every review builds its caller context afresh. No lock is added for this: a missed graph costs the lens search time, not a wrong verdict.
 
-### 4. Merged changesets wait for the shared record
+### 4. What prune changes in the coverage and graph-cache decisions
+
+[The immutable-coverage decision](2026-10-06-immutable-coverage-evidence.md) says an explicit content-ID lookup reads historical evidence. Prune removes a graph's coverage with it, so a lookup by a content ID under a removed graph is a miss. `CoverageCache.read` returns nothing: never an error, and never another artefact, even after the graph is rebuilt under the same key. A caller treats the miss as it treats any coverage it cannot read: the evidence is gone, and a review that needs it builds it again. A check record that names the ID keeps it. No production code reads coverage by content ID today. `grep -rnE "\.read\([^)]*\{ *id" packages/*/src` finds nothing, and the only readers, in `enola-static.ts` and `callers.ts`, read the producer's current index.
+
+[The graph-cache decision](2026-10-06-graph-cache.md) says no timestamp expires an entry. `melian store prune` may remove a graph more than seven days old whose tree no branch, remote-tracking ref or worktree `HEAD` holds, and nothing else removes one. Nothing expires on its own: an entry stays until someone runs `melian store prune --apply`.
+
+### 5. Merged changesets wait for the shared record
 
 Compaction lost. The proposal was to copy a merged pull request's changeset into a fresh store holding every record at its current value and no transcripts. On the host's figures for 2026-11-14 that frees little: transcripts are 3.0 GB of the 15.7 GB, while document revisions are 7.8 GB and task records 4.2 GB, and a copy keeps both. It also needed a spike to show Pi Durable opens a store whose tasks name entries it no longer holds, and a copy-and-verify path in durability code that the shared record replaces. Meanwhile 10.3 GB of range changesets are more than 14 days old and nothing has written them in two days, so the space waits in files the shared record will make cache. The maintainer chose to wait for it.
 
