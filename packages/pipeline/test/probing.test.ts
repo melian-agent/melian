@@ -646,7 +646,8 @@ describe("the probing protocol a probing run's fingerprint holds", () => {
 			watchdog: "setTimeout(() => process.exit(124), 1000).unref();\n",
 			environment: { PATH: "/node/bin:/usr/bin:/bin", HOME: "/scratch/run/home", TMPDIR: "/scratch/run/tmp" },
 		});
-		expect(runner).toHaveProperty("policy.linux.deny", expect.arrayContaining(["/"]));
+		expect(runner).toHaveProperty("policy.linux.deny", expect.arrayContaining(["/", "/node/etc"]));
+		expect(runner).toHaveProperty("policy.linux.read", expect.arrayContaining(["/install/node_modules", "/node"]));
 		expect(runner).toHaveProperty("policy.darwin.read", expect.arrayContaining(["/scratch/tree"]));
 	});
 

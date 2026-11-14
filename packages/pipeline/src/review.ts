@@ -557,7 +557,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") return { status: "done", model: modelName(route[attempt]!) };
-					const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
+					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
 					if (!failover) return { status: "unanswered", reason };
@@ -587,8 +587,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const child = (await runtime.conversation(id, context))!;
 				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
 				if (settled.status === "done") return undefined;
-				const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
-				return { status: "unanswered", reason: `${which} did not finish: ${reason}` };
+				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
 			};
 			// The attack numbers the prober answered with neither a probe nor a skip.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
@@ -1347,6 +1346,11 @@ export interface Review {
 	readonly findings: readonly Finding[];
 	/** The adjudicated outcome: findings merged across sources and resolved per path, grouped, and the review's status. */
 	readonly verdict: Verdict;
+}
+
+// Why a conversation's request ended without finishing: the model's own message where it gave one.
+function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
+	return typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 }
 
 // The sandbox a review's probes run under: its harness's, or the one a probe uses when none is named.
