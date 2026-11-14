@@ -4,7 +4,7 @@ import { Changeset, defaultConfig, Lens, type MelianConfig } from "@melian-agent
 import { openSqliteStorage } from "../../src/harness.ts";
 import type { ProbeSandbox } from "../../src/probe.ts";
 import { ReviewHarness, reviewChangeset } from "../../src/review.ts";
-import { createFakeModels, type ScriptedReply, scriptConversations, unconfinedSandbox } from "../../src/testing.ts";
+import { createFakeModels, fauxAssistantMessage, type ScriptedReply, scriptConversations, unconfinedSandbox } from "../../src/testing.ts";
 
 export const plannerMatch = "Your role at this level: the attack planner";
 export const proberMatch = "You are the prober for the trust-boundary lens";
@@ -17,6 +17,7 @@ export async function probingReview(
 	database: string,
 	replies: ProbingReplies,
 	sandbox: ProbeSandbox = unconfinedSandbox(),
+	plain?: { readonly lens: string; readonly match: string },
 ) {
 	const first = createFakeModels({ provider: "first", models: [{ id: "a" }] });
 	const second = createFakeModels({ provider: "second", models: [{ id: "b" }] }, first.review);
@@ -29,6 +30,7 @@ export async function probingReview(
 		scriptConversations(fake, [
 			{ match: plannerMatch, replies: scripted.planner },
 			{ match: proberMatch, replies: scripted.prober },
+			...(plain === undefined ? [] : [{ match: plain.match, replies: [fauxAssistantMessage("Done.")] }]),
 		]),
 	);
 	const harness = await ReviewHarness.open(await openSqliteStorage(database), first.review, {
@@ -43,7 +45,7 @@ export async function probingReview(
 	);
 	const config: MelianConfig = {
 		...defaultConfig,
-		tiers: { full: ["lens.trust-boundary"] },
+		tiers: { full: ["lens.trust-boundary", ...(plain === undefined ? [] : [`lens.${plain.lens}`])] },
 		lenses: { "trust-boundary": { level: { floor: "deep" } } },
 		models: { heavy: { model: "first/a", fallbacks: ["second/b"] } },
 	};

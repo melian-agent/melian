@@ -29,11 +29,13 @@ const planNone = () => ({
 	second: { planner: [], prober: [] },
 });
 
+const contracts = { lens: "contracts", match: "You are the contracts reviewer" };
+
 // Reviews one head on one store twice and says whether the second review asked the planner again.
-async function plannedAgain(): Promise<boolean> {
+async function plannedAgain(plain?: typeof contracts): Promise<boolean> {
 	const database = join(dir, "state.sqlite");
 	for (const index of [0, 1]) {
-		const { harness, review, requests } = await probingReview(repo, database, planNone());
+		const { harness, review, requests } = await probingReview(repo, database, planNone(), undefined, plain);
 		try {
 			await review();
 			if (index === 1) return (requests[plannerMatch] ?? []).length > 0;
@@ -47,5 +49,9 @@ async function plannedAgain(): Promise<boolean> {
 describe("a repeat review of a level that probes", { timeout: 60_000 }, () => {
 	it("plans and probes again rather than reuse the first review's finished probing run", async () => {
 		expect(await plannedAgain()).toBe(true);
+	});
+
+	it("plans again when the review's other lens does not probe", async () => {
+		expect(await plannedAgain(contracts)).toBe(true);
 	});
 });
