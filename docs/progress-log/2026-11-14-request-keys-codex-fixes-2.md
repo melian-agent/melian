@@ -5,3 +5,11 @@ Problem: the check request keyed the root configuration, and the guardrails read
 The fix started with a failing test. At `06583b07`, "runs again when a nested melian.yaml in the working tree changes" in `packages/pipeline/test/checks.test.ts` failed with `expected 8 not to be 8`: the second run took the first run's task. After the fix it passes. New tests hold each bound at the limit and one past it: two in `packages/core/test/config.test.ts`, one per bound, and one in `checks.test.ts` that reuses a run at the per-file limit and never one byte past it. `check-request.test.ts` adds the policy field to its coverage sample and checks that two unread values key apart.
 
 Every check reads code from a commit, so no other working-tree edit changes what a check finds. The race between keying and running is named as a known limit in [the request keys decision](../decisions/2026-11-14-request-keys-as-built.md), with the root configuration as precedent.
+
+The changed code guards trust: `packages/core/src/config.ts`, `packages/pipeline/src/checks.ts` and `packages/pipeline/src/check-request.ts`. Its mutant inventory over `06583b07...3b156b8a` is [2026-11-14-issue-394-fix-pass-2-mutants.json](2026-11-14-issue-394-fix-pass-2-mutants.json): 33 generated mutants and 3 string literals the configuration ignores. Each was run by hand against its named test alone, after that test passed unmutated, at `3b156b8a`. The first run killed 29 and left 4 alive. Three needed new tests:
+
+- `policyText` skipping a file it cannot find, mutated to read every file. The core test now passes a path whose chain holds a directory with no `melian.yaml`.
+- The worktree branch in `checkRequest`'s caller, mutated to key every source's policy. "reuses a revision source's run under a nested melian.yaml past the size limit" fails, since a revision run then keys a random value.
+- The `ConfigError` test in `worktreePolicy`, mutated to swallow every error. "stops on a failure to read the working tree's policy that is not a configuration error" fails, since the run then keys a random value instead of stopping.
+
+The fourth, the loader of `layered`, is older code; a run against "gives policy-change-review the layers of the directory that judges the path" kills it. The second run killed all four.

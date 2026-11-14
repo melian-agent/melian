@@ -492,6 +492,48 @@ describe("runChecks", () => {
 		expect((await run()).identity.task).not.toBe(past.identity.task);
 	});
 
+	// A revision's policy is fixed by its commit, so its run is keyed as it was before working-tree policy was: a nested
+	// melian.yaml past the size limit at the commit leaves the run reusable.
+	it("reuses a revision source's run under a nested melian.yaml past the size limit", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [guardrails]"),
+			"pay/melian.yaml": `#${"x".repeat(core.maxConfigBytes)}\n`,
+		});
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "revision", commit: base };
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = () =>
+			runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		const first = await run();
+		expect(first.records).toMatchObject([{ name: "guardrails", status: "failed", reason: "tooLarge" }]);
+		expect((await run()).identity.task).toBe(first.identity.task);
+	});
+
+	// Only a policy file Melian cannot read whole keys a random value; any other failure is a fault, and the run stops.
+	it("stops on a failure to read the working tree's policy that is not a configuration error", async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const actual = core.configLookup;
+		const fault = new TypeError("not a configuration error");
+		vi.spyOn(core, "configLookup").mockImplementation((repoRoot, source) =>
+			Object.assign(actual(repoRoot, source), { policyText: () => Promise.reject(fault) }),
+		);
+		await expect(
+			runChecks(
+				harness,
+				{ rootConversationId: root.id, changeset, config, source: { kind: "worktree" }, tier: "fast" },
+				context,
+			),
+		).rejects.toBe(fault);
+	});
+
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {
 		const base = commit(repo, {
 			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "  full: [fast, static.biome]"),

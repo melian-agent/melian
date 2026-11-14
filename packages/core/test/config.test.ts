@@ -456,7 +456,10 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			"pay/melian.yaml": atLimit,
 			"other/melian.yaml": "# not on the path\n",
 		});
-		const texts = await configLookup(repo, sourceFor(repo, kind)).policyText(["pay/a.ts", "a.ts"], 1024 * 1024);
+		const texts = await configLookup(repo, sourceFor(repo, kind)).policyText(
+			["pay/a.ts", "a.ts", "src/a.ts"],
+			1024 * 1024,
+		);
 		expect(texts).toEqual([
 			{ file: "melian.yaml", text: lines("tiers:", "  fast: [guardrails]") },
 			{ file: "pay/melian.yaml", text: atLimit },
