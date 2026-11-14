@@ -42,7 +42,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"names this process's platform, architecture and Node"
@@ -64,7 +64,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"names this process's platform, architecture and Node"
@@ -86,7 +86,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"asks the filesystem under the directory whether two spellings are one name, and leaves nothing there"
@@ -108,7 +108,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"asks the filesystem under the directory whether two spellings are one name, and leaves nothing there"
@@ -152,7 +152,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"asks the filesystem under the directory whether two spellings are one name, and leaves nothing there"
@@ -187,7 +187,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"asks the filesystem under the directory whether two spellings are one name, and leaves nothing there"
@@ -292,7 +292,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"asks the filesystem under the directory whether two spellings are one name, and leaves nothing there"
@@ -314,7 +314,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"names this process's platform, architecture and Node"
@@ -336,7 +336,7 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/core/test/request-key.test.ts",
+					"file": "packages/core/test/host.test.ts",
 					"path": [
 						"hostFacts",
 						"names this process's platform, architecture and Node"
