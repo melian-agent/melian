@@ -1,4 +1,3 @@
-import { isContextOverflow } from "@earendil-works/pi-ai";
 import type {
 	CatalogModel,
 	ModelReference,
@@ -8,7 +7,7 @@ import type {
 	UsageObserver,
 } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
-import type { Api, Model, Models, MutableModels } from "./harness.ts";
+import { type Api, isContextOverflow, type Model, type Models, type MutableModels } from "./harness.ts";
 import { ReasoningCapture } from "./reasoning.ts";
 
 /** Whether a model failure's recorded text is pi-ai's reading of a request too long for the model's context window. */

@@ -32,6 +32,7 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 
 export type { Context } from "@earendil-works/chord";
 export { copyJson } from "@earendil-works/chord";
+// pi-ai's reading of a failure as a request too long for the model's context window.
 export {
 	type Api,
 	type AssistantMessage,
@@ -42,6 +43,7 @@ export {
 	type CredentialInfo,
 	type CredentialStore,
 	defaultProviderAuthContext,
+	isContextOverflow,
 	type Message,
 	type Model,
 	type Models,
