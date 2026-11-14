@@ -103,6 +103,8 @@ async function main() {
 	}
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
+		if (values["claims-in"].length !== 0)
+			throw new Error("--sample reads claimsIn from the inventory; pass --claims-in when you list it");
 		console.log(jsonText(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8")))));
 		return;
 	}

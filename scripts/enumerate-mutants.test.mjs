@@ -542,6 +542,7 @@ syncBuiltinESMExports();`,
 	it("sampling rejects a range, an empty filename and unreadable or incomplete claims", () => {
 		for (const [args, text] of [
 			[["HEAD..HEAD", "--sample", "claims.json"], "use either a range or --sample FILE"],
+			[["--sample", "claims.json", "--claims-in", "src/a.ts"], "--sample reads claimsIn from the inventory"],
 			[["--sample="], "ENOENT"],
 			[["--sample", "missing.json"], "ENOENT"],
 		]) {
