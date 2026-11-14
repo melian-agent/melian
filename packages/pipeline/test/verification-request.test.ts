@@ -82,6 +82,24 @@ describe("verificationRequest", () => {
 		expect(again.unkeyed).toEqual({ nonce: "m".repeat(24) });
 		expect(again.producer).toBe("verification");
 	});
+
+	it("keys the tools and the line templates the verifier is given", () => {
+		const { text } = verificationRequest(sample).request as {
+			text: { tools: { name: string }[]; lines: string[] };
+		};
+		expect(text.tools.map(({ name }) => name)).toEqual(["read_file", "search", "list_files", "report_verdict"]);
+		for (const tool of text.tools)
+			expect(tool).toEqual({
+				name: tool.name,
+				description: expect.stringMatching(/\S/),
+				parameters: expect.objectContaining({ type: "object" }),
+			});
+		expect(text.lines).toEqual([
+			"Claim c1 finding <id>, reported at P1",
+			"Claim c1 finding <id>",
+			"Dismissed d1 finding <id>",
+		]);
+	});
 });
 
 describe("candidateKey", () => {
