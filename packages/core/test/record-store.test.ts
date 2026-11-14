@@ -712,6 +712,7 @@ describe("the conformance suite asks no more than rule 3", () => {
 		const target = recordStoreConformance.find((each) =>
 			each.name.startsWith("add: refuses a batch's invalid record"),
 		);
+		expect(target).toBeDefined();
 		const inOrder: Breaks = (inner) => ({
 			add: async (records) => {
 				for (const record of records) await inner.add([record]);
