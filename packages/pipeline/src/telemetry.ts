@@ -167,11 +167,13 @@ function runStage(name: string, stages: readonly Stage[]): RunStage {
 	const own = stages.filter((stage) => !stage.reused);
 	const usage = own.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
 	const timed = own.filter((stage) => stage.durationMs !== undefined);
-	// A stage that opened no conversation and whose check says it never ran, skipped or refused before its first
+	// A lens that ran has a conversation. One with none, whose check says it was skipped or refused before its first
 	// request, sent nothing. One whose check says it ran but left no conversation is an older build's record, whose usage
-	// is unknown.
+	// is unknown. Triage has no conversation even when it sent a request, so the rule is for lenses alone.
 	const sentNothing = (stage: Stage) =>
-		stage.conversation === undefined && ["skipped", "failed"].includes(stage.checkOutcome ?? stage.outcome);
+		stage.name === "melian.lens" &&
+		stage.conversation === undefined &&
+		["skipped", "failed"].includes(stage.checkOutcome ?? stage.outcome);
 	const unmeasured = own.some(
 		(stage) =>
 			modelStages.includes(stage.name) &&

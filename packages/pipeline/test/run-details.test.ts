@@ -257,6 +257,12 @@ it.each([
 	expect(telemetry.runDetails().stages[0]?.usageIncomplete).toBe(incomplete);
 });
 
+it("keeps a failed triage incomplete, since triage has no conversation even when it sent a request", () => {
+	// The same no-conversation, failed record a refused lens has, but for a stage that may have sent its request.
+	const triage = unopened("failed", { name: "melian.triage", subject: "triage", usageIncomplete: 1 });
+	expect(new StageTelemetry("base..head", [triage]).runDetails().stages[0]?.usageIncomplete).toBe(true);
+});
+
 it("prints a skipped lens beside a lens that ran with complete usage, and no incomplete total", () => {
 	const telemetry = new StageTelemetry("base..head", [
 		stage({
