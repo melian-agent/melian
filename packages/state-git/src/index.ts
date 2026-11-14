@@ -1,9 +1,1 @@
-export {
-	CopyInUse,
-	LeaseHeld,
-	type PushResult,
-	StateBranch,
-	type StateBranchOptions,
-	StateCheckout,
-} from "./state-branch.ts";
-export { StateBranchError, StateIndex } from "./state-index.ts";
+export { type Clock, GitRecordStore, type GitRecordStoreOptions } from "./git-record-store.ts";

@@ -1,23 +1,22 @@
 # State branch guidelines
 
-The state-git package keeps a changeset's Pi storage on the repository's `melian/state` branch, so another clone or an Actions job can carry on a pull request's review. [The state branch decision](../decisions/2026-11-07-state-branch-storage.md) records why it works as it does.
+`packages/state-git` is the git adapter of core's `RecordStore`, `GitRecordStore`. It keeps the shared record on the repository's `melian/state` branch, by rule 12 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) and [the decision that amends it](../decisions/2026-11-14-git-record-store-refuses-by-location.md). Read both before changing it.
 
-## The objects
+## How it works
 
-- `StateBranch` is one remote's branch, seen from one clone: where the clone keeps its copies, which clone it is, and the writers' 32-byte key every file on the branch is sealed under. Its constructor does no I/O, and refuses a key of any other length with `invalidKey`.
-- `StateBranch.checkout(changeset)` takes the changeset's lease and returns a `StateCheckout`, with this clone's copy as the branch has it. It throws `CopyInUse` while another process in this clone works on the changeset, and `LeaseHeld` while another clone holds a live lease. Close the checkout when the work is done, pushed or not; `close()` releases the clone's lock, an exclusive SQLite transaction on `<id>.lock`.
-- `StateCheckout.directory` is the copy. The CLI opens it with the pipeline's `openJsonlStorage`, since only the pipeline's wrapper imports Pi; close that storage before `push()`.
-- `StateCheckout.incarnation` and `StateCheckout.generation` name the lease this checkout writes under. `StateCheckout.push()` stores the copy on the branch, recording both, and releases the lease; a lease the index no longer holds, by incarnation or generation, is refused. It returns `refused`, with the reason, when another run wrote the changeset; the copy stays, and the next checkout sets it aside for the branch's.
-- `StateIndex` is the branch's `index.json`: each changeset's core `Lease`, with its incarnation, the generation of its latest write within that incarnation, and the writers' key commitment. A push expires a lease and keeps it, so its generation survives. It parses strictly and refuses a version this build does not read.
-- `StateBranchError` carries `fetchFailed`, `pushFailed`, `invalidBranch` for a branch this build or this key cannot read whole, `invalidCopy` for a local copy holding what Pi's storage never writes, `invalidKey`, or `invalidHolder`.
+- `RecordRepository` is a bare repository of Melian's own, `records.git` in the clone's state directory. It is never the clone: a fetch writes nothing into the clone's refs, and the clone is never made shallow.
+- Every call fetches the branch's tip alone, `--depth=1`, into a ref of its own, and deletes the ref. Two processes can share one `records.git`; a lock another fetch holds is retried.
+- `StateTree` judges every entry of the fetched tree before a call answers or builds a commit. An entry is known when it is a mode `100644` file at `changesets/<changeset>/cell.json` holding a cell Melian writes, or at the path a record's own bytes give. A stray in one changeset's folder refuses that changeset; a stray anywhere else refuses every changeset. A handle remembers what it judged by object ID and path, so it reads each blob once.
+- A write builds one commit with `read-tree`, `hash-object`, `update-index` and `commit-tree` on a temporary index, and pushes it with `--force-with-lease` on the tip it read. A lost race waits a random time below a bound that doubles from 50 ms to 8 s, and reads again, until the deadline.
+- A push stopped at its deadline counts as landed only when its commit is the tip or an ancestor of it. The check deepens its fetch until the history holds the commit, holds the tip the commit was built on without it, or ends.
 
-## The layout
+## Rules
 
-The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<directory>/<id>/` for each changeset it works on, beside `<id>.synced`, which names the branch's tree the copy last matched, `<id>.lock`, and any `<id>.set-aside-<time>/` a moved branch displaced. A checkout keeps the copy only when it still holds the synced tree whole: its main log starts with the tree's, and `StateBranchOptions.validate`, which the CLI implements with Pi's own storage, opens it. Otherwise it sets the copy aside and restores the branch's. `StateBranchOptions.holder` is a label: a lease names its clone by the label and an ID the branch mints, owner-only, in the copies directory's `.clone-id` file, a name no changeset can take, so only a run of the same copies directory takes over a crashed run's live lease. A copy whose marker names a tree the branch no longer holds, because the branch was deleted or the remote never had it, is refused with `invalidBranch` before the lease is taken, and kept. A push judges the bytes it pushes the same way, from a directory of their own, and refuses with `invalidCopy` a copy that no longer holds the synced tree whole. Fetch and push run with no credential prompt, with git's low-speed limit, and under a wall-clock deadline, `StateBranchOptions.transferMs`, two minutes by default, so an unanswered prompt or a stalled transfer on any transport reads as an unreachable branch. A push stopped at its deadline reads the branch again, and counts as pushed when the tip is its commit.
+- Run git only through `RecordRepository.run`. It checks the repository's configuration bytes and passes `overrides`, the settings that would run a program or start background work. A new setting with that power goes on that list with a one-line reason, and a test proves it holds with the configuration check mocked out, as `test/overrides.test.ts` does.
+- Never read a stray entry's bytes into a record, and never rewrite or remove one. A commit carries it along by its object ID.
+- A failure to reach or answer from the remote is `RecordError` `unreachable`; never answer from a tree read in part.
 
-## Tests
+## Testing
 
-- `test/fixtures/state.ts` builds a bare remote and clones of it, each with a holder and a store directory of its own. `replaceChangeset` moves the remote's branch directly, as a writer that ignores the lease would.
-- The conformance suite runs on a checkout's storage, through `registerStorageConformance` from `@melian-agent/pipeline/testing`, which also gives the tests Pi's `createSession`.
-- `crash(clone)` checks out in a child process that exits without closing, as a crash does. Each remote has a random key its clones share; pass `key` to a clone to give it another.
-- `test/push-race.test.ts` lands another run's push between a fetch and its push by wrapping core's `git`; it is the only test that mocks a module.
+- `test/fixtures/remote.ts` makes a bare remote in a temporary directory and opens handles with state directories of their own, as hosts are. `Remote.plant` commits entries by hand, as a writer outside Melian would.
+- A local `file://` remote inherits the client's `-c` settings through `GIT_CONFIG_PARAMETERS`, so a hook in the test remote never runs. Stand in for a slow or refused push with a spy on `RecordRepository.prototype.push` that calls the real push, or plants a commit, before it answers.
