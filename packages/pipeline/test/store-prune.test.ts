@@ -298,6 +298,7 @@ it("keeps every pinned tool entry and removes an unpinned one at the first level
 	await age(pinned, 400 * day);
 	const prune = await plan();
 	expect(prune.entries).toEqual(unpinned.map((path) => ({ kind: "unpinned tool", paths: [path], bytes: 5 })));
+	expect(prune.kept).toEqual([]);
 	await prune.apply();
 	expect(await exists(`${pinned}/enola`)).toBe(true);
 	for (const path of unpinned) expect(await exists(path)).toBe(false);
@@ -541,7 +542,14 @@ it("refuses when a path it measures cannot be read for a reason other than being
 	const dead = await graph("f".repeat(40), 30 * day);
 	await rm(join(state, "coverage"), { recursive: true });
 	await writeFile(join(state, "coverage"), "x");
-	await expect(plan()).rejects.toMatchObject({ code: "unreadable" });
+	const error = await plan().catch((caught: unknown) => caught);
+	expect(error).toBeInstanceOf(StorePruneError);
+	const cause = (error as StorePruneError).cause as NodeJS.ErrnoException;
+	expect(cause.code).toBe("ENOTDIR");
+	expect(error).toMatchObject({
+		code: "unreadable",
+		message: `Melian cannot read its state directory at ${state}: ${cause.message}`,
+	});
 	expect(await exists(`graphs/${dead}`)).toBe(true);
 });
 
@@ -573,6 +581,16 @@ it("lists entries in name order, whatever order the directory returns", async ()
 	const names = ["h", "c", "f", "a", "g", "b", "e", "d"];
 	for (const name of names) await mkdir(join(state, "tools", name), { recursive: true });
 	expect(kinds(await plan())).toEqual([...names].sort().map((name) => ["unpinned tool", `tools/${name}`]));
+});
+
+it("orders names as JavaScript compares them, not as the directory's bytes do", async () => {
+	// UTF-8 bytes put U+FFFD before U+10000; UTF-16 code units put it after.
+	const names = ["\u{FFFD}", "\u{10000}"];
+	for (const name of names) await mkdir(join(state, "tools", name), { recursive: true });
+	expect(kinds(await plan())).toEqual([
+		["unpinned tool", "tools/\u{10000}"],
+		["unpinned tool", "tools/\u{FFFD}"],
+	]);
 });
 
 it("refuses a graph whose entry it may not read, rather than reading it as unreadable", async (test) => {
@@ -620,4 +638,69 @@ it("never removes a changeset, a scripted store or a name it does not recognise,
 	expect(await readFile(join(elsewhere, "pull-9.sqlite"), "utf8")).toBe("theirs");
 	expect(await exists("tools/other")).toBe(false);
 	expect(await exists(`graphs/${dead}`)).toBe(false);
+});
+
+it("keeps an old graph whose tree only a branch that is not checked out holds", async () => {
+	const kept = commit(repo, { "k.ts": "export const k = 1;\n" });
+	gitIn(repo, "branch", "kept", kept);
+	gitIn(repo, "reset", "--quiet", "--hard", "HEAD~1");
+	const key = await graph(tree(kept), 30 * day);
+	expect((await plan()).entries).toEqual([]);
+	expect(await exists(`graphs/${key}`)).toBe(true);
+});
+
+it("keeps a file with a key's name in coverage and mutation", async () => {
+	for (const folder of ["coverage", "mutation"]) {
+		await mkdir(join(state, folder), { recursive: true });
+		await writeFile(join(state, folder, "9".repeat(64)), "x");
+		await age(`${folder}/${"9".repeat(64)}`, 400 * day);
+	}
+	const prune = await plan();
+	expect(prune.entries).toEqual([]);
+	expect(prune.kept).toEqual([`coverage/${"9".repeat(64)}`, `mutation/${"9".repeat(64)}`]);
+});
+
+it("leaves a scratch name under tools to CacheScratch", async () => {
+	await mkdir(join(state, "tools", `.fetch-${process.pid}-partial`), { recursive: true });
+	const prune = await plan();
+	expect(prune.entries).toEqual([]);
+	expect(prune.kept).toEqual([]);
+});
+
+it("reports a run that was live at the plan even when there is nothing to remove", async () => {
+	const path = await worktree(`melian-static pid ${process.pid}`);
+	const prune = await plan();
+	expect(prune.entries).toEqual([]);
+	expect(await prune.apply()).toEqual({ removed: [], live: [{ pid: process.pid, worktree: path }] });
+});
+
+it("removes an old mutation partition when it applies", async () => {
+	const name = "3".repeat(64);
+	await mkdir(join(state, "mutation", name), { recursive: true });
+	const newest = await age(`mutation/${name}`, 20 * day);
+	const prune = await plan({ now: newest + 20 * day });
+	expect(kinds(prune)).toEqual([["mutation partition", `mutation/${name}`]]);
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	expect(await exists(`mutation/${name}`)).toBe(false);
+});
+
+it("keeps a planned mutation partition written exactly fourteen days before the plan when it applies", async () => {
+	const name = "4".repeat(64);
+	await mkdir(join(state, "mutation", name), { recursive: true });
+	const newest = await age(`mutation/${name}`, 14 * day);
+	await age(`mutation/${name}`, 30 * day);
+	const prune = await plan({ now: newest + 14 * day });
+	expect(kinds(prune)).toEqual([["mutation partition", `mutation/${name}`]]);
+	expect(await age(`mutation/${name}`, 14 * day)).toBe(newest);
+	expect(await prune.apply()).toEqual({ removed: [], live: [] });
+	expect(await exists(`mutation/${name}`)).toBe(true);
+});
+
+it("stops at a removal that fails for a reason other than the path being gone", async () => {
+	const key = await graph("f".repeat(40), 30 * day);
+	const prune = await plan();
+	await rm(join(state, "graphs"), { recursive: true });
+	await writeFile(join(state, "graphs"), "x");
+	await expect(prune.apply()).rejects.toMatchObject({ code: "ENOTDIR" });
+	expect(await exists(`coverage/${key}`)).toBe(true);
 });
