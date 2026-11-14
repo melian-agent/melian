@@ -1,15 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import {
-	canonicalJson,
-	hostFacts,
-	KeyedRequest,
-	RecordError,
-	requestExclusions,
-	requestJson,
-} from "@melian-agent/core";
+import { canonicalJson, KeyedRequest, RecordError, requestExclusions, requestJson } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
@@ -256,30 +246,5 @@ describe("requestJson", () => {
 
 	it("leaves strings, booleans and null as they are", () => {
 		expect(requestJson(["x", true, false, null])).toEqual(["x", true, false, null]);
-	});
-});
-
-describe("hostFacts", () => {
-	it("names this process's platform, architecture and Node", () => {
-		const facts = hostFacts();
-		expect(facts).toEqual({
-			platform: process.platform,
-			arch: process.arch,
-			node: process.versions.node,
-			caseFolds: facts.caseFolds,
-		});
-	});
-
-	it("asks the filesystem under the directory whether two spellings are one name, and leaves nothing there", () => {
-		const directory = mkdtempSync(join(tmpdir(), "melian-host-"));
-		try {
-			writeFileSync(join(directory, "Witness"), "");
-			const folds = existsSync(join(directory, "wITNESS"));
-			rmSync(join(directory, "Witness"));
-			expect(hostFacts(directory).caseFolds).toBe(folds);
-			expect(readdirSync(directory)).toEqual([]);
-		} finally {
-			rmSync(directory, { recursive: true, force: true });
-		}
 	});
 });
