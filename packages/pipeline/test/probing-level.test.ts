@@ -1065,6 +1065,53 @@ describe("a level that probes", () => {
 		}
 	});
 
+	it("records no verdict for a review whose finished probing run a repeat review replaced before it verified", async () => {
+		const fake = createFakeModels();
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const reviewer = harness!.harness;
+		const at = Revision.key(first.changeset.revision);
+		const wait = reviewer.waitForTask.bind(reviewer);
+		let second: Awaited<ReturnType<typeof review>> | undefined;
+		// Once the first review's lens task has finished, a repeat review of the head replaces it and stays live, planning.
+		reviewer.waitForTask = (async (...[task, context]: Parameters<typeof wait>) => {
+			const record = await wait(task, context);
+			const root = await reviewer.root(context);
+			const index = (await reviewer.snapshot(ReviewIndex, root.id, context))?.reviews[at];
+			if (second === undefined && index?.task === task) {
+				second = await review(
+					{
+						planner: [
+							async () => {
+								await held;
+								return fauxAssistantMessage("", { stopReason: "error", errorMessage: "released" });
+							},
+						],
+						prober: [],
+					},
+					{ fake },
+				);
+				second.run.catch(() => undefined);
+				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 3_000 });
+			}
+			return record;
+		}) as typeof reviewer.waitForTask;
+		try {
+			const outcome = await first.run.then(
+				() => undefined,
+				(error: unknown) => error,
+			);
+			expect(second).toBeDefined();
+			expect(outcome).toMatchObject({ code: "superseded", lenses: ["trust-boundary"] });
+		} finally {
+			release();
+			await second?.run.catch(() => undefined);
+		}
+	});
+
 	it.each([
 		["runs no probe once another review has taken the revision", [failing, failing], 0],
 		["prunes nothing when every probe it holds already stands", [], 0],

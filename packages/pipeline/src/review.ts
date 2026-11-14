@@ -1769,6 +1769,7 @@ async function startAdjudication(
 	harness: Harness,
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
+	lensTask: number | undefined,
 	verificationRefused: boolean,
 	checkRun: string | undefined,
 	context: Context,
@@ -1780,8 +1781,10 @@ async function startAdjudication(
 		let known = index.reviews[revision];
 		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
-		// that live run as superseded. Solution: a replaced review adjudicates nothing.
-		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
+		// that live run as superseded. Solution: a replaced review adjudicates nothing. A repeat review with the same
+		// selection replaces a finished probing run and clears its findings, so the entry must still name this review's task.
+		if (selection.length > 0 && (known?.lenses.join("\n") !== selection.join("\n") || known.task !== lensTask))
+			return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
 			await clearVerifications(tx, input.root, revision);
@@ -3230,6 +3233,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		harness,
 		input,
 		selectionOf(lenses, escalateAt),
+		lensTask,
 		verificationRefused,
 		JSON.stringify(checked?.identity ?? request.checkRun),
 		context,
