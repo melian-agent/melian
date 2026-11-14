@@ -83,6 +83,9 @@ describe("KeyedRequest", () => {
 	it("refuses a producer name that is not lower-case dotted words", () => {
 		for (const name of ["", "Lens", "lens.", ".lens", "lens run", "1lens"]) {
 			expect(() => KeyedRequest.of(name, {}), name).toThrow(RecordError);
+			expect(() => KeyedRequest.of(name, {}), name).toThrow(
+				expect.objectContaining({ code: "invalidRecord", message: "a producer's name is lower-case dotted words" }),
+			);
 		}
 		for (const name of ["lens", "static.biome", "check-run.v2"]) {
 			expect(() => KeyedRequest.of(name, {}), name).not.toThrow();
@@ -172,6 +175,46 @@ describe("keyCoverage", () => {
 		expect(keyCoverage(commits, { head: "a".repeat(40) }, { vary: () => "c".repeat(40) })).toEqual([]);
 		expect(keyCoverage(commits, { head: "a".repeat(40) }, { vary: (_path, value) => value })).toEqual([
 			"head was varied to the value it holds",
+		]);
+	});
+
+	it("reports a field left undefined and a function, which it cannot change", () => {
+		const anything = (input: unknown) => KeyedRequest.of("check", { text: String(Object.keys(input as object)) });
+		expect(keyCoverage(anything, { gone: undefined, call: () => 1 })).toEqual([
+			"gone holds undefined, which the helper cannot change; give vary a value",
+			"call holds function, which the helper cannot change; give vary a value",
+		]);
+	});
+
+	it("walks into an object with no prototype, and names an instance whose class has no name", () => {
+		const anything = (input: { map: { k: number } }) => KeyedRequest.of("check", { k: input.map.k });
+		const bare = Object.assign(Object.create(null) as { k: number }, { k: 1 });
+		expect(keyCoverage(anything, { map: bare })).toEqual([]);
+		const orphan = (input: unknown) => KeyedRequest.of("check", { text: typeof input });
+		expect(keyCoverage(orphan, { at: Object.create(Object.create(null)) })).toEqual([
+			"at holds a class instance, which the helper cannot change; give vary a value",
+		]);
+	});
+
+	it("changes one item of a list and keeps the others", () => {
+		const second = (input: { list: string[] }) =>
+			KeyedRequest.of("check", { second: input.list[1] ?? "" }, { nonce: input.list[0] });
+		expect(keyCoverage(second, { list: ["a", "b"] }, { excluded: ["list.0"] })).toEqual([]);
+	});
+
+	it("names the input itself when the sample is one value", () => {
+		const one = (input: unknown) => {
+			if (input !== "a" && input !== undefined) throw new Error("only a");
+			return KeyedRequest.of("check", { input: String(input) });
+		};
+		expect(keyCoverage(one, undefined)).toEqual([
+			"the input holds undefined, which the helper cannot change; give vary a value",
+		]);
+		expect(keyCoverage(one, "a")).toEqual([
+			"the input: the builder refused the changed value (only a); give vary one it takes",
+		]);
+		expect(keyCoverage(one, "a", { vary: (_path, value) => value })).toEqual([
+			"the input was varied to the value it holds",
 		]);
 	});
 
