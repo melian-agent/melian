@@ -6486,7 +6486,7 @@
       "file": "packages/pipeline/src/store-prune.ts",
       "line": 254,
       "column": 68,
-      "endLine": 285,
+      "endLine": 287,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
@@ -6494,7 +6494,7 @@
       "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
+        "head": "b6cbc1f9",
         "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
         "collected": 1,
         "failed": true
@@ -6637,11 +6637,11 @@
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
-        "test": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
         "collected": 1,
         "failed": true
       }
@@ -6655,11 +6655,11 @@
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
-        "test": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
         "collected": 1,
         "failed": true
       }
@@ -6698,7 +6698,7 @@
       "file": "packages/pipeline/src/store-prune.ts",
       "line": 262,
       "column": 36,
-      "endLine": 283,
+      "endLine": 285,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
@@ -6706,7 +6706,7 @@
       "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
+        "head": "b6cbc1f9",
         "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
         "collected": 1,
         "failed": true
@@ -7040,15 +7040,15 @@
       "file": "packages/pipeline/src/store-prune.ts",
       "line": 269,
       "column": 35,
-      "endLine": 281,
-      "endColumn": 4,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
+      "endLine": 269,
+      "endColumn": 66,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
       "claim": "killed",
       "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
+        "head": "b6cbc1f9",
         "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
         "collected": 1,
         "failed": true
@@ -7057,53 +7057,17 @@
     {
       "file": "packages/pipeline/src/store-prune.ts",
       "line": 272,
-      "column": 8,
+      "column": 33,
       "endLine": 272,
-      "endColumn": 68,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
+      "endColumn": 74,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "swapped &&= await linked(dirname(source))",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
       "survivorClasses": [],
       "run": {
-        "head": "b2db8c95",
-        "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/store-prune.ts",
-      "line": 272,
-      "column": 8,
-      "endLine": 272,
-      "endColumn": 68,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
-      "survivorClasses": [],
-      "run": {
-        "head": "b2db8c95",
-        "test": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/store-prune.ts",
-      "line": 272,
-      "column": 8,
-      "endLine": 272,
-      "endColumn": 68,
-      "mutatorName": "LogicalOperator",
-      "replacement": "(await linked(this.root)) && (await linked(dirname(source)))",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
-      "survivorClasses": [],
-      "run": {
-        "head": "b2db8c95",
-        "test": "packages/pipeline/test/store-prune.test.ts > leaves a cache folder swapped for a link after the plan, and what the link names",
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
         "collected": 1,
         "failed": true
       }
@@ -7111,8 +7075,62 @@
     {
       "file": "packages/pipeline/src/store-prune.ts",
       "line": 273,
-      "column": 40,
+      "column": 7,
       "endLine": 273,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
+      "survivorClasses": [],
+      "run": {
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 273,
+      "column": 7,
+      "endLine": 273,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
+      "survivorClasses": [],
+      "run": {
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > keeps and does not report an entry whose cache folder became a link after the plan, and leaves what the link names",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 274,
+      "column": 33,
+      "endLine": 283,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
+      "survivorClasses": [],
+      "run": {
+        "head": "b6cbc1f9",
+        "test": "packages/pipeline/test/store-prune.test.ts > removes a graph older than seven days whose tree no live commit holds, with its coverage",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 275,
+      "column": 40,
+      "endLine": 275,
       "endColumn": 86,
       "mutatorName": "StringLiteral",
       "replacement": "``",
@@ -7124,9 +7142,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 274,
+      "line": 276,
       "column": 8,
-      "endLine": 276,
+      "endLine": 278,
       "endColumn": 5,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
@@ -7142,9 +7160,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 276,
+      "line": 278,
       "column": 20,
-      "endLine": 279,
+      "endLine": 281,
       "endColumn": 5,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
@@ -7162,9 +7180,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 277,
+      "line": 279,
       "column": 9,
-      "endLine": 277,
+      "endLine": 279,
       "endColumn": 59,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
@@ -7182,9 +7200,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 277,
+      "line": 279,
       "column": 9,
-      "endLine": 277,
+      "endLine": 279,
       "endColumn": 59,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
@@ -7200,9 +7218,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 277,
+      "line": 279,
       "column": 9,
-      "endLine": 277,
+      "endLine": 279,
       "endColumn": 59,
       "mutatorName": "EqualityOperator",
       "replacement": "(error as NodeJS.ErrnoException).code !== \"ENOENT\"",
@@ -7218,9 +7236,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 277,
+      "line": 279,
       "column": 51,
-      "endLine": 277,
+      "endLine": 279,
       "endColumn": 59,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
@@ -7232,9 +7250,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 280,
+      "line": 282,
       "column": 20,
-      "endLine": 280,
+      "endLine": 282,
       "endColumn": 52,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
@@ -7250,9 +7268,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 280,
+      "line": 282,
       "column": 33,
-      "endLine": 280,
+      "endLine": 282,
       "endColumn": 37,
       "mutatorName": "BooleanLiteral",
       "replacement": "false",
@@ -7268,9 +7286,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 280,
+      "line": 282,
       "column": 46,
-      "endLine": 280,
+      "endLine": 282,
       "endColumn": 50,
       "mutatorName": "BooleanLiteral",
       "replacement": "false",
@@ -7280,9 +7298,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 282,
+      "line": 284,
       "column": 3,
-      "endLine": 282,
+      "endLine": 284,
       "endColumn": 23,
       "mutatorName": "CallExpression",
       "replacement": ";",
@@ -7298,9 +7316,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 284,
+      "line": 286,
       "column": 9,
-      "endLine": 284,
+      "endLine": 286,
       "endColumn": 30,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
@@ -7316,9 +7334,9 @@
     },
     {
       "file": "packages/pipeline/src/store-prune.ts",
-      "line": 284,
+      "line": 286,
       "column": 26,
-      "endLine": 284,
+      "endLine": 286,
       "endColumn": 28,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[\"Stryker was here\"]",
@@ -7333,7 +7351,7 @@
       }
     }
   ],
-  "total": 460,
+  "total": 461,
   "omitted": 0,
   "unmutated": [
     {
