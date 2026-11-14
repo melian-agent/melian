@@ -435,6 +435,63 @@ describe("runChecks", () => {
 		expect(run.identity.policy).not.toBe("f0eb2ebd9fb9b2f2");
 	});
 
+	// Codex's review of pull request #436: a working tree's nested policy decides what guardrails find, so a change to it
+	// at the same base and head must start a run of its own rather than attach to one made under the old rule.
+	it("runs again when a nested melian.yaml in the working tree changes", { timeout: 60_000 }, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/dist/a.js": lines("built") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "worktree" };
+		const run = async () => {
+			const { config } = await loadConfig(repo, source, "");
+			return runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		};
+		const before = await run();
+		expect(before.records).toEqual([{ name: "guardrails", status: "ran", findings: 0, notes: [] }]);
+
+		writeFileSync(
+			join(repo, "pay", "melian.yaml"),
+			lines(
+				"guardrails:",
+				"  forbidden-paths:",
+				"    rules:",
+				"      out:",
+				"        paths: [dist/**]",
+				"        message: built",
+			),
+		);
+		const after = await run();
+		expect(after.identity.task).not.toBe(before.identity.task);
+		expect(after.records).toEqual([{ name: "guardrails", status: "ran", findings: 1, notes: [] }]);
+	});
+
+	// A nested melian.yaml at the size limit is keyed by its text, so a repeat attaches; one byte past it cannot be read
+	// whole, so no run of it is reused and each repeat runs, and fails, again.
+	it("reuses a run under a nested melian.yaml at the size limit and never one past it", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "worktree" };
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = () =>
+			runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		const atLimit = `#${"x".repeat(core.maxConfigBytes - 2)}\n`;
+
+		writeFileSync(join(repo, "pay", "melian.yaml"), atLimit);
+		const first = await run();
+		expect(first.records).toEqual([{ name: "guardrails", status: "ran", findings: 0, notes: [] }]);
+		expect((await run()).identity.task).toBe(first.identity.task);
+
+		writeFileSync(join(repo, "pay", "melian.yaml"), `${atLimit}#`);
+		const past = await run();
+		expect(past.records).toMatchObject([{ name: "guardrails", status: "failed", reason: "tooLarge" }]);
+		expect((await run()).identity.task).not.toBe(past.identity.task);
+	});
+
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {
 		const base = commit(repo, {
 			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "  full: [fast, static.biome]"),

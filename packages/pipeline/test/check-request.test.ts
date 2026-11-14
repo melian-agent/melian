@@ -14,6 +14,7 @@ const sample: CheckRequestInput = {
 		cold: false,
 	},
 	host: { platform: "linux", arch: "x64", node: "24.1.0", caseFolds: false },
+	policy: [{ file: "pay/melian.yaml", text: "tiers: { fast: [guardrails] }\n" }],
 };
 
 // The default configuration holds empty lists and maps; a change to one is still a change of configuration.
@@ -63,6 +64,14 @@ describe("checkRequest", () => {
 		const { checks } = checkRequest(sample).request as { checks: Record<string, unknown> };
 		expect(Object.keys(checks).sort()).toEqual([...deterministicChecks].sort());
 		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
+	});
+
+	it("keys a working tree's unread policy apart from every other run, and leaves a request with none unchanged", () => {
+		const unread = (nonce: string) => checkRequest({ ...sample, policy: { unread: nonce } }).key;
+		expect(unread("one")).not.toBe(unread("two"));
+		const { policy: _, ...revision } = sample;
+		expect(checkRequest(revision).request).not.toHaveProperty("policy");
+		expect(checkRequest({ ...revision, policy: undefined }).key).toBe(checkRequest(revision).key);
 	});
 
 	it("holds a fractional setting as its decimal text, since a request's numbers are safe integers", () => {

@@ -1,10 +1,13 @@
+import { randomUUID } from "node:crypto";
 import {
 	type Changeset,
 	type ChangesetFields,
 	CheckError,
 	type CheckErrorCode,
 	type CheckReport,
+	ConfigError,
 	checksOfTier,
+	configLookup,
 	type DeterministicCheck,
 	deterministicChecks,
 	type EnolaSnapshot,
@@ -13,13 +16,14 @@ import {
 	type MelianConfig,
 	type MutationSkipCause,
 	mutationSkips,
+	type PolicyText,
 	type RepositorySource,
 	Revision,
 	type StaticTool,
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
-import { checkRequest } from "./check-request.ts";
+import { checkRequest, maxKeyedPolicyBytes } from "./check-request.ts";
 import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
@@ -667,9 +671,22 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 			: {}),
 		// The local environment runs every tool on this host. One that runs tools elsewhere must supply its own host facts.
 		host: hostFacts(),
+		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
 	});
 	const policy = request.key.slice(0, 16);
 	return { base, head, tier, policy };
+}
+
+// A working tree's melian.yaml files are no commit's, so their text is keyed as the guardrails read it for the touched
+// paths, both sides of a rename. A file they cannot read whole keys a value no other run holds, so the run is not
+// reused and the guardrails report the failure as before. The text can still change between keying and running.
+async function worktreePolicy(input: RunChecksInput): Promise<readonly PolicyText[] | { readonly unread: string }> {
+	return configLookup(input.changeset.repoRoot, input.source)
+		.policyText(Revision.from(input.changeset.revision).paths(), maxKeyedPolicyBytes)
+		.catch((error: unknown) => {
+			if (error instanceof ConfigError) return { unread: randomUUID() };
+			throw error;
+		});
 }
 
 // Whether a rerun repeats this record's check: one that failed, or a mutation run that passed its timeout. That run is

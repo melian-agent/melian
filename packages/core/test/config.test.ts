@@ -449,6 +449,32 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "tooLarge", file: "melian.yaml" });
 	});
 
+	it("reads each melian.yaml for the given paths as the lookup does, refusing one past the per-file limit", async () => {
+		const atLimit = `#${"x".repeat(maxConfigBytes - 2)}\n`;
+		writeFiles(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [guardrails]"),
+			"pay/melian.yaml": atLimit,
+			"other/melian.yaml": "# not on the path\n",
+		});
+		const texts = await configLookup(repo, sourceFor(repo, kind)).policyText(["pay/a.ts", "a.ts"], 1024 * 1024);
+		expect(texts).toEqual([
+			{ file: "melian.yaml", text: lines("tiers:", "  fast: [guardrails]") },
+			{ file: "pay/melian.yaml", text: atLimit },
+		]);
+		writeFiles(repo, { "pay/melian.yaml": `${atLimit}#` });
+		expect(
+			await rejection(configLookup(repo, sourceFor(repo, kind)).policyText(["pay/a.ts"], 1024 * 1024)),
+		).toMatchObject({ code: "tooLarge", file: "pay/melian.yaml" });
+	});
+
+	it("reads the policy files' text up to the total limit and refuses one byte past it", async () => {
+		writeFiles(repo, { "melian.yaml": "# root\n", "pay/melian.yaml": "# pay\n" });
+		const total = Buffer.byteLength("# root\n# pay\n");
+		const read = (maxBytes: number) => configLookup(repo, sourceFor(repo, kind)).policyText(["pay/a.ts"], maxBytes);
+		expect((await read(total)).map((text) => text.file)).toEqual(["melian.yaml", "pay/melian.yaml"]);
+		expect(await rejection(read(total - 1))).toMatchObject({ code: "tooLarge", file: "pay/melian.yaml" });
+	});
+
 	it("replaces a tier's checks rather than appending to them", async () => {
 		writeFiles(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
 		const { config } = await load("a.ts");

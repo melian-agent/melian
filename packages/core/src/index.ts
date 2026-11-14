@@ -91,6 +91,7 @@ export {
 	melianYamlSchema,
 	modelTiers,
 	type PolicyChangeReview,
+	type PolicyText,
 	type PreExistingCap,
 	parseResolution,
 	preExistingCapSchema,

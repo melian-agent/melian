@@ -3,6 +3,7 @@ import {
 	type HostFacts,
 	KeyedRequest,
 	type MelianConfig,
+	type PolicyText,
 	type RecordJson,
 	type RepositorySource,
 	requestJson,
@@ -27,7 +28,15 @@ export type CheckRequestInput = {
 		readonly cold: boolean;
 	};
 	readonly host: HostFacts;
+	/**
+	 * For a working-tree source, every `melian.yaml` the guardrails would read for the touched paths, or a value no
+	 * other run holds when they could not be read whole, so that run is never reused.
+	 */
+	readonly policy?: readonly PolicyText[] | { readonly unread: string };
 };
+
+/** The most UTF-8 a check request keys from a working tree's `melian.yaml` files together; past it a run is not reused. */
+export const maxKeyedPolicyBytes = 1024 * 1024;
 
 // Melian's own code of each check. Raise a check's number when its logic changes what it finds or how it reports, so
 // no run of an earlier build is reused; nothing checks that you did until issue #437. Biome 2 and tsc 2 keep no tool
@@ -64,8 +73,8 @@ function strykerFrom({
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, Stryker's facts and the head's trust
- * when mutation testing is on, the version of Melian's own code for each check, and the host it runs on. Only the
- * paths that name the host are left out.
+ * when mutation testing is on, the version of Melian's own code for each check, the host it runs on, and a working
+ * tree's `melian.yaml` text. Only the paths that name the host are left out.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
 	return KeyedRequest.of(
@@ -78,6 +87,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
 			checks: checkVersions,
 			host: input.host,
+			policy: input.policy,
 		}),
 	);
 }
