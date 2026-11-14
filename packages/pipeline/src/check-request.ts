@@ -9,6 +9,7 @@ import {
 	requestJson,
 } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
+import type { InstallDigests } from "./mutation-static.ts";
 import type { StaticToolSource } from "./static.ts";
 
 /** A static tool a run would start, read before it starts: where it comes from and the version its manifest names. */
@@ -21,8 +22,8 @@ export type CheckRequestInput = {
 	/** Melian's own tool pins, as `ToolProvisioning.manifest()` writes them. */
 	readonly tools: unknown;
 	readonly analysers: { readonly biome: AnalyserFacts; readonly tsc: AnalyserFacts };
-	/** A digest of each lockfile and of npm's record of the checkout's install, which Biome and tsc resolve from. */
-	readonly install: Readonly<Record<string, string>>;
+	/** The checkout's lockfiles and install records, which Biome and tsc resolve from. */
+	readonly install: InstallDigests;
 	/** Present only when the configuration enables `static.mutation`. */
 	readonly mutation?: {
 		readonly stryker: { readonly version: string; readonly installation: unknown; readonly source: StaticToolSource };
@@ -77,7 +78,7 @@ function strykerFrom({
  * that could not be read leaves nothing to compare, and the run is not reused.
  */
 export function checkReusable(input: CheckRequestInput): boolean {
-	return input.policy !== "unread";
+	return input.policy !== "unread" && input.install.identified;
 }
 
 /**
@@ -94,7 +95,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			source: policySource(input.source),
 			tools: input.tools,
 			analysers: input.analysers,
-			install: input.install,
+			install: input.install.digests,
 			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
 			checks: checkVersions,
 			host: input.host,

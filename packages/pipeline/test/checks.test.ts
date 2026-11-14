@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import * as core from "@melian-agent/core";
 import {
 	Changeset,
@@ -492,27 +492,81 @@ describe("runChecks", () => {
 		expect((await run()).identity.task).not.toBe(past.identity.task);
 	});
 
-	// tsc resolves types from the checkout's install, which can drift from package-lock.json, as an `npm install` of one
-	// package does. npm's record of the install keys it, and a missing record keys apart from any present one.
-	it("runs again when the checkout's install changes under the same lockfile", { timeout: 60_000 }, async () => {
-		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
-		const head = commit(repo, { "a.ts": lines("a") });
-		const { harness, root } = await open();
-		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
-		const source: RepositorySource = { kind: "revision", commit: base };
-		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
-		const run = async () =>
-			(await runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context))
-				.identity.task;
-		writeFileSync(join(repo, "package-lock.json"), "{}");
-		const missing = await run();
-		mkdirSync(join(repo, "node_modules"), { recursive: true });
-		writeFileSync(join(repo, "node_modules", ".package-lock.json"), '{"packages":{"node_modules/@types/node":"1"}}');
-		const installed = await run();
-		expect(installed).not.toBe(missing);
-		expect(await run()).toBe(installed);
-		writeFileSync(join(repo, "node_modules", ".package-lock.json"), '{"packages":{"node_modules/@types/node":"2"}}');
-		expect(await run()).not.toBe(installed);
+	// tsc resolves types from the checkout's install, which can drift from the lockfile, as an `npm install` of one
+	// package does. Each package manager's record of what it installed keys the run, so a changed record runs it again
+	// and the same record reuses it. Each path came from a real install by that manager.
+	describe("the checkout's install", () => {
+		const fixture = async () => {
+			const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+			const head = commit(repo, { "a.ts": lines("a") });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+			return async () =>
+				(
+					await runChecks(
+						harness,
+						{ rootConversationId: root.id, changeset, config, source, tier: "fast" },
+						context,
+					)
+				).identity.task;
+		};
+		const write = (path: string, text: string) => {
+			mkdirSync(dirname(join(repo, path)), { recursive: true });
+			writeFileSync(join(repo, path), text);
+		};
+
+		it.each([
+			["npm", "package-lock.json", "node_modules/.package-lock.json"],
+			["pnpm", "pnpm-lock.yaml", "node_modules/.pnpm/lock.yaml"],
+			["Yarn 1", "yarn.lock", "node_modules/.yarn-integrity"],
+			["Yarn 4 with node_modules", "yarn.lock", "node_modules/.yarn-state.yml"],
+			["Yarn 4", "yarn.lock", ".yarn/install-state.gz"],
+			["Yarn 4 with Plug'n'Play", "yarn.lock", ".pnp.cjs"],
+		])(
+			"runs again when %s's record of the install changes under the same lockfile",
+			{
+				timeout: 60_000,
+			},
+			async (_, lockfile, record) => {
+				const run = await fixture();
+				write(lockfile, "lock");
+				write(record, "@types/node 1");
+				const installed = await run();
+				expect(await run()).toBe(installed);
+				write(record, "@types/node 2");
+				expect(await run()).not.toBe(installed);
+			},
+		);
+
+		// A missing record would read as an unchanged install, so a lockfile whose manager left no record never reuses.
+		it.each([["package-lock.json"], ["pnpm-lock.yaml"], ["yarn.lock"]])(
+			"never reuses a run beside %s with none of its manager's records",
+			{ timeout: 60_000 },
+			async (lockfile) => {
+				const run = await fixture();
+				write(lockfile, "lock");
+				const first = await run();
+				expect(await run()).not.toBe(first);
+			},
+		);
+
+		it("never reuses a run whose install record cannot be read", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("package-lock.json", "lock");
+			mkdirSync(join(repo, "node_modules", ".package-lock.json"), { recursive: true });
+			const first = await run();
+			expect(await run()).not.toBe(first);
+		});
+
+		// Bun writes no record of its install, so its lockfile alone is keyed, and the run reuses as before.
+		it("reuses a run beside Bun's lockfile, which has no record to read", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("bun.lock", "lock");
+			const first = await run();
+			expect(await run()).toBe(first);
+		});
 	});
 
 	// A revision's policy is fixed by its commit, so its run is keyed as it was before working-tree policy was: a nested

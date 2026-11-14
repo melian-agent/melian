@@ -8,7 +8,10 @@ const sample: CheckRequestInput = {
 	source: { kind: "revision", commit: "a".repeat(40) },
 	tools: { enola: { version: "0.4.37", sha256: "b".repeat(64) } },
 	analysers: { biome: { from: "checkout", version: "2.5.0" }, tsc: { from: "melian", version: "5.9.3" } },
-	install: { "package-lock.json": "c".repeat(64), "node_modules/.package-lock.json": "unavailable" },
+	install: {
+		digests: { "package-lock.json": "c".repeat(64), "node_modules/.package-lock.json": "d".repeat(64) },
+		identified: true,
+	},
 	mutation: {
 		stryker: { version: "10.0.0", installation: { core: "10.0.0" }, source: { from: "checkout", path: "/repo/x" } },
 		writer: { trusted: true, by: "writer" },
@@ -23,8 +26,9 @@ const vary = (_path: string, value: unknown) =>
 	Array.isArray(value) ? ["x"] : typeof value === "object" && value !== null ? { x: "x" } : undefined;
 
 describe("checkRequest", () => {
-	it("keys every input but the display-only configuration and the paths that name the host", () => {
-		const excluded = ["config.output", "config.publish.emoji", "mutation.stryker.source.path"];
+	// Whether the install is identified follows from its digests, which are keyed, and decides reuse, not the key.
+	it("keys every input but the display-only configuration, the paths that name the host, and the install's mark", () => {
+		const excluded = ["config.output", "config.publish.emoji", "mutation.stryker.source.path", "install.identified"];
 		expect(keyCoverage(checkRequest, sample, { vary, excluded })).toEqual([]);
 	});
 
@@ -67,9 +71,10 @@ describe("checkRequest", () => {
 		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
 	});
 
-	it("marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged", () => {
+	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {
 		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
 		expect(checkReusable(sample)).toBe(true);
+		expect(checkReusable({ ...sample, install: { ...sample.install, identified: false } })).toBe(false);
 		expect(checkRequest({ ...sample, policy: "unread" }).key).not.toBe(checkRequest(sample).key);
 		const { policy: _, ...revision } = sample;
 		expect(checkReusable(revision)).toBe(true);
