@@ -1,6 +1,7 @@
 // What the melian-round workflow does beside running melian: find whose code the head is, take the Codex access token
 // from a Codex login, and turn a round's output into a pull request comment it posts once. round-writer.mjs,
-// round-codex-token.mjs, round-comment.mjs and round-own-comment.mjs are its commands.
+// round-codex-token.mjs, round-comment.mjs, round-own-comment.mjs and round-record.mjs are its commands.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describeLineage, visibleText } from "../packages/core/src/render.ts";
 
@@ -41,12 +42,37 @@ export function headWriter(events, { sha, branch }) {
 }
 
 // Each run's comment opens with a marker naming the run and a nonce its round job drew and uploaded, so a rerun of the
-// report job finds and updates that comment, and a builder can tie the comment to its run. The nonce guards against
+// report job finds and updates that comment, and a builder can find the run's record of its body. The nonce guards against
 // nothing that can read the run's artefact: a workflow that does can post a matching marker first, and the report then
 // overwrites that comment with the round's own body.
 export function marker(runId, nonce) {
 	const id = /^\d+$/.test(runId) ? runId : "unknown";
 	return `<!-- melian-round run:${id} nonce:${/^[0-9a-f]{32}$/.test(nonce) ? nonce : "unknown"} -->`;
+}
+
+// The commit status that records what a round's comment says, so a builder can tell the comment from an edit of it.
+// Only the round holds melian-status-bot's token, and GitHub lets no one edit or delete a status, so the status is the
+// run's own record. `posted` is GitHub's answer to the post or edit, never the file sent, so the hash is of the body as
+// GitHub stored it. GitHub caps a status description at 140 characters; a longer one is refused here, never cut.
+export const recordContext = "melian/round-comment";
+
+export function commentRecord(posted, { runId, pull }) {
+	if (!/^[1-9]\d*$/.test(runId)) throw new Error("the run has no ID to record the comment under");
+	if (!/^[1-9]\d*$/.test(pull)) throw new Error("the round has no pull request to record the comment under");
+	let comment;
+	try {
+		comment = JSON.parse(posted);
+	} catch {
+		throw new Error("GitHub's answer to the comment could not be read");
+	}
+	if (typeof comment?.body !== "string" || typeof comment.html_url !== "string")
+		throw new Error("GitHub's answer to the comment holds no body or address");
+	if (!comment.issue_url?.endsWith(`/issues/${pull}`))
+		throw new Error(`GitHub's answer puts the comment on another pull request than ${pull}`);
+	const digest = createHash("sha256").update(comment.body, "utf8").digest("hex");
+	const description = `run ${runId} pull ${pull} body sha256 ${digest}`;
+	if (description.length > 140) throw new Error("the record would not fit a status description");
+	return { state: "success", context: recordContext, description, target_url: comment.html_url };
 }
 
 // The ID of the comment this run already posted, or undefined when it posted none. `comments` are JSON lines of

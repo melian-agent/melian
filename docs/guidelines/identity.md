@@ -94,6 +94,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | --- | --- | --- | --- |
 | Ledger stamp | `github/src/ledger.ts` | leaves the ledger comment as it is | Dismissal identity |
 | Triage questions fingerprint | `evals/src/triage.ts` | compares two triage measurements | Nothing |
+| Round comment record, `commentRecord` | `scripts/round.mjs`, and the check in AGENTS.md | lets a builder read a `melian round` comment as what its run posted | The nonce, which only locates the comment. The comment's ID, since a rerun edits the same comment and the record with the highest status ID wins. The head the round reviewed, which the body names |
 
 ### One thing with two keys today
 
