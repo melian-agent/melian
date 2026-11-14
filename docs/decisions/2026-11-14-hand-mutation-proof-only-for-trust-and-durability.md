@@ -17,7 +17,7 @@ What it bought is thin. First runs do find untested code: [pull request #404](ht
 - Trust code decides who or what Melian trusts, what a verdict blocks, what runs with a credential or outside a sandbox, or what a key matches. Durability code writes or migrates a stored shape, resumes after a crash, or publishes.
 - Every other change owes no inventory. Its fix starts with a failing test, its new behaviour has a test, and the tests lens reports `untested-behaviour` at its usual severity.
 - The pull request's description lists its changed files that guard trust or durability, or says there are none. The review of record checks that list against the diff, and a file left off it is a P2 finding.
-- An inventory already written for a pull request in flight stands as it is. No one extends it.
+- An inventory already written for a pull request in flight stands for the code it covers, and no one extends it to ordinary code. A later commit on that pull request that changes trust or durability code still appends and proves its own mutants, as every fix pass does.
 
 ## What this gives up
 
