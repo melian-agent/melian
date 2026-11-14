@@ -383,7 +383,8 @@ describe("reviewChangeset", () => {
 		expect((await entry())!.task).not.toBe(stale);
 
 		gates[0]!.resolve();
-		await expect(firstCall).resolves.toMatchObject({ code: "lensFailed" });
+		// The rerun replaced its lens task, so the first review records no verdict.
+		await expect(firstCall).resolves.toMatchObject({ code: "superseded" });
 		expect((await entry())!.callers).toBeUndefined();
 
 		gates[1]!.resolve();

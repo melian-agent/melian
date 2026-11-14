@@ -1779,12 +1779,11 @@ async function startAdjudication(
 		const index = await tx.doc(ReviewIndex, root.id);
 		const revision = Revision.key(input);
 		let known = index.reviews[revision];
-		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
+		// A review whose lenses ran owns the entry only while it still names their task. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
-		// that live run as superseded. Solution: a replaced review adjudicates nothing. A repeat review with the same
-		// selection replaces a finished probing run and clears its findings, so the entry must still name this review's task.
-		if (selection.length > 0 && (known?.lenses.join("\n") !== selection.join("\n") || known.task !== lensTask))
-			return undefined;
+		// that live run as superseded; and a repeat review with the same selection replaces a finished probing run and
+		// clears its findings, which left this one none to block on. Solution: a replaced review adjudicates nothing.
+		if (selection.length > 0 && known?.task !== lensTask) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
 			await clearVerifications(tx, input.root, revision);
