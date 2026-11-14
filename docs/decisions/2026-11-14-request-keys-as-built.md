@@ -31,7 +31,7 @@ The lens run is not keyed by this build. Its request, enclosing functions includ
 
 ## What this gives up
 
-The verification and walkthrough keys differ from the ones stored before. Each stored revision verifies once more, and asks its walkthrough once more, the first time it is reviewed after this lands. Check runs rerun once for the same reason. The lens rerun waits for [issue #432](https://github.com/melian-agent/melian/issues/432), which changes the lens key.
+The verification and walkthrough keys differ from the ones stored before. Each stored revision verifies once more, and asks its walkthrough once more, the first time it is reviewed after this lands. Check runs rerun once for the same reason. That costs the verifier's and the walkthrough's model calls, never a lens's, and the checks cost no tokens. So it costs less than a whole round, which cost $3.57 to $9.85 on recent pull requests. A new push reruns all of it anyway, so the cost falls only on a head reviewed before the upgrade and reviewed again after it, at most once for each open pull request. The lens rerun waits for [issue #432](https://github.com/melian-agent/melian/issues/432), which changes the lens key.
 
 Host facts enter a check's key, so a Linux runner's result never answers for a macOS checkout. Two hosts that differ only in Node's patch version also rerun each other's checks. Rule 5 accepts that cost.
 
