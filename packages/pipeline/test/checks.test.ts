@@ -562,10 +562,21 @@ describe("runChecks", () => {
 			expect(await run()).not.toBe(first);
 		});
 
-		// Bun writes no record of its install, so its lockfile alone is keyed, and the run reuses as before.
-		it("reuses a run beside Bun's lockfile, which has no record to read", { timeout: 60_000 }, async () => {
+		// An install no manager recorded cannot be told from another, so it is not the same install twice.
+		it("never reuses a run beside a node_modules that no manager recorded", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("node_modules/@types/node/index.d.ts", "export {};");
+			const first = await run();
+			expect(await run()).not.toBe(first);
+		});
+
+		// Bun writes no record of its install, so its lockfile alone is keyed, and its node_modules reuses as before.
+		it("reuses a run beside Bun's lockfile and its node_modules, which have no record to read", {
+			timeout: 60_000,
+		}, async () => {
 			const run = await fixture();
 			write("bun.lock", "lock");
+			write("node_modules/@types/node/index.d.ts", "export {};");
 			const first = await run();
 			expect(await run()).toBe(first);
 		});

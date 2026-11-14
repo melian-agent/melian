@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -143,8 +143,9 @@ function digestOf(path: string): string {
 }
 
 // A digest of each lockfile and install record at `repoRoot`, `unavailable` for one the checkout lacks and `unreadable`
-// for one it cannot read. A file that cannot be read, or a lockfile none of whose manager's records is present, leaves
-// the install unidentified, since its digest would read as an unchanged install.
+// for one it cannot read. A file that cannot be read, a lockfile none of whose manager's records is present, or a
+// node_modules with no manager's record and no Bun lockfile leaves the install unidentified, since a missing record
+// would read as an unchanged install.
 export function installDigests(repoRoot: string): InstallDigests {
 	const digests: Record<string, string> = Object.fromEntries(
 		managers
@@ -152,8 +153,12 @@ export function installDigests(repoRoot: string): InstallDigests {
 			.map((name) => [name, digestOf(posix.join(repoRoot, name))]),
 	);
 	const present = (name: string) => digests[name] !== "unavailable";
+	const recorded = managers.some(({ lockfiles, records }) =>
+		(records.length === 0 ? lockfiles : records).some(present),
+	);
 	const identified =
 		!Object.values(digests).includes("unreadable") &&
+		(recorded || !existsSync(posix.join(repoRoot, "node_modules"))) &&
 		managers.every(
 			({ lockfiles, records }) => records.length === 0 || !lockfiles.some(present) || records.some(present),
 		);
