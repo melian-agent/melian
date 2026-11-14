@@ -47,6 +47,7 @@ import {
 	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
+import { DecisionIndexWarning } from "./decision-index.ts";
 import {
 	decisionProviderRefusal,
 	type fallbackDecider,
@@ -415,9 +416,15 @@ export async function review(
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
+		const indexWarning = await DecisionIndexWarning.read(repoRoot, changeset.revision.base, [
+			...(verdict.ran ?? []),
+			...verdict.notRun,
+		]);
+		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
+		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
 		io.stdout(
 			options.json
-				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.report() }, null, 2)}\n`
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`
 				: outcome.render(
 						io.color,
 						await terminalEmoji(io, repoRoot),
