@@ -151,7 +151,9 @@ export function parseTiming(body) {
 // code fence, as round.mjs's spendLine writes it. Every line of that fence that holds a model's or a check's text starts
 // with spaces, so only spendLine starts one with "Spend: ". Undefined for any other comment. A round comment with no
 // such line, or one it cannot read whole, is still a round, with no spend, so the Rounds row counts it.
-// AGENTS.md recognises the bot by login and account ID together, since a login can pass to another account.
+// AGENTS.md recognises the bot by login and account ID together, since a login can pass to another account. This reads
+// accounting, not a trust decision, so it does not compare the body with the run's record as AGENTS.md's check does: a
+// writer who edits the spend line changes only the totals a person reads.
 export function parseRound(body, author) {
 	if (author?.login !== "melian-status-bot" || author.databaseId !== 353727783) return undefined;
 	if (!body.startsWith("<!-- melian-round run:")) return undefined;
