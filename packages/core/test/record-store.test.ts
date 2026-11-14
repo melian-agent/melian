@@ -185,7 +185,7 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
-		"list shows a record add refused",
+		"list shows a record add refused, until another add lands",
 		"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
 		(inner) => ({
 			add: async (records) => {
@@ -193,8 +193,25 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 					refused.push(...records.filter((record) => record.kind === "not-a-kind"));
 					throw error;
 				});
+				refused = [];
 			},
 			list: async (name) => [...(await inner.list(name)), ...refused.filter((record) => record.changeset === name)],
+		}),
+	],
+	[
+		"list repeats a valid record a refused batch held, once a repeat lands it",
+		"add: refuses a batch's invalid record by name, never lists it, and a repeat of the rest completes the batch",
+		(inner) => ({
+			add: async (records) => {
+				await inner.add(records).catch((error) => {
+					refused.push(...records.filter((record) => record.kind !== "not-a-kind"));
+					throw error;
+				});
+			},
+			list: async (name) => {
+				const listed = await inner.list(name);
+				return listed.length === 0 ? listed : [...listed, ...refused.filter((record) => record.changeset === name)];
+			},
 		}),
 	],
 	[
