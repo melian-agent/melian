@@ -64,13 +64,53 @@ describe("SuiteExports", () => {
 		);
 	});
 
-	it("refuses a ./testing export that leaves its package", async () => {
+	it.each([
+		["a bare path", "src/record.ts"],
+		["an absolute path", "/src/record.ts"],
+		["a path that leaves the package and comes back", "../core/src/record.ts"],
+		["a path that leaves the package", "../other/src/testing.ts"],
+		["a .. segment inside the package", "./src/../src/record.ts"],
+		["a . segment", "./src/./record.ts"],
+		["an empty segment", "./src//record.ts"],
+		["a node_modules segment", "./node_modules/x/testing.ts"],
+		["a NODE_MODULES segment", "./NODE_MODULES/x/testing.ts"],
+		["a percent escape", "./src/%2e%2e/record.ts"],
+		["a backslash", "./src\\record.ts"],
+		["only the package itself", "./"],
+	])(
+		"refuses a ./testing export written as %s, which Node does not resolve to one file in the package",
+		async (_name, target) => {
+			const suites = await suitesIn(
+				workspace({ core: { exports: { "./testing": { "@melian-agent/source": target } } } }),
+			);
+			const reason = `packages/core/package.json maps ./testing to ${JSON.stringify(target)}, which Node does not resolve to one file in the package`;
+			expect(suites.refusal("packages/core/src/record.ts")).toBe(reason);
+			expect(suites.refusal("packages/core/src/testing.ts")).toBe(reason);
+		},
+	);
+
+	it("refuses a ./testing export whose default condition comes before the source condition", async () => {
 		const suites = await suitesIn(
-			workspace({ core: { exports: { "./testing": { "@melian-agent/source": "../other/src/testing.ts" } } } }),
+			workspace({
+				core: {
+					exports: { "./testing": { default: "./dist/testing.js", "@melian-agent/source": "./src/testing.ts" } },
+				},
+			}),
 		);
 		expect(suites.refusal("packages/core/src/testing.ts")).toBe(
-			"packages/core's ./testing export, ../other/src/testing.ts, leaves the package",
+			"packages/core/package.json lists the default condition before @melian-agent/source under ./testing, so Node never reaches it",
 		);
+	});
+
+	it("accepts a ./testing export whose other conditions come before the source condition", async () => {
+		const suites = await suitesIn(
+			workspace({
+				core: {
+					exports: { "./testing": { types: "./dist/testing.d.ts", "@melian-agent/source": "./src/testing.ts" } },
+				},
+			}),
+		);
+		expect(suites.refusal("packages/core/src/testing.ts")).toBeUndefined();
 	});
 
 	it("refuses a package whose package.json does not parse, and names why", async () => {

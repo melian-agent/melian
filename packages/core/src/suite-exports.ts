@@ -1,4 +1,3 @@
-import { posix } from "node:path";
 import { canonicalPath } from "./findings.ts";
 import { SourceError, type SourceReader } from "./source.ts";
 
@@ -26,17 +25,37 @@ async function readManifest(
 	}
 }
 
+// Node's own rule for an export target: "./" then segments, none of them empty, ".", ".." or node_modules in any case.
+// A percent sign or a backslash is refused outright, so no escape can hide such a segment.
+function packageFile(target: string): string | undefined {
+	if (!target.startsWith("./") || /[%\\]/.test(target)) return undefined;
+	const rest = target.slice(2);
+	const segments = rest.split("/");
+	return segments.every((segment) => !["", ".", "..", "node_modules"].includes(segment.toLowerCase()))
+		? rest
+		: undefined;
+}
+
 async function testingExport(source: SourceReader, dir: string): Promise<Answer> {
 	const manifest = await readManifest(source, `${dir}/package.json`, `${dir}/package.json`);
 	if ("refused" in manifest) return manifest;
-	const target = (manifest.value as { exports?: { "./testing"?: { "@melian-agent/source"?: unknown } } } | null)
-		?.exports?.["./testing"]?.["@melian-agent/source"];
+	const conditions = (manifest.value as { exports?: { "./testing"?: Record<string, unknown> } } | null)?.exports?.[
+		"./testing"
+	];
+	const target = conditions?.["@melian-agent/source"];
 	if (typeof target !== "string")
 		return { refused: `${dir}/package.json maps no ./testing export under @melian-agent/source` };
-	const file = posix.join(dir, target);
-	return file.startsWith(`${dir}/`)
-		? { file }
-		: { refused: `${dir}'s ./testing export, ${target}, leaves the package` };
+	const keys = Object.keys(conditions as object);
+	if (keys.slice(0, keys.indexOf("@melian-agent/source")).includes("default"))
+		return {
+			refused: `${dir}/package.json lists the default condition before @melian-agent/source under ./testing, so Node never reaches it`,
+		};
+	const file = packageFile(target);
+	return file === undefined
+		? {
+				refused: `${dir}/package.json maps ./testing to ${JSON.stringify(target)}, which Node does not resolve to one file in the package`,
+			}
+		: { file: `${dir}/${file}` };
 }
 
 // A source reads only repository-relative paths it was handed already checked, so a pattern must be one already.
