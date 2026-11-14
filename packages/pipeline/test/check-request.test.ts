@@ -26,9 +26,8 @@ const vary = (_path: string, value: unknown) =>
 	Array.isArray(value) ? ["x"] : typeof value === "object" && value !== null ? { x: "x" } : undefined;
 
 describe("checkRequest", () => {
-	// Whether the install is identified follows from its digests, which are keyed, and decides reuse, not the key.
-	it("keys every input but the display-only configuration, the paths that name the host, and the install's mark", () => {
-		const excluded = ["config.output", "config.publish.emoji", "mutation.stryker.source.path", "install.identified"];
+	it("keys every input but the display-only configuration, and the paths that name the host", () => {
+		const excluded = ["config.output", "config.publish.emoji", "mutation.stryker.source.path"];
 		expect(keyCoverage(checkRequest, sample, { vary, excluded })).toEqual([]);
 	});
 

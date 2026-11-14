@@ -95,7 +95,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			source: policySource(input.source),
 			tools: input.tools,
 			analysers: input.analysers,
-			install: input.install.digests,
+			install: input.install,
 			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
 			checks: checkVersions,
 			host: input.host,

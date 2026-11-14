@@ -570,6 +570,15 @@ describe("runChecks", () => {
 			expect(await run()).not.toBe(first);
 		});
 
+		// Removing the unrecorded node_modules leaves every digest as it was, so the run made beside it must not answer.
+		it("never reuses a run made beside an unrecorded node_modules once it is removed", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("node_modules/@types/node/index.d.ts", "export {};");
+			const unrecorded = await run();
+			rmSync(join(repo, "node_modules"), { recursive: true });
+			expect(await run()).not.toBe(unrecorded);
+		});
+
 		// npm writes its record even when told to write no lockfile, and the record alone identifies the install.
 		it("reuses a run beside a node_modules npm recorded without a lockfile", { timeout: 60_000 }, async () => {
 			const run = await fixture();
