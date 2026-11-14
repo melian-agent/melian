@@ -218,9 +218,16 @@ export class StorePrune {
 					if (now - (await lstat(node.path)).mtimeMs > unreadableGraphAgeDays * day)
 						await add("unreadable graph", [`graphs/${node.name}`]);
 					else graphs.add(node.name);
-				} else if (entry !== "unknown" && now - entry.created > graphAgeDays * day && !trees.has(entry.tree))
-					await add("graph", [`graphs/${node.name}`, `coverage/${node.name}`]);
-				else graphs.add(node.name);
+				} else if (entry !== "unknown" && now - entry.created > graphAgeDays * day && !trees.has(entry.tree)) {
+					// A file or link at the coverage path is listed as not recognised, so it must not go with the graph.
+					const coverage = await lstat(join(root, "coverage", node.name)).catch(() => undefined);
+					await add(
+						"graph",
+						coverage === undefined || coverage.isDirectory()
+							? [`graphs/${node.name}`, `coverage/${node.name}`]
+							: [`graphs/${node.name}`],
+					);
+				} else graphs.add(node.name);
 			}
 			for (const node of await children(join(root, "coverage"))) {
 				if (scratch(node.name)) continue;

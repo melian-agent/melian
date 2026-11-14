@@ -730,3 +730,28 @@ it("stops at a removal that fails for a reason other than the path being gone", 
 	await expect(prune.apply()).rejects.toMatchObject({ code: "ENOTDIR" });
 	expect(await exists(`coverage/${key}`)).toBe(true);
 });
+
+it("keeps a file at a removed graph's coverage path, which it lists as not recognised", async () => {
+	const dead = await graph("f".repeat(40), 7 * day + 1);
+	await rm(join(state, "coverage", dead), { recursive: true });
+	await writeFile(join(state, "coverage", dead), "user notes");
+	const prune = await plan();
+	expect(prune.entries).toEqual([{ kind: "graph", paths: [`graphs/${dead}`], bytes: expect.any(Number) }]);
+	expect(prune.kept).toEqual([`coverage/${dead}`]);
+	await prune.apply();
+	expect(await readFile(join(state, "coverage", dead), "utf8")).toBe("user notes");
+	expect(await exists(`graphs/${dead}`)).toBe(false);
+});
+
+it("keeps a link at a removed graph's coverage path, which it lists as not recognised", async () => {
+	const dead = await graph("f".repeat(40), 7 * day + 1);
+	const elsewhere = await realpath(await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-")));
+	outside.push(elsewhere);
+	await rm(join(state, "coverage", dead), { recursive: true });
+	await symlink(elsewhere, join(state, "coverage", dead));
+	const prune = await plan();
+	expect(prune.entries).toEqual([{ kind: "graph", paths: [`graphs/${dead}`], bytes: expect.any(Number) }]);
+	expect(prune.kept).toEqual([`coverage/${dead}`]);
+	await prune.apply();
+	expect((await lstat(join(state, "coverage", dead))).isSymbolicLink()).toBe(true);
+});
