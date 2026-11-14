@@ -254,6 +254,11 @@ export class StorePrune {
 	async apply(): Promise<{ removed: PruneEntry[]; live: LiveRun[] }> {
 		const removed: PruneEntry[] = [];
 		if (this.live.length > 0) return { removed, live: [...this.live] };
+		const linked = (path: string) =>
+			lstat(path).then(
+				(info) => info.isSymbolicLink(),
+				() => false,
+			);
 		for (const entry of this.entries) {
 			const { live } = await worktrees(this.#repoRoot, this.#env);
 			if (live.length > 0) return { removed, live };
@@ -263,6 +268,8 @@ export class StorePrune {
 			}
 			for (const path of entry.paths) {
 				const source = join(this.root, path);
+				// A folder swapped for a link since the plan would carry the rename out of the state directory.
+				if ((await linked(this.root)) || (await linked(dirname(source)))) continue;
 				const moved = join(dirname(source), `.prune-${process.pid}-${crypto.randomUUID()}`);
 				try {
 					await rename(source, moved);

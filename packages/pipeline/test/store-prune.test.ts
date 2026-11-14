@@ -7,6 +7,7 @@ import {
 	readdir,
 	readFile,
 	realpath,
+	rename,
 	rm,
 	symlink,
 	utimes,
@@ -672,6 +673,44 @@ it("keeps a planned mutation partition written exactly fourteen days before the 
 	expect(await age(`mutation/${name}`, 14 * day)).toBe(newest);
 	expect(await prune.apply()).toEqual({ removed: [], live: [] });
 	expect(await exists(`mutation/${name}`)).toBe(true);
+});
+
+it("leaves a cache folder swapped for a link after the plan, and what the link names", async () => {
+	const key = await graph("f".repeat(40), 30 * day);
+	const prune = await plan();
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	await mkdir(join(elsewhere, key));
+	await writeFile(join(elsewhere, key, "index.json"), "theirs");
+	await rm(join(state, "coverage"), { recursive: true });
+	await symlink(elsewhere, join(state, "coverage"));
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	expect(await readFile(join(elsewhere, key, "index.json"), "utf8")).toBe("theirs");
+	expect(await readdir(elsewhere)).toEqual([key]);
+	expect(await exists(`graphs/${key}`)).toBe(false);
+});
+
+it("removes nothing through a state directory swapped for a link after the plan", async () => {
+	const key = await graph("f".repeat(40), 30 * day);
+	const prune = await plan();
+	const moved = `${state}-moved`;
+	outside.push(moved);
+	await rename(state, moved);
+	await symlink(moved, state);
+	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
+	expect(await readdir(join(moved, "graphs"))).toEqual([key]);
+	expect(await readdir(join(moved, "coverage"))).toEqual([key]);
+});
+
+it("refuses a state directory swapped for a file after the plan", async () => {
+	const key = await graph("f".repeat(40), 30 * day);
+	const prune = await plan();
+	const moved = `${state}-moved`;
+	outside.push(moved);
+	await rename(state, moved);
+	await writeFile(state, "x");
+	await expect(prune.apply()).rejects.toMatchObject({ code: "ENOTDIR" });
+	expect(await readdir(join(moved, "graphs"))).toEqual([key]);
 });
 
 it("stops at a removal that fails for a reason other than the path being gone", async () => {
