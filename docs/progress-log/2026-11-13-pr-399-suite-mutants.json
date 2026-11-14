@@ -1,6 +1,6 @@
 {
 	"pull_request": 399,
-	"head": "bbc9bff97e84b8a848275f97a8f594d62e070ab3",
+	"head": "43f150ded7bd35a917bd93e9f5827a9f128925a3",
 	"ruling": "The maintainer ruled on 2026-11-14, in the coordinator's session, that these conformance-suite mutants are listed by line with a reason under the label \"suite assertion, proved per case\", never as equivalent. They stay unclaimed in 2026-11-13-pr-399-mutants.json, which fails --sample until issue #406 adds a claim for them; they then take \"claim\": \"suite\". Each row that deletes or changes something inside a case names the line that catches its case's failures under the mutant, as the decision's wording of 2026-11-14 requires.",
 	"mutants": [
 		{
@@ -125,9 +125,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 343,
+			"line": 354,
 			"column": 4,
-			"endLine": 343,
+			"endLine": 354,
 			"endColumn": 24,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
@@ -137,9 +137,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 351,
+			"line": 362,
 			"column": 22,
-			"endLine": 353,
+			"endLine": 364,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
@@ -149,9 +149,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 370,
+			"line": 381,
 			"column": 4,
-			"endLine": 370,
+			"endLine": 381,
 			"endColumn": 24,
 			"mutatorName": "CallExpression",
 			"replacement": ";",
@@ -161,9 +161,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 373,
+			"line": 384,
 			"column": 52,
-			"endLine": 373,
+			"endLine": 384,
 			"endColumn": 56,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
@@ -173,9 +173,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 375,
+			"line": 386,
 			"column": 48,
-			"endLine": 375,
+			"endLine": 386,
 			"endColumn": 67,
 			"mutatorName": "ObjectLiteral",
 			"replacement": "{}",
@@ -185,9 +185,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 375,
+			"line": 386,
 			"column": 61,
-			"endLine": 375,
+			"endLine": 386,
 			"endColumn": 65,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
@@ -197,9 +197,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 379,
+			"line": 390,
 			"column": 22,
-			"endLine": 383,
+			"endLine": 394,
 			"endColumn": 4,
 			"mutatorName": "BlockStatement",
 			"replacement": "{}",
@@ -209,9 +209,9 @@
 		},
 		{
 			"file": "packages/core/src/testing.ts",
-			"line": 382,
+			"line": 393,
 			"column": 48,
-			"endLine": 382,
+			"endLine": 393,
 			"endColumn": 52,
 			"mutatorName": "BooleanLiteral",
 			"replacement": "false",
