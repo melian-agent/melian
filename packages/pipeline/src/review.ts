@@ -3011,7 +3011,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
-	let verifierSuperseded = false;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -3091,11 +3090,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				own,
 				lensTask,
 			);
-			verifierSuperseded = verifying === undefined;
+			// Another review's final verification can retire a wave this one reused, and then that review decides its claims.
+			if (verifying === undefined) throw replaced();
 			// A final task this call starts stands on its reused waves' judgements, made under the dismissals each wave was
 			// shown, whichever process started it; one replaced since is not the one judged. A final task this call attaches
 			// to is re-derived under the dismissals this call read, as every round's is.
-			if (verifying !== undefined && verifying !== attached)
+			if (verifying !== attached)
 				for (const [key, shown] of shownTo) {
 					const fresh = restating.get(key);
 					if (fresh !== undefined)
@@ -3104,59 +3104,55 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							dismissed: fresh.dismissed.map(({ id }) => ({ id, dismissal: shown[id] ?? "" })),
 						});
 				}
-			if (verifying === undefined)
-				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
-			else {
-				await abortReplacedRuns(harness, context);
-				await refuseIfBlocked(
-					harness,
-					verifying,
-					[],
-					inIndex((index) => {
-						const entry = index.reviews[reviewed];
-						if (entry?.verification?.task === verifying) index.reviews[reviewed] = omit(entry, "verification");
-					}),
-					context,
-				);
-				const finished = (await harness.waitForTask(verifying, context)).state.outcome;
-				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
-				const ended = Object.values(results).find((result) => result.status === "ended");
-				const failed = candidates
-					.map((candidate) => results[candidate.key])
-					.find((result) => result?.status !== "done");
-				verificationCheck =
-					ended?.status === "ended"
-						? { name: "verifier", status: "ended", version: verifierVersion, budgetEnded: ended.budgetEnded }
-						: Object.keys(results).length !== candidates.length || failed !== undefined
-							? {
-									name: "verifier",
-									status: "failed",
-									version: verifierVersion,
-									reason:
-										failed !== undefined && "reason" in failed
-											? failed.reason
-											: "the verification task did not complete",
-								}
-							: { name: "verifier", status: "ran", version: verifierVersion };
-				const completed = Object.values(results).filter((result) => result.status === "done");
-				const model =
-					completed.find(
-						(result) =>
-							request.plan?.tier("verifier").acceptOverridden === false &&
-							request.plan.verifierLineage(result.model)?.outside === true,
-					) ?? completed[0];
-				const lineage = request.plan?.verifierLineage(
-					model?.status === "done" ? model.model : modelName(candidates[0]!.route[0]!),
-				);
-				if (lineage !== undefined) {
-					verificationCheck = { ...verificationCheck, lineage };
-					if (lineage.outside && request.plan?.tier("verifier").acceptOverridden === false)
-						verificationCheck = {
-							...verificationCheck,
-							status: "failed",
-							reason: "the verifier finished outside its guarded accepted route",
-						};
-				}
+			await abortReplacedRuns(harness, context);
+			await refuseIfBlocked(
+				harness,
+				verifying,
+				[],
+				inIndex((index) => {
+					const entry = index.reviews[reviewed];
+					if (entry?.verification?.task === verifying) index.reviews[reviewed] = omit(entry, "verification");
+				}),
+				context,
+			);
+			const finished = (await harness.waitForTask(verifying, context)).state.outcome;
+			const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
+			const ended = Object.values(results).find((result) => result.status === "ended");
+			const failed = candidates
+				.map((candidate) => results[candidate.key])
+				.find((result) => result?.status !== "done");
+			verificationCheck =
+				ended?.status === "ended"
+					? { name: "verifier", status: "ended", version: verifierVersion, budgetEnded: ended.budgetEnded }
+					: Object.keys(results).length !== candidates.length || failed !== undefined
+						? {
+								name: "verifier",
+								status: "failed",
+								version: verifierVersion,
+								reason:
+									failed !== undefined && "reason" in failed
+										? failed.reason
+										: "the verification task did not complete",
+							}
+						: { name: "verifier", status: "ran", version: verifierVersion };
+			const completed = Object.values(results).filter((result) => result.status === "done");
+			const model =
+				completed.find(
+					(result) =>
+						request.plan?.tier("verifier").acceptOverridden === false &&
+						request.plan.verifierLineage(result.model)?.outside === true,
+				) ?? completed[0];
+			const lineage = request.plan?.verifierLineage(
+				model?.status === "done" ? model.model : modelName(candidates[0]!.route[0]!),
+			);
+			if (lineage !== undefined) {
+				verificationCheck = { ...verificationCheck, lineage };
+				if (lineage.outside && request.plan?.tier("verifier").acceptOverridden === false)
+					verificationCheck = {
+						...verificationCheck,
+						status: "failed",
+						reason: "the verifier finished outside its guarded accepted route",
+					};
 			}
 		}
 	}
@@ -3165,7 +3161,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// A review a later one replaced, by lens task or by verification task, leaves the links that one recorded.
 	const linked = await (await harness.root(context)).commit(async (tx) => {
 		if (!stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], lensTask, verifying)) return false;
-		if (verifierSuperseded) return true;
 		await recordInheritances(
 			tx,
 			root,
