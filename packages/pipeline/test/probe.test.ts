@@ -443,12 +443,12 @@ describe("Probe.open with a head's allowlist", () => {
 	it("refuses a probe whose probe.read copy passes its deadline part-way, and leaves no partial copy", async () => {
 		const { sandbox } = passthrough();
 		writeFileSync(join(checkout, "generated", "more.txt"), "more\n");
-		const start = Date.now();
+		const start = performance.now();
 		const copying = () =>
 			left().some((probe) =>
 				["out.txt", "more.txt"].some((file) => existsSync(join(scratch, probe, "tree", "generated", file))),
 			);
-		vi.spyOn(Date, "now").mockImplementation(() => (copying() ? start + probeLimits.read.time + 1 : start));
+		vi.spyOn(performance, "now").mockImplementation(() => (copying() ? start + probeLimits.read.time + 1 : start));
 		try {
 			const error = await refusal({ script: "" }, options(sandbox, atHead(["generated"])));
 			expect(error).toMatchObject({
@@ -864,6 +864,13 @@ describe("copyReads", () => {
 			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 1000 milliseconds"),
 		);
 		expect(copied()).toEqual([]);
+	});
+
+	it("refuses a copy whose last entry finished past its deadline", async () => {
+		const done = () => ["a", "b"].every((file) => existsSync(join(tree, "d", file)));
+		await expect(copy({ time: 1_000 }, () => (done() ? 6_001 : 5_000))).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 1000 milliseconds"),
+		);
 	});
 });
 

@@ -327,12 +327,13 @@ function staysInside(root: string, link: string, install: ReturnType<typeof stat
 }
 
 // Copies each allowed path over the tree, counting every entry before it is written. A copy past one of the limits is
-// refused part-way, and `Probe.open` removes what it wrote. Only a file that grows while it is copied passes unseen.
+// refused part-way, and `Probe.open` removes what it wrote. A copy that stalls inside one file is refused only once it
+// returns, and a file that grows while it is copied passes the byte limit.
 export async function copyReads(
 	copies: readonly (readonly [string, string])[],
 	tree: string,
 	limits: { readonly entries: number; readonly bytes: number; readonly time: number } = probeLimits.read,
-	now: () => number = Date.now,
+	now: () => number = () => performance.now(),
 ): Promise<void> {
 	const deadline = now() + limits.time;
 	let entries = 0;
@@ -352,6 +353,7 @@ export async function copyReads(
 		const target = join(tree, entry);
 		await mkdir(dirname(target), { recursive: true });
 		await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true, filter });
+		if (now() > deadline) throw past(`${limits.time} milliseconds`);
 	}
 }
 

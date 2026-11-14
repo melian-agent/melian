@@ -16,4 +16,4 @@ The numbers are about twice Melian's own install, 25,566 entries and 300 MB, whi
 
 ## What it does not bound
 
-A file is counted at the size it had when `cp` reached it. One that grows while it is copied is bounded by neither the byte limit nor the deadline, since the deadline is checked only between entries. The head's code does not run before the copy, so only another process on the reviewer's machine could grow a file then.
+The deadline is read on a monotonic clock before each entry and after each entry's copy, so a copy that ran past it is refused even when it finished. Nothing interrupts a copy that stalls inside one file, such as a slow 512 MiB file or storage that hangs: the probe is refused only once that copy returns. A file is also counted at the size it had when `cp` reached it, so one that grows while it is copied passes the byte limit. The head's code does not run before the copy, so only the reviewer's own storage or another process on the reviewer's machine can cause either.
