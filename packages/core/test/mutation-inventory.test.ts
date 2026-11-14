@@ -267,7 +267,7 @@ describe("MutationInventory", () => {
 		{ claim: "killed", evidence: { reason: "wrong kind" } },
 		{ claim: "new-test", evidence: { reason: "wrong kind" } },
 		{ claim: "equivalent", evidence: row().evidence },
-		{ claim: "killed", survivorClasses: undefined },
+		{ claim: "killed", evidence: row().evidence, survivorClasses: undefined },
 	])("refuses generated classification gaps for sampling and future verification: %j", (extra) => {
 		for (const method of ["sample", "forVerification"] as const)
 			expect(() => MutationInventory.create(fields([row(0, extra)]))[method]()).toThrow(MutationInventoryError);
@@ -356,14 +356,17 @@ describe("MutationInventory", () => {
 		expect(MutationInventory.create(fields([row()], { adapters })).toJSON().adapters).toEqual(adapters);
 	});
 
-	it.each([null, { ...fields(), mutants: null }, { ...fields(), mutants: [null] }])(
-		"refuses malformed factory inputs before deriving ids: %j",
-		(input) => {
-			expect(() => MutationInventory.create(input as unknown as MutationInventoryInput)).toThrow(
-				MutationInventoryError,
-			);
-		},
-	);
+	it.each([
+		undefined,
+		null,
+		{ ...fields(), mutants: null },
+		{ ...fields(), mutants: [null] },
+		{ ...fields(), mutants: ["row"] },
+	])("refuses malformed factory inputs before deriving ids: %j", (input) => {
+		expect(() => MutationInventory.create(input as unknown as MutationInventoryInput)).toThrow(
+			MutationInventoryError,
+		);
+	});
 
 	it("samples a rare mutator even when every row shares one survivor class", () => {
 		const rows = Array.from({ length: 30 }, (_, index) => row(index));
