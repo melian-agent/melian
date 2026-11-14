@@ -24,4 +24,14 @@ A review that fails the predicate writes nothing and ends `superseded`, at the f
 
 A review whose reused wave another review's final verification retired ends `superseded` too. That other review shares the lens task and decides the claims the wave held. The earlier review used to adjudicate with its verifier marked failed, which put its `not reviewed` adjudication in the index over the other's.
 
+A replaced review's probe rerun task launches no further probe either. It carries the lens task it reruns for, and asks the predicate before each launch. The check sits before the launch, not only in the commits that write each run, because a replacing review with nothing to verify never takes the reruns over. Without it, the replaced review went on to run every remaining probe, up to 48 of them at up to ten minutes each, for a review that records no verdict. The coordinator chose to fix it here on 2026-11-14, since the rerun task is new in this pull request and its input can gain the field with no migration.
+
+That cost was waste, not a wrong verdict. A stale rerun task writes only `ProbeReruns`, under the revision, keyed by its own prober's probe IDs, which no other lens task shares. Three things read that record:
+
+- the rerun task itself, for its own keys;
+- the verification task, for its own claims' keys;
+- the verification's attach key, which hashes the revision's whole record.
+
+The attach key is the only reader a foreign entry could reach. Every review that verifies first takes the reruns over and keeps only its own keys, and a stale task writes nothing once they are taken. So no review verifies with another's runs, and no later repeat, `--rerun`, dismissal, publication or telemetry reads them.
+
 What it gives up: a review that loses the entry this way records no verdict and pays for the work it did. A user sees `superseded` where a review a `--rerun` replaced used to end `lensFailed`, or where one whose wave was retired ended `verifierFailed`.
