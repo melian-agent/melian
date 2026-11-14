@@ -157,6 +157,47 @@ describe("a level that probes across a crash", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it.each([
+		["the prober's", reminderCrashScript, "prober-asked", "prober"],
+		["the planner's", planReminderCrashScript, "planner-reminded", "planner"],
+	] as const)(
+		"leaves the review not reviewed when %s reminder, resumed after a crash, does not finish",
+		async (which, script, event, role) => {
+			const database = join(dir, "state.sqlite");
+			const log = join(dir, "events.jsonl");
+			await crashInProber(database, log, script, event);
+			const failed = fauxAssistantMessage("", { stopReason: "error", errorMessage: "the connection reset" });
+			const { harness, review } = await probingReview(repo, database, {
+				first: {
+					planner: role === "planner" ? [failed] : [],
+					prober:
+						role === "prober"
+							? [failed]
+							: [
+									fauxAssistantMessage([fauxToolCall("skip_attack", { attack: 1, reason: "r" })], {
+										stopReason: "toolUse",
+									}),
+									fauxAssistantMessage("Done."),
+								],
+				},
+				second: { planner: [], prober: [] },
+			});
+			try {
+				const verdict = await review().then(
+					(done) => done.verdict,
+					(error: unknown) => (error as ReviewError).verdict!,
+				);
+				// What the reminder recorded before the crash, a plan or a probe that answers the attack, does not stand as done.
+				expect(verdict.status).toBe("not-reviewed");
+				const record = verdict.notRun.find(({ name }) => name === "lens.trust-boundary")!;
+				expect(record.error).toContain(`${which} reminder did not finish`);
+				expect(record.error).toContain("the connection reset");
+			} finally {
+				await harness.close(context);
+			}
+		},
+	);
+
 	it("gives the prober and the verifier the plan the planner ends with, after a crash inside the planner's reminder", async () => {
 		const database = join(dir, "state.sqlite");
 		const log = join(dir, "events.jsonl");

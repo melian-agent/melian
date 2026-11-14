@@ -578,12 +578,20 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			};
 			// One more input to a conversation that finished without what its role owes, under a request ID of its own. A
 			// reminder that does not finish ends the lens, so what its conversation did before it failed never stands as done.
+			// One already submitted is waited on even when no longer owed, since before a crash it may have recorded what was.
 			const remind = async (
 				id: ConversationId,
 				content: string,
 				requestId: string,
 				which: string,
+				owed: boolean,
 			): Promise<Exclude<LensOutcome, { status: "done" }> | undefined> => {
+				let submitted = false;
+				await runtime.commit(async (tx) => {
+					submitted = (await tx.submissionByRequest(id, requestId)) !== undefined;
+					return undefined;
+				}, context);
+				if (!owed && !submitted) return undefined;
 				const child = (await runtime.conversation(id, context))!;
 				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
 				if (settled.status === "done") return undefined;
@@ -606,16 +614,15 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			): Promise<ProbingOutcome | Exclude<LensOutcome, { status: "done" }>> => {
 				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				let plan = await planOf();
-				if (plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined) {
-					const failed = await remind(
-						planner,
-						recordPlanPrompt,
-						`lens:${lens.key}:plan`,
-						"the planner's reminder",
-					);
-					if (failed !== undefined) return failed;
-					plan = await planOf();
-				}
+				const failed = await remind(
+					planner,
+					recordPlanPrompt,
+					`lens:${lens.key}:plan`,
+					"the planner's reminder",
+					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
+				);
+				if (failed !== undefined) return failed;
+				plan = await planOf();
 				if (plan === undefined) return { status: "unanswered", reason: "the planner recorded no attack plan" };
 				const key = `${lens.key}/prober`;
 				let prober = started.children[key];
@@ -651,11 +658,15 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
-				if (open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined) {
-					const failed = await remind(prober!, answerPrompt(open), `lens:${key}:answer`, "the prober's reminder");
-					if (failed !== undefined) return failed;
-					open = await unanswered(prober!, plan.length);
-				}
+				const unfinished = await remind(
+					prober!,
+					answerPrompt(open),
+					`lens:${key}:answer`,
+					"the prober's reminder",
+					open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined,
+				);
+				if (unfinished !== undefined) return unfinished;
+				open = await unanswered(prober!, plan.length);
 				const state = (await runtime.snapshot(ProbingDocument, prober!, context)) ?? {};
 				const probes = Object.values(state.probes ?? {});
 				return {
