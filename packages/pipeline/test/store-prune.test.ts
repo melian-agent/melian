@@ -184,19 +184,24 @@ it("removes a graph with no readable entry once it is more than a day old, and k
 	]);
 });
 
+// An entry the graph contract accepts in every field but `created`, for a graph of an old tree no ref holds.
+function contractEntry(created: string): object {
+	const entry = GraphSnapshot.create(
+		{ tree: "f".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
+		graphFiles,
+	).toJSON();
+	return { ...entry, created };
+}
+
 it.each([
 	["no entry.json", undefined],
 	["text that is not JSON", "{"],
 	["JSON that is not an object", "null"],
 	[
 		"an entry naming another key",
-		JSON.stringify({
-			format_version: 1,
-			key: "2".repeat(64),
-			parts: { tree: "f".repeat(40) },
-			created: "2020-01-01T00:00:00Z",
-		}),
+		JSON.stringify({ ...contractEntry("2020-01-01T00:00:00.000Z"), key: "2".repeat(64) }),
 	],
+	["an entry whose creation time is not a date", JSON.stringify(contractEntry("not a date"))],
 	[
 		"an entry with no tree",
 		JSON.stringify({ format_version: 1, key: "1".repeat(64), parts: {}, created: "2020-01-01T00:00:00Z" }),
