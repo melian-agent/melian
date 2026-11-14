@@ -280,11 +280,24 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(shown.stdout).toContain("melian.check guardrails completed");
 		const attached = melian(repo, ["review", "main", "--json"], env);
 		expect(attached.status).toBe(0);
-		const again = JSON.parse(attached.stdout) as { telemetry: { stages: { id: string; reused: boolean }[] } };
+		const again = JSON.parse(attached.stdout) as {
+			telemetry: {
+				stages: { id: string; reused: boolean }[];
+				total?: { total: { totalTokens: number } };
+				run: { stages: { outcome: string; tokens?: number; cost?: number }[] };
+			};
+		};
 		expect(again.telemetry.stages.map(({ id }) => id)).toEqual(
 			(output.telemetry.stages as { id: string }[]).map(({ id }) => id),
 		);
 		expect(again.telemetry.stages.every(({ reused }) => reused)).toBe(true);
+		// The ledger's run counts nothing for a reused stage, though the revision's whole total still holds its usage.
+		expect(again.telemetry.total?.total.totalTokens).toBeGreaterThan(0);
+		expect(again.telemetry.run.stages.length).toBeGreaterThan(0);
+		expect(again.telemetry.run.stages.filter((row) => row.tokens !== undefined || row.cost !== undefined)).toEqual(
+			[],
+		);
+		expect(again.telemetry.run.stages.some((row) => row.outcome === "reused")).toBe(true);
 		expect(attached.stderr).toContain("(reused)");
 	});
 

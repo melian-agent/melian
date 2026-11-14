@@ -417,7 +417,7 @@ export async function review(
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
-				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.report() }, null, 2)}\n`
 				: outcome.render(
 						io.color,
 						await terminalEmoji(io, repoRoot),
@@ -445,7 +445,7 @@ export async function review(
 				`${JSON.stringify(
 					{
 						error: { message: error instanceof Error ? error.message : String(error) },
-						telemetry: timings.toJSON(),
+						telemetry: timings.report(),
 					},
 					null,
 					2,
@@ -855,7 +855,7 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 		const timings = await TelemetryReader.open(storage).read(Revision.key(stored.changeset.revision));
 		if (timings.stages.length === 0 && timings.prepare === undefined)
 			throw new CliError("No stage telemetry is stored for this revision.");
-		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
+		io.stdout(options.json ? `${JSON.stringify(timings.report(), null, 2)}\n` : timings.render());
 		return 0;
 	} finally {
 		await storage.close(context);
