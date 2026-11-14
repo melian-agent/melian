@@ -21,8 +21,8 @@ const vary = (_path: string, value: unknown) =>
 	Array.isArray(value) ? ["x"] : typeof value === "object" && value !== null ? { x: "x" } : undefined;
 
 describe("checkRequest", () => {
-	it("keys every input but the display-only configuration", () => {
-		const excluded = ["config.output", "config.publish.emoji"];
+	it("keys every input but the display-only configuration and the paths that name the host", () => {
+		const excluded = ["config.output", "config.publish.emoji", "mutation.stryker.source.path"];
 		expect(keyCoverage(checkRequest, sample, { vary, excluded })).toEqual([]);
 	});
 
@@ -32,6 +32,23 @@ describe("checkRequest", () => {
 			config: { ...defaultConfig, output: { emoji: "off" }, publish: { ...defaultConfig.publish, emoji: "off" } },
 		});
 		expect(shown.key).toBe(checkRequest(sample).key);
+	});
+
+	it("keys a run the same from another checkout or preference file", () => {
+		const moved = checkRequest({
+			...sample,
+			source: { kind: "worktree", preferences: "/home/other/.config/melian/config.yaml" },
+			mutation: sample.mutation && {
+				...sample.mutation,
+				stryker: { ...sample.mutation.stryker, source: { from: "checkout", path: "/elsewhere/x" } },
+			},
+		});
+		const here = checkRequest({
+			...sample,
+			source: { kind: "worktree", preferences: "/home/me/.config/melian/config.yaml" },
+		});
+		expect(moved.key).toBe(here.key);
+		expect(JSON.stringify(moved.request)).not.toMatch(/elsewhere|home/);
 	});
 
 	it("keys a run without mutation testing apart from one with it", () => {

@@ -65,8 +65,10 @@ const vary = (_path: string, value: unknown) =>
 	Array.isArray(value) ? ["x"] : typeof value === "object" && value !== null ? { x: "x" } : undefined;
 
 describe("verificationRequest", () => {
-	it("keys every input but the nonce, the reused outcomes, the shown dismissals, the verdicts and the speaker's body", () => {
+	it("keys every input but the root, the checkout, the nonce, the reused outcomes, the shown dismissals, the verdicts and the speaker's body", () => {
 		const excluded = [
+			"root",
+			"revision.repoRoot",
 			"revision.nonce",
 			"reused",
 			"candidates.0.dismissals",
@@ -81,6 +83,17 @@ describe("verificationRequest", () => {
 		expect(again.key).toBe(verificationRequest(sample).key);
 		expect(again.unkeyed).toEqual({ nonce: "m".repeat(24) });
 		expect(again.producer).toBe("verification");
+	});
+
+	it("attaches the same review from another checkout or storage to the same task", () => {
+		const moved = verificationRequest({
+			...sample,
+			root: 8 as unknown as VerificationInput["root"],
+			revision: { ...sample.revision, repoRoot: "/elsewhere/repo" },
+		});
+		expect(moved.key).toBe(verificationRequest(sample).key);
+		expect(moved.request).not.toHaveProperty("root");
+		expect(moved.request).not.toHaveProperty("revision.repoRoot");
 	});
 
 	it("keys the tools and the line templates the verifier is given", () => {

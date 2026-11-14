@@ -414,12 +414,14 @@ function verifierText(): unknown {
 }
 
 /**
- * A verification task's request, keyed by its input less the revision's nonce, which is drawn afresh on every review,
- * and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
+ * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
+ * nonce, which is drawn afresh on every review, and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
  * version.
  */
 export function verificationRequest({
-	revision: { nonce, ...revision },
+	// A storage-local conversation ID and a checkout path name the host; the index the key is compared in is the root's own.
+	root: _root,
+	revision: { nonce, repoRoot: _repoRoot, ...revision },
 	candidates,
 	// Outcomes standing waves already reached for these candidates' identities; the commit checks each still stands.
 	reused: _,

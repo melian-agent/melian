@@ -43,20 +43,34 @@ function decisive(config: MelianConfig): unknown {
 	return { ...rest, publish: kept };
 }
 
+// Where a policy comes from, less the preference file's path, which names the host; `config` holds what the file says.
+function policySource(source: RepositorySource): unknown {
+	return source.kind === "revision" ? source : { kind: source.kind };
+}
+
+// Stryker's install path names the host; where it comes from and its installation's versions stay.
+function strykerFrom({
+	stryker: { source, ...stryker },
+	...mutation
+}: NonNullable<CheckRequestInput["mutation"]>): unknown {
+	return { ...mutation, stryker: { ...stryker, source: { from: source.from } } };
+}
+
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, Stryker's facts and the head's trust
- * when mutation testing is on, the build's own rules for what it stores, and the host it runs on. Nothing is left out.
+ * when mutation testing is on, the build's own rules for what it stores, and the host it runs on. Only the paths that
+ * name the host are left out.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
 	return KeyedRequest.of(
 		"check",
 		requestJson({
 			config: decisive(input.config),
-			source: input.source,
+			source: policySource(input.source),
 			tools: input.tools,
 			analysers: input.analysers,
-			...(input.mutation === undefined ? {} : { mutation: input.mutation }),
+			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
 			storedText,
 			tscProjects: tscProjectRule,
 			host: input.host,
