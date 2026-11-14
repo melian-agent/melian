@@ -251,6 +251,21 @@ it("classifies as a miss a directory whose entry names another key that is a hit
 	expect(await cache.classify(first.key)).toBe("miss");
 });
 
+it("classifies as a miss a directory whose entry names its own key but whose parts compute another that is a hit", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-classify-"));
+	const cache = await GraphCache.open(root);
+	const first = GraphSnapshot.create(parts, files);
+	const second = GraphSnapshot.create({ ...parts, tree: "e".repeat(40) }, files);
+	await cache.store(first);
+	await cache.store(second);
+	await writeFile(
+		join(root, "graphs", first.key, "entry.json"),
+		JSON.stringify({ ...second.toJSON(), key: first.key, created: "2036-11-11T00:00:00.000Z" }),
+	);
+	expect(await cache.read(parts)).toBeUndefined();
+	expect(await cache.classify(first.key)).toBe("miss");
+});
+
 it.each<[string, (directory: string, entry: string) => Promise<unknown>]>([
 	["no directory", (directory) => rm(directory, { recursive: true })],
 	["no entry.json", (directory) => rm(join(directory, "entry.json"))],

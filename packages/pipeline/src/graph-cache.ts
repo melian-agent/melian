@@ -85,8 +85,8 @@ export class GraphCache {
 		} catch {
 			return "miss";
 		}
-		// `read` looks under the key its parts compute, so an entry naming another key would judge that directory instead.
-		if (entry.key !== key || !(await this.read(entry.parts))) return "miss";
+		// `read` looks under the key the parts compute, so parts naming another key would judge that directory instead.
+		if (GraphSnapshot.key(entry.parts) !== key || !(await this.read(entry.parts))) return "miss";
 		return { tree: entry.parts.tree, created: Date.parse(entry.created) };
 	}
 	/** Publishes a complete directory atomically; concurrent valid writers share the winner. */
