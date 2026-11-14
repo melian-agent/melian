@@ -30,6 +30,8 @@ import {
 	SummaryIndex,
 	SummaryTask,
 	summarizeExtension,
+	WalkthroughPrompt,
+	walkthroughRequest,
 } from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
@@ -1216,6 +1218,52 @@ describe("walkthrough summaries", () => {
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 			const doc = await summarize();
 			expect(written(doc, revision)?.summary).toBe("Changes a value.");
+			expect((await harness.snapshot(SummaryIndex, root.id, context))?.tasks[revision]).toBe(pending);
+		});
+		async function seedKeyed(key: string) {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			return root.commit(async (tx) => {
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+						key,
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+				return task;
+			}, context);
+		}
+		it("replaces a pending task whose request key differs", async () => {
+			const revision = Revision.key(changeset.revision);
+			const stale = await seedKeyed("another request");
+			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+			const doc = await summarize();
+			expect(written(doc, revision)?.summary).toBe("Changes a value.");
+			const root = await harness.root(context);
+			expect((await harness.snapshot(SummaryIndex, root.id, context))?.tasks[revision]).not.toBe(stale);
+		});
+		it("attaches to a pending task whose request key matches", async () => {
+			const revision = Revision.key(changeset.revision);
+			const read = await WalkthroughPrompt.read(changeset);
+			const { key } = walkthroughRequest({
+				revision,
+				prompt: (nonce) => read.render(nonce),
+				model: models.ref("scripted"),
+				paths: ["src/a.ts"],
+				nonce: "x".repeat(24),
+			});
+			const pending = await seedKeyed(key);
+			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+			const doc = await summarize();
+			expect(written(doc, revision)?.summary).toBe("Changes a value.");
+			const root = await harness.root(context);
 			expect((await harness.snapshot(SummaryIndex, root.id, context))?.tasks[revision]).toBe(pending);
 		});
 	});
