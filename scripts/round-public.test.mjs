@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { StageTelemetry } from "../packages/pipeline/src/telemetry.ts";
 import { RoundComment } from "./round.mjs";
 
 const script = fileURLToPath(new URL("./round-comment.mjs", import.meta.url));
@@ -302,6 +303,39 @@ describe("a round's spend in the public verdict", () => {
 			...passed,
 			spend: { seconds: 572 },
 		});
+	});
+
+	it("publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints", () => {
+		const cost = { input: 0.5, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.5 };
+		const tokens = { input: 2_000, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 2_000, cost };
+		const lens = (subject, fields) => ({
+			id: subject,
+			name: "melian.lens",
+			subject,
+			task: 1,
+			reused: false,
+			resumed: false,
+			...fields,
+		});
+		const timings = new StageTelemetry(
+			"base..head",
+			[
+				lens("design@1@careful", {
+					conversation: 3,
+					outcome: "completed",
+					timing: "available",
+					startedAt: 1_000,
+					endedAt: 2_000,
+					durationMs: 1_000,
+					usage: { models: { m: tokens }, total: tokens },
+				}),
+				// Triage skipped it, so the reader built its row from the check record, with no conversation.
+				lens("durability@@careful", { outcome: "skipped", timing: "unavailable" }),
+			],
+			{ startedAt: 1_000, endedAt: 573_400, spans: [] },
+		);
+		const printed = JSON.parse(JSON.stringify({ ...passed, telemetry: timings.report() }));
+		expect(JSON.parse(published(printed)).spend).toStrictEqual({ seconds: 572, tokens: 2_000, cost: 0.5 });
 	});
 
 	it("counts nothing for a stage the review reused, so its spend is less than the revision's whole", () => {
