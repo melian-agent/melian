@@ -3,11 +3,14 @@ import { mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, symlink
 import { join } from "node:path";
 import {
 	DirectoryRecordStore,
+	everyRecordCounts,
 	MemoryRecordSpace,
 	MemoryRecordStore,
+	type PayloadChecks,
 	type RecordCell,
 	type RecordEnvelope,
 	RecordError,
+	RecordSet,
 	type RecordStore,
 	SharedRecord,
 } from "@melian-agent/core";
@@ -37,9 +40,9 @@ class Broken implements RecordStore {
 	readonly inner: RecordStore;
 	readonly breaks: Partial<RecordStore>;
 
-	constructor(inner: RecordStore, breaks: Breaks, shared: Shared) {
+	constructor(inner: RecordStore, breaks: Breaks, shared: Shared, payloads: PayloadChecks) {
 		this.inner = inner;
-		this.breaks = breaks(inner, shared);
+		this.breaks = breaks(inner, shared, payloads);
 	}
 
 	add(records: RecordEnvelope[]): Promise<void> {
@@ -64,13 +67,16 @@ class Broken implements RecordStore {
 
 // State one broken store keeps across the handles a case opens on it, as one backing store would.
 type Shared = Map<string, unknown>;
-type Breaks = (inner: RecordStore, shared: Shared) => Partial<RecordStore>;
+type Breaks = (inner: RecordStore, shared: Shared, payloads: PayloadChecks) => Partial<RecordStore>;
 
 function brokenFixture(breaks: Breaks, healthy = memoryRecordStoreFixture()): RecordStoreFixture {
 	return async () => {
 		const subject = await healthy();
 		const shared: Shared = new Map();
-		return { ...subject, open: async () => new Broken(await subject.open(), breaks, shared) };
+		return {
+			...subject,
+			open: async (payloads = testPayloads) => new Broken(await subject.open(payloads), breaks, shared, payloads),
+		};
 	};
 }
 
@@ -675,6 +681,13 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 			] as [string, string, Breaks],
 	),
 	[
+		"list checks every payload under the handle's own checks",
+		"list returns a record whose envelope holds though this handle's payload check refuses it",
+		(inner, _shared, payloads) => ({
+			list: async (name) => (await inner.list(name)).map((each) => SharedRecord.parse(each, payloads).toJSON()),
+		}),
+	],
+	[
 		"a changeset name reaches the adapter unchecked",
 		"every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		() => ({ list: async () => [] }),
@@ -1177,22 +1190,26 @@ describe("a store with no payload check for a kind", () => {
 		expect(await store.list(changeset)).toEqual([round]);
 	});
 
-	it("refuses to list a record it has no check for on the directory adapter", async () => {
+	it("lists a record it has no check for on the directory adapter, and a set that counts it refuses it", async () => {
 		const path = directory();
 		const writer = await DirectoryRecordStore.open(path, testPayloads);
 		await writer.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]);
-		const reader = await DirectoryRecordStore.open(path);
-		const error = await rejection(reader.list(changeset), RecordError);
-		expect(error.code).toBe("unknownFile");
-		expect((error.cause as RecordError).code).toBe("unvalidatedKind");
+		const listed = await (await DirectoryRecordStore.open(path)).list(changeset);
+		expect(listed).toHaveLength(1);
+		expect(() => RecordSet.of(listed, { counts: everyRecordCounts })).toThrow(
+			expect.objectContaining({ code: "unvalidatedKind" }),
+		);
 	});
 
-	it("refuses to list a record it has no check for on the memory adapter", async () => {
+	it("lists a record it has no check for on the memory adapter, and a set that counts it refuses it", async () => {
 		const space = new MemoryRecordSpace();
 		await new MemoryRecordStore({ space, payloads: testPayloads }).add([
 			{ v: 1, changeset, kind: "check", key: "k", payload: {} },
 		]);
-		const reader = new MemoryRecordStore({ space });
-		expect((await rejection(reader.list(changeset), RecordError)).code).toBe("unvalidatedKind");
+		const listed = await new MemoryRecordStore({ space }).list(changeset);
+		expect(listed).toHaveLength(1);
+		expect(() => RecordSet.of(listed, { counts: everyRecordCounts })).toThrow(
+			expect.objectContaining({ code: "unvalidatedKind" }),
+		);
 	});
 });

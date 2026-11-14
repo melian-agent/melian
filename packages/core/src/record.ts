@@ -194,10 +194,19 @@ export class SharedRecord {
 	}
 
 	/**
-	 * Validates `value` as an envelope, by rules 2 to 4 of the shared record decision, and throws a {@link RecordError}
-	 * that names the rule it breaks: `unknownKind`, `supersedesNotAllowed`, or `invalidRecord` for the rest.
+	 * Validates `value` as an envelope, by rules 2 to 4 of the shared record decision, and its payload under `payloads`,
+	 * and throws a {@link RecordError} that names the rule it breaks: `unknownKind`, `supersedesNotAllowed`,
+	 * `unvalidatedKind`, or `invalidRecord` for the rest.
 	 */
 	static parse(value: unknown, payloads: PayloadChecks = {}): SharedRecord {
+		return SharedRecord.parseEnvelope(value).checked(payloads);
+	}
+
+	/**
+	 * Validates `value` as an envelope, as {@link SharedRecord.parse} does, and leaves its payload unchecked, a round's
+	 * manifest included, so a reader can set an untrusted record aside first. Check the payload with `checked`.
+	 */
+	static parseEnvelope(value: unknown): SharedRecord {
 		if (typeof value !== "object" || value === null || Array.isArray(value))
 			throw invalid("a record is a JSON object");
 		const bytes = canonicalJson(value);
@@ -232,17 +241,24 @@ export class SharedRecord {
 			throw invalid("a record's signer is a non-empty string");
 		if ("signature" in envelope && (typeof envelope.signature !== "string" || !canonicalBase64(envelope.signature)))
 			throw invalid(`a record's signature is ${signatureBytes} bytes in canonical base64`);
-		if (envelope.kind === "round") {
-			if (!("revision" in envelope)) throw invalid("a round names its revision");
-			manifestOf(envelope.payload);
-		} else {
-			const check = Object.hasOwn(payloads, envelope.kind) ? payloads[envelope.kind] : undefined;
-			if (check === undefined)
-				throw new RecordError("unvalidatedKind", `no payload check is registered for a ${envelope.kind} record`);
-			const refused = check(envelope.payload as RecordJson);
-			if (refused !== undefined) throw invalid(`a ${envelope.kind} record's payload ${refused}`);
-		}
+		if (envelope.kind === "round" && !("revision" in envelope)) throw invalid("a round names its revision");
 		return new SharedRecord(envelope as RecordEnvelope, bytes);
+	}
+
+	/**
+	 * Checks the payload under `payloads`, core's own check for a round's manifest, and returns this record, or throws
+	 * `unvalidatedKind` for a kind with no check and `invalidRecord` for a payload its check refuses.
+	 */
+	checked(payloads: PayloadChecks = {}): SharedRecord {
+		if (this.kind === "round") manifestOf(this.payload);
+		else {
+			const check = Object.hasOwn(payloads, this.kind) ? payloads[this.kind] : undefined;
+			if (check === undefined)
+				throw new RecordError("unvalidatedKind", `no payload check is registered for a ${this.kind} record`);
+			const refused = check(this.payload);
+			if (refused !== undefined) throw invalid(`a ${this.kind} record's payload ${refused}`);
+		}
+		return this;
 	}
 
 	/**
@@ -250,13 +266,18 @@ export class SharedRecord {
 	 * otherwise, and hash to `id`, `idMismatch` otherwise, so one fact never takes two IDs.
 	 */
 	static read(bytes: string, id: string, payloads: PayloadChecks = {}): SharedRecord {
+		return SharedRecord.readEnvelope(bytes, id).checked(payloads);
+	}
+
+	/** Reads the bytes a store filed under `id`, as {@link SharedRecord.read} does, and leaves the payload unchecked. */
+	static readEnvelope(bytes: string, id: string): SharedRecord {
 		let value: unknown;
 		try {
 			value = JSON.parse(bytes);
 		} catch (error) {
 			throw new RecordError("invalidRecord", "a stored record is not JSON", { cause: error });
 		}
-		const record = SharedRecord.parse(value, payloads);
+		const record = SharedRecord.parseEnvelope(value);
 		if (record.bytes !== bytes)
 			throw new RecordError("notCanonical", "a stored record's bytes are not its canonical form");
 		if (record.id !== id) throw new RecordError("idMismatch", `a record filed as ${id} has the ID ${record.id}`);
@@ -323,10 +344,11 @@ export class RecordSet {
 	}
 
 	/**
-	 * The set of `records`, each once, each checked under `payloads` even when it was parsed before, so a record a looser
-	 * check accepted cannot enter. `counts` is required, so no caller trusts a store by leaving it out. A record for
-	 * which `counts` is false, such as one a pinned key did not sign, is set aside before every other rule: it supersedes
-	 * nothing, replaces nothing, and stands nowhere.
+	 * The set of `records`, each once. Each record is checked in one order, even when it was parsed before: its envelope,
+	 * then `counts`, then its payload under `payloads`, then rule 4. `counts` is required, so no caller trusts a store by
+	 * leaving it out. A record with a bad envelope fails the set. One for which `counts` is false, such as one a pinned
+	 * key did not sign, is set aside before every other rule: its payload goes unchecked, and it supersedes nothing,
+	 * replaces nothing, and stands nowhere. A record that counts and whose payload its check refuses fails the set.
 	 */
 	static of(
 		records: Iterable<SharedRecord | RecordEnvelope>,
@@ -340,8 +362,8 @@ export class RecordSet {
 			);
 		const byId = new Map<string, SharedRecord>();
 		for (const each of records) {
-			const record = SharedRecord.parse(each instanceof SharedRecord ? each.toJSON() : each, options.payloads);
-			if (counts(record)) byId.set(record.id, record);
+			const record = SharedRecord.parseEnvelope(each instanceof SharedRecord ? each.toJSON() : each);
+			if (counts(record)) byId.set(record.id, record.checked(options.payloads));
 		}
 		return new RecordSet([...byId.values()].sort((a, b) => (a.id < b.id ? -1 : 1)));
 	}

@@ -11,7 +11,9 @@ export type RecordCell = { value?: string; version?: string };
  * more: `add` can be repeated, and a batch that landed in part is completed by a repeat; `list` and `readCell` are
  * fresh, or fail; `writeCell` succeeds only while the cell's version is still the expected one, and every successful
  * write changes the version; `dispose` first marks the cell, after which `add` and `writeCell` refuse the changeset for
- * good. No ordering of records, no history, no transaction across records, no secrecy, and no identity for a writer.
+ * good. `add` checks each record whole, its payload included; `list` checks envelopes only, and leaves payloads to the
+ * caller's `RecordSet`, so a record set aside as untrusted never fails the listing. No ordering of records, no
+ * history, no transaction across records, no secrecy, and no identity for a writer.
  * Every adapter passes the conformance suite in `@melian-agent/core/testing`.
  */
 export interface RecordStore {
@@ -119,7 +121,7 @@ export class MemoryRecordStore implements RecordStore {
 	async list(changeset: string): Promise<RecordEnvelope[]> {
 		const entry = this.#changeset(changeset);
 		for (const kind of entry.stray) throw strayError(changeset, kind);
-		return [...entry.records].map(([id, bytes]) => SharedRecord.read(bytes, id, this.#payloads).toJSON());
+		return [...entry.records].map(([id, bytes]) => SharedRecord.readEnvelope(bytes, id).toJSON());
 	}
 
 	async readCell(changeset: string): Promise<RecordCell> {

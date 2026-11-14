@@ -9,8 +9,8 @@ import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } 
 
 /** One store under test, with as many handles on it as a case asks for. */
 export interface RecordStoreSubject {
-	/** Opens another handle on the same store, as a second host would. */
-	open(): Promise<RecordStore>;
+	/** Opens another handle on the same store, as a second host would, checking payloads with `payloads`, `testPayloads` by default. */
+	open(payloads?: PayloadChecks): Promise<RecordStore>;
 	/** Cuts every handle off from the store, so that no call can be answered fresh. */
 	cutOff(): Promise<void>;
 	/**
@@ -331,6 +331,17 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 			}),
 	},
 	{
+		name: "list returns a record whose envelope holds though this handle's payload check refuses it",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const writer = await subject.open();
+				const reader = await subject.open({ ...testPayloads, check: () => "is refused by this reader" });
+				const record = envelope("check", "guardrails", {});
+				await writer.add([record]);
+				assert.deepEqual(ids(await reader.list(changeset)), idsOf(record));
+			}),
+	},
+	{
 		name: "every call refuses a changeset name no envelope could hold, and takes a dotted one",
 		run: (fixture) =>
 			using(fixture, async (subject) => {
@@ -356,8 +367,8 @@ export function memoryRecordStoreFixture(): RecordStoreFixture {
 		const space = new MemoryRecordSpace();
 		const handles: RecordStore[] = [];
 		return {
-			open: async () => {
-				const store = new MemoryRecordStore({ space, payloads: testPayloads });
+			open: async (payloads = testPayloads) => {
+				const store = new MemoryRecordStore({ space, payloads });
 				handles.push(store);
 				return store;
 			},
@@ -383,8 +394,8 @@ export function directoryRecordStoreFixture(): RecordStoreFixture {
 		const outside = await mkdtemp(join(tmpdir(), "melian-records-outside-"));
 		const handles: RecordStore[] = [];
 		return {
-			open: async () => {
-				const store = await DirectoryRecordStore.open(root, testPayloads);
+			open: async (payloads = testPayloads) => {
+				const store = await DirectoryRecordStore.open(root, payloads);
 				handles.push(store);
 				return store;
 			},

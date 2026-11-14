@@ -63,6 +63,41 @@ describe("RecordSet", () => {
 		expect(ids(set.records())).toEqual([kept.id]);
 	});
 
+	describe("checks in the order envelope, trust, payload", () => {
+		const strict = {
+			...testPayloads,
+			post: (payload: RecordJson) =>
+				typeof payload === "object" && payload !== null && "author" in payload ? undefined : "names no author",
+		};
+
+		it("sets an untrusted record aside before checking its payload, so a bad payload there costs the set nothing", () => {
+			const good = post({ author: "host" });
+			const bad = post({});
+			const set = RecordSet.of([good, bad], { counts: (each) => each.id !== bad.id, payloads: strict });
+			expect(ids(set.records())).toEqual([good.id]);
+		});
+
+		it("fails the set on a counted record whose payload its check refuses", () => {
+			const bad = post({});
+			expect(() => RecordSet.of([bad], { counts: everyRecordCounts, payloads: strict })).toThrow(
+				expect.objectContaining({ code: "invalidRecord", message: "a post record's payload names no author" }),
+			);
+		});
+
+		it("fails the set on a record whose envelope is invalid, and asks counts nothing of it", () => {
+			const asked: unknown[] = [];
+			const counts = (each: SharedRecord) => {
+				asked.push(each);
+				return false;
+			};
+			const broken = { ...post({ author: "host" }).toJSON(), v: 2 } as unknown as RecordEnvelope;
+			expect(() => RecordSet.of([broken], { counts, payloads: strict })).toThrow(
+				expect.objectContaining({ code: "invalidRecord", message: "a record's v is 1" }),
+			);
+			expect(asked).toEqual([]);
+		});
+	});
+
 	it("holds each record once, in ID order, whatever order and repeats it was given", () => {
 		const a = post({ n: 1 });
 		const b = post({ n: 2 });

@@ -193,7 +193,7 @@ export class DirectoryRecordStore implements RecordStore {
 		const text = await this.#text(path);
 		let record: SharedRecord;
 		try {
-			record = SharedRecord.read(text, basename(path, ".json"), this.#payloads);
+			record = SharedRecord.readEnvelope(text, basename(path, ".json"));
 		} catch (cause) {
 			throw failure("unknownFile", path, cause);
 		}
