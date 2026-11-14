@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { visibleText } from "../packages/core/src/render.ts";
+import { openSource } from "../packages/core/src/source.ts";
+import { SuiteExports } from "../packages/core/src/suite-exports.ts";
 import { sampleMutants } from "./mutant-sample.mjs";
 
 const defaultLimit = 200;
@@ -81,14 +83,16 @@ async function main() {
 	});
 	if (values.help) {
 		console.log(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent/suite), evidence, and survivorClasses to every mutant.\nA suite claim stands only in a file a workspace package exports as ./testing, read from the current directory.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\nSuite claims print apart under 'suite', for a reviewer to read by their reasons.",
 		);
 		return;
 	}
 	if (positionals.length > 1) throw new Error("expected one git range");
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
-		console.log(jsonText(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8")))));
+		const inventory = JSON.parse(readFileSync(values.sample, "utf8"));
+		const suites = await SuiteExports.read(await openSource(process.cwd(), { kind: "worktree" }));
+		console.log(jsonText(sampleMutants(inventory, suites)));
 		return;
 	}
 	const result = await enumerateMutants({ range: positionals[0], limit: Number(values.limit) });

@@ -1,11 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	type LegacyMutationInventory,
 	MutationInventory,
 	MutationInventoryError,
 	type MutationInventoryInput,
 	type MutationInventoryRowInput,
 	survivorClasses,
 } from "../src/mutation-inventory.ts";
+import type { SourceReader } from "../src/source.ts";
+import { SuiteExports } from "../src/suite-exports.ts";
 
 const terminalControls = [
 	...Array.from({ length: 32 }, (_, index) => index),
@@ -708,5 +713,111 @@ describe("inventory sampling", () => {
 			unmutated: fields().unmutated,
 			ignored: { config: [], comment: [] },
 		});
+	});
+});
+
+describe("suite claims", () => {
+	const suiteFile = "packages/core/src/testing.ts";
+	const reason = "a neighbouring assertion in the same case also catches it";
+	const suiteRow = (index = 0, extra = {}) =>
+		row(index, {
+			file: suiteFile,
+			claim: "suite",
+			evidence: { reason },
+			survivorClasses: [],
+			...extra,
+		});
+	const files: Record<string, string> = {
+		"package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+		"packages/core/package.json": JSON.stringify({
+			exports: { "./testing": { "@melian-agent/source": "./src/testing.ts" } },
+		}),
+	};
+	const source = {
+		readText: async (path: string) => files[path],
+		list: async (path: string) => (path === "packages" ? [{ name: "core", kind: "directory" as const }] : undefined),
+	} as unknown as SourceReader;
+
+	it("parses a suite claim whose evidence is a reason", () => {
+		const stored = MutationInventory.create(fields([suiteRow()])).toJSON();
+		expect(stored.mutants[0]).toMatchObject({ claim: "suite", evidence: { reason } });
+	});
+
+	it.each([
+		["no evidence", { evidence: undefined }],
+		["a named test as its evidence", { evidence: row().evidence }],
+		["a blank reason", { evidence: { reason: " " } }],
+	])("refuses a suite claim with %s", (_name, extra) => {
+		expect(() => MutationInventory.create(fields([suiteRow(0, extra)]))).toThrow(MutationInventoryError);
+	});
+
+	it("lists every suite row apart from the probes, for a reviewer to read", async () => {
+		const killed = Array.from({ length: 6 }, (_, index) => row(index + 1));
+		const inventory = MutationInventory.create(fields([suiteRow(0), suiteRow(10), ...killed]));
+		const suites = await SuiteExports.read(source);
+		const sample = inventory.sample(suites);
+		expect(sample.suite?.map((mutant) => mutant.line)).toEqual(
+			inventory
+				.toJSON()
+				.mutants.filter((mutant) => mutant.claim === "suite")
+				.sort((a, b) => a.id.localeCompare(b.id))
+				.map((mutant) => mutant.line),
+		);
+		expect(sample.suite?.every((mutant) => /^[a-f0-9]{64}$/.test(mutant.sampleHash))).toBe(true);
+		expect(sample).toEqual({ ...MutationInventory.create(fields(killed)).sample(), total: 8, suite: sample.suite });
+	});
+
+	it("leaves the suite key out of a sample with no suite rows", () => {
+		expect(MutationInventory.create(fields([row()])).sample()).not.toHaveProperty("suite");
+	});
+
+	it("refuses a suite claim in a source file that is no package's ./testing export", async () => {
+		const inventory = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })]));
+		const suites = await SuiteExports.read(source);
+		expect(() => inventory.sample(suites)).toThrow(
+			"suite claim refused: packages/core/src/record.ts is not packages/core's ./testing export, packages/core/src/testing.ts",
+		);
+	});
+
+	it("refuses a suite claim when the sampler was given no exports to check it against", () => {
+		expect(() => MutationInventory.create(fields([suiteRow()])).sample()).toThrow(
+			"suite claim refused: no package exports were read to check it against",
+		);
+	});
+
+	it("refuses an ignored suite claim no more than an ignored equivalence", () => {
+		const ignored = suiteRow(0, { status: "ignored", ignoredBy: "config", file: "src/a.ts" });
+		expect(MutationInventory.create(fields([ignored, row(1)])).sample().selected).toHaveLength(1);
+	});
+
+	it("names the four claims when a mutant has none", () => {
+		expect(() =>
+			MutationInventory.create(fields([row(0, { claim: undefined, evidence: undefined })])).sample(),
+		).toThrow("each mutant needs a claim: killed, new-test, equivalent or suite");
+	});
+
+	it("still samples a legacy inventory whose suite claim gives its reason as text", async () => {
+		const stored: LegacyMutationInventory = legacy([row(1)]);
+		stored.mutants.push({
+			...identity(5, { file: suiteFile }),
+			claim: "suite",
+			evidence: "a neighbour catches it",
+			survivorClasses: [],
+		});
+		stored.total += 1;
+		const sample = MutationInventory.parse(stored).sample(await SuiteExports.read(source));
+		expect(sample.suite?.map((mutant) => mutant.line)).toEqual([6]);
+		expect(MutationInventory.parse(stored).toJSON()).not.toHaveProperty("melianMutants");
+		expect(sample.selected.map((mutant) => mutant.line)).toEqual([2]);
+	});
+
+	it.each([
+		"docs/progress-log/2026-11-09-pr-344-mutants.json",
+		"docs/progress-log/2026-11-13-pr-403-timing-grammar-mutants.json",
+	])("still parses and samples the committed inventory %s", (path) => {
+		const stored = JSON.parse(readFileSync(join(import.meta.dirname, "../../..", path), "utf8"));
+		const sample = MutationInventory.parse(stored).sample();
+		expect(sample.selected.length).toBeGreaterThan(0);
+		expect(sample).not.toHaveProperty("suite");
 	});
 });

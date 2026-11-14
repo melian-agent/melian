@@ -141,6 +141,30 @@ describe("mutant sampling", () => {
 		},
 	);
 
+	it("lists a legacy suite claim apart, checked against the exports the caller passed", () => {
+		const suite = mutant(1, {
+			file: "packages/core/src/testing.ts",
+			claim: "suite",
+			evidence: "a neighbour catches it",
+		});
+		const checked = [];
+		const suites = {
+			refusal: (file) => {
+				checked.push(file);
+			},
+		};
+		const sample = sampleMutants(inventory([mutant(0), suite]), suites);
+		expect(sample.suite.map((row) => row.line)).toEqual([2]);
+		expect(lines(sample)).toEqual([1]);
+		expect(checked).toEqual(["packages/core/src/testing.ts"]);
+	});
+
+	it("names the four claims when a legacy mutant has none", () => {
+		expect(() => sampleMutants(inventory([mutant(0, { claim: undefined })]))).toThrow(
+			"each mutant needs a claim: killed, new-test, equivalent or suite",
+		);
+	});
+
 	it.each([undefined, "", "unknown"])("requires a classified claim: %s", (claim) => {
 		expect(() => sampleMutants(inventory([mutant(0, { claim })]))).toThrow("claim");
 	});

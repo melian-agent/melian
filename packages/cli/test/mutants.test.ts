@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Changeset, MutationInventory, type PullRequest } from "@melian-agent/core";
@@ -245,6 +245,48 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 			unmutated: [],
 		});
 		expect(io.errors).toEqual([]);
+	});
+
+	it("samples a suite claim only in a package's ./testing export, read from the checkout", async () => {
+		await writeFile(join(repo, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+		await mkdir(join(repo, "packages/core"), { recursive: true });
+		await writeFile(
+			join(repo, "packages/core/package.json"),
+			JSON.stringify({ exports: { "./testing": { "@melian-agent/source": "./src/testing.ts" } } }),
+		);
+		const suite = {
+			file: "packages/core/src/testing.ts",
+			line: 3,
+			column: 0,
+			endLine: 3,
+			endColumn: 1,
+			mutatorName: "BlockStatement",
+			replacement: "{}",
+			claim: "suite",
+			evidence: "a neighbouring assertion in the same case also catches it",
+			survivorClasses: [],
+		};
+		const io = output();
+		for (const [file, code, text] of [
+			[suite.file, 0, undefined],
+			["packages/core/src/record.ts", 1, "suite claim refused: packages/core/src/record.ts is not packages/core's"],
+		] as const) {
+			await writeFile(
+				join(repo, "suite.json"),
+				JSON.stringify({ mutants: [{ ...suite, file }], total: 1, omitted: 0, unmutated: [] }),
+			);
+			io.lines.length = 0;
+			io.errors.length = 0;
+			expect(await main(["mutants", "sample", "suite.json"], io)).toBe(code);
+			if (text === undefined)
+				expect(JSON.parse(io.lines.join(""))).toEqual({
+					selected: [],
+					suite: [{ ...suite, sampleHash: expect.stringMatching(/^[a-f0-9]{64}$/) }],
+					total: 1,
+					unmutated: [],
+				});
+			else expect(io.errors.join("")).toContain(text);
+		}
 	});
 
 	it("prints full identity coordinates and a truncation count in text", async () => {

@@ -3,6 +3,7 @@ import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { canonicalPath } from "./findings.ts";
 import { visibleText } from "./render.ts";
+import type { SuiteExports } from "./suite-exports.ts";
 
 /** Recurring survivor labels used by the builder's checklist and deterministic sample. */
 export const survivorClasses = [
@@ -30,7 +31,13 @@ const identity = {
 	mutatorName: text,
 	replacement: Type.String(),
 };
-const claim = Type.Union([Type.Literal("killed"), Type.Literal("new-test"), Type.Literal("equivalent")]);
+const claim = Type.Union([
+	Type.Literal("killed"),
+	Type.Literal("new-test"),
+	Type.Literal("equivalent"),
+	Type.Literal("suite"),
+]);
+const reasoned = new Set<string>(["equivalent", "suite"]);
 const classes = Type.Array(Type.Enum(survivorClasses));
 const testIdentity = Type.Object({ file: text, path: Type.Array(text, { minItems: 1 }) }, strict);
 const evidence = Type.Union([Type.Object({ test: testIdentity }, strict), Type.Object({ reason: text }, strict)]);
@@ -108,7 +115,7 @@ export type MutationIdentity = Pick<
 export type MutationAdapterIdentity = Static<typeof inventorySchema>["adapters"][number];
 /** A component array from the runner, rather than its ambiguous fullName string. */
 export type MutationTestIdentity = Static<typeof testIdentity>;
-/** A claimed kill, a planned test, or a reason for equivalence. */
+/** A claimed kill, a planned test, a reason for equivalence, or a shared suite's assertion proved per case. */
 export type MutationClaim = Static<typeof claim>;
 /** Structural evidence which future verification can resolve without parsing a display name. */
 export type MutationEvidence = Static<typeof evidence>;
@@ -128,9 +135,14 @@ export type MutationInventoryState = MutationInventoryV2 | LegacyMutationInvento
 export type MutationInventoryInput = Omit<MutationInventoryV2, "melianMutants" | "mutants"> & {
 	mutants: MutationInventoryRowInput[];
 };
-/** A reproducible set of probes ordered by the full mutant identity's hash. */
+type SampledMutant = (MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string };
+/**
+ * A reproducible set of probes ordered by the full mutant identity's hash, and the shared suite's assertions, which a
+ * reviewer reads by their reasons and does not run, under the label "suite assertion, proved per case".
+ */
 export type MutationSample = {
-	selected: ((MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string })[];
+	selected: SampledMutant[];
+	suite?: SampledMutant[];
 	total: number;
 	unmutated: MutationInventoryV2["unmutated"];
 	ignored?: { config: MutationInventoryRow[]; comment: MutationInventoryRow[] };
@@ -234,10 +246,10 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 					if (row.evidence !== undefined)
 						throw new MutationInventoryError("invalidEvidence", "evidence requires a classified claim");
 				} else {
-					if (row.evidence === undefined || (row.claim === "equivalent") !== "reason" in row.evidence)
+					if (row.evidence === undefined || reasoned.has(row.claim) !== "reason" in row.evidence)
 						throw new MutationInventoryError(
 							"invalidEvidence",
-							"claim evidence must name a structural test or an equivalence reason",
+							"claim evidence must name a structural test, or a reason for an equivalent or suite claim",
 						);
 					if (row.survivorClasses === undefined)
 						throw new MutationInventoryError("invalidInventory", "each claim needs survivorClasses");
@@ -261,12 +273,24 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		}) as MutationInventory<MutationInventoryV2>;
 	}
 
-	/** Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script. */
-	sample(): MutationSample {
+	/**
+	 * Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script, and lists every
+	 * suite claim apart. Parsing reads no file, so the rule that a suite claim stands only in a package's `./testing`
+	 * export is enforced here, against the exports the caller read.
+	 */
+	sample(suites?: SuiteExports): MutationSample {
 		this.#requireClassified();
-		const ranked = this.#probes()
+		const all = this.#probes()
 			.map((mutant) => ({ mutant, hash: identityHash(mutant) }))
 			.sort((a, b) => a.hash.localeCompare(b.hash));
+		const suite = all.filter((row) => row.mutant.claim === "suite");
+		for (const { mutant } of suite) {
+			const refusal =
+				suites === undefined ? "no package exports were read to check it against" : suites.refusal(mutant.file);
+			if (refusal !== undefined)
+				throw new MutationInventoryError("invalidEvidence", `suite claim refused: ${visibleText(refusal)}`);
+		}
+		const ranked = all.filter((row) => row.mutant.claim !== "suite");
 		const selected = new Set(ranked.filter((row) => row.mutant.claim !== "killed"));
 		const classGroups = Map.groupBy(
 			ranked.flatMap((row) => row.mutant.survivorClasses!.map((name) => ({ name, row }))),
@@ -295,6 +319,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 				: {};
 		return structuredClone({
 			selected: ranked.filter((row) => selected.has(row)).map((row) => ({ ...row.mutant, sampleHash: row.hash })),
+			...(suite.length > 0 ? { suite: suite.map((row) => ({ ...row.mutant, sampleHash: row.hash })) } : {}),
 			total: this.#state.total,
 			unmutated: this.#state.unmutated,
 			...ignored,
@@ -323,8 +348,8 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 	}
 
 	/** Renders the deterministic sample as terminal-safe JSON without changing its data. */
-	renderSampleJson(): string {
-		return jsonText(this.sample());
+	renderSampleJson(suites?: SuiteExports): string {
+		return jsonText(this.sample(suites));
 	}
 
 	/** Renders full identities and ignored provenance without treating statusReason as policy. */
@@ -376,12 +401,12 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			if (row.claim === undefined)
 				throw new MutationInventoryError(
 					"unclassifiedClaim",
-					"each mutant needs a claim: killed, new-test or equivalent",
+					"each mutant needs a claim: killed, new-test, equivalent or suite",
 				);
 			if (row.evidence === undefined)
 				throw new MutationInventoryError(
 					"invalidEvidence",
-					"each claim needs evidence: a named test or an equivalence reason",
+					"each claim needs evidence: a named test, or a reason for an equivalent or suite claim",
 				);
 			if (row.survivorClasses === undefined)
 				throw new MutationInventoryError("invalidInventory", "each claim needs survivorClasses");
