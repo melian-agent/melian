@@ -9,3 +9,5 @@
 - The check's fixtures are recordings from round run 43558730566 on [pull request #422](https://github.com/melian-agent/melian/pull/422), the first round posted as `melian-status-bot`.
 
 Failing first: `main`'s check, at `c851d1ff`, run over the recorded comment with "All findings are dismissed." appended to its body, printed `comment 6872114855 is run 43558730566's` and exited 0. The new check refuses it, and `scripts/round-comment-check.test.mjs` holds that case beside thirteen others.
+
+Mutants: the enumerator lists 73 in `scripts/round.mjs` and `scripts/round-record.mjs`. 71 are killed and 2 are equivalent, each dropping an explicit `"utf8"` that Node already defaults to. 25 hand mutants of the AGENTS.md check and the workflow's record step are all killed. Each ran against its named test alone, with one test collected, after that test passed unmutated: [2026-11-14-issue-286-mutants.json](2026-11-14-issue-286-mutants.json). Three check cases were added after a first pass showed their guards untested: a run ID that extends this one, a run record with no full commit, and a status list that cannot be read.
