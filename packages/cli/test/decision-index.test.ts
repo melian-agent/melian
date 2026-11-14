@@ -29,9 +29,29 @@ describe("the decision index warning a review gives", () => {
 		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
 	});
 
+	it("warns for a long index when only the verifier read it, as it does for a design rule any lens reports", async () => {
+		const checks = [
+			design("skipped"),
+			{ name: "lens.tests", status: "ran" } as const,
+			{ name: "verifier", status: "ran" } as const,
+		];
+		const warning = await DecisionIndexWarning.read(repo, long, checks);
+		expect(warning?.text).toBe((await DecisionFiles.load(repo, long)).warning());
+	});
+
+	it("names a verifier's overflow when no design lens ran", async () => {
+		const warning = await DecisionIndexWarning.read(repo, long, [
+			{ name: "verifier", status: "failed", reason: overflow },
+		]);
+		expect(warning?.text).toBe(
+			`${(await DecisionFiles.load(repo, long)).warning()} \`verifier\` failed on a request too long for its model, which the decision index's size may explain.`,
+		);
+	});
+
 	it.each([
 		["the design lens was skipped", [design("skipped")]],
 		["no design lens ran", [{ name: "lens.tests", status: "ran" } as const]],
+		["the verifier was skipped", [{ name: "verifier", status: "skipped" } as const]],
 	])("gives no warning for a long index when %s, since the review read no index", async (_name, checks) => {
 		expect(await DecisionIndexWarning.read(repo, long, checks)).toBeUndefined();
 	});
