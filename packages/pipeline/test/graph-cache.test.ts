@@ -292,6 +292,11 @@ it.each<[string, (directory: string, entry: string) => Promise<unknown>]>([
 		(directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 2 ** 53 })),
 	],
 	["format 0", (directory) => writeFile(join(directory, "entry.json"), JSON.stringify({ format_version: 0 }))],
+	[
+		"a creation time that is not a date",
+		(directory, entry) =>
+			writeFile(join(directory, "entry.json"), JSON.stringify({ ...JSON.parse(entry), created: "not a date" })),
+	],
 	["an entry whose artifact was swapped", (directory) => writeFile(join(directory, "facts.jsonl"), "swapped")],
 	[
 		"an entry.json of the cache's size limit",

@@ -191,18 +191,16 @@ export class StorePrune {
 					kept.push(relative(node.path));
 					continue;
 				}
+				// A creation time in the future is not older than seven days, so the graph stays until the clock passes it.
 				const entry = await cache.classify(node.name);
-				if (entry === "later") kept.push(relative(node.path));
-				if (entry === "miss") {
+				if (entry === "later") {
+					kept.push(relative(node.path));
+					graphs.add(node.name);
+				} else if (entry === "miss") {
 					if (now - (await lstat(node.path)).mtimeMs > unreadableGraphAgeDays * day)
 						await add("unreadable graph", [`graphs/${node.name}`]);
 					else graphs.add(node.name);
-				} else if (
-					// A creation time in the future is not older than seven days, so the graph stays until the clock passes it.
-					entry !== "later" &&
-					now - entry.created > graphAgeDays * day &&
-					!trees.has(entry.tree)
-				) {
+				} else if (now - entry.created > graphAgeDays * day && !trees.has(entry.tree)) {
 					// A file or link at the coverage path, or a linked coverage folder, is listed as not recognised, so it
 					// must not go with the graph.
 					const coverage = await lstat(join(root, "coverage", node.name)).catch(() => undefined);
