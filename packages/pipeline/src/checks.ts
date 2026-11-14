@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	type ChangesetFields,
@@ -10,6 +9,7 @@ import {
 	deterministicChecks,
 	type EnolaSnapshot,
 	evaluateGuardrails,
+	hostFacts,
 	type MelianConfig,
 	type MutationSkipCause,
 	mutationSkips,
@@ -19,6 +19,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
+import { checkRequest } from "./check-request.ts";
 import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
@@ -35,7 +36,7 @@ import {
 import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
-import { runStaticTool, staticToolSource } from "./static.ts";
+import { runStaticTool, staticToolSource, staticToolVersion } from "./static.ts";
 import { SupersessionReview } from "./supersession.ts";
 import { TaskTiming } from "./task-timing.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -636,67 +637,37 @@ export interface RunChecksInput {
 	readonly cold?: boolean;
 }
 
-// Canonical JSON: object keys sorted, so two equal configurations hash alike whatever order their files merged in.
-function canonical(value: unknown): string {
-	if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-	if (typeof value === "object" && value !== null) {
-		const entries = Object.entries(value).filter(([, each]) => each !== undefined);
-		entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-		return `{${entries.map(([key, each]) => `${JSON.stringify(key)}:${canonical(each)}`).join(",")}}`;
-	}
-	return JSON.stringify(value);
-}
-
-// The configuration without its display-only keys, which change how a review reads and never what a check finds, so a
-// change to one reuses the run. `language` joins them when it lands.
-function decisive(config: MelianConfig): Omit<MelianConfig, "output" | "publish"> & {
-	readonly publish: Omit<MelianConfig["publish"], "emoji">;
-} {
-	const { output: _, publish, ...rest } = config;
-	const { emoji: __, ...kept } = publish;
-	return { ...rest, publish: kept };
-}
-
-// Raised when what a check stores from a tool changes, so no run of an earlier build is reused: 2 keeps no Biome or tsc
-// text.
-const storedText = 2;
-
-// Raised when how Melian chooses tsc's projects changes, so no run of an earlier build is reused: 2 asks tsc --showConfig.
-const tscProjects = 2;
-
-// What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
-// build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
-// version it would run, whether the checkout has an executable for it and where, and the host's decision on the head, so a
-// bump, a repaired install, or a change of that decision runs it again.
+// What decides a run's results: both commits, the tier, and the request every check of the run answers, so a build
+// that pins another tool, a bumped install, another host, or a change of the head's trust runs it again.
 async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
 	const { base, head } = input.changeset.revision;
-	const tools = (await ToolProvisioning.manifest()).toJSON();
-	const mutating = input.config.static.mutation.enabled;
-	const stryker = mutating
-		? {
-				version: strykerVersion(input.changeset.repoRoot),
-				installation: mutationInstallation(input.changeset.repoRoot),
-				source: staticToolSource(input.changeset.repoRoot, "mutation"),
-			}
-		: undefined;
-	const writer = mutating ? (input.writer ?? null) : undefined;
-	// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
-	const cold = mutating ? input.cold === true : undefined;
-	const policy = createHash("sha256")
-		.update(
-			canonical({
-				config: decisive(input.config),
-				source: input.source,
-				tools,
-				stryker,
-				writer,
-				cold,
-				storedText,
-				tscProjects,
-			}),
-		)
-		.digest("hex")
-		.slice(0, 16);
+	const { repoRoot } = input.changeset;
+	const analyser = (tool: "biome" | "tsc") => ({
+		from: staticToolSource(repoRoot, tool).from,
+		version: staticToolVersion(repoRoot, tool),
+	});
+	const request = checkRequest({
+		config: input.config,
+		source: input.source,
+		tools: (await ToolProvisioning.manifest()).toJSON(),
+		analysers: { biome: analyser("biome"), tsc: analyser("tsc") },
+		...(input.config.static.mutation.enabled
+			? {
+					mutation: {
+						stryker: {
+							version: strykerVersion(repoRoot),
+							installation: mutationInstallation(repoRoot),
+							source: staticToolSource(repoRoot, "mutation"),
+						},
+						writer: input.writer ?? null,
+						// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
+						cold: input.cold === true,
+					},
+				}
+			: {}),
+		host: hostFacts(),
+	});
+	const policy = request.key.slice(0, 16);
 	return { base, head, tier, policy };
 }
 

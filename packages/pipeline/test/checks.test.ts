@@ -377,6 +377,28 @@ describe("runChecks", () => {
 		expect(second.identity.task).not.toBe(first.identity.task);
 	});
 
+	it("attaches to a run whose tools and host agree, and runs again when an analyser's version or the host differs", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input, run: first } = await checks(base, head);
+		const again = await runChecks(harness, input, context);
+		expect(again.identity).toEqual(first.identity);
+
+		const version = vi.spyOn(staticRunner, "staticToolVersion").mockReturnValue("0.0.1");
+		const bumped = await runChecks(harness, input, context);
+		expect(bumped.identity.policy).not.toBe(first.identity.policy);
+		expect(bumped.identity.task).not.toBe(first.identity.task);
+		version.mockRestore();
+
+		const host = core.hostFacts();
+		vi.spyOn(core, "hostFacts").mockReturnValue({ ...host, caseFolds: !host.caseFolds });
+		const moved = await runChecks(harness, input, context);
+		expect(moved.identity.policy).not.toBe(first.identity.policy);
+		expect(moved.identity.task).not.toBe(first.identity.task);
+	});
+
 	// Issue #281: a run from before Biome and tsc text was withheld stored that text in its findings, so a build that
 	// withholds it must not reuse that run. 8921ccb4, the last such build, computed the policy below for this input; it was
 	// recorded by running this input through that build's runChecks, never written by hand.

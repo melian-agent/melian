@@ -20,6 +20,28 @@ export type RequestExclusion = keyof typeof requestExclusions;
 /** What a producer is given beyond its keyed request: only fields {@link requestExclusions} names. */
 export type UnkeyedInput = { readonly [name in RequestExclusion]?: unknown };
 
+/**
+ * `value` in the form a request holds it, for a value a host already has, such as a loaded configuration: a field
+ * whose value is `undefined` is left out, as JSON leaves it out, and a finite number that is not a safe integer, such
+ * as a threshold of `0.75`, becomes the shortest decimal string that reads back as it, since a request's numbers are
+ * safe integers. A schema fixes each field's type, so the string never meets a field that could hold that text
+ * already. It throws a {@link RecordError} `invalidRecord` for a number that is not finite.
+ */
+export function requestJson(value: unknown): RecordJson {
+	if (typeof value === "number") {
+		if (!Number.isFinite(value))
+			throw new RecordError("invalidRecord", `a request holds finite numbers, not ${value}`);
+		return Number.isSafeInteger(value) ? value : String(value);
+	}
+	if (Array.isArray(value)) return value.map(requestJson);
+	if (typeof value === "object" && value !== null) {
+		const kept: Record<string, RecordJson> = {};
+		for (const [key, field] of Object.entries(value)) if (field !== undefined) kept[key] = requestJson(field);
+		return kept;
+	}
+	return value as RecordJson;
+}
+
 const producerName = /^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*$/;
 const exclusionList = Object.keys(requestExclusions).join(", ");
 

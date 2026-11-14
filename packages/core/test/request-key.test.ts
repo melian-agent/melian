@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
-import { canonicalJson, KeyedRequest, RecordError, requestExclusions } from "@melian-agent/core";
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+	canonicalJson,
+	hostFacts,
+	KeyedRequest,
+	RecordError,
+	requestExclusions,
+	requestJson,
+} from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
@@ -169,5 +179,64 @@ describe("keyCoverage", () => {
 		let count = 0;
 		const drifting = (input: { a: number }) => KeyedRequest.of("check", { ...input, count: count++ });
 		expect(keyCoverage(drifting, { a: 1 })[0]).toBe("the key differs between two builds of the same input");
+	});
+});
+
+describe("requestJson", () => {
+	it("drops a field left undefined, at any depth, and keeps null", () => {
+		expect(requestJson({ a: undefined, b: { c: undefined, d: null }, e: [{ f: undefined }] })).toEqual({
+			b: { d: null },
+			e: [{}],
+		});
+	});
+
+	it("keeps a safe integer and writes any other finite number as its decimal text", () => {
+		expect(requestJson({ whole: 7, fraction: 0.75, large: 2 ** 53, small: -(2 ** 53) + 1 })).toEqual({
+			whole: 7,
+			fraction: "0.75",
+			large: "9007199254740992",
+			small: -(2 ** 53) + 1,
+		});
+	});
+
+	it("gives a fraction and its decimal text one key, which canonical JSON alone refuses", () => {
+		expect(() => canonicalJson({ recall: 0.75 })).toThrow(RecordError);
+		expect(KeyedRequest.of("check", requestJson({ recall: 0.75 })).key).toBe(
+			KeyedRequest.of("check", { recall: "0.75" }).key,
+		);
+	});
+
+	it("refuses a number no request can hold", () => {
+		for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])
+			expect(() => requestJson({ nested: [value] })).toThrow(/finite numbers/);
+	});
+
+	it("leaves strings, booleans and null as they are", () => {
+		expect(requestJson(["x", true, false, null])).toEqual(["x", true, false, null]);
+	});
+});
+
+describe("hostFacts", () => {
+	it("names this process's platform, architecture and Node", () => {
+		const facts = hostFacts();
+		expect(facts).toEqual({
+			platform: process.platform,
+			arch: process.arch,
+			node: process.versions.node,
+			caseFolds: facts.caseFolds,
+		});
+	});
+
+	it("asks the filesystem under the directory whether two spellings are one name, and leaves nothing there", () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-host-"));
+		try {
+			writeFileSync(join(directory, "Witness"), "");
+			const folds = existsSync(join(directory, "wITNESS"));
+			rmSync(join(directory, "Witness"));
+			expect(hostFacts(directory).caseFolds).toBe(folds);
+			expect(readdirSync(directory)).toEqual([]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 });
