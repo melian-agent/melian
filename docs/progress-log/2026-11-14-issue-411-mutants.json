@@ -12,7 +12,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
     "collected": 1,
     "failed": true
@@ -30,7 +30,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
     "collected": 1,
     "failed": true
@@ -60,7 +60,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
     "collected": 1,
     "failed": true
@@ -78,7 +78,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
     "collected": 1,
     "failed": true
@@ -96,7 +96,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
     "collected": 1,
     "failed": true
@@ -114,7 +114,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=false)",
     "collected": 1,
     "failed": true
@@ -146,7 +146,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
     "collected": 1,
     "failed": true
@@ -164,7 +164,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints no warning and no warnings field when there is none",
     "collected": 1,
     "failed": true
@@ -182,7 +182,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
     "collected": 1,
     "failed": true
@@ -200,7 +200,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
     "collected": 1,
     "failed": true
@@ -218,7 +218,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
     "collected": 1,
     "failed": true
@@ -250,7 +250,7 @@
    "evidence": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/review-warnings.test.ts > prints the decision index warning beside the verdict, never in it (json=true)",
     "collected": 1,
     "failed": true
@@ -268,7 +268,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -286,7 +286,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -304,7 +304,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -322,7 +322,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -340,7 +340,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
     "collected": 1,
     "failed": true
@@ -358,7 +358,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -376,7 +376,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -394,7 +394,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
     "collected": 1,
     "failed": true
@@ -412,7 +412,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -430,7 +430,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
     "collected": 1,
     "failed": true
@@ -448,7 +448,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when no design lens ran, since the review read no index",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when no design lens ran, since the review read no index",
     "collected": 1,
     "failed": true
@@ -466,7 +466,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -498,7 +498,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for a long index when the design lens was skipped, since the review read no index",
     "collected": 1,
     "failed": true
@@ -516,7 +516,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -548,7 +548,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -566,7 +566,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -584,7 +584,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for an index under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > gives no warning for an index under the threshold",
     "collected": 1,
     "failed": true
@@ -602,7 +602,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -620,7 +620,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -638,7 +638,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -656,7 +656,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -674,7 +674,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -692,7 +692,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens failed",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens failed",
     "collected": 1,
     "failed": true
@@ -710,7 +710,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -728,7 +728,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -746,7 +746,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a lens that reads no index, even on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -764,7 +764,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -782,7 +782,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -800,7 +800,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -832,7 +832,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -850,7 +850,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the verifier failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -882,7 +882,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a design lens its budget ended rather than a failure, even on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > names no failure for a design lens its budget ended rather than a failure, even on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -900,7 +900,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -932,7 +932,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -950,7 +950,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > reads a failed lens's error, as a lens records its failure, before its reason",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > reads a failed lens's error, as a lens records its failure, before its reason",
     "collected": 1,
     "failed": true
@@ -982,7 +982,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -1000,7 +1000,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -1018,7 +1018,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > warns for a long index when the design lens ran",
     "collected": 1,
     "failed": true
@@ -1036,7 +1036,7 @@
    "evidence": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/decision-index.test.ts > the decision index warning a review gives > says the index may be why the design lens failed on a request too long for its model",
     "collected": 1,
     "failed": true
@@ -1096,7 +1096,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1114,7 +1114,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1160,7 +1160,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1178,7 +1178,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1196,7 +1196,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1214,7 +1214,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1288,7 +1288,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1306,7 +1306,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1324,7 +1324,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1342,7 +1342,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1360,7 +1360,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1378,7 +1378,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1396,7 +1396,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1414,7 +1414,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1432,7 +1432,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > leaves the check out outside a repository, before any commit, and with no decisions",
     "collected": 1,
     "failed": true
@@ -1450,7 +1450,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1468,7 +1468,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
     "collected": 1,
     "failed": true
@@ -1486,7 +1486,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1504,7 +1504,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns with the review's own warning when the index at HEAD is long, and passes",
     "collected": 1,
     "failed": true
@@ -1564,7 +1564,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1624,7 +1624,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1642,7 +1642,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1660,7 +1660,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1706,7 +1706,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > says ok with the index's size at HEAD when it is under the threshold",
     "collected": 1,
     "failed": true
@@ -1724,7 +1724,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
     "collected": 1,
     "failed": true
@@ -1742,7 +1742,7 @@
    "evidence": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/cli/test/doctor-decision-index.test.ts > doctor's decision index check > warns, and never fails, when the decisions at HEAD cannot be read",
     "collected": 1,
     "failed": true
@@ -1802,7 +1802,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1820,7 +1820,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1838,7 +1838,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1856,7 +1856,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1888,7 +1888,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1906,7 +1906,7 @@
    "evidence": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
     "collected": 1,
     "failed": true
@@ -1924,7 +1924,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -1970,7 +1970,7 @@
    "evidence": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/amendments.test.ts > decision amendments > counts amendment labels and precedence text toward the 64 KiB warning",
     "collected": 1,
     "failed": true
@@ -2002,7 +2002,7 @@
    "evidence": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/decisions/test/decision-files.test.ts > written decisions > renders the index whole at any size, and warns only past 64 KiB",
     "collected": 1,
     "failed": true
@@ -2080,9 +2080,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 15,
+   "line": 14,
    "column": 57,
-   "endLine": 28,
+   "endLine": 27,
    "endColumn": 1,
    "mutatorName": "BlockStatement",
    "replacement": "{}",
@@ -2090,7 +2090,7 @@
    "evidence": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
     "collected": 1,
     "failed": true
@@ -2098,9 +2098,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 16,
+   "line": 15,
    "column": 14,
-   "endLine": 16,
+   "endLine": 15,
    "endColumn": 66,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
@@ -2110,9 +2110,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 17,
+   "line": 16,
    "column": 26,
-   "endLine": 27,
+   "endLine": 26,
    "endColumn": 2,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
@@ -2120,7 +2120,7 @@
    "evidence": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
    "survivorClasses": [],
    "run": {
-    "head": "0028a248",
+    "head": "ff2a98fd",
     "test": "packages/pipeline/test/context-overflow.test.ts > reads Anthropic's error for a prompt over the window as a context overflow only when it is one",
     "collected": 1,
     "failed": true
@@ -2128,9 +2128,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 18,
+   "line": 17,
    "column": 8,
-   "endLine": 18,
+   "endLine": 17,
    "endColumn": 19,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -2142,9 +2142,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 19,
+   "line": 18,
    "column": 11,
-   "endLine": 19,
+   "endLine": 18,
    "endColumn": 13,
    "mutatorName": "ArrayDeclaration",
    "replacement": "[\"Stryker was here\"]",
@@ -2154,9 +2154,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 20,
+   "line": 19,
    "column": 7,
-   "endLine": 20,
+   "endLine": 19,
    "endColumn": 16,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
@@ -2168,10 +2168,24 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 21,
+   "line": 20,
    "column": 12,
-   "endLine": 21,
+   "endLine": 20,
    "endColumn": 21,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/models.ts",
+   "line": 21,
+   "column": 9,
+   "endLine": 21,
+   "endColumn": 18,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
@@ -2185,20 +2199,6 @@
    "line": 22,
    "column": 9,
    "endLine": 22,
-   "endColumn": 18,
-   "mutatorName": "StringLiteral",
-   "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-   "status": "Ignored",
-   "claim": "equivalent",
-   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
-   "survivorClasses": []
-  },
-  {
-   "file": "packages/pipeline/src/models.ts",
-   "line": 23,
-   "column": 9,
-   "endLine": 23,
    "endColumn": 65,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
@@ -2208,9 +2208,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 23,
+   "line": 22,
    "column": 42,
-   "endLine": 23,
+   "endLine": 22,
    "endColumn": 63,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
@@ -2220,9 +2220,9 @@
   },
   {
    "file": "packages/pipeline/src/models.ts",
-   "line": 24,
+   "line": 23,
    "column": 14,
-   "endLine": 24,
+   "endLine": 23,
    "endColumn": 21,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",

@@ -19,9 +19,11 @@ Each test of a changed behaviour failed first on `main` at `370411bd`:
 
 This repository's headroom test, which failed the gate past 56 KiB, now checks that the warning fires exactly when the index passes 64 KiB.
 
-The mutation inventory, `2026-11-14-issue-411-mutants.json`, lists 135 mutants of `origin/main...0028a248`:
+The first gate failed twice. `models.ts` imported pi-ai directly, and only the harness wrapper may, so `856b8aa3` reaches `isContextOverflow` through `harness.ts`. Doctor pads every name to the longest, which in this checkout is now `decision index`, so `ff2a98fd` widens the doctor test's columns. That test also checks the line as `ok` or `warn`, so it still holds once this repository's index passes 64 KiB.
+
+The mutation inventory, `2026-11-14-issue-411-mutants.json`, lists 135 mutants of `origin/main...ff2a98fd`, each run at that head:
 - 88 killed, each by its named test run alone;
 - 42 string literals Stryker ignores under the repository's configuration;
 - 5 equivalent, each with its reason: four fields of the message `contextOverflowed` builds that `isContextOverflow` never reads, and the fallback for a verdict with no `ran`, which a fresh review never lacks.
 
-The first run left five more survivors, in the filter that decides which failures the warning names and in doctor's plural. The tests in `0028a248` kill them. The runner missed one of those kills, because its name pattern did not anchor a test name holding backticks. Run by hand against its named test alone, that mutant was killed, with exactly one test collected.
+The first run left five more survivors, in the filter that decides which failures the warning names and in doctor's plural. The tests in `0028a248` kill them. The runner misses one of those kills, `check.error && check.reason`, because its name pattern does not anchor a test name holding backticks. Run by hand at `ff2a98fd` against its named test alone, it was killed, with exactly one test collected.
