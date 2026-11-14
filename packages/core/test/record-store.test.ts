@@ -297,6 +297,27 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
+		"writeCell stores a value it refuses",
+		"writeCell: refuses a value that is not one JSON value",
+		(inner) => ({
+			writeCell: async (name, expected, value) => {
+				try {
+					return await inner.writeCell(name, expected, value);
+				} catch (error) {
+					await inner.writeCell(name, expected, JSON.stringify(value));
+					throw error;
+				}
+			},
+		}),
+	],
+	[
+		"writeCell trims the JSON value it stores",
+		"writeCell: refuses a value that is not one JSON value",
+		(inner) => ({
+			writeCell: (name, expected, value) => inner.writeCell(name, expected, value.trim()),
+		}),
+	],
+	[
 		"writeCell stores a value that is not JSON as one that is",
 		"writeCell: refuses a value that is not one JSON value",
 		(inner) => ({
