@@ -211,6 +211,66 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(data.mutants).toHaveLength(1);
 		expect(data.mutants[0]).toMatchObject({ status: "ignored", ignoredBy: "config" });
 	});
+	it("records the files that owe claims and samples only their mutants", async () => {
+		const next = commit(repo, {
+			"src/a.ts": "export const flag = true;\n",
+			"src/b.ts": "export const other = false;\n",
+		});
+		const io = output();
+		expect(
+			await main(["mutants", "list", `${head}..${next}`, "--claims-in", "src/b.ts", "--json", "--all"], io),
+		).toBe(0);
+		const data = JSON.parse(io.lines.join(""));
+		expect(data.claimsIn).toEqual(["src/b.ts"]);
+		expect(new Set(data.mutants.map((mutant: { file: string }) => mutant.file))).toEqual(
+			new Set(["src/a.ts", "src/b.ts"]),
+		);
+		const owed = data.mutants.find((mutant: { file: string }) => mutant.file === "src/b.ts");
+		Object.assign(owed, {
+			claim: "killed",
+			evidence: { test: { file: "test/b.test.ts", path: ["b", "works"] } },
+			survivorClasses: [],
+		});
+		await writeFile(join(repo, "owing.json"), JSON.stringify(data));
+		io.lines.length = 0;
+		expect(await main(["mutants", "sample", "owing.json"], io)).toBe(0);
+		expect(JSON.parse(io.lines.join("")).selected.map((mutant: { file: string }) => mutant.file)).toEqual([
+			"src/b.ts",
+		]);
+	});
+
+	it("limits a listing to the named files, which then cannot be sampled", async () => {
+		const next = commit(repo, {
+			"src/a.ts": "export const flag = true;\n",
+			"src/b.ts": "export const other = false;\n",
+		});
+		const io = output();
+		expect(await main(["mutants", "list", `${head}..${next}`, "src/b.ts", "--json", "--all"], io)).toBe(0);
+		const data = JSON.parse(io.lines.join(""));
+		expect(data.limitedTo).toEqual(["src/b.ts"]);
+		expect(data.mutants.map((mutant: { file: string }) => mutant.file)).toEqual(["src/b.ts"]);
+		Object.assign(data.mutants[0], {
+			claim: "killed",
+			evidence: { test: { file: "test/b.test.ts", path: ["b", "works"] } },
+			survivorClasses: [],
+		});
+		await writeFile(join(repo, "limited.json"), JSON.stringify(data));
+		io.lines.length = 0;
+		expect(await main(["mutants", "sample", "limited.json"], io)).toBe(1);
+		expect(io.errors.join("")).toContain("for reading");
+	});
+
+	it("refuses a named file the range does not change, by name", async () => {
+		const io = output();
+		expect(await main(["mutants", "list", `${base}..${head}`, "src/a.ts", "src/typo.ts", "--json"], io)).toBe(1);
+		expect(io.lines).toEqual([]);
+		expect(io.errors.join("")).toContain('"src/typo.ts" is not a file this range changes');
+		io.errors.length = 0;
+		expect(await main(["mutants", "list", `${base}..${head}`, "--claims-in", "src/typo.ts", "--json"], io)).toBe(1);
+		expect(io.lines).toEqual([]);
+		expect(io.errors.join("")).toContain('"src/typo.ts" is not a file this range changes');
+	});
+
 	it("lists a versioned inventory and samples structural and legacy claims", async () => {
 		const io = output();
 		expect(await main(["mutants", "list", `${base}..${head}`, "--json", "--all"], io)).toBe(0);
@@ -259,7 +319,7 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		[["wat"], "list or sample"],
 		[["list"], "range"],
 		[["sample"], "inventory"],
-		[["list", "HEAD", "extra"], "range"],
+		[["sample", "x.json", "--claims-in", "src/a.ts"], "--claims-in is only available for mutants list"],
 		[["list", "HEAD", "--limit", "-1"], "limit"],
 		[["list", "HEAD", "--limit", "1.5"], "limit"],
 		[["list", "HEAD", "--limit", " 1"], "limit"],
@@ -273,6 +333,12 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		const io = output();
 		expect(await main(["mutants", ...args], io)).toBe(64);
 		expect(io.errors.join("")).toContain(text);
+	});
+
+	it("refuses --claims-in on any other command", async () => {
+		const io = output();
+		expect(await main(["findings", "HEAD", "--claims-in", "src/a.ts"], io)).toBe(64);
+		expect(io.errors.join("")).toContain("--claims-in is only available for mutants list");
 	});
 
 	it("reports unreadable inventories, invalid claims and unresolved ranges as failures", async () => {
