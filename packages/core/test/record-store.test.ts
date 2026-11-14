@@ -707,6 +707,20 @@ describe("each conformance case fails against an adapter that breaks its promise
 	});
 });
 
+describe("the conformance suite asks no more than rule 3", () => {
+	it("passes a store that lands a refused batch's valid records, as rule 3 allows", async () => {
+		const target = recordStoreConformance.find((each) =>
+			each.name.startsWith("add: refuses a batch's invalid record"),
+		);
+		const inOrder: Breaks = (inner) => ({
+			add: async (records) => {
+				for (const record of records) await inner.add([record]);
+			},
+		});
+		await expect(target?.run(brokenFixture(inOrder, memoryRecordStoreFixture()))).resolves.toBeUndefined();
+	});
+});
+
 describe("the conformance suite's own bookkeeping", () => {
 	it.each(recordStoreConformance.map((each) => [each.name, each] as const))(
 		"%s closes every store it opens",
