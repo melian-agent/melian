@@ -1,0 +1,620 @@
+{
+	"total": 35,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "83961951",
+	"head": "e2b82617",
+	"command": "node scripts/enumerate-mutants.mjs 83961951...e2b82617 --json --limit 10000",
+	"note": "Fix pass 35 of pull request #296. Each claim was run against its named test alone at e2b82617. The three equivalent mutants were run too, and survive, as their reasons say. Pass 34's row for review.ts:616 ConditionalExpression true named the prober's reminder test, which does not kill it; the planner's reminder test does, as the review of record at 83961951 found. Pass 34's file stands as it was written.",
+	"counts": {
+		"killed": 32,
+		"equivalent": 3
+	},
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 589,
+			"column": 20,
+			"endLine": 589,
+			"endColumn": 25,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "equivalent",
+			"evidence": "The commit's callback always runs and assigns submitted before anything reads it; a commit that cannot run throws, so the starting value is never read.",
+			"survivorClasses": [
+				"seeded-default"
+			],
+			"run": {
+				"head": "e2b82617",
+				"result": "survived",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 590,
+			"column": 39,
+			"endLine": 593,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > leaves the review not reviewed when the prober's reminder, resumed after a crash, does not finish",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 591,
+			"column": 17,
+			"endLine": 591,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 591,
+			"column": 17,
+			"endLine": 591,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > leaves the review not reviewed when the prober's reminder, resumed after a crash, does not finish",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 591,
+			"column": 17,
+			"endLine": 591,
+			"endColumn": 76,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await tx.submissionByRequest(id, requestId)) === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 594,
+			"column": 8,
+			"endLine": 594,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a planner that recorded no plan once, and fails the lens when it still records none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 594,
+			"column": 8,
+			"endLine": 594,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 594,
+			"column": 8,
+			"endLine": 594,
+			"endColumn": 27,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!owed || !submitted",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > leaves the review not reviewed when the prober's reminder, resumed after a crash, does not finish",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 594,
+			"column": 8,
+			"endLine": 594,
+			"endColumn": 13,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "owed",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a planner that recorded no plan once, and fails the lens when it still records none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 594,
+			"column": 17,
+			"endLine": 594,
+			"endColumn": 27,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "submitted",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 620,
+			"column": 5,
+			"endLine": 620,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "Pi Durable scopes a request ID to its conversation, and the planner's conversation receives at most one reminder, so any fixed ID finds the same submission; the crash test's child process runs the same build, so both sides of the crash share it.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "survived",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 621,
+			"column": 5,
+			"endLine": 621,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > leaves the review not reviewed when the planner's reminder, resumed after a crash, does not finish",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 5,
+			"endLine": 622,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 5,
+			"endLine": 622,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a planner that recorded no plan once, and fails the lens when it still records none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 5,
+			"endLine": 622,
+			"endColumn": 87,
+			"mutatorName": "LogicalOperator",
+			"replacement": "plan === undefined || (await budgetEnded(runtime, planner, context)) === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 5,
+			"endLine": 622,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 5,
+			"endLine": 622,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "plan !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 27,
+			"endLine": 622,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds no planner and no prober whose budget ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 622,
+			"column": 27,
+			"endLine": 622,
+			"endColumn": 87,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await budgetEnded(runtime, planner, context)) !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a planner that recorded no plan once, and fails the lens when it still records none",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 624,
+			"column": 8,
+			"endLine": 624,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 624,
+			"column": 8,
+			"endLine": 624,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the planner's, after it recorded a plan",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 624,
+			"column": 8,
+			"endLine": 624,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "failed === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 664,
+			"column": 5,
+			"endLine": 664,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "Pi Durable scopes a request ID to its conversation, and the prober's conversation receives at most one reminder, so any fixed ID finds the same submission; the crash test's child process runs the same build, so both sides of the crash share it.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "survived",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 665,
+			"column": 5,
+			"endLine": 665,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > leaves the review not reviewed when the prober's reminder, resumed after a crash, does not finish",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "open.length > 0 || (await budgetEnded(runtime, prober!, context)) === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "open.length >= 0",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 5,
+			"endLine": 666,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "open.length <= 0",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 24,
+			"endLine": 666,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds no planner and no prober whose budget ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 666,
+			"column": 24,
+			"endLine": 666,
+			"endColumn": 84,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await budgetEnded(runtime, prober!, context)) !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 668,
+			"column": 8,
+			"endLine": 668,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 668,
+			"column": 8,
+			"endLine": 668,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 668,
+			"column": 8,
+			"endLine": 668,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "unfinished === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts an attack the prober skipped with its reason as answered",
+			"survivorClasses": [],
+			"run": {
+				"head": "e2b82617",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	]
+}
