@@ -1092,6 +1092,18 @@ describe("runRange", { timeout: 60_000 }, () => {
 				[run.findings[0]!.id, "lens.trust-boundary", [16, 16]],
 			]);
 			expect(miss.match(run, await miss.locate(head)).hits).toHaveLength(1);
+			scriptLenses(fake, lenses, { "trust-boundary": failOpen.script["trust-boundary"]!, verifier: {} });
+			const another = await runRange(
+				{ ...miss.target(ProbeTrust.parse(`${base},${head}`)), sightingsOf: "lens.security" },
+				{
+					kind: "live",
+					models: fake.review,
+					verifierModel: `${provider}/plan`,
+					probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+				},
+			);
+			expect(another.findings).toHaveLength(1);
+			expect(another.sightings).toEqual([]);
 			expect(await runGolden(failOpen, { kind: "scripted" })).not.toHaveProperty("sightings");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
