@@ -17,7 +17,8 @@ Problem: the lens task attached by `selectionOf`, a list of each run's key and a
 Choice: `lensRequest` in `packages/pipeline/src/lens-request.ts` keys each run through core's `KeyedRequest.of`, producer `lens`. The request holds:
 
 - the run as the lens task stores it, rendered under the fixed identity nonce: its name, version, level, route, thinking, budgets, instructions and prompt, the enclosing functions included;
-- the injection policy that renders ahead of the instructions;
+- the injection policy that renders ahead of the instructions, and the name of the Pi section it renders in, which Pi writes as its tag;
+- the installed versions of Pi Durable and pi-ai, read from each package's own `package.json`. Pi Durable renders the system sections, with their tags, and writes the turns Melian does not, such as a cut tool result's note; pi-ai turns the conversation into each provider's request, which decides, for one, whether the brief arrives as instructions or as a message. Either can change what a lens is shown with no change to Melian's text;
 - every tool the run is offered, by name, description, schema, output limits and argument bound, a probing run's planner and prober tools included, and `lensToolLimits`, the bounds every lens tool cuts what it shows to. A limit decides what a lens is shown, as its description does;
 - the wording a failover sends;
 - the base and head, `escalateAt`, and the run a quick run escalates to by its key, or why it is capped;
@@ -29,6 +30,8 @@ Left out, each with its reason:
 - The review's nonce, which differs on every run.
 - The caller section and the Enola graph its tools read, under `bestEffort`: a host whose graph query timed out would otherwise run every lens again, as [the caller context decision](2026-10-07-caller-context-outside-the-attach-key.md) found.
 - The preference file's path in the standards' source, which names the host.
+- The lens tools' own code: the text each tool returns to the model, what each tool does, and the lens extension that runs the conversation. The maintainer ruled on 2026-11-15, in the coordinator's session, to leave it out until [issue #437](https://github.com/melian-agent/melian/issues/437) ties a code version to a hash of `lens-tools.ts`, the extension and core's revision readers, in a test. A request is data, and rule 8 of [the identity guideline](../guidelines/identity.md) forbids hashing source at run time. Until then, a change to what a tool returns, with its description and schema unchanged, reuses runs asked under the old code; `--rerun` or a new head asks again.
+- Chord, Pi's composition runtime, which shows a model nothing.
 
 The index entry lists each run as `<key> request <request key>`. `selectionOf` is that list, sorted, and the instruction fingerprint is gone.
 
@@ -66,5 +69,7 @@ A probing run is never copied, so every finding it reports rests on a probe of i
 The first review of each head after this lands runs every lens once. Each index entry written before it lists its lenses without a request key, and a version-6 task's runs carry none, so nothing matches. At the size of [pull request #436](https://github.com/melian-agent/melian/pull/436)'s last round that is $30.16 per head; most rounds cost $3.57 to $9.85. A new push reruns every lens anyway, so only a head reviewed before the upgrade and again after it pays, once. `test/lens-requests-reopen.test.ts` opens a store main wrote and checks that each lens is asked once.
 
 Lens records are not exported or imported between hosts here; rule 8 of [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md) can now key them by this request, in a build of its own.
+
+Keying the Pi versions has a cost: an upgrade of Pi Durable or pi-ai asks every lens again once, on the next review of each head, as a first review does. The maintainer accepted that on 2026-11-15, in the coordinator's session. A Pi release can change what a lens is shown with no change to Melian's text: before Pi Durable 1.1.0, every lens brief reached openai-codex as a trailing developer message, and from 1.1.0 it is the system instructions.
 
 Copying reads only the task the index names for the revision, so a lens changed and then changed back is asked again: the task that held its first answer has been replaced.
