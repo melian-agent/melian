@@ -458,6 +458,45 @@ describe("Miss", () => {
 		});
 	});
 
+	it("locates a miss against the head its target froze, though its head's ref moves after", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const commit = (message: string) => {
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					message,
+				);
+				return git(repo, "rev-parse", "HEAD");
+			};
+			const write = (lines: readonly string[]) => writeFileSync(join(repo, "f.ts"), `${lines.join("\n")}\n`);
+			const original = Array.from({ length: 12 }, (_, index) => `line ${index + 1}`);
+			git(repo, "checkout", "--quiet", "-b", "tip", "feature");
+			write(original);
+			git(repo, "add", "f.ts");
+			const head = commit("the head");
+			git(repo, "branch", "reviewed", head);
+			write(original.map((line, index) => (index === 2 ? "fixed 3" : line)));
+			const fix = commit("the fix");
+			git(repo, "checkout", "--quiet", "-b", "moved", head);
+			write([...Array.from({ length: 5 }, (_, index) => `new ${index + 1}`), ...original]);
+			const moved = commit("a later head");
+			const miss = Miss.load(missesFile([{ ...fields, repo, base, head: "reviewed", fix }]))[0]!;
+			const target = miss.target(ProbeTrust.parse(head));
+			git(repo, "branch", "--force", "reviewed", moved);
+			expect(await miss.locate(target.head)).toEqual({ by: "fix", fixCommit: fix, ranges: [[3, 3]] });
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("takes a miss's lines from its fix's diff, as its hunks' old side, unless it names its own", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -491,8 +530,9 @@ describe("Miss", () => {
 			commit("a change to another file");
 			const load = (extra: object) =>
 				Miss.load(missesFile([{ ...fields, repo, base, head: "feature~2", ...extra }]))[0]!;
-			expect(await load({}).locate()).toEqual({ by: "file and rule" });
-			expect(await load({ fix: "feature~1" }).locate()).toEqual({
+			const at = (ref: string) => git(repo, "rev-parse", ref);
+			expect(await load({}).locate(at("feature~2"))).toEqual({ by: "file and rule" });
+			expect(await load({ fix: "feature~1" }).locate(at("feature~2"))).toEqual({
 				by: "fix",
 				fixCommit: git(repo, "rev-parse", "feature~1"),
 				ranges: [
@@ -501,8 +541,11 @@ describe("Miss", () => {
 					[7, 8],
 				],
 			});
-			expect(await load({ fix: "feature~1", lines: [5, 6] }).locate()).toEqual({ by: "lines", ranges: [[5, 6]] });
-			await expect(load({ head: "feature~1", fix: "feature" }).locate()).rejects.toThrow(
+			expect(await load({ fix: "feature~1", lines: [5, 6] }).locate(at("feature~2"))).toEqual({
+				by: "lines",
+				ranges: [[5, 6]],
+			});
+			await expect(load({ head: "feature~1", fix: "feature" }).locate(at("feature~1"))).rejects.toThrow(
 				`m: its fix ${git(repo, "rev-parse", "feature")} changes nothing in f.ts`,
 			);
 		} finally {
@@ -1020,7 +1063,7 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(run.sightings!.map((each) => [each.id, each.properties.source.check, each.lines()])).toEqual([
 				[run.findings[0]!.id, "lens.trust-boundary", [16, 16]],
 			]);
-			expect(miss.match(run, await miss.locate()).hits).toHaveLength(1);
+			expect(miss.match(run, await miss.locate(head)).hits).toHaveLength(1);
 			expect(await runGolden(failOpen, { kind: "scripted" })).not.toHaveProperty("sightings");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });

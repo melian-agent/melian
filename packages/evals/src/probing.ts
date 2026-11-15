@@ -215,15 +215,16 @@ export class Miss {
 	}
 
 	/**
-	 * Where the miss's defect sits: its own `lines`, or else the old side of each hunk its fix's diff from the head makes
-	 * in its file, a pure insertion widened to the lines around it. Throws when the fix changes nothing in the file.
+	 * Where the miss's defect sits: its own `lines`, or else the old side of each hunk its fix's diff from `head`, the
+	 * commit its target reviews, makes in its file, a pure insertion widened to the lines around it. Throws when the fix
+	 * changes nothing in the file.
 	 */
-	async locate(): Promise<MissLocation> {
+	async locate(head: string): Promise<MissLocation> {
 		if (this.lines !== undefined) return { by: "lines", ranges: [this.lines] };
 		if (this.fix === undefined) return { by: "file and rule" };
 		const fixCommit = this.commit(this.fix);
 		const { revision } = await Changeset.resolve(this.repo, {
-			base: this.headCommit(),
+			base: head,
 			head: fixCommit,
 			mode: "twoDot",
 		});
@@ -572,11 +573,10 @@ export async function measureProbing(
 			settings.set === "goldens"
 				? []
 				: await Promise.all(
-						Miss.load(settings.misses!).map(async (miss) => ({
-							miss,
-							target: miss.target(settings.trust),
-							location: await miss.locate(),
-						})),
+						Miss.load(settings.misses!).map(async (miss) => {
+							const target = miss.target(settings.trust);
+							return { miss, target, location: await miss.locate(target.head) };
+						}),
 					);
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
