@@ -195,6 +195,33 @@ describe("pushing", { timeout: 60_000 }, () => {
 		expect((error as RecordError).message).not.toMatch(/\s$/);
 	});
 
+	for (const race of [
+		"[rejected] (stale info)",
+		"[rejected] (fetch first)",
+		"[rejected] (non-fast-forward)",
+		"[rejected] (already exists)",
+		"[remote rejected] (failed to update ref)",
+		"[remote rejected] (cannot lock ref 'refs/heads/melian/state': is at 0123 but expected 4567)",
+		"[remote rejected] (incorrect old value provided)",
+	])
+		it(`answers stale for a race the push reports as ${race}`, async () => {
+			const { repository, tip } = await fetched();
+			const run = RecordRepository.prototype.run;
+			vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (
+				this: RecordRepository,
+				...args
+			) {
+				if (args[0][0] !== "push") return run.apply(this, args);
+				return {
+					code: 1,
+					stdout: `To ${remote.url}\n!\t${tip}:refs/heads/melian/state\t${race}\nDone\n`,
+					stdoutBytes: Buffer.from(""),
+					stderr: "error: failed to push some refs\n",
+				};
+			});
+			expect(await repository.push(remote.url, remote.branch, tip, tip, time())).toBe("stale");
+		});
+
 	it("fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race", async () => {
 		const { repository, tip } = await fetched();
 		const run = RecordRepository.prototype.run;
