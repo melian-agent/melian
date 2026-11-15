@@ -125,7 +125,7 @@ it("lists Melian's own manifest using the host's state directory", async () => {
 	expect(await main(["tools"], io)).toBe(0);
 	expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, io.env), env: io.env });
 	expect(await stateDirectory(repo, io.env)).toContain("host-state");
-	expect(io.lines.join("")).toContain("enola@0.4.27");
+	expect(io.lines.join("")).toContain("enola@0.4.40");
 	expect(io.lines.join("")).toContain("not yet fetched");
 	expect(io.errors).toEqual([]);
 });
@@ -170,7 +170,7 @@ it.each([new Error("pin unreadable"), "pin unreadable"])(
 		expect(await inventory.readiness()).toEqual([
 			{
 				name: "enola",
-				version: "0.4.27",
+				version: "0.4.40",
 				state: "unavailable",
 				detail: "cannot check: pin unreadable",
 			},
@@ -185,7 +185,7 @@ it("reports a platform with no pin as unavailable, never as a mismatch", async (
 	expect(await inventory.readiness()).toEqual([
 		{
 			name: "enola",
-			version: "0.4.27",
+			version: "0.4.40",
 			state: "unavailable",
 			detail: "cannot check: enola has no pin for linux-s390x",
 		},
@@ -197,7 +197,7 @@ it("warns in doctor about a tool it cannot check, and exits 0", async () => {
 	vi.spyOn(ToolInventory, "open").mockResolvedValue(await ToolInventory.open(repo, {}, provisioning));
 	const io = output();
 	expect(await main(["doctor"], io)).toBe(0);
-	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.4\.27; cannot check: enola has no pin for linux-s390x/);
+	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.4\.40; cannot check: enola has no pin for linux-s390x/);
 });
 
 it("warns in doctor about a pin that is not fetched, and exits 0", async () => {

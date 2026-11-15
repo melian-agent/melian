@@ -19,6 +19,12 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
+		"./testing": {
+			"@melian-agent/source": "./src/testing.ts",
+			"types": "./dist/testing.d.ts",
+			"import": "./dist/testing.js",
+			"default": "./dist/testing.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"files": [

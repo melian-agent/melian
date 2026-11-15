@@ -639,16 +639,16 @@ describe("the melian round workflow", () => {
 		const token = "sk-probe-SECRET-123";
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
-			// A fake node answers only the step's three melian commands: review prints the probe's own output, in which
-			// Biome quoted a file holding the token, on both streams, since Melian's errors can quote a tool too. Every
-			// other script runs on the real Node.
+			// A fake node answers only the step's three melian commands: review, given the gate's base and head as the
+			// revision it must find, prints the probe's own output, in which Biome quoted a file holding the token, on
+			// both streams, since Melian's errors can quote a tool too. Every other script runs on the real Node.
 			writeFileSync(
 				join(dir, "node"),
 				[
 					"#!/bin/sh",
 					'if [ "$1" = packages/cli/bin/melian.js ]; then',
 					'  case "$2" in',
-					'    review) [ "$*" = "packages/cli/bin/melian.js review #7 --json --no-walkthrough" ] && cat "$PROBE" && cat "$PROBE" >&2; exit 2 ;;',
+					`    review) [ "$*" = "packages/cli/bin/melian.js review #7 --expect-base ${"2".repeat(40)} --expect-head ${"1".repeat(40)} --json --no-walkthrough" ] && cat "$PROBE" && cat "$PROBE" >&2; exit 2 ;;`,
 					"    doctor|findings) exit 0 ;;",
 					"  esac",
 					"  exit 1",
@@ -676,6 +676,7 @@ describe("the melian round workflow", () => {
 			const uploaded = readdirSync(join(dir, "public"));
 			expect(uploaded).toContain("verdict.json");
 			expect(uploaded.filter((name) => readFileSync(join(dir, "public", name), "utf8").includes(token))).toEqual([]);
+			// The probe's run failed, recording no tokens or cost, and a failed review reports no duration, so nothing leaves.
 			expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe("null\n");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

@@ -77,6 +77,22 @@ describe("comparison arguments", () => {
 		expect(io.stderr).toHaveBeenCalledWith(expect.stringContaining(message));
 	});
 
+	it.each([
+		[["review"], "review takes one range or pull request"],
+		[
+			["findings", "#7", "--expect-base", "f".repeat(40)],
+			"--expect-base and --expect-head are only available for review",
+		],
+		[
+			["findings", "#7", "--expect-head", "f".repeat(40)],
+			"--expect-base and --expect-head are only available for review",
+		],
+	])("refuses a review option it cannot use: %j", async (args, message) => {
+		const io = output();
+		expect(await main(args, io)).toBe(64);
+		expect(io.stderr).toHaveBeenCalledWith(expect.stringContaining(message));
+	});
+
 	it.each([new Error("bad\u001b[2J"), "bad\u001b[2J"])(
 		"prints a rejected value as visible text: %j",
 		async (failure) => {

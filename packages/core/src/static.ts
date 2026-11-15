@@ -338,6 +338,12 @@ function decodePath(uri: string): string {
 	return uri.split("/").map(decodeURIComponent).join("/");
 }
 
+// Enola spans a symbol to its closing brace from 0.4.37. An Enola result keeps the identity of the line it starts on, as
+// under 0.4.27, while its trigger takes the whole span (issue #346).
+function identityEnd(tool: StaticTool, region: { startLine: number; endLine?: number }): number {
+	return tool === "enola" ? region.startLine : Math.max(region.endLine ?? region.startLine, region.startLine);
+}
+
 // Each result keyed by finding identity in the revision it came from, its file named by `pathAtHead`. Results of one
 // rule on the same lines share an ID, so they merge into one, counted.
 async function identify(
@@ -370,7 +376,7 @@ async function identify(
 		const path = decodePath(artifactLocation.uri);
 		const rule = staticRuleId(tool, result.ruleId);
 		const text = await textOf(path);
-		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
+		const endLine = identityEnd(tool, region);
 		const snippet = text
 			?.split("\n")
 			.slice(region.startLine - 1, endLine)
@@ -443,7 +449,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		const { region } = each.result.locations[0]!.physicalLocation;
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
 		// A symbol's fan-in grows when the change only adds callers; that is the symbol doing its job, not a defect here.
-		// Enola names only the line a symbol starts on, so any edit to its file keeps the result.
+		// Any edit to the file keeps the result, since its identity is the line its symbol starts on.
 		if (each.rule === "enola/god-class" && !revision.files.some((file) => file.path === each.path)) {
 			untouched++;
 			continue;

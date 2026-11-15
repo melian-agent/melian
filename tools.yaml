@@ -1,29 +1,26 @@
 format_version: 1
 tools:
   enola:
-    version: 0.4.27
-    source: { repository: enola-labs/enola, tag: v0.4.27 }
-    published: '2026-10-05T16:37:02Z'
-    exception:
-      reason: Step 11 needs upstream impact; all four asset digests agree with the release checksum files.
-      added: '2026-10-05T22:03:35Z'
+    version: 0.4.40
+    source: { repository: enola-labs/enola, tag: v0.4.40 }
+    published: '2026-11-06T08:16:30Z'
     platforms:
       darwin-amd64:
-        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-darwin-amd64.tar.gz
-        sha256: afc917d95bcd864595e5a1283128c22c9d774eba4eb5292fe35156b52045f9c6
-        binary: enola-0.4.27-darwin-amd64
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.40/enola-0.4.40-darwin-amd64.tar.gz
+        sha256: 5d71fdf7e7dca4238889558b9a1dd0b5f28ecd43d78c8f94c5d599986c718801
+        binary: enola-0.4.40-darwin-amd64
       darwin-arm64:
-        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-darwin-arm64.tar.gz
-        sha256: 59c2e30de948b5b70af9715f0a3adfb86162531e527e779b036b8483d73ae34d
-        binary: enola-0.4.27-darwin-arm64
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.40/enola-0.4.40-darwin-arm64.tar.gz
+        sha256: 65ac220fd78c86b8ce31b056e7b00422a598b54b8b5d0c302ea5f16fc9dee610
+        binary: enola-0.4.40-darwin-arm64
       linux-amd64:
-        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-linux-amd64.tar.gz
-        sha256: 196d456cf8e9f3594e21c8aa602074f877171e65125e852aa46efc9eb6bfbf06
-        binary: enola-0.4.27-linux-amd64
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.40/enola-0.4.40-linux-amd64.tar.gz
+        sha256: bcb25c9438c95f51883f445e232fe458f3fd14ebf0375d1c6cae58579e81c44b
+        binary: enola-0.4.40-linux-amd64
       linux-arm64:
-        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-linux-arm64.tar.gz
-        sha256: 820b88baa3ef9efd984e850004c9decc1d0b5c2d5381bb04487c332dd9360ef3
-        binary: enola-0.4.27-linux-arm64
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.40/enola-0.4.40-linux-arm64.tar.gz
+        sha256: 7e2713f5c70f1d5713d3bbaf4e90b764c7e9ff67a8ecd9a8a0950fe581af291f
+        binary: enola-0.4.40-linux-arm64
 misses:
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C1", tool: repro-run }
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C2", tool: tests }

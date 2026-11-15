@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	MutationInventory,
@@ -265,7 +267,7 @@ describe("MutationInventory", () => {
 		{ claim: "killed", evidence: { reason: "wrong kind" } },
 		{ claim: "new-test", evidence: { reason: "wrong kind" } },
 		{ claim: "equivalent", evidence: row().evidence },
-		{ claim: "killed", survivorClasses: undefined },
+		{ claim: "killed", evidence: row().evidence, survivorClasses: undefined },
 	])("refuses generated classification gaps for sampling and future verification: %j", (extra) => {
 		for (const method of ["sample", "forVerification"] as const)
 			expect(() => MutationInventory.create(fields([row(0, extra)]))[method]()).toThrow(MutationInventoryError);
@@ -354,14 +356,17 @@ describe("MutationInventory", () => {
 		expect(MutationInventory.create(fields([row()], { adapters })).toJSON().adapters).toEqual(adapters);
 	});
 
-	it.each([null, { ...fields(), mutants: null }, { ...fields(), mutants: [null] }])(
-		"refuses malformed factory inputs before deriving ids: %j",
-		(input) => {
-			expect(() => MutationInventory.create(input as unknown as MutationInventoryInput)).toThrow(
-				MutationInventoryError,
-			);
-		},
-	);
+	it.each([
+		undefined,
+		null,
+		{ ...fields(), mutants: null },
+		{ ...fields(), mutants: [null] },
+		{ ...fields(), mutants: ["row"] },
+	])("refuses malformed factory inputs before deriving ids: %j", (input) => {
+		expect(() => MutationInventory.create(input as unknown as MutationInventoryInput)).toThrow(
+			MutationInventoryError,
+		);
+	});
 
 	it("samples a rare mutator even when every row shares one survivor class", () => {
 		const rows = Array.from({ length: 30 }, (_, index) => row(index));
@@ -708,5 +713,295 @@ describe("inventory sampling", () => {
 			unmutated: fields().unmutated,
 			ignored: { config: [], comment: [] },
 		});
+	});
+});
+
+describe("suite claims", () => {
+	const suiteFile = "packages/core/src/testing.ts";
+	const reason = "a neighbouring assertion in the same case also catches it";
+	const suiteRow = (index = 0, extra = {}) =>
+		row(index, {
+			file: suiteFile,
+			claim: "suite",
+			evidence: { reason },
+			survivorClasses: [],
+			...extra,
+		});
+	it("parses a suite claim whose evidence is a reason", () => {
+		const stored = MutationInventory.create(fields([suiteRow()])).toJSON();
+		expect(stored.mutants[0]).toMatchObject({ claim: "suite", evidence: { reason } });
+	});
+
+	it.each([
+		["no evidence", { evidence: undefined }],
+		["a named test as its evidence", { evidence: row().evidence }],
+		["a blank reason", { evidence: { reason: " " } }],
+	])("refuses a suite claim with %s", (_name, extra) => {
+		expect(() => MutationInventory.create(fields([suiteRow(0, extra)]))).toThrow(MutationInventoryError);
+	});
+
+	it("lists every suite row apart from the probes, grouped by file in line order, for a reviewer to judge", () => {
+		const killed = Array.from({ length: 6 }, (_, index) => row(index + 1));
+		const other = "packages/cli/src/testing.ts";
+		const inventory = MutationInventory.create(
+			fields([suiteRow(10), suiteRow(3, { file: other }), suiteRow(0), ...killed]),
+		);
+		const sample = inventory.sample();
+		const stored = Object.fromEntries(
+			inventory.toJSON().mutants.map((mutant) => [`${mutant.file}:${mutant.line}`, mutant]),
+		);
+		const sampled = (file: string, line: number) => ({
+			...stored[`${file}:${line}`],
+			sampleHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
+		expect(sample.suite).toEqual([
+			{ file: other, mutants: [sampled(other, 4)] },
+			{ file: suiteFile, mutants: [sampled(suiteFile, 1), sampled(suiteFile, 11)] },
+		]);
+		expect(sample).toEqual({ ...MutationInventory.create(fields(killed)).sample(), total: 9, suite: sample.suite });
+	});
+
+	it("orders suite rows on one line by column", () => {
+		const inventory = MutationInventory.create(
+			fields([suiteRow(0, { column: 9, endColumn: 12 }), suiteRow(0, { column: 2, endColumn: 5 })]),
+		);
+		expect(inventory.sample().suite?.[0].mutants.map((mutant) => mutant.column)).toEqual([2, 9]);
+	});
+
+	it("leaves the suite key out of a sample with no suite rows", () => {
+		expect(MutationInventory.create(fields([row()])).sample()).not.toHaveProperty("suite");
+	});
+
+	it("samples a suite claim in production code too, leaving the file's judgement to the reviewer", () => {
+		const sample = MutationInventory.create(fields([suiteRow(0, { file: "packages/core/src/record.ts" })])).sample();
+		expect(sample.suite?.map((group) => group.file)).toEqual(["packages/core/src/record.ts"]);
+	});
+
+	it("refuses an ignored suite claim no more than an ignored equivalence", () => {
+		const ignored = suiteRow(0, { status: "ignored", ignoredBy: "config", file: "src/a.ts" });
+		expect(MutationInventory.create(fields([ignored, row(1)])).sample().selected).toHaveLength(1);
+	});
+
+	it.each([
+		["version 2", (claim: string) => fields([row(0), row(1, { claim })])],
+		["a legacy inventory", (claim: string) => legacy([row(0), row(1, { claim })])],
+	])("refuses %s whole when a row holds a claim this build does not know, and names it", (_name, build) => {
+		const input = build("proved-elsewhere");
+		const inventory = "range" in input ? { melianMutants: 2, ...input } : input;
+		const refusal = new MutationInventoryError(
+			"invalidInventory",
+			'mutant claim "proved-elsewhere" is not one this build knows: killed, new-test, equivalent or suite',
+		);
+		if ("range" in input) expect(() => MutationInventory.create(input as MutationInventoryInput)).toThrow(refusal);
+		expect(() => MutationInventory.parse(inventory)).toThrow(refusal);
+	});
+
+	it.each([
+		["a null inventory", null],
+		["a row that is null", { melianMutants: 2, ...fields(), mutants: [null] }],
+	])("refuses %s as invalid before it looks for claims", (_name, input) => {
+		expect(() => MutationInventory.parse(input)).toThrow(MutationInventoryError);
+	});
+
+	it("refuses a claim with no evidence", () => {
+		expect(() => MutationInventory.create(fields([row(0, { evidence: undefined })]))).toThrow(
+			new MutationInventoryError(
+				"invalidEvidence",
+				"claim evidence must name a structural test, or a reason for an equivalent or suite claim",
+			),
+		);
+	});
+
+	it("names the four claims when a mutant has none", () => {
+		expect(() =>
+			MutationInventory.create(fields([row(0, { claim: undefined, evidence: undefined })])).sample(),
+		).toThrow("each mutant needs a claim: killed, new-test, equivalent or suite");
+	});
+
+	it("refuses a legacy inventory holding a suite claim when it parses", () => {
+		const stored = legacy([row(1)]);
+		(stored.mutants as unknown[]).push({
+			...identity(5, { file: suiteFile }),
+			claim: "suite",
+			evidence: "a neighbour catches it",
+			survivorClasses: [],
+		});
+		stored.total += 1;
+		expect(() => MutationInventory.parse(stored)).toThrow(
+			new MutationInventoryError(
+				"invalidInventory",
+				"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+			),
+		);
+		expect(MutationInventory.parse(legacy([row(1)])).sample().selected).toHaveLength(1);
+	});
+
+	it.each([
+		"docs/progress-log/2026-11-09-pr-344-mutants.json",
+		"docs/progress-log/2026-11-13-pr-403-timing-grammar-mutants.json",
+	])("still parses and samples the committed inventory %s", (path) => {
+		const stored = JSON.parse(readFileSync(join(import.meta.dirname, "../../..", path), "utf8"));
+		const sample = MutationInventory.parse(stored).sample();
+		expect(sample.selected.length).toBeGreaterThan(0);
+		expect(sample).not.toHaveProperty("suite");
+	});
+});
+
+describe("an inventory that owes claims in some files", () => {
+	const unclaimed = (index: number, file: string) => ({ ...identity(index), file, status: "generated" as const });
+	const owing = (extra = {}) =>
+		fields([row(0), row(1), unclaimed(2, "src/b.ts")], { claimsIn: ["src/a.ts"], ...extra });
+
+	it("samples only the rows in those files, and needs no claim outside them", () => {
+		const inventory = MutationInventory.create(owing());
+		expect(inventory.toJSON().claimsIn).toEqual(["src/a.ts"]);
+		expect(inventory.sample()).toEqual({
+			...MutationInventory.create(fields([row(0), row(1)])).sample(),
+			total: 3,
+		});
+		expect(inventory.forVerification().mutants).toHaveLength(3);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe('claims owed in "src/a.ts"');
+	});
+
+	const suite = (index: number, file: string) =>
+		row(index, { file, claim: "suite", evidence: { reason: "a neighbour in the case catches it" } });
+
+	it("prints a suite row inside those files under suite", () => {
+		const inventory = MutationInventory.create(
+			fields([row(0), suite(1, "src/a.ts"), unclaimed(2, "src/b.ts")], { claimsIn: ["src/a.ts"] }),
+		);
+		const [, stored] = inventory.toJSON().mutants;
+		expect(inventory.sample().suite).toEqual([
+			{ file: "src/a.ts", mutants: [{ ...stored, sampleHash: expect.stringMatching(/^[a-f0-9]{64}$/) }] },
+		]);
+	});
+
+	it("neither checks nor samples a suite row outside those files", () => {
+		const inventory = MutationInventory.create(
+			fields([row(0), row(1), suite(2, "src/b.ts")], { claimsIn: ["src/a.ts"] }),
+		);
+		expect(inventory.sample()).toEqual({ ...MutationInventory.create(fields([row(0), row(1)])).sample(), total: 3 });
+	});
+
+	it("refuses an unclaimed row outside them when no files are named", () => {
+		expect(() => MutationInventory.create(owing({ claimsIn: undefined })).sample()).toThrow(
+			expect.objectContaining({ code: "unclassifiedClaim" }),
+		);
+	});
+
+	it("refuses an unclaimed row inside them", () => {
+		expect(() => MutationInventory.create(owing({ claimsIn: ["src/a.ts", "src/b.ts"] })).sample()).toThrow(
+			expect.objectContaining({ code: "unclassifiedClaim" }),
+		);
+	});
+
+	it("refuses a named file that holds no mutant, since nothing would prove it", () => {
+		const refusal = expect.objectContaining({
+			code: "invalidInventory",
+			message: expect.stringContaining('"src/c.ts"'),
+		});
+		const typo = MutationInventory.create(owing({ claimsIn: ["src/a.ts", "src/c.ts"] }));
+		expect(() => typo.sample()).toThrow(refusal);
+		expect(() => typo.forVerification()).toThrow(refusal);
+		expect(() =>
+			MutationInventory.parse({ ...legacy([row(0)]), claimsIn: ["src/a.ts", "src/c.ts"] }).sample(),
+		).toThrow(refusal);
+	});
+
+	it("notes the ignored rows of the named files alone", () => {
+		const ignore = (index: number, file: string, ignoredBy: "config" | "comment" = "config") =>
+			row(index, { file, status: "ignored", ignoredBy, statusReason: "policy" });
+		const inventory = MutationInventory.create(
+			fields(
+				[
+					row(0),
+					ignore(1, "src/a.ts"),
+					ignore(2, "src/b.ts"),
+					ignore(3, "src/c.ts"),
+					ignore(4, "src/a.ts", "comment"),
+					ignore(5, "src/b.ts", "comment"),
+				],
+				{ claimsIn: ["src/a.ts", "src/c.ts"] },
+			),
+		);
+		const { mutants } = inventory.toJSON();
+		expect(inventory.sample().ignored).toEqual({ config: [mutants[1], mutants[3]], comment: [mutants[4]] });
+	});
+
+	it("refuses an inventory short of the enumerated total", () => {
+		const short = MutationInventory.create(owing({ total: 4, omitted: 1 }));
+		expect(() => short.sample()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+		expect(() => short.forVerification()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+	});
+
+	it("samples a legacy inventory's owed rows alone", () => {
+		const { claim: _claim, evidence: _evidence, survivorClasses: _classes, ...bare } = legacy([row(2)]).mutants[0]!;
+		const mixed = legacy([row(0), row(1)]);
+		const inventory = MutationInventory.parse({
+			...mixed,
+			mutants: [...mixed.mutants, { ...bare, file: "src/b.ts" }],
+			total: 3,
+			claimsIn: ["src/a.ts"],
+		});
+		expect(inventory.sample()).toEqual({ ...MutationInventory.parse(mixed).sample(), total: 3 });
+	});
+
+	it.each([
+		[["src/a.ts", "src/a.ts"], "the inventory's claimsIn names one file twice"],
+		[[], "fields, coordinates, claims"],
+		[["../outside.ts"], "invalid inventory file path"],
+	])("refuses claimsIn %j", (claimsIn, message) => {
+		expect(() => MutationInventory.create(owing({ claimsIn }))).toThrow(message);
+		expect(() => MutationInventory.parse({ ...legacy(), claimsIn })).toThrow(message);
+	});
+});
+
+describe("a listing limited to some files", () => {
+	const limited = (mutants: MutationInventoryRowInput[] = [row()], extra = {}) =>
+		fields(mutants, { limitedTo: ["src/a.ts", "src/link.ts"], ...extra });
+
+	it("records its files and can be neither sampled nor verified", () => {
+		const inventory = MutationInventory.create(limited([row(0), row(1)]));
+		expect(inventory.toJSON().limitedTo).toEqual(["src/a.ts", "src/link.ts"]);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe('limited to "src/a.ts", "src/link.ts"');
+		const refusal = expect.objectContaining({
+			code: "incompleteInventory",
+			message: expect.stringContaining("reading"),
+		});
+		expect(() => inventory.sample()).toThrow(refusal);
+		expect(() => inventory.forVerification()).toThrow(refusal);
+		expect(() => MutationInventory.parse({ ...legacy(), limitedTo: ["src/a.ts"] }).sample()).toThrow(refusal);
+	});
+
+	it("refuses to sample one that also names the files owing claims", () => {
+		const both = MutationInventory.create(limited([row(0)], { claimsIn: ["src/a.ts"] }));
+		expect(() => both.sample()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+		expect(() => both.forVerification()).toThrow(expect.objectContaining({ code: "incompleteInventory" }));
+	});
+
+	it("refuses a mutant in a file outside them, naming the file", () => {
+		expect(() => MutationInventory.create(limited([row(0, { file: "src/b.ts" })]))).toThrow(
+			'"src/b.ts" is outside the files the listing was limited to',
+		);
+	});
+
+	it("refuses an unmutated entry outside them", () => {
+		expect(() => MutationInventory.create(limited([row(0)], { limitedTo: ["src/a.ts"] }))).toThrow(
+			'"src/link.ts" is outside the files the listing was limited to',
+		);
+	});
+
+	it.each([
+		[["src/a.ts", "src/a.ts", "src/link.ts"], "the inventory's limitedTo names one file twice"],
+		[[], "fields, coordinates, claims"],
+	])("refuses limitedTo %j", (limitedTo, message) => {
+		expect(() => MutationInventory.create(limited([row(0)], { limitedTo }))).toThrow(message);
+	});
+
+	it("reads an inventory with neither field as before, without either table line", () => {
+		const inventory = MutationInventory.create(fields());
+		expect("claimsIn" in inventory.toJSON()).toBe(false);
+		expect("limitedTo" in inventory.toJSON()).toBe(false);
+		expect(inventory.renderTable().split("\n").at(-1)).toBe("1 of 1 mutants; 0 omitted");
 	});
 });

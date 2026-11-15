@@ -211,6 +211,66 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(data.mutants).toHaveLength(1);
 		expect(data.mutants[0]).toMatchObject({ status: "ignored", ignoredBy: "config" });
 	});
+	it("records the files that owe claims and samples only their mutants", async () => {
+		const next = commit(repo, {
+			"src/a.ts": "export const flag = true;\n",
+			"src/b.ts": "export const other = false;\n",
+		});
+		const io = output();
+		expect(
+			await main(["mutants", "list", `${head}..${next}`, "--claims-in", "src/b.ts", "--json", "--all"], io),
+		).toBe(0);
+		const data = JSON.parse(io.lines.join(""));
+		expect(data.claimsIn).toEqual(["src/b.ts"]);
+		expect(new Set(data.mutants.map((mutant: { file: string }) => mutant.file))).toEqual(
+			new Set(["src/a.ts", "src/b.ts"]),
+		);
+		const owed = data.mutants.find((mutant: { file: string }) => mutant.file === "src/b.ts");
+		Object.assign(owed, {
+			claim: "killed",
+			evidence: { test: { file: "test/b.test.ts", path: ["b", "works"] } },
+			survivorClasses: [],
+		});
+		await writeFile(join(repo, "owing.json"), JSON.stringify(data));
+		io.lines.length = 0;
+		expect(await main(["mutants", "sample", "owing.json"], io)).toBe(0);
+		expect(JSON.parse(io.lines.join("")).selected.map((mutant: { file: string }) => mutant.file)).toEqual([
+			"src/b.ts",
+		]);
+	});
+
+	it("limits a listing to the named files, which then cannot be sampled", async () => {
+		const next = commit(repo, {
+			"src/a.ts": "export const flag = true;\n",
+			"src/b.ts": "export const other = false;\n",
+		});
+		const io = output();
+		expect(await main(["mutants", "list", `${head}..${next}`, "src/b.ts", "--json", "--all"], io)).toBe(0);
+		const data = JSON.parse(io.lines.join(""));
+		expect(data.limitedTo).toEqual(["src/b.ts"]);
+		expect(data.mutants.map((mutant: { file: string }) => mutant.file)).toEqual(["src/b.ts"]);
+		Object.assign(data.mutants[0], {
+			claim: "killed",
+			evidence: { test: { file: "test/b.test.ts", path: ["b", "works"] } },
+			survivorClasses: [],
+		});
+		await writeFile(join(repo, "limited.json"), JSON.stringify(data));
+		io.lines.length = 0;
+		expect(await main(["mutants", "sample", "limited.json"], io)).toBe(1);
+		expect(io.errors.join("")).toContain("for reading");
+	});
+
+	it("refuses a named file the range does not change, by name", async () => {
+		const io = output();
+		expect(await main(["mutants", "list", `${base}..${head}`, "src/a.ts", "src/typo.ts", "--json"], io)).toBe(1);
+		expect(io.lines).toEqual([]);
+		expect(io.errors.join("")).toContain('"src/typo.ts" is not a file this range changes');
+		io.errors.length = 0;
+		expect(await main(["mutants", "list", `${base}..${head}`, "--claims-in", "src/typo.ts", "--json"], io)).toBe(1);
+		expect(io.lines).toEqual([]);
+		expect(io.errors.join("")).toContain('"src/typo.ts" is not a file this range changes');
+	});
+
 	it("lists a versioned inventory and samples structural and legacy claims", async () => {
 		const io = output();
 		expect(await main(["mutants", "list", `${base}..${head}`, "--json", "--all"], io)).toBe(0);
@@ -247,6 +307,56 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		expect(io.errors).toEqual([]);
 	});
 
+	it("samples suite claims apart, grouped by file, and refuses one in a legacy inventory", async () => {
+		const suite = {
+			file: "packages/core/src/testing.ts",
+			line: 3,
+			column: 0,
+			endLine: 3,
+			endColumn: 1,
+			mutatorName: "BlockStatement",
+			replacement: "{}",
+			status: "generated" as const,
+			claim: "suite" as const,
+			evidence: { reason: "a neighbouring assertion in the same case also catches it" },
+			survivorClasses: [],
+		};
+		const io = output();
+		const sample = async (value: unknown) => {
+			await writeFile(join(repo, "suite.json"), JSON.stringify(value));
+			io.lines.length = 0;
+			io.errors.length = 0;
+			return main(["mutants", "sample", "suite.json"], io);
+		};
+		const accepted = MutationInventory.create({
+			range: { base, head },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [suite],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		}).toJSON();
+		expect(await sample(accepted)).toBe(0);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			selected: [],
+			suite: [{ file: suite.file, mutants: [{ ...accepted.mutants[0], sampleHash: accepted.mutants[0].id }] }],
+			total: 1,
+			unmutated: [],
+			ignored: { config: [], comment: [] },
+		});
+		const legacy = {
+			mutants: [{ ...suite, evidence: "a neighbour catches it", status: undefined }],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		};
+		expect(await sample(legacy)).toBe(1);
+		expect(io.errors.join("")).toContain(
+			"a legacy inventory takes no suite claim; enumerate with melian mutants list <range> --json --all",
+		);
+	});
+
 	it("prints full identity coordinates and a truncation count in text", async () => {
 		const io = output();
 		expect(await main(["mutants", "list", `${base}..${head}`, "--limit", "0"], io)).toBe(0);
@@ -259,7 +369,7 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		[["wat"], "list or sample"],
 		[["list"], "range"],
 		[["sample"], "inventory"],
-		[["list", "HEAD", "extra"], "range"],
+		[["sample", "x.json", "--claims-in", "src/a.ts"], "--claims-in is only available for mutants list"],
 		[["list", "HEAD", "--limit", "-1"], "limit"],
 		[["list", "HEAD", "--limit", "1.5"], "limit"],
 		[["list", "HEAD", "--limit", " 1"], "limit"],
@@ -273,6 +383,12 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		const io = output();
 		expect(await main(["mutants", ...args], io)).toBe(64);
 		expect(io.errors.join("")).toContain(text);
+	});
+
+	it("refuses --claims-in on any other command", async () => {
+		const io = output();
+		expect(await main(["findings", "HEAD", "--claims-in", "src/a.ts"], io)).toBe(64);
+		expect(io.errors.join("")).toContain("--claims-in is only available for mutants list");
 	});
 
 	it("reports unreadable inventories, invalid claims and unresolved ranges as failures", async () => {

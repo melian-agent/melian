@@ -151,7 +151,7 @@ describe("decision amendments", () => {
 		expect(index).not.toContain("the amendment wins");
 	});
 
-	it("counts amendment labels and precedence text within the 64 KiB bound", () => {
+	it("counts amendment labels and precedence text toward the 64 KiB warning", () => {
 		const index = (title: string) =>
 			DecisionFiles.from([
 				DecisionFile.parse(old, `# ${title}`),
@@ -159,7 +159,8 @@ describe("decision amendments", () => {
 			]);
 		const padding = 65536 - Buffer.byteLength(index("X").render());
 		expect(Buffer.byteLength(index(`X${"x".repeat(padding)}`).render())).toBe(65536);
-		expect(() => index(`X${"x".repeat(padding + 1)}`).render()).toThrow("exceeds");
+		expect(index(`X${"x".repeat(padding)}`).warning()).toBeUndefined();
+		expect(index(`X${"x".repeat(padding + 1)}`).warning()).toContain("65537 bytes for 2 decisions");
 	});
 
 	it.each(["Amends", "Supersedes"])("validates missing %s targets and mixed cycles", (kind) => {

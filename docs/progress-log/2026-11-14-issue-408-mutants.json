@@ -1,0 +1,535 @@
+{
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 173,
+   "column": 21,
+   "endLine": 176,
+   "endColumn": 69,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 176,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 176,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 176,
+   "endColumn": 69,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.name === \"melian.lens\" && stage.conversation === undefined || [\"skipped\", \"failed\"].includes(stage.checkOutcome ?? stage.outcome)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 175,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-details.test.ts > reads a lens skipped, but with a conversation that left no usage as incomplete only when it may have sent a request",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-details.test.ts > reads a lens skipped, but with a conversation that left no usage as incomplete only when it may have sent a request",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 175,
+   "endColumn": 34,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.name === \"melian.lens\" || stage.conversation === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 174,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-details.test.ts > keeps a failed triage incomplete, since triage has no conversation even when it sent a request",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-details.test.ts > keeps a failed triage incomplete, since triage has no conversation even when it sent a request",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 2,
+   "endLine": 174,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.name !== \"melian.lens\"",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 174,
+   "column": 17,
+   "endLine": 174,
+   "endColumn": 30,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 175,
+   "column": 2,
+   "endLine": 175,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-details.test.ts > reads a lens skipped, but with a conversation that left no usage as incomplete only when it may have sent a request",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-details.test.ts > reads a lens skipped, but with a conversation that left no usage as incomplete only when it may have sent a request",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 175,
+   "column": 2,
+   "endLine": 175,
+   "endColumn": 34,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.conversation !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 176,
+   "column": 2,
+   "endLine": 176,
+   "endColumn": 23,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 176,
+   "column": 3,
+   "endLine": 176,
+   "endColumn": 12,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 176,
+   "column": 14,
+   "endLine": 176,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 176,
+   "column": 33,
+   "endLine": 176,
+   "endColumn": 68,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.checkOutcome && stage.outcome",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 178,
+   "column": 2,
+   "endLine": 181,
+   "endColumn": 66,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 179,
+   "column": 3,
+   "endLine": 181,
+   "endColumn": 66,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 179,
+   "column": 3,
+   "endLine": 181,
+   "endColumn": 66,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 179,
+   "column": 3,
+   "endLine": 181,
+   "endColumn": 66,
+   "mutatorName": "LogicalOperator",
+   "replacement": "modelStages.includes(stage.name) && !sentNothing(stage) || stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 179,
+   "column": 3,
+   "endLine": 180,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 179,
+   "column": 3,
+   "endLine": 180,
+   "endColumn": 22,
+   "mutatorName": "LogicalOperator",
+   "replacement": "modelStages.includes(stage.name) || !sentNothing(stage)",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 180,
+   "column": 3,
+   "endLine": 180,
+   "endColumn": 22,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "sentNothing(stage)",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 4,
+   "endLine": 181,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 4,
+   "endLine": 181,
+   "endColumn": 65,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.usage === undefined && (stage.usageIncomplete ?? 0) > 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 4,
+   "endLine": 181,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations (verifier=ran)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 4,
+   "endLine": 181,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.usage !== undefined",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 33,
+   "endLine": 181,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 33,
+   "endLine": 181,
+   "endColumn": 65,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(stage.usageIncomplete ?? 0) >= 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 33,
+   "endLine": 181,
+   "endColumn": 65,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(stage.usageIncomplete ?? 0) <= 0",
+   "claim": "killed",
+   "evidence": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "scripts/round-public.test.mjs > a round's spend in the public verdict > publishes the tokens and cost of a review that skipped a lens, from the telemetry the CLI prints",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 181,
+   "column": 34,
+   "endLine": 181,
+   "endColumn": 60,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.usageIncomplete && 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+   "survivorClasses": [],
+   "run": {
+    "head": "5a96defe",
+    "test": "packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 30,
+ "omitted": 0,
+ "unmutated": []
+}

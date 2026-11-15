@@ -1,0 +1,5 @@
+# `melian mutants verify` is not built
+
+On 2026-11-14 the maintainer decided, in the coordinator's session, to stop building `melian mutants verify`. The mutant tool reduces to listing mutants and filtering them to chosen files. Nothing that runs mutants gets built. [The decision](../decisions/2026-11-14-mutants-verify-is-not-built.md) records the reasons and which earlier decisions it amends.
+
+The hand proof for trust and durability code is now the standing proof, and the final rerun stays waived. `melian mutants list` and `sample` stand, with a file filter in [issue #418](https://github.com/melian-agent/melian/issues/418). The tests lens may later read the mutants on its lines ([issue #241](https://github.com/melian-agent/melian/issues/241)). The unfinished work is on the branch `archive/mutants-verify-240`. Closed as not planned: [issue #240](https://github.com/melian-agent/melian/issues/240), [issue #414](https://github.com/melian-agent/melian/issues/414), [issue #415](https://github.com/melian-agent/melian/issues/415) and [issue #416](https://github.com/melian-agent/melian/issues/416).

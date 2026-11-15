@@ -1,20 +1,39 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { unconfinedSandbox } from "@melian-agent/pipeline/testing";
+import {
+	isBinaryExpression,
+	isFunctionDeclaration,
+	isImportDeclaration,
+	isLiteralTypeNode,
+	isNoSubstitutionTemplateLiteral,
+	isStringLiteral,
+	isTemplateHead,
+	isTemplateMiddle,
+	isTemplateTail,
+	isVariableStatement,
+	type Node,
+	SyntaxKind,
+} from "typescript/unstable/ast";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HeadProgram } from "../src/compiler-graph.ts";
 import { Probe, probeLimits } from "../src/probe.ts";
+import * as probing from "../src/probing.ts";
 import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
+	fill,
 	headTreeLimits,
 	type ProbingEnvironment,
 	probeClaimKey,
 	probeConclusive,
 	probeFailed,
 	proberInstructions,
+	probingHost,
 	probingLimits,
 	renderEarlierFindings,
 	renderPlan,
@@ -46,6 +65,7 @@ const reviewer: ProbingEnvironment = {
 	writer: { trusted: true, by: "reviewer" },
 	trustWriters: true,
 	read: ["node_modules"],
+	host: probingHost(unconfinedSandbox()),
 };
 // What a probe left in this test's temporary directory, which nothing else writes.
 const left = () => readdirSync(tmpdir()).length;
@@ -75,7 +95,7 @@ describe("a head's bound", () => {
 		const listing = execFileSync("git", ["-C", repo, "ls-tree", "-r", "-l", "-z", "--full-tree", head]).length;
 		const listed = { entries: 2, bytes: 8, listing };
 		expect(await run(listed)).toMatchObject({ result: { exitCode: 0 } });
-		expect(await run({ ...listed, entries: 1 })).toEqual({ refused: "the head holds more than 1 files" });
+		expect(await run({ ...listed, entries: 1 })).toEqual({ refused: "the head holds more than 1 entries" });
 		expect(await run({ ...listed, bytes: 7 })).toEqual({ refused: "the head holds more than 7 bytes" });
 		expect(await run({ ...listed, listing: listing - 1 })).toEqual({
 			refused: `git's listing of the head passes ${listing - 1} bytes`,
@@ -83,18 +103,22 @@ describe("a head's bound", () => {
 		expect(headTreeLimits).toEqual({ entries: 100_000, bytes: 1024 * 1024 * 1024, listing: 64 * 1024 * 1024 });
 	});
 
-	it("counts a head's blobs only, not its trees or submodules", async () => {
+	it("counts a head's files and submodules toward its entries, not its trees, and only its files' bytes", async () => {
 		commit(repo, { "src/deep/a": "1234" });
 		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "HEAD")},sub`);
 		gitIn(repo, "commit", "--quiet", "-m", "submodule");
-		const run = await runHeadProbe(
-			{ script: "process.exit(0);\n" },
-			{ repoRoot: repo, head: "HEAD" },
-			reviewer,
-			unconfinedSandbox(),
-			{ entries: 1, bytes: 4, listing: headTreeLimits.listing },
-		);
-		expect(run).toMatchObject({ result: { exitCode: 0 } });
+		const run = (entries: number, bytes = 4) =>
+			runHeadProbe(
+				{ script: "process.exit(0);\n" },
+				{ repoRoot: repo, head: "HEAD" },
+				reviewer,
+				unconfinedSandbox(),
+				{ entries, bytes, listing: headTreeLimits.listing },
+			);
+		expect(await run(2)).toMatchObject({ result: { exitCode: 0 } });
+		expect(await run(1)).toEqual({ refused: "the head holds more than 1 entries" });
+		// A submodule has no size, so only the file's four bytes count, and one past them is refused.
+		expect(await run(2, 3)).toEqual({ refused: "the head holds more than 3 bytes" });
 	});
 
 	it.each([".git", "..", ".", ".GIT"])("refuses a crafted tree that names %s, and leaves nothing", async (path) => {
@@ -108,6 +132,27 @@ describe("a head's bound", () => {
 		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
 	});
+
+	it.each([
+		["platform", { platform: "elsewhere" }],
+		["sandbox", { sandbox: "another" }],
+		["CPU architecture", { arch: "elsewhere" }],
+		["Node version", { node: "0.0.1" }],
+	])(
+		"refuses a probe planned under another %s than the one it would run under, and runs nothing",
+		async (_, other) => {
+			commit(repo, { "a.txt": "a\n" });
+			const sandbox = unconfinedSandbox();
+			const run = await runHeadProbe(
+				{ script: "process.exit(1);\n" },
+				{ repoRoot: repo, head: gitIn(repo, "rev-parse", "HEAD") },
+				{ ...reviewer, host: { ...reviewer.host, ...other } } as ProbingEnvironment,
+				sandbox,
+			);
+			expect(run).toHaveProperty("refused");
+			expect(sandbox.asked).toEqual([]);
+		},
+	);
 
 	it("refuses a head whose tree git cannot list, saying what git said", async () => {
 		const missing = `tree ${"2".repeat(40)}\nauthor a <a@example.com> 0 +0000\ncommitter a <a@example.com> 0 +0000\n\nm\n`;
@@ -258,7 +303,7 @@ describe("runHeadProbe", () => {
 			await runHeadProbe(
 				{ script: "process.exit(0);\n" },
 				{ repoRoot: repo, head },
-				{ writer: { trusted: false, detail: "a fork's head" }, trustWriters: true, read: ["node_modules"] },
+				{ ...reviewer, writer: { trusted: false, detail: "a fork's head" } },
 				unconfinedSandbox(),
 			),
 		).toEqual({ refused: "the head's code may not run here: a fork's head" });
@@ -555,5 +600,72 @@ describe("the evidence a verifier reads, exactly", () => {
 		expect(text).toBe(
 			"## Findings earlier reviews reported\n\nThe last earlier revision of this change was reported with these findings. Plan an attack for each that touches a boundary, since the change may not have closed it. 1 more are not listed.",
 		);
+	});
+});
+
+describe("filling a wording", () => {
+	it("puts each named value in once, leaving a name no value has and a name a value holds as written", () => {
+		expect(fill("{a} then {b}, {a}", { a: "{b}", c: 1 })).toBe("{b} then {b}, {b}");
+		expect(fill("{n} {count}", { n: 0, count: "x" })).toBe("0 x");
+	});
+});
+
+describe("the fixed wording each role reads", () => {
+	it("tells no role to ignore or disregard other instructions", () => {
+		const told = Object.entries({ ...probing.probingWording, ...probing.probeEvidenceWording }).filter(([, text]) =>
+			/\b(ignore|disregard)\b/i.test(text),
+		);
+		expect(told.map(([name]) => name)).toEqual([]);
+	});
+
+	it("holds no wording in probing.ts outside its two tables, but in code that renders no prompt", () => {
+		// The top-level declarations whose literals no planner, prober or verifier reads, each with why.
+		const notPrompts: Record<string, string> = {
+			probingWording: "is the table the planner's and prober's prompts take their wording from",
+			probeEvidenceWording: "is the table the verifier's version hashes",
+			ProbingDocument: "names a stored document",
+			ProbeReruns: "names a stored document",
+			boundedHead: "runs git and says why the head is too large",
+			headRefusal: "opens a probe on the head and says why it cannot",
+			runHeadProbe: "runs a probe and says why its cleanup failed",
+			probeEvidenceRenderings: "renders the probe evidence over fixed samples for the verifier's version",
+			openHeadProbe: "opens a probe on the head and says why it cannot",
+		};
+		const path = fileURLToPath(new URL("../src/probing.ts", import.meta.url));
+		const program = HeadProgram.open(new Map([["probing.ts", readFileSync(path, "utf8")]]));
+		const wording: string[] = [];
+		try {
+			const source = program.source("probing.ts");
+			if (source === undefined) throw new Error("the compiler holds no syntax tree of probing.ts");
+			const visit = (node: Node, owner: string): void => {
+				if (
+					(isStringLiteral(node) ||
+						isNoSubstitutionTemplateLiteral(node) ||
+						isTemplateHead(node) ||
+						isTemplateMiddle(node) ||
+						isTemplateTail(node)) &&
+					/\p{L}/u.test(node.text) &&
+					!isImportDeclaration(node.parent) &&
+					!isLiteralTypeNode(node.parent) &&
+					!(isBinaryExpression(node.parent) && node.parent.operatorToken.kind === SyntaxKind.InKeyword) &&
+					!Object.hasOwn(notPrompts, owner)
+				)
+					wording.push(`${owner}: ${node.text}`);
+				node.forEachChild((child) => {
+					visit(child, owner);
+				});
+			};
+			for (const statement of source.statements) {
+				const owner = isFunctionDeclaration(statement)
+					? (statement.name?.text ?? "")
+					: isVariableStatement(statement)
+						? statement.declarationList.declarations.map((declaration) => declaration.name.getText(source)).join()
+						: "";
+				visit(statement, owner);
+			}
+		} finally {
+			program.close();
+		}
+		expect(wording).toEqual([]);
 	});
 });

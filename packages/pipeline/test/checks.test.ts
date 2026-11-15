@@ -368,7 +368,9 @@ describe("runChecks", () => {
 		const { harness, input } = await checks(base, head);
 		const first = await runChecks(harness, input, context);
 		const text = readFileSync(new URL("../../../tools.yaml", import.meta.url), "utf8");
-		const newer = ToolManifest.parse(text.replace("version: 0.4.27", "version: 0.4.28"));
+		const changed = text.replace(/^(\s+version: )\S+$/m, "$10.0.1");
+		expect(changed).not.toBe(text);
+		const newer = ToolManifest.parse(changed);
 		vi.spyOn(ToolProvisioning, "manifest").mockResolvedValue(newer);
 		const second = await runChecks(harness, input, context);
 		expect(second.identity.policy).not.toBe(first.identity.policy);

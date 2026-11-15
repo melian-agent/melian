@@ -173,8 +173,18 @@ function runStage(name: string, stages: readonly Stage[]): RunStage {
 	const own = stages.filter((stage) => !stage.reused);
 	const usage = own.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
 	const timed = own.filter((stage) => stage.durationMs !== undefined);
+	// A lens that ran has a conversation. One with none, whose check says it was skipped or refused before its first
+	// request, sent nothing. One whose check says it ran but left no conversation is an older build's record, whose usage
+	// is unknown. Triage has no conversation even when it sent a request, so the rule is for lenses alone.
+	const sentNothing = (stage: Stage) =>
+		stage.name === "melian.lens" &&
+		stage.conversation === undefined &&
+		["skipped", "failed"].includes(stage.checkOutcome ?? stage.outcome);
 	const unmeasured = own.some(
-		(stage) => modelStages.includes(stage.name) && (stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
+		(stage) =>
+			modelStages.includes(stage.name) &&
+			!sentNothing(stage) &&
+			(stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
 	);
 	const outcome =
 		stages.map((stage) => stage.checkOutcome ?? stage.outcome).find((outcome) => outcome !== "completed") ??
@@ -287,6 +297,14 @@ export class StageTelemetry {
 			...(this.usageIncomplete === undefined ? {} : { usageIncomplete: this.usageIncomplete }),
 			...(this.prepare === undefined ? {} : { prepare: this.prepare, untimed: this.untimed() }),
 		};
+	}
+
+	/**
+	 * What `melian review --json` and `melian telemetry --json` print: {@link toJSON}, with the ledger's run beside it,
+	 * whose rows count nothing for a stage the review reused. Printed, never stored, so `toJSON` keeps its shape.
+	 */
+	report(): ReturnType<StageTelemetry["toJSON"]> & { run: StoredRunDetails } {
+		return { ...this.toJSON(), run: this.runDetails() };
 	}
 
 	/**

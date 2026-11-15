@@ -47,6 +47,7 @@ import {
 	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
+import { DecisionIndexWarning } from "./decision-index.ts";
 import {
 	decisionProviderRefusal,
 	type fallbackDecider,
@@ -185,6 +186,9 @@ export async function review(
 		readonly cold?: boolean;
 		readonly json?: boolean;
 		readonly notes?: boolean;
+		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
+		// since is refused before any model credential is read.
+		readonly expect?: { readonly base: string; readonly head: string };
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -202,6 +206,20 @@ export async function review(
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
+		const { expect } = options;
+		if (expect !== undefined && (pullRequest.base.sha !== expect.base || pullRequest.head.sha !== expect.head))
+			throw new CliError(
+				`pull request #${pullRequest.number} is at base ${pullRequest.base.sha} and head ${pullRequest.head.sha}, not the expected base ${expect.base} and head ${expect.head}, so nothing was reviewed`,
+			);
+		// The policy and origin come from GitHub's answer, above, and the diff from the refs the fetch wrote, which a second
+		// review of the pull request in this clone can move before they resolve.
+		if (expect !== undefined) {
+			const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]);
+			if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
+				throw new CliError(
+					`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so nothing was reviewed`,
+				);
+		}
 		changeset = fetched;
 		source = { kind: "revision", commit: pullRequest.base.sha };
 		origin = {
@@ -365,8 +383,9 @@ export async function review(
 			});
 		};
 		let verdict: Verdict;
+		let decisionIndexWarning: string | undefined;
 		try {
-			({ verdict } = await reviewChangeset({
+			({ verdict, decisionIndexWarning } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -391,17 +410,21 @@ export async function review(
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
+			decisionIndexWarning = error.decisionIndexWarning;
 		}
 		summarize();
 		spans.end();
 		await walkthrough;
+		const indexWarning = DecisionIndexWarning.from(decisionIndexWarning, [...(verdict.ran ?? []), ...verdict.notRun]);
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
+		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
+		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
 		io.stdout(
 			options.json
-				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`
 				: outcome.render(
 						io.color,
 						await terminalEmoji(io, repoRoot),
@@ -429,7 +452,7 @@ export async function review(
 				`${JSON.stringify(
 					{
 						error: { message: error instanceof Error ? error.message : String(error) },
-						telemetry: timings.toJSON(),
+						telemetry: timings.report(),
 					},
 					null,
 					2,
@@ -839,7 +862,7 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 		const timings = await TelemetryReader.open(storage).read(Revision.key(stored.changeset.revision));
 		if (timings.stages.length === 0 && timings.prepare === undefined)
 			throw new CliError("No stage telemetry is stored for this revision.");
-		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
+		io.stdout(options.json ? `${JSON.stringify(timings.report(), null, 2)}\n` : timings.render());
 		return 0;
 	} finally {
 		await storage.close(context);

@@ -1,6 +1,7 @@
 # Working in packages/pipeline
 
 @../../docs/guidelines/pipeline.md
+@../../docs/guidelines/identity.md
 
 ## Rules
 

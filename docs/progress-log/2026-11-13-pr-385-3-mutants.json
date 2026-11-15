@@ -1,0 +1,81 @@
+{
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 485,
+			"column": 13,
+			"endLine": 485,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a pre-existing result no trigger, though the change edits the line it sits on",
+			"survivorClasses": [],
+			"run": {
+				"head": "ca0cea0f",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 485,
+			"column": 13,
+			"endLine": 485,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > triggers an introduced Enola result from its whole span, so a body edit reopens its dismissal",
+			"survivorClasses": [],
+			"run": {
+				"head": "ca0cea0f",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 485,
+			"column": 13,
+			"endLine": 485,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cause !== \"introduced\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > triggers an introduced Enola result from its whole span, so a body edit reopens its dismissal",
+			"survivorClasses": [],
+			"run": {
+				"head": "ca0cea0f",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 485,
+			"column": 23,
+			"endLine": 485,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > triggers an introduced Enola result from its whole span, so a body edit reopens its dismissal",
+			"survivorClasses": [],
+			"run": {
+				"head": "ca0cea0f",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		}
+	],
+	"total": 4,
+	"omitted": 0,
+	"unmutated": []
+}

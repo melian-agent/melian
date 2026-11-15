@@ -1,0 +1,864 @@
+{
+	"total": 50,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "b0f78f63",
+	"head": "869100a2",
+	"command": "node scripts/enumerate-mutants.mjs b0f78f63...869100a2 --json --limit 10000",
+	"note": "Fix pass 34 of pull request #296. Each claim was run against its named test alone, at the head its run names, mapped onto this head by its line's text. Ignored literals are left out. So, by the maintainer's ruling of 2026-11-14, are the two mutants of unsettled() that change only the wording of a reason when a request ends with no message, review.ts:1353:8 ConditionalExpression true and review.ts:1353:63 LogicalOperator &&; both survive.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 514,
+			"column": 52,
+			"endLine": 527,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 517,
+			"column": 8,
+			"endLine": 526,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 518,
+			"column": 8,
+			"endLine": 518,
+			"endColumn": 115,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 521,
+			"column": 8,
+			"endLine": 521,
+			"endColumn": 74,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-sandbox.test.ts > a probe under sandbox-runtime > cannot read ~/.ssh, ~/.config, the live worktree, or anything outside the head's tree",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 521,
+			"column": 32,
+			"endLine": 521,
+			"endColumn": 59,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 522,
+			"column": 13,
+			"endLine": 522,
+			"endColumn": 38,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-sandbox.test.ts > a probe under sandbox-runtime > denies .env and .npmrc in a checkout named \"[ab]\", whose glob characters do not widen the deny",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 522,
+			"column": 47,
+			"endLine": 522,
+			"endColumn": 110,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 522,
+			"column": 71,
+			"endLine": 522,
+			"endColumn": 109,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 523,
+			"column": 9,
+			"endLine": 523,
+			"endColumn": 14,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe-sandbox.test.ts > a probe under sandbox-runtime > cannot write outside its scratch directory",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 525,
+			"column": 13,
+			"endLine": 525,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads linux's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 525,
+			"column": 13,
+			"endLine": 525,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 525,
+			"column": 13,
+			"endLine": 525,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "paths.platform !== \"darwin\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 525,
+			"column": 43,
+			"endLine": 525,
+			"endColumn": 81,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 525,
+			"column": 84,
+			"endLine": 525,
+			"endColumn": 99,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads linux's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 530,
+			"column": 108,
+			"endLine": 534,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the head's tree with a scratch home and temporary directory and no other variable",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 533,
+			"column": 129,
+			"endLine": 533,
+			"endColumn": 153,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "backstop(timeout) * 1000",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > bounds the probe's CPU time in whole seconds of its backstop",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 537,
+			"column": 110,
+			"endLine": 540,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the head's tree with a scratch home and temporary directory and no other variable",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 539,
+			"column": 8,
+			"endLine": 539,
+			"endColumn": 113,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the head's tree with a scratch home and temporary directory and no other variable",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 548,
+			"column": 45,
+			"endLine": 569,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 551,
+			"column": 15,
+			"endLine": 560,
+			"endColumn": 4,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 552,
+			"column": 12,
+			"endLine": 560,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 555,
+			"column": 13,
+			"endLine": 555,
+			"endColumn": 38,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 556,
+			"column": 9,
+			"endLine": 556,
+			"endColumn": 18,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 561,
+			"column": 8,
+			"endLine": 568,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 564,
+			"column": 22,
+			"endLine": 564,
+			"endColumn": 56,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 565,
+			"column": 30,
+			"endLine": 565,
+			"endColumn": 64,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 566,
+			"column": 10,
+			"endLine": 566,
+			"endColumn": 60,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds what the probe runner gives a probe, over fixed paths",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 804,
+			"column": 19,
+			"endLine": 812,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > writes the script and its files beside each other, readable and outside the writable directory",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 811,
+			"column": 11,
+			"endLine": 811,
+			"endColumn": 67,
+			"mutatorName": "MethodExpression",
+			"replacement": "systemReads[platform]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 811,
+			"column": 40,
+			"endLine": 811,
+			"endColumn": 66,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.policy > reads darwin's own programs and libraries, each one present",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 822,
+			"column": 29,
+			"endLine": 822,
+			"endColumn": 85,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the head's tree with a scratch home and temporary directory and no other variable",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 851,
+			"column": 24,
+			"endLine": 851,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > runs the script in the head's tree with a scratch home and temporary directory and no other variable",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 588,
+			"column": 46,
+			"endLine": 588,
+			"endColumn": 83,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 589,
+			"column": 8,
+			"endLine": 589,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 589,
+			"column": 8,
+			"endLine": 589,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 589,
+			"column": 8,
+			"endLine": 589,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "settled.status !== \"done\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 590,
+			"column": 11,
+			"endLine": 590,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 616,
+			"column": 9,
+			"endLine": 616,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 616,
+			"column": 9,
+			"endLine": 616,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 616,
+			"column": 9,
+			"endLine": 616,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "failed === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 656,
+			"column": 9,
+			"endLine": 656,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 656,
+			"column": 9,
+			"endLine": 656,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 656,
+			"column": 9,
+			"endLine": 656,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "failed === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1352,
+			"column": 93,
+			"endLine": 1354,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1353,
+			"column": 8,
+			"endLine": 1353,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1353,
+			"column": 8,
+			"endLine": 1353,
+			"endColumn": 42,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof settled.detail !== \"string\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed",
+			"survivorClasses": [],
+			"run": {
+				"head": "869100a2",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1531,
+			"column": 5,
+			"endLine": 1531,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1531,
+			"column": 5,
+			"endLine": 1531,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its reruns alone, as a review attached to its lens task with other probes can",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1531,
+			"column": 5,
+			"endLine": 1531,
+			"endColumn": 82,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.key === key",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1531,
+			"column": 91,
+			"endLine": 1531,
+			"endColumn": 96,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its lens task and its reruns",
+			"survivorClasses": [],
+			"run": {
+				"head": "fccda709",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 50
+	}
+}

@@ -1,0 +1,209 @@
+{
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 343,
+			"column": 96,
+			"endLine": 345,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 8,
+			"endLine": 344,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 8,
+			"endLine": 344,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 8,
+			"endLine": 344,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"enola\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 17,
+			"endLine": 344,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 46,
+			"endLine": 344,
+			"endColumn": 108,
+			"mutatorName": "MethodExpression",
+			"replacement": "Math.min(region.endLine ?? region.startLine, region.startLine)",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 344,
+			"column": 55,
+			"endLine": 344,
+			"endColumn": 89,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.endLine && region.startLine",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > still identifies a tsc result by every line it spans, so an edit inside the span introduces it",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 486,
+			"column": 5,
+			"endLine": 486,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a pre-existing result no trigger, though the change edits the line it sits on",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 486,
+			"column": 5,
+			"endLine": 486,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches results across revisions by identity, so a moved result stays pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 486,
+			"column": 5,
+			"endLine": 486,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cause !== \"introduced\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches results across revisions by identity, so a moved result stays pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 486,
+			"column": 15,
+			"endLine": 486,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches results across revisions by identity, so a moved result stays pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "acd5f412 plus the pre-existing trigger test",
+				"unmutated": "passed",
+				"mutated": "failed",
+				"collected": 1
+			}
+		}
+	],
+	"total": 11,
+	"omitted": 0,
+	"unmutated": []
+}

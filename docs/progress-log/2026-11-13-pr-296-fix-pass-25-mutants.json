@@ -1,0 +1,31 @@
+{
+	"total": 1,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "fbc57a06",
+	"head": "83f9cbe5",
+	"command": "node scripts/enumerate-mutants.mjs fbc57a06...83f9cbe5 --json --limit 10000",
+	"note": "Fix pass 25 of pull request #296: what the Actions round at fbc57a06 found. The claim was run at 83f9cbe5 against its named test alone.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1207,
+			"column": 10,
+			"endLine": 1207,
+			"endColumn": 102,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > the probing protocol a probing run's fingerprint holds > holds every fixed wording a planner and a prober read, the limits on what they read, and which tools each role may call",
+			"survivorClasses": [],
+			"run": {
+				"head": "83f9cbe5",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 1
+	}
+}

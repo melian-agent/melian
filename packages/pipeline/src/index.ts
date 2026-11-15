@@ -56,6 +56,7 @@ export {
 } from "./findings.ts";
 export * from "./harness.ts";
 export {
+	contextOverflowed,
 	type PlanSources,
 	planInputs,
 	providersWithCredentials,

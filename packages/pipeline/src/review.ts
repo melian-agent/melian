@@ -137,19 +137,19 @@ import {
 	type Attack,
 	answerPrompt,
 	type ClaimProbe,
+	carriedFindings,
 	type EarlierFinding,
 	headRefusal,
-	headTreeLimits,
 	ProbeReruns,
 	ProbingDocument,
 	type ProbingEnvironment,
+	plannerContext,
 	plannerInstructions,
 	probeClaimKey,
 	probeConclusive,
 	proberInstructions,
-	probingLimits,
+	probingHost,
 	recordPlanPrompt,
-	renderEarlierFindings,
 	renderPlan,
 	rerunKey,
 	runHeadProbe,
@@ -162,6 +162,7 @@ import {
 	finished,
 	ReviewIndex,
 	type ReviewIndexState,
+	stillOwns,
 	undecided,
 } from "./review-index.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
@@ -323,20 +324,6 @@ type StoredTrigger = { kind: "severity"; severity: Severity } | { kind: "budget"
 
 // Why a run escalated, and the IDs of the findings at or above `escalateAt` it carried to the next run.
 type StoredEscalation = { trigger: StoredTrigger; carried: string[] };
-
-// The findings a quick run carries to the run it escalated to, quoted as the change's data, since a model wrote them
-// after reading the change, with how to confirm or refute each.
-function carriedFindings(findings: readonly SightedFinding[], nonce: string): string {
-	const listed = findings.map(
-		(finding) =>
-			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}-${finding.endLine}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
-	);
-	return [
-		"## Findings a quicker look reported",
-		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if it is a defect, report it with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
-		quoteUntrusted("findings", listed.join("\n"), nonce),
-	].join("\n\n");
-}
 
 // `attempts` is each run's position in its route, committed with the model change, so a resumed review continues on
 // the model it had reached rather than retrying one that already failed. `escalations` names, by the key of the run
@@ -565,7 +552,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") return { status: "done", model: modelName(route[attempt]!) };
-					const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
+					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
 					if (!failover) return { status: "unanswered", reason };
@@ -584,10 +571,26 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					}, context);
 				}
 			};
-			// One more input to a conversation that finished without what its role owes, under a request ID of its own.
-			const remind = async (id: ConversationId, content: string, requestId: string): Promise<void> => {
+			// One more input to a conversation that finished without what its role owes, under a request ID of its own. A
+			// reminder that does not finish ends the lens, so what its conversation did before it failed never stands as done.
+			// One already submitted is waited on even when no longer owed, since before a crash it may have recorded what was.
+			const remind = async (
+				id: ConversationId,
+				content: string,
+				requestId: string,
+				which: string,
+				owed: boolean,
+			): Promise<Exclude<LensOutcome, { status: "done" }> | undefined> => {
+				let submitted = false;
+				await runtime.commit(async (tx) => {
+					submitted = (await tx.submissionByRequest(id, requestId)) !== undefined;
+					return undefined;
+				}, context);
+				if (!owed && !submitted) return undefined;
 				const child = (await runtime.conversation(id, context))!;
-				await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
+				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
+				if (settled.status === "done") return undefined;
+				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
 			};
 			// The attack numbers the prober answered with neither a probe nor a skip.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
@@ -606,21 +609,30 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			): Promise<ProbingOutcome | Exclude<LensOutcome, { status: "done" }>> => {
 				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				let plan = await planOf();
-				if (plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined) {
-					await remind(planner, recordPlanPrompt, `lens:${lens.key}:plan`);
-					plan = await planOf();
-				}
+				const failed = await remind(
+					planner,
+					recordPlanPrompt,
+					`lens:${lens.key}:plan`,
+					"the planner's reminder",
+					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
+				);
+				if (failed !== undefined) return failed;
+				plan = await planOf();
 				if (plan === undefined) return { status: "unanswered", reason: "the planner recorded no attack plan" };
-				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const key = `${lens.key}/prober`;
 				let prober = started.children[key];
 				if (prober === undefined) {
-					const recorded = plan;
 					await runtime.commit(async (tx, current) => {
+						// The plan as this commit reads it is the one the prober gets, or the empty one the level ends with, and a
+						// reminder the planner may still be answering after a crash can no longer replace it.
+						const planned = await tx.doc(ProbingDocument, planner);
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						prober = checkpoint.children[key];
 						if (prober !== undefined) return undefined;
-						prober = await spawnProber(tx, runtime.taskId, input, lens, recorded);
+						planned.frozen = true;
+						plan = planned.plan!.map((attack) => ({ ...attack }));
+						if (plan.length === 0) return undefined;
+						prober = await spawnProber(tx, runtime.taskId, input, lens, plan);
 						return {
 							status: "running",
 							checkpoint: {
@@ -631,6 +643,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						};
 					}, context);
 				}
+				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
 				const answered = await converse(
 					key,
@@ -640,10 +653,15 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
-				if (open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined) {
-					await remind(prober!, answerPrompt(open), `lens:${key}:answer`);
-					open = await unanswered(prober!, plan.length);
-				}
+				const unfinished = await remind(
+					prober!,
+					answerPrompt(open),
+					`lens:${key}:answer`,
+					"the prober's reminder",
+					open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined,
+				);
+				if (unfinished !== undefined) return unfinished;
+				open = await unanswered(prober!, plan.length);
 				const state = (await runtime.snapshot(ProbingDocument, prober!, context)) ?? {};
 				const probes = Object.values(state.probes ?? {});
 				return {
@@ -750,14 +768,21 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const listed = carried.length === 0 ? undefined : carriedFindings(carried, input.revision.nonce);
 				const prompt = listed === undefined ? next.prompt : `${next.prompt}\n\n${listed}`;
 				const rerun = await run(next, child!, prompt, listed);
+				const prober = rerun.status === "done" ? rerun.probing?.prober : undefined;
+				// A probing level's planner may neither restate nor refute a carried finding: only what its prober reported
+				// stands for one. Each conversation's lens document names the findings it reported.
+				const reportedIn = async (conversation: ConversationId) =>
+					Object.keys((await runtime.snapshot(LensDocument, conversation, context))?.spend?.reports ?? {});
+				const planned = next.probe === undefined ? [] : await reportedIn(child!);
+				const probed = prober === undefined ? [] : await reportedIn(prober);
 				// A restatement is the same finding by its ID, or by its file, rule, and overlapping lines, since a run that
 				// reported other lines of one defect hashes another snippet.
-				const higher = await sighted(next);
+				const higher = (await sighted(next)).filter(
+					(each) => !planned.includes(each.id) || probed.includes(each.id),
+				);
 				const restates = (finding: SightedFinding) =>
 					higher.some((each) => each.id === finding.id || overlapsSite(each, finding));
 				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
-				// A probing level's prober refutes; its planner may not.
-				const prober = rerun.status === "done" ? rerun.probing?.prober : undefined;
 				const refuting = [child!, ...(prober === undefined ? [] : [prober])];
 				const reported: string[] = [];
 				for (const conversation of refuting)
@@ -1196,22 +1221,6 @@ function planned(options: ReviewOptions): ReviewOptions {
 
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
 // names the model that ran.
-// Every fixed input a probing run's planner and prober receive, as this build renders them: each role tool's name,
-// description and schema, the fixed limits, and each fixed prompt. A release that changes any of them runs the level
-// again; the plan and its earlier findings, which move between reviews of one head, stay out.
-function probingProtocol(): string {
-	const sample = { target: "t", reason: "r", passing: "p", failing: "f" };
-	return JSON.stringify({
-		tools: [recordPlan, runProbe, skipAttack, reportFinding].map(({ name, description, parameters }) => ({
-			name,
-			description,
-			parameters,
-		})),
-		limits: { probing: probingLimits, probe: probeLimits, head: headTreeLimits },
-		prompts: [plannerInstructions([]), renderPlan([sample], "0".repeat(24)), recordPlanPrompt, answerPrompt([1])],
-	});
-}
-
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
@@ -1321,6 +1330,18 @@ export interface Review {
 	readonly findings: readonly Finding[];
 	/** The adjudicated outcome: findings merged across sources and resolved per path, grouped, and the review's status. */
 	readonly verdict: Verdict;
+	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
+	readonly decisionIndexWarning?: string;
+}
+
+// Why a conversation's request ended without finishing: the model's own message where it gave one.
+function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
+	return typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
+}
+
+// The sandbox a review's probes run under: its harness's, or the one a probe uses when none is named.
+function probeSandboxOf(request: ReviewOptions): ProbeSandbox {
+	return (request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined) ?? Probe.sandbox;
 }
 
 // Why probes cannot run for this review, or `undefined` when they can: the host has not allowed the head's code to run
@@ -1334,12 +1355,17 @@ async function probeRefusal(
 	if (writer === undefined) return "the host did not say whose head this is";
 	if (!writer.trusted) return writer.detail;
 	if (writer.by === "writer" && !config.trust.writers) return "trust.writers is false in the repository's policy";
-	const sandbox = request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined;
+	const sandbox = probeSandboxOf(request);
 	const available = await Probe.availability(sandbox);
 	if (!available.available) return available.reason;
 	const refused = await headRefusal(
 		revision,
-		{ writer, trustWriters: config.trust.writers, read: [...config.probe.read] },
+		{
+			writer,
+			trustWriters: config.trust.writers,
+			read: [...config.probe.read],
+			host: probingHost(sandbox),
+		},
 		sandbox,
 	);
 	return refused === undefined ? undefined : `the head refuses probes: ${refused}`;
@@ -1382,6 +1408,7 @@ async function claimProbes(
 type ProbeRerunInput = {
 	root: ConversationId;
 	revision: ReviewState;
+	lensTask?: number;
 	probes: { key: string; script: string; files: { path: string; text: string }[]; environment: ProbingEnvironment }[];
 };
 
@@ -1399,13 +1426,16 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 		initial: () => ({ phase: "run" }),
 		phases: {
 			run: async (task, runtime, context) => {
-				const { root, revision, probes } = task.input;
+				const { root, revision, lensTask, probes } = task.input;
 				const at = Revision.key(revision);
 				const done = { status: "terminal", outcome: { status: "completed", result: {} } } as const;
 				for (const probe of probes) {
 					const document = (await runtime.snapshot(ProbeReruns, root, context))!;
 					// A task another review has replaced launches no probe; the fence after the run catches a takeover during it.
-					if (document.tasks![at]!.task !== runtime.taskId) {
+					// The lens task is asked here, not in the write commits: a replacing review with nothing to verify never takes
+					// the reruns over, and without this check the replaced review would spend every remaining probe's time.
+					const entry = (await runtime.snapshot(ReviewIndex, root, context))!.reviews[at];
+					if (document.tasks![at]!.task !== runtime.taskId || !stillOwns(entry, lensTask)) {
 						await runtime.commit(() => done, context);
 						return;
 					}
@@ -1447,7 +1477,8 @@ export function probeRerunTask(sandbox?: ProbeSandbox) {
 const ProbeRerunTask = probeRerunTask();
 
 // Starts the task that runs each candidate's claim probes again, or attaches to the live one another review started
-// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once.
+// for the same probes, and waits for it. Claims that cite one probe share its rerun, which the map holds once. False
+// when a later review has replaced this one's lens task, before the reruns start or while they run.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
@@ -1455,7 +1486,7 @@ async function rerunProbes(
 	candidates: readonly VerificationCandidate[],
 	lensTask: number | undefined,
 	context: Context,
-): Promise<void> {
+): Promise<boolean> {
 	const at = Revision.key(revision);
 	const probes = new Map<string, ProbeRerunInput["probes"][number]>();
 	for (const candidate of candidates)
@@ -1470,11 +1501,16 @@ async function rerunProbes(
 				environment: structuredClone(probe.environment),
 			});
 		}
-	const input: ProbeRerunInput = { root, revision, probes: [...probes.values()] };
+	const input: ProbeRerunInput = {
+		root,
+		revision,
+		...(lensTask === undefined ? {} : { lensTask }),
+		probes: [...probes.values()],
+	};
 	const key = JSON.stringify(input.probes);
 	const task = await (await harness.root(context)).commit(async (tx) => {
 		// A review another has replaced takes nothing over: its claims may rest on probes the newer review no longer runs.
-		if ((await tx.doc(ReviewIndex, root)).reviews[at]?.task !== lensTask) return undefined;
+		if (!stillOwns((await tx.doc(ReviewIndex, root)).reviews[at], lensTask)) return undefined;
 		const document = await tx.doc(ProbeReruns, root);
 		const known = document.tasks?.[at];
 		if (known?.key === key && (await tx.task(known.task as TaskId))!.state.status !== "terminal")
@@ -1483,7 +1519,12 @@ async function rerunProbes(
 		document.tasks = { ...document.tasks, [at]: { task: created, key } };
 		return created as TaskId;
 	}, context);
-	if (task !== undefined) await harness.waitForTask(task, context);
+	if (task === undefined) return false;
+	await harness.waitForTask(task, context);
+	// Another review can replace this one's lens task while the reruns run, and take the reruns over then or later with
+	// other probes. One sharing this lens task can start the same probes' rerun again, which leaves this review standing.
+	if ((await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.key !== key) return false;
+	return stillOwns((await harness.snapshot(ReviewIndex, root, context))!.reviews[at], lensTask);
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -1588,7 +1629,7 @@ async function runLenses(
 	input: StoredLensTaskInput,
 	rerun: boolean,
 	context: Context,
-	refused: (key: string, model: string, role?: "prober") => boolean = () => false,
+	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
 	started?: () => void,
@@ -1596,6 +1637,9 @@ async function runLenses(
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
+	// A finished probing run is never reused: a repeat review probes again, so every finding rests on a probe of its own
+	// review. A live one is attached to, which is how a review resumes its own run after a crash.
+	const probes = runsOf(input.lenses).some((run) => run.probe !== undefined);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1604,7 +1648,7 @@ async function runLenses(
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
 			record !== undefined &&
-			(record.state.status !== "terminal" || finished(record, undecided)) &&
+			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
 		if (!attaches)
 			await unlockModels(
@@ -1621,6 +1665,7 @@ async function runLenses(
 		const attach =
 			same &&
 			(await attachable(tx, known.task, undecided)) &&
+			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
@@ -1669,7 +1714,7 @@ async function runLenses(
 async function anyLensFailed(
 	tx: Tx,
 	id: number | undefined,
-	refused: (key: string, model: string, role?: "prober") => boolean,
+	refused: (key: string, model: string) => boolean,
 ): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
 	return record !== undefined && lensFailed(record, refused);
@@ -1682,16 +1727,13 @@ function lensFailed(
 			readonly outcome?: { readonly status: string; readonly result?: unknown };
 		};
 	},
-	refused: (key: string, model: string, role?: "prober") => boolean,
+	refused: (key: string, model: string) => boolean,
 ): boolean {
 	const { outcome } = record.state;
 	if (record.state.status !== "terminal" || outcome === undefined) return false;
 	if (outcome.status !== "completed") return true;
 	return Object.entries(outcome.result as LensResult).some(
-		([key, lens]) =>
-			lens.status !== "done" ||
-			(lens.model !== undefined && refused(key, lens.model)) ||
-			(lens.probing?.model !== undefined && refused(key, lens.probing.model, "prober")),
+		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
 	);
 }
 
@@ -1724,7 +1766,7 @@ async function callersFor(
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
-		if (entry?.lenses.join("\n") !== selection.join("\n") || entry.task !== task) return fresh;
+		if (entry === undefined || !stillOwns(entry, task)) return fresh;
 		if (entry.callers?.task !== task) entry.callers = fresh;
 		return JSON.parse(JSON.stringify(entry.callers)) as CallerRecord;
 	}, context);
@@ -1737,6 +1779,9 @@ async function startAdjudication(
 	harness: Harness,
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
+	lensTask: number | undefined,
+	// The verification task this review waited on, if any; one another review has replaced since is not this review's.
+	verification: number | undefined,
 	verificationRefused: boolean,
 	checkRun: string | undefined,
 	context: Context,
@@ -1746,10 +1791,11 @@ async function startAdjudication(
 		const index = await tx.doc(ReviewIndex, root.id);
 		const revision = Revision.key(input);
 		let known = index.reviews[revision];
-		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
+		// A review whose lenses ran owns the entry only while it still names their task. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
-		// that live run as superseded. Solution: a replaced review adjudicates nothing.
-		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
+		// that live run as superseded; and a repeat review with the same selection replaces a finished probing run and
+		// clears its findings, which left this one none to block on. Solution: a replaced review adjudicates nothing.
+		if (!stillOwns(known, lensTask, verification)) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
 			await clearVerifications(tx, input.root, revision);
@@ -2220,6 +2266,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
+	let decisionIndexWarning: string | undefined;
+	const loadDecisions = async () => {
+		const index = await DecisionFiles.load(repoRoot, base);
+		decisionIndexWarning = index.warning();
+		return index;
+	};
 	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
 	const covering = selected.map((selection) => {
 		const { files } = selection;
@@ -2313,8 +2365,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// What a probe may read and whether policy trusts writers come from the base, never from the change, whoever vouches
 	// for it: the allowlist decides what of the reviewer's machine a probe reads, by the maintainer's ruling of 2026-11-10.
 	let basePolicy: Promise<MelianConfig> | undefined;
+	// The base is the policy revision the host named, as a pull request's base tip, or the merge base; never a worktree.
+	const policyBase = options.policy?.kind === "revision" ? options.policy.commit : base;
 	const baseConfig = () =>
-		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: base }, ".").then(
+		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: policyBase }, ".").then(
 			({ config: policy }) => policy,
 		));
 	let probesAsked: Promise<string | undefined> | undefined;
@@ -2460,10 +2514,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
-		const decisions =
-			lens.name === "design"
-				? await spans.time("design.decisions", () => DecisionFiles.load(repoRoot, base))
-				: undefined;
+		const decisions = lens.name === "design" ? await spans.time("design.decisions", loadDecisions) : undefined;
 		const designSections =
 			lens.name === "design"
 				? await spans.time("design.sections", () => DesignSections.load(repoRoot, base))
@@ -2491,12 +2542,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						trustWriters: (await baseConfig()).trust.writers,
 						timeout,
 						read: [...(await baseConfig()).probe.read],
+						host: probingHost(probeSandboxOf(options)),
 					},
 				},
-				context: (boundary: string) => [
-					`## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.\n${quoteUntrusted("listing", atBase, boundary)}`,
-					renderEarlierFindings(earlier, boundary),
-				],
+				context: (boundary: string) => plannerContext(atBase, earlier, boundary),
 			};
 		};
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
@@ -2542,10 +2591,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									neighbours,
 									(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
 									standardsSource,
-								) +
-								// The planner's decisions and earlier findings move between reviews of one head, as caller context
-								// does, so they stay out of the key; the probe field below holds the fixed probing protocol.
-								baseline("0".repeat(24)),
+								) + baseline("0".repeat(24)),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,
@@ -2556,10 +2602,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							budget: settings.budget,
 							coverage,
 							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
-							probe:
-								probing === undefined
-									? undefined
-									: { ...probing.run, environment: undefined, protocol: probingProtocol() },
 						}),
 					)
 					.digest("hex"),
@@ -2712,7 +2754,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
 			);
 			if (designClaim) {
-				decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
+				decisionsAtBase ??= (await loadDecisions()).render();
 				if (designAtBase === undefined) {
 					const sections = await DesignSections.load(repoRoot, base);
 					designAtBase = { sections: sections.render(), files: sections.renderFiles() };
@@ -2763,7 +2805,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const rule = new EscalationRule(runs.escalateAt ?? escalateAt);
 		const stored = new Map(runs.lenses.map((run) => [run.key, run]));
 		await (await harness.root(context)).commit(async (tx) => {
-			if ((await tx.doc(ReviewIndex, root)).reviews[reviewed]?.task === task)
+			if (stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], task))
 				await VerificationWaves.open(tx, root, reviewed, task);
 		}, context);
 		const watch = await harness.watchDoc(VerificationWavesDocument, root, context);
@@ -2833,10 +2875,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lensInput,
 				options.rerun === true,
 				context,
-				(key, model, role) => {
+				(key, model) => {
 					const run = runsOf(lenses).find((each) => each.key === key);
-					// A prober on a tier of its own is held to that tier by its route, as adjudication judges it.
-					if (role === "prober" && run?.probe?.onLevelTier !== true) return false;
 					const judged =
 						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
 					return judged?.refusal !== undefined;
@@ -2971,19 +3011,27 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		context,
 	);
 	const { storedFindings, policies, candidates, restating } = await candidatesFor(producers, lensResult, ran.lenses);
+	const replaced = () =>
+		new ReviewError(
+			"superseded",
+			`a later review of ${reviewed} replaced this one's lens run or verification, so this review records no verdict`,
+			{ lenses: lenses.map((lens) => lens.name) },
+		);
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
-	let verifierSuperseded = false;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
 			const owner = await harness.root(context);
-			await owner.commit(async (tx) => {
+			const owns = await owner.commit(async (tx) => {
 				const index = await tx.doc(ReviewIndex, root);
 				const entry = index.reviews[reviewed];
+				if (!stillOwns(entry, lensTask)) return false;
 				if (entry?.verification?.task === previous.task) index.reviews[reviewed] = omit(entry, "verification");
+				return true;
 			}, context);
+			if (!owns) throw replaced();
 			await abortReplacedRuns(harness, context);
 		}
 	}
@@ -3000,7 +3048,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
-			await rerunProbes(harness, root, state, candidates, lensTask, context);
+			if (!(await rerunProbes(harness, root, state, candidates, lensTask, context))) throw replaced();
 			const reused: Record<string, VerificationResult[string]> = {};
 			// The dismissals each reused wave was shown, by candidate.
 			const shownTo = new Map<string, Record<string, string>>();
@@ -3049,8 +3097,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				verifierRefuses,
 				unlockModels,
 				own,
+				lensTask,
 			);
-			verifierSuperseded = verifying === undefined;
 			// A final task this call starts stands on its reused waves' judgements, made under the dismissals each wave was
 			// shown, whichever process started it; one replaced since is not the one judged. A final task this call attaches
 			// to is re-derived under the dismissals this call read, as every round's is.
@@ -3063,8 +3111,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							dismissed: fresh.dismissed.map(({ id }) => ({ id, dismissal: shown[id] ?? "" })),
 						});
 				}
-			if (verifying === undefined)
-				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
+			// Another review's final verification can retire a wave this one reused, and then that review decides its claims.
+			if (verifying === undefined) throw replaced();
 			else {
 				await abortReplacedRuns(harness, context);
 				await refuseIfBlocked(
@@ -3121,12 +3169,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	// Each round re-derives every restatement link from its own stored judgements, in one commit, before adjudication
 	// reads the findings version. A verifier that did not run to the end judged no sameness, and leaves no links.
-	// A review a later one replaced, by lens selection or by verification task, leaves the links that one recorded.
-	await (await harness.root(context)).commit(async (tx) => {
-		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
-		const selection = selectionOf(lenses, escalateAt);
-		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
-		if (verifierSuperseded || (verifying !== undefined && entry?.verification?.task !== verifying)) return;
+	// A review a later one replaced, by lens task or by verification task, leaves the links that one recorded.
+	const linked = await (await harness.root(context)).commit(async (tx) => {
+		if (!stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], lensTask, verifying)) return false;
 		await recordInheritances(
 			tx,
 			root,
@@ -3134,7 +3179,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			verificationCheck?.status === "ran" ? [...restating.values()] : [],
 			verifierVersion,
 		);
+		return true;
 	}, context);
+	if (!linked) throw replaced();
 	spans.step("adjudication.prepare");
 	const checks =
 		request.plan?.mark(
@@ -3199,17 +3246,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		harness,
 		input,
 		selectionOf(lenses, escalateAt),
+		lensTask,
+		verifying,
 		verificationRefused,
 		JSON.stringify(checked?.identity ?? request.checkRun),
 		context,
 	);
-	if (adjudication === undefined) {
-		throw new ReviewError(
-			"superseded",
-			`a later review of ${reviewed} replaced this one's lens run, so this review records no verdict`,
-			{ lenses: lenses.map((lens) => lens.name) },
-		);
-	}
+	if (adjudication === undefined) throw replaced();
 	const rounds = (await harness.snapshot(RoundsDocument, root, context))!;
 	spans.bindRound(Object.entries(rounds.items).find(([, round]) => round.tasks.includes(adjudication))![0]);
 	if (verificationRefused) await abortReplacedRuns(harness, context);
@@ -3248,6 +3291,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			models: [...new Set(exhausted.flatMap(({ tried }) => tried))],
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -3256,6 +3300,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: failed,
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -3263,6 +3308,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: [],
 			findings,
 			verdict,
+			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
 		});
-	return { findings, verdict };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
 }

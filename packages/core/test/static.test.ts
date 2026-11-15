@@ -409,6 +409,76 @@ describe("staticFindings", () => {
 		expect(await enolaCauses(["intent A unmet"], ["intent A unmet"])).toEqual([["intent A unmet", "pre-existing"]]);
 	});
 
+	it("triggers an introduced Enola result from its declaration when the change edits that line", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({
+			"src/quote.ts": lines(
+				"export function quote(text: unknown) {",
+				"\treturn text;",
+				"}",
+				"export const other = 1;",
+				"",
+			),
+		});
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const result = normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{
+						results: [
+							{
+								ruleId: "complexity-outliers",
+								level: "warning",
+								message: { text: "High cyclomatic complexity: quote (41)" },
+								locations: [
+									{
+										physicalLocation: {
+											artifactLocation: { uri: "src/quote.ts" },
+											region: { startLine: 1, endLine: 3 },
+										},
+									},
+								],
+							},
+						],
+					},
+				],
+			}),
+			{ root: repo, version: "0.4.40" },
+		);
+		const none: ToolLog = { ...result, runs: [{ ...result.runs[0]!, results: [] }] };
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: none,
+			head: result,
+		});
+		expect(findings.map((finding) => [finding.properties.cause, finding.properties.trigger])).toEqual([
+			["introduced", revision.trigger("src/quote.ts", 1, 1)],
+		]);
+		expect(revision.trigger("src/quote.ts", 1, 1)).toMatchObject({ file: "src/quote.ts" });
+	});
+
+	it("gives a pre-existing result no trigger, though the change edits the line it sits on", async () => {
+		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
+		const head = commit({ "enola-intent.yaml": lines("rules: # edited", "  - a") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: enolaLog("intent A unmet"),
+			head: enolaLog("intent A unmet"),
+		});
+		expect(revision.trigger("enola-intent.yaml", 1, 1)).toBeDefined();
+		expect(findings.map((finding) => [finding.properties.cause, finding.properties.trigger])).toEqual([
+			["pre-existing", undefined],
+		]);
+	});
+
 	it("identifies a located Enola result at the intent file's first line by its code, not its message", async () => {
 		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
 		const head = commit({ "a.ts": lines("2") });
@@ -523,6 +593,124 @@ describe("staticFindings", () => {
 			findings: [["enola/god-class", "introduced"]],
 			notes: [],
 		});
+	});
+
+	// Issue #346: from 0.4.37 Enola spans a TypeScript symbol to its closing brace. The maintainer ruled on 2026-11-13 that
+	// an Enola result keeps the identity of the line it starts on, as under 0.4.27.
+	it("identifies an Enola result by the line it starts on, so an edit inside the symbol's body keeps it pre-existing", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const spanning = (endLine?: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: "complexity-outliers",
+									level: "warning",
+									message: { text: "High cyclomatic complexity: quote (41)" },
+									locations: [
+										{
+											physicalLocation: {
+												artifactLocation: { uri: "src/quote.ts" },
+												region: { startLine: 1, ...(endLine === undefined ? {} : { endLine }) },
+											},
+										},
+									],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.40" },
+			);
+		const report = (log: ToolLog) =>
+			staticFindings({
+				repoRoot: repo,
+				revision,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				base: log,
+				head: log,
+			});
+		const [spanned] = (await report(spanning(3))).findings;
+		const [line] = (await report(spanning())).findings;
+		expect(spanned?.properties.cause).toBe("pre-existing");
+		expect(spanned?.properties.id).toBe(line?.properties.id);
+		expect(spanned?.locations[0]?.physicalLocation.region).toMatchObject({ startLine: 1, endLine: 3 });
+	});
+
+	// The maintainer ruled on 2026-11-13 that an Enola result's trigger takes its whole span, though its ID keeps one line, so a
+	// dismissal reopens when the body behind it changes. 0.4.27 gave such a result no trigger at all.
+	it("triggers an introduced Enola result from its whole span, so a body edit reopens its dismissal", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const at = (endLine?: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: "complexity-outliers",
+									level: "warning",
+									message: { text: "High cyclomatic complexity: quote (41)" },
+									locations: [
+										{
+											physicalLocation: {
+												artifactLocation: { uri: "src/quote.ts" },
+												region: { startLine: 1, ...(endLine === undefined ? {} : { endLine }) },
+											},
+										},
+									],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.40" },
+			);
+		const none: ToolLog = { ...at(), runs: [{ ...at().runs[0]!, results: [] }] };
+		const introduced = async (endLine?: number) =>
+			(
+				await staticFindings({
+					repoRoot: repo,
+					revision,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					base: none,
+					head: at(endLine),
+				})
+			).findings;
+		const [spanned] = await introduced(3);
+		const [line] = await introduced();
+		expect(spanned?.properties.cause).toBe("introduced");
+		expect(line?.properties.trigger).toBeUndefined();
+		expect(spanned?.properties.trigger).toEqual(revision.trigger("src/quote.ts", 1, 3));
+		expect(spanned?.properties.trigger).toMatchObject({ file: "src/quote.ts", snippet: "\treturn text.trim();" });
+		expect(spanned?.properties.id).toBe(line?.properties.id);
+	});
+
+	it("still identifies a tsc result by every line it spans, so an edit inside the span introduces it", async () => {
+		const base = commit({ "src/quote.ts": quote("\treturn text;") });
+		const head = commit({ "src/quote.ts": quote("\treturn text.trim();") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const spanning = log(["src/quote.ts", 1, "TS2322"]);
+		spanning.runs[0]!.results[0]!.locations[0]!.physicalLocation.region.endLine = 3;
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: spanning,
+			head: spanning,
+		});
+		expect(findings.map((finding) => finding.properties.cause)).toEqual(["introduced"]);
 	});
 
 	it("fails rather than guess when a result's file cannot be read", async () => {
