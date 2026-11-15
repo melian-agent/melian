@@ -65,7 +65,7 @@ describe("gitOutput", () => {
 		expect(error.message).toMatch(/^git diff failed: /);
 	});
 
-	it.each(["--git-dir", "--work-tree", "--namespace", "--config-env"])(
+	it.each(["-C", "--git-dir", "--work-tree", "--namespace", "--config-env"])(
 		"names the subcommand, not the value of %s",
 		async (option) => {
 			const value = option === "--config-env" ? "x.y=HOME" : option === "--git-dir" ? join(repo, ".git") : repo;
@@ -73,6 +73,12 @@ describe("gitOutput", () => {
 			expect(error.message).toMatch(/^git diff failed: /);
 		},
 	);
+
+	it("names no subcommand when every argument is one of git's own options", async () => {
+		const error = await rejection(gitOutput(repo, ["--no-such-option"]), ChangesetError);
+		expect(error.code).toBe("gitFailed");
+		expect(error.message).toMatch(/^git {2}failed: /);
+	});
 });
 
 describe("git", () => {
