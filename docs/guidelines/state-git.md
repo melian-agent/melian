@@ -20,4 +20,5 @@ The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<dir
 - `test/fixtures/state.ts` builds a bare remote and clones of it, each with a holder and a store directory of its own. `replaceChangeset` moves the remote's branch directly, as a writer that ignores the lease would.
 - The conformance suite runs on a checkout's storage, through `registerStorageConformance` from `@melian-agent/pipeline/testing`, which also gives the tests Pi's `createSession`.
 - `crash(clone)` checks out in a child process that exits without closing, as a crash does. Each remote has a random key its clones share; pass `key` to a clone to give it another.
+- The fixture turns off git's automatic maintenance in the remote and every clone. Newer git detaches it after a push, and a run that outlives the test fails the test's clean-up.
 - `test/push-race.test.ts` lands another run's push between a fetch and its push by wrapping core's `git`; it is the only test that mocks a module.

@@ -21,7 +21,17 @@ export function temporaryDirectory(): string {
 }
 
 export function removeDirectory(path: string): void {
-	rmSync(path, { recursive: true, force: true });
+	// A process a test started, such as git's detached maintenance, can add a file here after rmSync lists the directory.
+	// Node's maxRetries repeats only the last rmdir, which then fails every time, so start the removal over instead.
+	for (let attempt = 1; ; attempt++) {
+		try {
+			rmSync(path, { recursive: true, force: true });
+			return;
+		} catch (error) {
+			if (attempt === 5 || (error as NodeJS.ErrnoException).code !== "ENOTEMPTY") throw error;
+			Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100 * attempt);
+		}
+	}
 }
 
 export function writeFiles(root: string, files: Record<string, string | Buffer>): void {

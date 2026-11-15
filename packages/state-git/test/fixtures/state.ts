@@ -20,6 +20,10 @@ export class Remote {
 
 	constructor() {
 		gitIn(this.root, "init", "--quiet", "--bare", this.bare);
+		// A push starts git's automatic maintenance, which newer git detaches, and it can still be writing into the remote
+		// when the test removes it.
+		gitIn(this.bare, "config", "receive.autogc", "false");
+		gitIn(this.bare, "config", "maintenance.auto", "false");
 	}
 
 	/** A clone of the remote, with a store directory and a holder of its own. */
@@ -69,6 +73,7 @@ export class Clone {
 		this.holder = name;
 		this.#options = options;
 		gitIn(remote.root, "init", "--quiet", this.repoRoot);
+		gitIn(this.repoRoot, "config", "maintenance.auto", "false");
 	}
 
 	/** A fresh branch handle, as a new process in this clone opens one. */
