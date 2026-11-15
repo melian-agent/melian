@@ -1,0 +1,16 @@
+src/syntax-check.mjs
+
+  P1 | Blocks merge | Trust boundary | Verifier confirmed | New in this change
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The check keeps the source line node --check quotes in each finding's text, and a committed link points node --check at a file outside the checkout.
+    Why here: The head decides which files the check runs on, links included, so the stored and published finding carries whatever the linked outside file holds.
+    Failure scenario: A head commits src/vendor.mjs as a link to a file outside the checkout whose first line holds a token and a syntax error. node --check follows the link and quotes that line, parseCheck keeps the quoted line in the finding's text, and the review stores and publishes the finding, so the token reaches the pull request.
+    Evidence:
+      cause: src/syntax-check.mjs:40
+            findings.push({ file, line: parsed.line, rule: `node/${parsed.rule}`, message: parsed.text });
+      context: src/syntax-check.mjs:26
+          return { line: Number(place[1]), rule: name, text: [rest.join(": "), ...quoted].join("\n") };
+    What to do: Keep each finding's rule and place, and replace node's text with a fixed sentence naming the file to check by hand.
+    Rule secret-exposure | Line 40 | Status new
+
+1 finding in 1 file.

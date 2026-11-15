@@ -1,0 +1,95 @@
+name: claim
+
+# Cloud builders reach GitHub through an app that cannot edit labels, so this sets the claim labels for them under the
+# rules in AGENTS.md's Work from issues. Comments decide: every run, whatever comment started it, reads the whole
+# timeline and makes the labels match the state the writers' comments call for, so a cancelled or failed run, or a hand
+# edit, is put right by the next. Comments are only ever data: the script reads them from the API, and nothing
+# interpolates them into a shell or a script.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: claim-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  swap-labels:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const READY = "status: ready";
+            const IN_PROGRESS = "status: in progress";
+            const SELF = "github-actions[bot]";
+            const { owner, repo } = context.repo;
+            const { comment, issue } = context.payload;
+            const issue_number = issue.number;
+            if (issue.pull_request) return;
+
+            const { data: current } = await github.rest.issues.get({ owner, repo, issue_number });
+            if (current.state === "closed") return core.info("The issue is closed, so its labels stay as they are.");
+
+            const writers = new Map();
+            const isWriter = async (login) => {
+              if (!writers.has(login)) {
+                try {
+                  const { data } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username: login });
+                  writers.set(
+                    login,
+                    ["admin", "write"].includes(data.permission) || ["admin", "maintain", "write"].includes(data.role_name),
+                  );
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                  writers.set(login, false);
+                }
+              }
+              return writers.get(login);
+            };
+
+            // A writer's ready label opens the issue to claims. The first writer's claim after it calls for in
+            // progress, and a writer's release after that for ready again. Removals, in-progress labels and this
+            // workflow's own label events change nothing.
+            const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number, per_page: 100 });
+            // A deleted comment never reaches the timeline, so only a comment GitHub still holds is lag.
+            if (!timeline.some((item) => item.event === "commented" && item.id === comment.id)) {
+              const deleted = await github.rest.issues.getComment({ owner, repo, comment_id: comment.id }).then(
+                () => false,
+                (error) => {
+                  if (error.status !== 404) throw error;
+                  return true;
+                },
+              );
+              if (!deleted) throw new Error(`The timeline does not yet hold ${comment.html_url}; rerun this job, or post another comment.`);
+            }
+            let want;
+            let by;
+            for (const item of timeline) {
+              if (item.event === "labeled" && item.label.name === READY && item.actor.login !== SELF) {
+                if (await isWriter(item.actor.login)) [want, by] = [READY, `a ready label by ${item.actor.login}`];
+              } else if (item.event === "commented" && want !== undefined) {
+                const command = want === READY ? "Claim:" : "Released:";
+                if (item.body.startsWith(command) && (await isWriter(item.user.login))) {
+                  [want, by] = [want === READY ? IN_PROGRESS : READY, item.html_url];
+                }
+              }
+            }
+            const labels = current.labels.map((label) => label.name);
+            if (want === undefined) {
+              for (const name of [READY, IN_PROGRESS]) {
+                if (labels.includes(name)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name });
+              }
+              return core.info("No writer's ready label opens this issue, so it carries no status label.");
+            }
+
+            const unwanted = want === READY ? IN_PROGRESS : READY;
+            if (!labels.includes(want)) await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [want] });
+            if (labels.includes(unwanted)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name: unwanted });
+            core.info(`The issue reads "${want}", from ${by}.`);
