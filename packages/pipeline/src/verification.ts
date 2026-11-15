@@ -467,8 +467,6 @@ function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[]
 		.join("\n\n");
 }
 
-// The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
-// for what varies, so every fixed fragment it is shown reaches the key.
 function placeholderResult(exitCode: number): StoredProbeResult {
 	return { exitCode, signal: null, output: "<output>", truncated: false, timedOut: false };
 }
@@ -488,6 +486,8 @@ function placeholderProbe(exitCode: number): Omit<ClaimProbe, "environment"> {
 	};
 }
 
+// The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
+// for what varies, so every fixed fragment it is shown reaches the key.
 function verifierText(): unknown {
 	const nonce = identityNonce;
 	return {
