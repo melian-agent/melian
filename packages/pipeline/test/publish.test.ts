@@ -1145,6 +1145,36 @@ describe("publication planning recovery", () => {
 				`- ${finding.id}: Dismissed, inherited from \`${rootB}\`: Same defect.`,
 			]);
 		});
+
+		it("names a merged report's new root in the ledger alone while its speaker stays live", async () => {
+			const asDesign = (report: Finding) =>
+				Finding.from({
+					...report.toJSON(),
+					properties: { ...report.properties, source: { check: "lens.design", version: "1" } },
+				});
+			const live = await decide(lensFinding(), asDesign(lensFinding()));
+			await publish();
+			const fromA = await decide(lensFinding(), asDesign(inherit(rootA)));
+			await publish();
+			const surfaces = () => ({ status: status(), comments: state.comments.map(({ body }) => body) });
+			const before = surfaces();
+			expect(await decide(lensFinding(), asDesign(inherit(rootB)))).toBe(fromA);
+			await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: fromA, round: 2 },
+			]);
+			expect(replies()).toEqual([]);
+			expect(surfaces()).toEqual(before);
+			expect(status()).toEqual(counted("failure", "1 finding, 0 blocking, 1 unresolved acknowledgement"));
+			const named = (root: string) =>
+				state.ledgers[0]!.body.split("\n").filter((line) => line.includes(`inherited from \`${root}\``));
+			expect(named(rootA)).toEqual([]);
+			expect(named(rootB)).toEqual([
+				`- \`${finding.id}\` \`unsafe\` in \`src/a.ts\`, inherited from \`${rootB}\`: Same defect.`,
+				`- ${finding.id} \`unsafe\`, inherited from \`${rootB}\`: Same defect.`,
+			]);
+		});
 	});
 });
 
