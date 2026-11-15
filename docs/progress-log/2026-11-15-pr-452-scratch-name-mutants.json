@@ -1,0 +1,245 @@
+{
+	"note": "Stryker's mutants of scratchName, listed by its instrumenter on a copy of the function, since the enumerator leaves cache-scratch.ts unmutated for its signals; each applied to scratchName alone and run against its named test.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 16,
+			"column": 51,
+			"endLine": 22,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 36,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(/^\\.(?:fetch|graph|prune)-/.test(name) || /^\\..+-[0-9a-f-]{36}\\.json$/.test(name)) && /\\.[0-9a-f-]{36}\\.tmp$/.test(name)",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 41,
+			"mutatorName": "LogicalOperator",
+			"replacement": "/^\\.(?:fetch|graph|prune)-/.test(name) && /^\\..+-[0-9a-f-]{36}\\.json$/.test(name)",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 18,
+			"column": 2,
+			"endLine": 18,
+			"endColumn": 29,
+			"mutatorName": "Regex",
+			"replacement": "/\\.(?:fetch|graph|prune)-/",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 19,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/\\..+-[0-9a-f-]{36}\\.json$/",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 19,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/^\\..+-[0-9a-f-]{36}\\.json/",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 19,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/^\\..-[0-9a-f-]{36}\\.json$/",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 19,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/^\\..+-[0-9a-f-]\\.json$/",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 19,
+			"column": 2,
+			"endLine": 19,
+			"endColumn": 30,
+			"mutatorName": "Regex",
+			"replacement": "/^\\..+-[^0-9a-f-]{36}\\.json$/",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 20,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 25,
+			"mutatorName": "Regex",
+			"replacement": "/\\.[0-9a-f-]{36}\\.tmp/",
+			"claim": "killed",
+			"evidence": "keeps changesets, scripted stores, links, scratch and anything it does not recognise",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 20,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 25,
+			"mutatorName": "Regex",
+			"replacement": "/\\.[0-9a-f-]\\.tmp$/",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"line": 20,
+			"column": 2,
+			"endLine": 20,
+			"endColumn": 25,
+			"mutatorName": "Regex",
+			"replacement": "/\\.[^0-9a-f-]{36}\\.tmp$/",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"run": {
+				"head": "dff754ca",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	]
+}
