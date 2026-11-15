@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { isChangesetId } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
@@ -54,6 +55,11 @@ function unwritable(path: string, error: Error): CliError {
 }
 
 // A sandbox that keeps .git read-only fails here, as SQLite's "unable to open database file".
+export function roundChangeset(round: string): string | undefined {
+	const match = /^([^.]+)\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
+	return match !== null && isChangesetId(match[1]!) ? match[1] : undefined;
+}
+
 export async function openStorage(path: string): ReturnType<typeof openSqliteStorage> {
 	try {
 		return await openSqliteStorage(path);

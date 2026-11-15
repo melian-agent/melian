@@ -14,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GraphSnapshot, TestCoverage } from "@melian-agent/core";
+import { GraphSnapshot, pullRequestChangesetId, TestCoverage } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CacheScratch } from "../src/cache-scratch.ts";
@@ -889,4 +889,13 @@ it("takes a graph's coverage with it when another cache folder is a link", async
 	outside.push(elsewhere);
 	await symlink(elsewhere, join(state, "mutation"));
 	expect(kinds(await plan())).toEqual([["graph", `graphs/${dead}`, `coverage/${dead}`]]);
+});
+
+it("counts a store named by core's builders, and keeps a name one hex digit short of one", async () => {
+	const pull = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
+	await writeFile(join(state, `${pull}.sqlite`), "12345");
+	await writeFile(join(state, `${pull.slice(0, -1)}.sqlite`), "1");
+	const prune = await plan();
+	expect(prune.kept).toEqual([`${pull.slice(0, -1)}.sqlite`]);
+	expect(prune.changesets).toEqual({ files: 1, bytes: 5 });
 });
