@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { git, gitOutput, visibleText } from "@melian-agent/core";
+import { git, gitOutput, hostFacts, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
 import {
@@ -225,8 +225,10 @@ export type ProbingHost = { platform: ProbeSandbox["platform"]; sandbox: string;
 
 /** The host a probe runs on under `sandbox`. */
 export function probingHost(sandbox: ProbeSandbox): ProbingHost {
-	// A probe runs this process's own Node: Probe starts the realpath of process.execPath.
-	return { platform: sandbox.platform, sandbox: sandbox.kind, arch: process.arch, node: process.versions.node };
+	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
+	// it confines. Case folding is left out: a finished probing run is never reused, so nothing matches on it.
+	const { arch, node } = hostFacts();
+	return { platform: sandbox.platform, sandbox: sandbox.kind, arch, node };
 }
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
