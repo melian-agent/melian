@@ -72,7 +72,7 @@ type Changeset = { records: Map<string, SharedRecord>; cell: Cell | undefined; s
 
 /**
  * One fetched tip of the branch, every entry judged: a record at the path its own bytes give, a cell, or a stray. An
- * entry is judged by its path and object ID alone, so a handle keeps what it judged and reads each blob once.
+ * entry is judged by its mode, type, object ID and path alone, so a handle keeps what it judged and reads each blob once.
  */
 export class StateTree {
 	readonly #changesets = new Map<string, Changeset>();
@@ -99,7 +99,7 @@ export class StateTree {
 	/** Judges every entry of `commit`'s tree, reusing what `judged` already holds and adding what it reads. */
 	static async read(repository: RecordRepository, commit: string, judged: Map<string, Judged>): Promise<StateTree> {
 		const entries = await repository.entries(commit);
-		const keyOf = (entry: TreeEntry) => `${entry.oid}\0${entry.path.toString("latin1")}`;
+		const keyOf = (entry: TreeEntry) => `${entry.mode} ${entry.type} ${entry.oid}\0${entry.path.toString("latin1")}`;
 		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
 		const wanted = fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid);
 		const sizes = await repository.sizes([...new Set(wanted)]);
@@ -126,7 +126,8 @@ export class StateTree {
 			changeset: path === undefined ? StateTree.#rawScope(entry.path) : changeset,
 			path: path ?? entry.path.toString("utf8"),
 		};
-		if (path === undefined || changeset === undefined || bytes === undefined) return stray;
+		if (path === undefined || changeset === undefined || bytes === undefined || !StateTree.#readable(entry))
+			return stray;
 		const text = decode(bytes);
 		if (text === undefined) return stray;
 		if (parts.length === 3) {

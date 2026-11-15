@@ -116,6 +116,32 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		}
 	});
 
+	it("judges an entry again on the same handle when only its mode changes, either way", async () => {
+		const real = filed(check("real"));
+		const store = await plantedBeside({});
+		await store.add([check("real")]);
+		expect(keys(await store.list(changeset))).toEqual(["kept", "real"]);
+		remote.plant({ [real.path]: { bytes: real.bytes, mode: "100755" } });
+		await refusesEveryCall(store, changeset, real.path);
+		const reader = await remote.open();
+		await expect(reader.list(changeset)).rejects.toSatisfy(refusal(real.path));
+		remote.plant({ [real.path]: { bytes: real.bytes } });
+		expect(keys(await store.list(changeset))).toEqual(["kept", "real"]);
+		expect(keys(await reader.list(changeset))).toEqual(["kept", "real"]);
+	});
+
+	it("refuses an executable cell whose bytes a regular cell in another changeset shares", async () => {
+		const bytes = '{"v":1,"value":"1","version":"00000000-0000-4000-8000-000000000000"}';
+		const path = `changesets/${changeset}/cell.json`;
+		const store = await plantedBeside({
+			[path]: { bytes, mode: "100755" },
+			[`changesets/${other}/cell.json`]: { bytes },
+		});
+		expect(remote.oid(path)).toBe(remote.oid(`changesets/${other}/cell.json`));
+		await refusesEveryCall(store, changeset, path);
+		expect(await store.readCell(other)).toEqual({ value: "1", version: "00000000-0000-4000-8000-000000000000" });
+	});
+
 	it("refuses a path that is not UTF-8 by the changeset its folder names", async () => {
 		const store = await plantedBeside({});
 		const path = Buffer.concat([Buffer.from(`changesets/${changeset}/`), Buffer.from([0xff, 0x2e, 0x6a])]);
