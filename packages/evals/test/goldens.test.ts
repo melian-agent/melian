@@ -1270,7 +1270,7 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		});
 		const scripted = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
-		expect(scripted.ran.find((check) => check.name === "lens.trust-boundary")?.reason).toMatch(
+		expect(scripted.notes.find(({ checks }) => checks.includes("lens.trust-boundary"))?.reason).toMatch(
 			/^it planned 1 attack and ran 1 probe in (under 0\.1|\d+\.\d) s$/,
 		);
 		expect(availability.mock.calls.every(([sandbox]) => sandbox !== Probe.sandbox)).toBe(true);

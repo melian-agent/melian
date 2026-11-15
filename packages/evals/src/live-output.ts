@@ -63,8 +63,8 @@ export async function reportGoldens(
 				`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected), ${ran.telemetry.spend()}`,
 			),
 		);
-		for (const check of ran.ran)
-			if (check.reason !== undefined) print(visibleText(`    ${check.name}: ${check.reason}`));
+		if (env.MELIAN_EVAL_SHOW === "1")
+			for (const { reason, checks } of ran.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
 		for (const line of shownOutput(ran.rendered, env)) print(line);
 	}
 	const corpus = scoreCorpus(scores);

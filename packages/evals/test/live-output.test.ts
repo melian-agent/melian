@@ -109,26 +109,36 @@ describe("reportGoldens", { timeout: 60_000 }, () => {
 		expect(report.failed).toEqual(["correctness-null-deref"]);
 		expect(report.scores.map((score) => score.golden)).toEqual(["clean-rename"]);
 	});
-	it("prints each note a check that ran recorded under the golden's score, such as a probing lens's attacks", async () => {
-		const ran = [
-			{ name: "lens.correctness", status: "ran" as const },
-			{
-				name: "lens.trust-boundary",
-				status: "ran" as const,
-				reason: "it planned 2 attacks and ran 2 probes in 0.4 s",
-			},
-		];
+	it("prints each note a lens recorded under the golden's score when MELIAN_EVAL_SHOW asks, such as a probing lens's attacks", async () => {
+		const notes = [{ reason: "it planned 2 attacks and ran 2 probes in 0.4 s", checks: ["lens.trust-boundary"] }];
 		const lines: string[] = [];
 		await reportGoldens(
 			named(goldens, "clean-rename"),
-			async (golden) => ({ ...(await scripted(golden)), ran }),
-			{},
+			async (golden) => ({ ...(await scripted(golden)), notes }),
+			{ MELIAN_EVAL_SHOW: "1" },
 			(line) => lines.push(line),
 		);
-		expect(lines).toEqual([
+		expect(lines.slice(0, 2)).toEqual([
 			scores[2],
 			"    lens.trust-boundary: it planned 2 attacks and ran 2 probes in 0.4 s",
-			corpus,
+		]);
+	});
+	it("prints a note several lenses share once, and only when MELIAN_EVAL_SHOW asks", async () => {
+		const note = "Callers unavailable: the host supplied no graph context";
+		const notes = [{ reason: note, checks: ["lens.correctness", "lens.contracts"] }];
+		const report = async (env: NodeJS.ProcessEnv) => {
+			const lines: string[] = [];
+			await reportGoldens(
+				named(goldens, "clean-rename"),
+				async (golden) => ({ ...(await scripted(golden)), notes }),
+				env,
+				(line) => lines.push(line),
+			);
+			return lines;
+		};
+		expect(await report({})).toEqual([scores[2], corpus]);
+		expect((await report({ MELIAN_EVAL_SHOW: "1" })).filter((line) => line.includes(note))).toEqual([
+			`    lens.correctness, lens.contracts: ${note}`,
 		]);
 	});
 });
