@@ -130,6 +130,13 @@ describe("lensRequest", () => {
 		expect(new Set([moves, capped, none]).size).toBe(3);
 	});
 
+	it("writes neither escalation field for a run with no escalation severity and no next run", () => {
+		const { escalateAt: _e, ...rest } = sample;
+		const { request } = build({ ...rest, escalation: undefined } as unknown as Sample);
+		expect(request).not.toHaveProperty("escalateAt");
+		expect(request).not.toHaveProperty("escalation");
+	});
+
 	it("keys a review whose callers are unavailable as one with them, since they are best effort", () => {
 		expect(build({ ...sample, callers: "" }).key).toBe(build(sample).key);
 		expect(JSON.stringify(build(sample).request)).not.toContain("calls total()");
