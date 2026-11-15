@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { GraphSnapshot, TestCoverage } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CacheScratch } from "../src/cache-scratch.ts";
 import { CoverageCache } from "../src/coverage-cache.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 import {
@@ -410,6 +411,19 @@ it.each(["graphs", "coverage", "mutation"])(
 		const prune = await plan();
 		expect(prune.entries).toEqual([]);
 		expect(prune.kept).toEqual([]);
+	},
+);
+
+it.each(["graphs", "coverage", "mutation"])(
+	"lists an old entry- name under %s with a scratch suffix, which CacheScratch never sweeps",
+	async (folder) => {
+		const name = `entry-orphan.${crypto.randomUUID()}.tmp`;
+		await mkdir(join(state, folder), { recursive: true });
+		await writeFile(join(state, folder, name), "x");
+		await utimes(join(state, folder, name), new Date(0), new Date(0));
+		await CacheScratch.open(state);
+		expect(await readFile(join(state, folder, name), "utf8")).toBe("x");
+		expect((await plan()).kept).toEqual([`${folder}/${name}`]);
 	},
 );
 

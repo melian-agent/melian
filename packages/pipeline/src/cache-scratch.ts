@@ -15,9 +15,10 @@ export function running(pid: number): boolean {
 
 export function scratchName(name: string): boolean {
 	return (
-		/^\.(?:fetch|graph|prune)-/.test(name) ||
-		/^\..+-[0-9a-f-]{36}\.json$/.test(name) ||
-		/\.[0-9a-f-]{36}\.tmp$/.test(name)
+		!name.startsWith("entry-") &&
+		(/^\.(?:fetch|graph|prune)-/.test(name) ||
+			/^\..+-[0-9a-f-]{36}\.json$/.test(name) ||
+			/\.[0-9a-f-]{36}\.tmp$/.test(name))
 	);
 }
 
