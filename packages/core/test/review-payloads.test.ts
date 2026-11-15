@@ -56,7 +56,7 @@ const lens = (outcome: RecordJson) => ({
 });
 
 // Every shape each kind's payload can take, each with every field present, so removing any one is a refusal.
-const samples: readonly [string, RecordJson][] = [
+const samples: [string, RecordJson][] = [
 	[
 		"check",
 		{
@@ -196,6 +196,30 @@ const samples: readonly [string, RecordJson][] = [
 	],
 ];
 
+const account = {
+	v: 1,
+	checks: ["guardrails", "lens.security"],
+	records: ["1".repeat(64), "2".repeat(64)],
+	filled: [
+		{
+			name: "decisions.triage",
+			status: "skipped",
+			reason: "no decision provider",
+			error: null,
+			version: null,
+			level: null,
+		},
+		{ name: "lens.design", status: "failed", reason: "refused", error: "no route", version: "abc", level: "careful" },
+	],
+	allowSkip: ["decisions.triage", "lens.design"],
+	producers: [
+		{ check: "guardrails", version: null, ids: null },
+		{ check: "lens.security", version: "abc@careful", ids: null },
+		{ check: "lens.security", version: "abc@quick", ids: [dismissed, "1123456789abcdef"] },
+	],
+};
+samples.push(["account", account]);
+
 // Checked by their own authority, so the walk removes them whole and does not go inside.
 const opaque = new Set(["sightings", "sighting/finding", "claims/0/verification", "decision/answers/0/distribution"]);
 
@@ -233,6 +257,9 @@ const bounds: readonly [string, string, RecordJson][] = [
 	["dismissal", "rounds/0", "c".repeat(63)],
 	["dismissal", "sighting/revision", `${"a".repeat(40)}.${head}`],
 	["dismissal", "head", "x"],
+	["account", "records/0", "1".repeat(63)],
+	["account", "filled/0/status", "ran"],
+	["account", "producers/2/ids/0", "x"],
 ];
 
 // Each other value an enumerated field takes, so every one the schema lists is accepted.
@@ -243,6 +270,8 @@ const variants: readonly [string, string, RecordJson][] = [
 	["verification", "outcomes/2/outcome", { status: "exhausted", reason: "every model failed" }],
 	["telemetry", "stages/0/ended", "tokens"],
 	["telemetry", "stages/0/ended", null],
+	["account", "filled/1/status", "skipped"],
+	["account", "filled/0/reason", null],
 ];
 
 const check = (kind: string, payload: RecordJson) => reviewPayloads[kind]?.(payload);
@@ -254,7 +283,7 @@ describe("review payload checks", () => {
 
 	it("has a check for every kind a review writes, and a dismissal", () => {
 		expect(Object.keys(reviewPayloads).sort()).toEqual(
-			["check", "dismissal", "lens", "telemetry", "triage", "verification", "walkthrough"].sort(),
+			["account", "check", "dismissal", "lens", "telemetry", "triage", "verification", "walkthrough"].sort(),
 		);
 	});
 
@@ -427,6 +456,40 @@ describe("review payload checks", () => {
 		const payload = samples.find(([kind]) => kind === "dismissal")?.[1] as Record<string, RecordJson>;
 		expect(check("dismissal", { ...payload, sighting: { revision, finding: { ruleId: "unsafe" } } })).toMatch(
 			/^holds a sighting at \/sighting\/finding that is not a finding/,
+		);
+	});
+
+	it.each([
+		["names one check twice", { checks: ["guardrails", "guardrails"] }],
+		["lists its records out of ID order, or one twice", { records: ["2".repeat(64), "1".repeat(64)] }],
+		["lists its records out of ID order, or one twice", { records: ["1".repeat(64), "1".repeat(64)] }],
+		["fills its checks out of name order, or one twice", { filled: [account.filled[1], account.filled[0]] }],
+		["fills its checks out of name order, or one twice", { filled: [account.filled[0], account.filled[0]] }],
+		["lists the skips it allows out of order, or one twice", { allowSkip: ["lens.design", "decisions.triage"] }],
+		["lists the skips it allows out of order, or one twice", { allowSkip: ["lens.design", "lens.design"] }],
+		["lists its producers out of order, or one twice", { producers: [account.producers[1], account.producers[0]] }],
+		["lists its producers out of order, or one twice", { producers: [account.producers[2], account.producers[1]] }],
+		["lists its producers out of order, or one twice", { producers: [account.producers[0], account.producers[0]] }],
+		[
+			"keeps the findings of lens.security out of order, or one twice",
+			{ producers: [{ check: "lens.security", version: "abc@quick", ids: ["1123456789abcdef", dismissed] }] },
+		],
+		[
+			"keeps the findings of lens.security out of order, or one twice",
+			{ producers: [{ check: "lens.security", version: "abc@quick", ids: [dismissed, dismissed] }] },
+		],
+	])("refuses an account that %s", (reason, fields) => {
+		expect(check("account", { ...account, ...fields } as RecordJson)).toBe(reason);
+	});
+
+	it("takes an account whose producers share a check and differ in version, the one with none first", () => {
+		const producers = [
+			{ check: "static.biome", version: null, ids: null },
+			{ check: "static.biome", version: "2.0.0", ids: null },
+		];
+		expect(check("account", { ...account, producers })).toBeUndefined();
+		expect(check("account", { ...account, producers: [producers[1], producers[0]] } as RecordJson)).toBe(
+			"lists its producers out of order, or one twice",
 		);
 	});
 

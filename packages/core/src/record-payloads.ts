@@ -241,6 +241,36 @@ export const dismissalPayloadSchema = Type.Object(
 	strict,
 );
 
+/**
+ * An account record's payload: how a round accounts for every check its tier names. It holds the tier's checks in tier
+ * order, the IDs of the check and lens records it counts, the record it made for each check no record holds, the checks
+ * whose skip lets the review pass, and the sources whose findings the review counts, each with the finding IDs it keeps
+ * where it keeps only some.
+ */
+export const accountPayloadSchema = Type.Object(
+	{
+		v,
+		checks: Type.Array(text),
+		records: Type.Array(recordId),
+		filled: Type.Array(
+			Type.Object(
+				{
+					name: text,
+					status: literals(["skipped", "failed"]),
+					reason: nullable(text),
+					error: nullable(Type.String()),
+					version: nullable(text),
+					level: nullable(level),
+				},
+				strict,
+			),
+		),
+		allowSkip: Type.Array(text),
+		producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
+	},
+	strict,
+);
+
 export type CheckPayload = Static<typeof checkPayloadSchema>;
 export type LensPayload = Static<typeof lensPayloadSchema>;
 export type VerificationPayload = Static<typeof verificationPayloadSchema>;
@@ -248,6 +278,7 @@ export type WalkthroughPayload = Static<typeof walkthroughPayloadSchema>;
 export type TriagePayload = Static<typeof triagePayloadSchema>;
 export type TelemetryPayload = Static<typeof telemetryPayloadSchema>;
 export type DismissalPayload = Static<typeof dismissalPayloadSchema>;
+export type AccountPayload = Static<typeof accountPayloadSchema>;
 
 function shape(schema: TSchema, payload: RecordJson): string | undefined {
 	const [error] = Value.Errors(schema, payload);
@@ -275,6 +306,13 @@ function sightingsOf(values: readonly unknown[], check: string, version: string 
 	}
 	return undefined;
 }
+
+// Whether `values` is in the order `compare` sets, with none twice, so one account has one form.
+function ordered<T>(values: readonly T[], compare: (a: T, b: T) => number): boolean {
+	return values.every((value, index) => index === 0 || compare(values[index - 1] as T, value) < 0);
+}
+
+const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The payload check of each kind a review writes, and of a dismissal, for {@link SharedRecord.parse} and
@@ -309,6 +347,21 @@ export const reviewPayloads: PayloadChecks = {
 	walkthrough: (payload) => shape(walkthroughPayloadSchema, payload),
 	triage: (payload) => shape(triagePayloadSchema, payload),
 	telemetry: (payload) => shape(telemetryPayloadSchema, payload),
+	account: (payload) => {
+		const refused = shape(accountPayloadSchema, payload);
+		if (refused !== undefined) return refused;
+		const { checks, records, filled, allowSkip, producers } = payload as AccountPayload;
+		if (new Set(checks).size !== checks.length) return "names one check twice";
+		if (!ordered(records, byText)) return "lists its records out of ID order, or one twice";
+		if (!ordered(filled, (a, b) => byText(a.name, b.name))) return "fills its checks out of name order, or one twice";
+		if (!ordered(allowSkip, byText)) return "lists the skips it allows out of order, or one twice";
+		const source = (each: AccountPayload["producers"][number]) => `${each.check}@${each.version ?? ""}`;
+		if (!ordered(producers, (a, b) => byText(a.check, b.check) || byText(source(a), source(b))))
+			return "lists its producers out of order, or one twice";
+		for (const { check, ids } of producers)
+			if (ids !== null && !ordered(ids, byText)) return `keeps the findings of ${check} out of order, or one twice`;
+		return undefined;
+	},
 	dismissal: (payload) => {
 		const refused = shape(dismissalPayloadSchema, payload);
 		if (refused !== undefined) return refused;

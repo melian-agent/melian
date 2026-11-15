@@ -130,6 +130,71 @@ describe("ReviewRecords", () => {
 		expect(records().round([check], undefined, [], []).key).not.toBe(round.key);
 	});
 
+	it("writes an account in one form, keyed by the revision and the records it counts", () => {
+		const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
+		const check = records().check(
+			request,
+			{ name: "static.biome", status: "skipped", reason: "No lines", cause: "noProductionLines" },
+			[],
+		);
+		const kept = ["fedcba9876543210", "0123456789abcdef", "fedcba9876543210"];
+		const facts = {
+			checks: ["static.biome", "lens.security", "decisions.triage", "static.biome"],
+			records: [lens, check, lens],
+			filled: [
+				{ name: "lens.design", status: "failed", reason: "refused", error: "no route", level: "careful" },
+				{ name: "decisions.triage", status: "skipped", reason: "no decision provider is configured" },
+			] as const,
+			allowSkip: ["lens.design", "decisions.triage", "lens.design"],
+			producers: [
+				{ check: "static.biome", version: "2.0.0" },
+				{ check: "lens.security", version: "abc@quick", ids: kept },
+				{ check: "lens.security", version: "abc@careful" },
+				{ check: "guardrails" },
+				{ check: "static.biome", version: "2.0.0" },
+			],
+		};
+		const account = records().account(facts);
+		expect(SharedRecord.parse(account.toJSON(), reviewPayloads).id).toBe(account.id);
+		expect(account.revision).toBe(`${base}..${head}`);
+		expect(account.toJSON().payload).toEqual({
+			v: 1,
+			checks: ["static.biome", "lens.security", "decisions.triage"],
+			records: [check.id, lens.id].sort(),
+			filled: [
+				{
+					name: "decisions.triage",
+					status: "skipped",
+					reason: "no decision provider is configured",
+					error: null,
+					version: null,
+					level: null,
+				},
+				{
+					name: "lens.design",
+					status: "failed",
+					reason: "refused",
+					error: "no route",
+					version: null,
+					level: "careful",
+				},
+			],
+			allowSkip: ["decisions.triage", "lens.design"],
+			producers: [
+				{ check: "guardrails", version: null, ids: null },
+				{ check: "lens.security", version: "abc@careful", ids: null },
+				{ check: "lens.security", version: "abc@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
+				{ check: "static.biome", version: "2.0.0", ids: null },
+			],
+		});
+		const reordered = { ...facts, records: [check, lens], producers: [...facts.producers].reverse() };
+		expect(records().account(reordered).bytes).toBe(account.bytes);
+		expect(records().account({ ...facts, records: [check] }).key).not.toBe(account.key);
+		expect(records().account({ ...facts, allowSkip: [] }).key).toBe(account.key);
+		const round = records().round([account, lens, check], undefined, [], []);
+		expect(round.manifest()?.read).toContainEqual({ kind: "account", key: account.key, id: account.id });
+	});
+
 	it("keys telemetry by its round's ID and writes cost in millionths", () => {
 		const round = records().round([], undefined, [], []);
 		const record = records().telemetry(round, {

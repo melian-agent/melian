@@ -41,6 +41,7 @@ export const testPayloads: PayloadChecks = Object.fromEntries(
 		"verification",
 		"walkthrough",
 		"triage",
+		"account",
 		"telemetry",
 		"marker",
 		"dismissal",

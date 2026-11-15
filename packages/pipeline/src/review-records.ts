@@ -1,5 +1,7 @@
 import {
+	type AccountPayload,
 	type CheckPayload,
+	type CheckRecord,
 	type DismissalPayload,
 	type EnolaSnapshot,
 	type FindingSource,
@@ -194,6 +196,52 @@ export class ReviewRecords {
 			stages: details.stages.map(stage),
 		};
 		return this.#record("telemetry", round.id, payload);
+	}
+
+	/**
+	 * How a round accounts for its tier: the tier's checks, the check and lens records it counts, the record it made for
+	 * each check no record holds, the skips it allows, and the producers whose findings count. Its key is a request of
+	 * the revision and the IDs of the records it counts, so the round that names it names what it counted.
+	 */
+	account(facts: {
+		readonly checks: readonly string[];
+		readonly records: readonly SharedRecord[];
+		readonly filled: readonly (CheckRecord & { readonly status: "skipped" | "failed" })[];
+		readonly allowSkip: readonly string[];
+		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
+	}): SharedRecord {
+		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
+		const producers = [
+			...new Map(
+				facts.producers.map((producer) => {
+					const version = orNull(producer.version);
+					const ids = producer.ids === undefined ? null : [...new Set(producer.ids)].sort(compare);
+					return [`${producer.check}@${version ?? ""}`, { check: producer.check, version, ids }] as const;
+				}),
+			).values(),
+		].sort(
+			(a, b) =>
+				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
+		);
+		const payload: AccountPayload = {
+			v: 1,
+			checks: [...new Set(facts.checks)],
+			records,
+			filled: facts.filled
+				.map((record) => ({
+					name: record.name,
+					status: record.status,
+					reason: orNull(record.reason),
+					error: orNull(record.error),
+					version: orNull(record.version),
+					level: orNull(record.level),
+				}))
+				.sort((a, b) => compare(a.name, b.name)),
+			allowSkip: [...new Set(facts.allowSkip)].sort(compare),
+			producers,
+		};
+		const key = KeyedRequest.of("account", { revision: this.revision, records }).key;
+		return this.#record("account", key, payload);
 	}
 
 	/**

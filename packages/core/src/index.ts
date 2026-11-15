@@ -505,6 +505,8 @@ export {
 	SharedRecord,
 } from "./record.ts";
 export {
+	type AccountPayload,
+	accountPayloadSchema,
 	type CheckPayload,
 	checkPayloadSchema,
 	checkResultSchema,

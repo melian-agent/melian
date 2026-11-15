@@ -435,6 +435,7 @@ describe("SharedRecord", () => {
 			["a record's signer and signature appear together or not at all", envelope({ signer: "host" })],
 			["a record's signer is a non-empty string", envelope({ signer: "", signature })],
 			["a record's signature is 64 bytes in canonical base64", envelope({ signer: "host", signature: "x" })],
+			["an account names its revision", envelope({ kind: "account" })],
 			[
 				"a round names its revision",
 				envelope({ kind: "round", payload: { read: [], walkthrough: null, replaces: [], before: [] } }),

@@ -43,7 +43,30 @@ export type RoundManifest = {
 	before: string[];
 };
 
-const kinds = new Set(["check", "lens", "verification", "walkthrough", "triage", "round", "telemetry", "marker"]);
+const kinds = new Set([
+	"check",
+	"lens",
+	"verification",
+	"walkthrough",
+	"triage",
+	"round",
+	"account",
+	"telemetry",
+	"marker",
+]);
+// Rule 6: the kinds the job that runs a writer's head may hand over, and the one a fork's head may. The amendment of
+// 2026-11-16 puts an account beside a round: it comes from whoever makes the round.
+const writerRelayed = new Set([
+	"check",
+	"lens",
+	"verification",
+	"walkthrough",
+	"triage",
+	"round",
+	"account",
+	"telemetry",
+]);
+const forkRelayed = new Set(["check"]);
 // Rule 4: only what a command writes into a slot of its own may supersede.
 const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment", "comparison"]);
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
@@ -242,6 +265,7 @@ export class SharedRecord {
 		if ("signature" in envelope && (typeof envelope.signature !== "string" || !canonicalBase64(envelope.signature)))
 			throw invalid(`a record's signature is ${signatureBytes} bytes in canonical base64`);
 		if (envelope.kind === "round" && !("revision" in envelope)) throw invalid("a round names its revision");
+		if (envelope.kind === "account" && !("revision" in envelope)) throw invalid("an account names its revision");
 		return new SharedRecord(envelope as RecordEnvelope, bytes);
 	}
 
@@ -307,6 +331,23 @@ export class SharedRecord {
 	/** The rounds of its revision a round replaces; none for any other kind. */
 	replaces(): readonly string[] {
 		return this.manifest()?.replaces ?? [];
+	}
+
+	/**
+	 * Why the job that runs no head code refuses this record from the job that ran `run`'s head, by rule 6, or
+	 * `undefined` to take it. A writer's head hands over only the kinds a review writes, under its own changeset and
+	 * revision; a fork's head hands over only its check results. None of those kinds may supersede, so neither may they.
+	 */
+	refusedFromHeadCode(run: {
+		readonly changeset: string;
+		readonly revision: string;
+		readonly fork: boolean;
+	}): string | undefined {
+		if (!(run.fork ? forkRelayed : writerRelayed).has(this.kind))
+			return `the job that runs ${run.fork ? "a fork's" : "a writer's"} head hands over no ${this.kind} record`;
+		if (this.changeset !== run.changeset || this.revision !== run.revision)
+			return "a record from the head's job names another changeset or revision than its run's";
+		return undefined;
 	}
 
 	/** The bytes a signature covers: the canonical bytes of the whole envelope without `signature`. */
@@ -391,6 +432,25 @@ export class RecordSet {
 		);
 		const replaced = new Set(rounds.flatMap((round) => round.replaces()));
 		return rounds.filter((round) => !replaced.has(round.id));
+	}
+
+	/**
+	 * The account `round` names in its `read`, when it names exactly one and the set holds it under the round's
+	 * changeset and revision; otherwise `undefined`, and the round is not reviewed. An account the set set aside, such as
+	 * one from a writer whose records do not count, reads as none.
+	 */
+	account(round: SharedRecord): SharedRecord | undefined {
+		const named = round.manifest()?.read.filter((entry) => entry.kind === "account") ?? [];
+		if (named.length !== 1) return undefined;
+		const [entry] = named as [NamedRecord];
+		return this.#records.find(
+			(record) =>
+				record.id === entry.id &&
+				record.kind === "account" &&
+				record.key === entry.key &&
+				record.changeset === round.changeset &&
+				record.revision === round.revision,
+		);
 	}
 
 	/**
