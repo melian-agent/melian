@@ -270,6 +270,22 @@ describe("naming the remote", { timeout: 60_000 }, () => {
 		expect((error as RecordError).message).not.toMatch(hidden);
 	});
 
+	it("names a remote that carries a password alone without it", async () => {
+		const repository = await opened();
+		const error = await repository
+			.fetch("https://:FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
+			.catch((caught: unknown) => caught);
+		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
+		expect((error as RecordError).message).not.toMatch(hidden);
+	});
+
+	it("names a remote with no user or password exactly as it was given", async () => {
+		const repository = await opened();
+		await expect(repository.fetch("HTTPS://127.0.0.1:9/x.git", remote.branch, time())).rejects.toSatisfy(
+			unreachable(/^fetching melian\/state from HTTPS:\/\/127\.0\.0\.1:9\/x\.git failed: /),
+		);
+	});
+
 	it("names a remote that carries a token as its user alone without it", async () => {
 		const repository = await opened();
 		const error = await repository
