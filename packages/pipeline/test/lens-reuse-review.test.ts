@@ -128,7 +128,9 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 	const conversations = Object.fromEntries(
 		Object.entries(outcome.result).map(([key, { conversation }]) => [key.split("@")[0], conversation]),
 	);
-	const details = (await harness.snapshot(VerdictDocument, root, context))!.details![Revision.key(changeset.revision)]!;
+	const details = (await harness.snapshot(VerdictDocument, root, context))!.details![
+		Revision.key(changeset.revision)
+	]!;
 	const usage = Object.fromEntries(details.lenses.map(({ name, usage }) => [name, usage]));
 	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations, task: entry.task, usage };
 }
