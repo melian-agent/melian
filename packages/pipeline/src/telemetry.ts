@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import {
 	type CheckRecord,
 	deterministicChecks,
+	type LensCoverage,
 	type ReasoningValue,
 	type RequestReasoning,
 	Revision,
@@ -126,6 +127,8 @@ export type Stage = {
 	ended?: "tokens" | "tools";
 	/** For a lens at a level that probes, which of its two conversations this is. */
 	role?: "planner" | "prober";
+	/** For a lens, where its stored policy let it look. */
+	coverage?: LensCoverage;
 	/**
 	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the attacks in the plan it was
 	 * given and the ones it skipped; and how each probe ended.
@@ -850,6 +853,7 @@ export class TelemetryReader {
 						...(policy.lens?.limits === undefined ? {} : { limits: { ...policy.lens.limits } }),
 						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
 						...(role === undefined ? {} : { role }),
+						...(policy.lens?.coverage === undefined ? {} : { coverage: structuredClone(policy.lens.coverage) }),
 						...(probes === undefined
 							? {}
 							: {

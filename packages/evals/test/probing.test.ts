@@ -71,8 +71,9 @@ const paid = new StageTelemetry("base..head", [
 		id: "lens",
 		task: 1,
 		name: "melian.lens",
-		subject: "lens",
+		subject: "trust-boundary@1@deep",
 		outcome: "completed",
+		coverage: { scope: "", paths: ["**"], nearer: [] },
 		timing: "unavailable",
 		reused: false,
 		resumed: false,
@@ -1142,6 +1143,57 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("scores a miss only when its review shows a completed trust-boundary run whose scope holds its file", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const [start, end] = defect[0]!.lines();
+			const [stage] = paid.stages;
+			const lensRun = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				ran(defect, {
+					telemetry: new StageTelemetry(
+						"base..head",
+						stages.map((fields) => ({ ...stage!, ...fields })),
+					),
+				});
+			const runs = [
+				lensRun({ outcome: "ended" }),
+				lensRun({ subject: "contracts@1@careful" }),
+				lensRun({ coverage: { scope: "", paths: ["docs/**"], nearer: [] } }),
+				lensRun({ coverage: { scope: "", paths: ["**"], nearer: [dirname(at.file)] } }),
+				lensRun({ role: "prober" }),
+				lensRun({}),
+				lensRun({ outcome: "ended" }, {}),
+			];
+			const range = vi.fn(async () => runs.shift()!);
+			const names = ["cut", "skipped", "elsewhere", "nearer", "prober only", "covered", "one of two"];
+			const { status, lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						names.map((name) => ({ name, repo, base, head, ...at, lines: [start, end] })),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			const spent = paid.spend();
+			for (const name of names.slice(0, 5))
+				expect(lines).toContain(
+					`pair pass 1 ${name}: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds ${at.file}, ${spent}`,
+				);
+			expect(lines).toContain(`pair pass 1 covered: found, ${spent}`);
+			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 one of two: found, /));
+			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 5 reviews had none/));
+			expect(status).toBe(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review or one it could not score", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -1293,6 +1345,79 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("refuses, before any provider, a miss on a file the base's policy keeps from trust-boundary, and one empty or gone at the head", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const file = defect[0]!.properties.path!;
+			const rule = defect[0]!.ruleId;
+			const commit = (message: string) =>
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					message,
+				);
+			const policy = readFileSync(join(repo, "melian.yaml"), "utf8");
+			const floor = "    level: { floor: deep }\n";
+			const based = (branch: string, setting: string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, base);
+				writeFileSync(join(repo, "melian.yaml"), policy.replace(floor, `${floor}    ${setting}\n`));
+				commit(branch);
+				return git(repo, "rev-parse", "HEAD");
+			};
+			const narrowed = based("narrowed", `paths: ["**", "!${file}"]`);
+			const disabled = based("disabled", "enabled: false");
+			const changed = (branch: string, from: string, change: () => void) => {
+				git(repo, "checkout", "--quiet", "-b", branch, from);
+				git(repo, "checkout", "--quiet", "feature", "--", ".");
+				change();
+				git(repo, "add", "--all");
+				commit(branch);
+				return git(repo, "rev-parse", "HEAD");
+			};
+			const narrowedHead = changed("narrowed-head", narrowed, () => {});
+			const disabledHead = changed("disabled-head", disabled, () => {});
+			const empty = changed("empty", base, () => writeFileSync(join(repo, file), ""));
+			const kept = changed("kept", base, () => {});
+			const gone = changed("gone", kept, () => rmSync(join(repo, file)));
+			const entry = (name: string, from: string, to: string) => ({ name, repo, base: from, head: to, file, rule });
+			const using = runners();
+			const { status, errors } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile([
+						entry("narrowed", narrowed, narrowedHead),
+						entry("disabled", disabled, disabledHead),
+						entry("empty", base, empty),
+						entry("gone", kept, gone),
+					]),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: [narrowed, narrowedHead, disabled, disabledHead, base, empty, kept, gone].join(
+						",",
+					),
+				},
+				using,
+			);
+			expect({ status, errors }).toEqual({
+				status: 2,
+				errors: [
+					`The misses file cannot be scored: narrowed: the base's policy does not let the trust-boundary lens review ${file}; disabled: the base's policy does not let the trust-boundary lens review ${file}; empty: ${file} is empty at ${empty}; gone: ${file} does not exist at ${gone}`,
+				],
+			});
+			expect(using.models).not.toHaveBeenCalled();
+			expect(using.range).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("records what it measured: the checkout's commit, and each miss's names and the commits they resolve to", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -1424,6 +1549,12 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(run.notes).toEqual([
 				{ reason: expect.stringMatching(/planner found no attack/), checks: ["lens.trust-boundary"] },
 			]);
+			const { paths } = (await Lens.load(repo, { kind: "revision", commit: base }, ["x"])).find(
+				(lens) => lens.name === "trust-boundary",
+			)!;
+			const covered = run.telemetry.stages.filter((stage) => stage.name === "melian.lens");
+			expect(covered.length).toBeGreaterThan(0);
+			for (const stage of covered) expect(stage.coverage).toEqual({ scope: "", paths: [...paths], nearer: [] });
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

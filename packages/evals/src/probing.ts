@@ -8,7 +8,9 @@ import {
 	Lens,
 	type LensLevels,
 	type LensTier,
+	lensCovers,
 	lensTierSchema,
+	loadConfig,
 	type MelianConfig,
 	type MemberClaim,
 	openSource,
@@ -249,8 +251,9 @@ export class Miss {
 	}
 
 	/**
-	 * Why the miss cannot be scored on `target`, or `undefined` when it can: its file must be one the range changes, its
-	 * rule one the base's `trust-boundary` lens declares for that file, and its lines inside the file at the head.
+	 * Why the miss cannot be scored on `target`, or `undefined` when it can: its file must be one the range changes and
+	 * the base's policy lets `trust-boundary` review, its rule one that lens declares, and its lines inside the file,
+	 * which must hold some at the head.
 	 */
 	async refusal(
 		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
@@ -258,17 +261,42 @@ export class Miss {
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		if (!revision.files.some((file) => file.path === this.file))
 			return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
-		const lens = (await Lens.load(this.repo, { kind: "revision", commit: target.base }, [this.file])).find(
-			(each) => each.name === probingLens,
-		)!;
-		if (!lens.rules.some(({ id }) => id === this.rule))
+		const policy = { kind: "revision", commit: target.base } as const;
+		const paths = revision.paths();
+		const selection = Lens.select(
+			await Lens.load(this.repo, policy, paths),
+			(await loadConfig(this.repo, policy, ".")).config,
+			paths,
+		).find(({ lens, files }) => lens.name === probingLens && files.includes(this.file));
+		if (selection === undefined)
+			return `${this.name}: the base's policy does not let the ${probingLens} lens review ${this.file}`;
+		if (!selection.lens.rules.some(({ id }) => id === this.rule))
 			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
-		if (this.lines === undefined) return undefined;
 		const source = await openSource(this.repo, { kind: "revision", commit: target.head });
-		const text = (await source.readText(this.file, maxMissBytes)) ?? "";
+		const text = await source.readText(this.file, maxMissBytes);
+		if (text === undefined) return `${this.name}: ${this.file} does not exist at ${target.head}`;
+		if (text === "") return `${this.name}: ${this.file} is empty at ${target.head}`;
+		if (this.lines === undefined) return undefined;
 		const length = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 		if (this.lines[1] <= length) return undefined;
 		return `${this.name}: lines ${this.lines[0]}-${this.lines[1]} run past ${this.file}, which has ${length} lines at ${target.head}`;
+	}
+
+	/**
+	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
+	 * conversation, other than a prober, whose stored coverage holds the miss's file.
+	 */
+	unscoped(run: Pick<RangeRun, "telemetry">): string | undefined {
+		const looked = run.telemetry.stages.some(
+			(stage) =>
+				stage.name === "melian.lens" &&
+				stage.subject.startsWith(`${probingLens}@`) &&
+				stage.role !== "prober" &&
+				stage.outcome === "completed" &&
+				stage.coverage !== undefined &&
+				lensCovers(stage.coverage, this.file),
+		);
+		return looked ? undefined : `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -771,8 +799,10 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
+				const unscoped = miss.unscoped(run);
 				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
-				const unadjudicated = match.matched !== "lines" && (hit || match.near.length > 0);
+				const unadjudicated =
+					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
 				if (unadjudicated) failed.push(miss.name);
 				else if (hit) found += 1;
 				const span = (ranges: readonly (readonly [number, number])[]) =>
@@ -785,9 +815,11 @@ export async function measureProbing(
 					? hit
 						? "found"
 						: "missed"
-					: match.matched === "fix hunks"
-						? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
-						: "unadjudicated, no score: matched by file and rule alone";
+					: unscoped !== undefined
+						? `unadjudicated, no score: ${unscoped}`
+						: match.matched === "fix hunks"
+							? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
+							: "unadjudicated, no score: matched by file and rule alone";
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
