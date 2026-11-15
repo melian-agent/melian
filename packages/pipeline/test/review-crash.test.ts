@@ -588,6 +588,11 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			expect(await providersOf("melian.lenses", lens("P1"), reviewing({ q: 1, c: 1 }, decided))).toEqual(["d"]);
 		});
 
+		it("counts no provider for a lens the task copies, and every provider of the lens it asks", async () => {
+			const input = { lenses: [run("q", ["a", "b"]), run("r", ["e"])], reused: { r: { task: "t", outcomes: {} } } };
+			expect(await providersOf("melian.lenses", input, { phase: "spawn" })).toEqual(["a", "b"]);
+		});
+
 		it("drops a verifier provider the candidate already failed over from", async () => {
 			const input = { candidates: [{ key: "k", route: ["a", "b", "c"].map(model) }] };
 			expect(
