@@ -187,7 +187,7 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		const store = await plantedBeside({ [path]: { bytes: "{}" } });
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await expect(store.list(changeset)).rejects.toSatisfy(refusal(path));
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(path));
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).not.toContain(remote.oid(path));
 	});
 
 	it("is judged by its path alone, and its bytes are never read", async () => {
@@ -196,7 +196,7 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await store.list(other);
 		const oid = remote.oid(path);
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(oid);
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).not.toContain(oid);
 	});
 });
 
@@ -234,7 +234,7 @@ describe("a stray entry outside every changeset's folder", { timeout: 60_000 }, 
 		const store = await plantedBeside({ [path]: { bytes: "{}" } });
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await expect(store.list(other)).rejects.toSatisfy(refusal(path));
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(path));
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).not.toContain(remote.oid(path));
 	});
 
 	it("refuses every call on every changeset when changesets is a file", async () => {
@@ -289,7 +289,7 @@ describe("a record's size", { timeout: 60_000 }, () => {
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		const reader = await remote.open();
 		await expect(reader.list(changeset)).rejects.toSatisfy(refusal(past.path));
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(past.path));
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).not.toContain(remote.oid(past.path));
 	});
 });
 

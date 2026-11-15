@@ -16,7 +16,8 @@ function listing(entries: readonly TreeEntry[]): RecordRepository {
 	return {
 		entries: async () => [...entries],
 		sizes: async (oids: readonly string[]) => new Map(oids.map((oid) => [oid, bytes.length])),
-		blobs: async (oids: readonly string[]) => new Map(oids.map((oid) => [oid, Buffer.from(bytes)])),
+		blobs: async (sizes: ReadonlyMap<string, number>) =>
+			new Map([...sizes.keys()].map((oid) => [oid, Buffer.from(bytes)])),
 	} as unknown as RecordRepository;
 }
 
@@ -31,9 +32,10 @@ describe("the judgement a handle keeps", () => {
 	for (const field of Object.keys(entry) as (keyof TreeEntry)[])
 		it(`is judged again when only its ${field} changes`, async () => {
 			const judged = new Map<string, Judged>();
-			await StateTree.read(listing([entry]), "tip", judged, Deadline.after(systemClock, 30_000));
+			await StateTree.read(listing([entry]), "melian/state", "tip", judged, Deadline.after(systemClock, 30_000));
 			await StateTree.read(
 				listing([{ ...entry, [field]: changed[field] }]),
+				"melian/state",
 				"tip",
 				judged,
 				Deadline.after(systemClock, 30_000),
@@ -47,9 +49,10 @@ describe("the judgement a handle keeps", () => {
 
 	it("is kept when nothing changes", async () => {
 		const judged = new Map<string, Judged>();
-		await StateTree.read(listing([entry]), "tip", judged, Deadline.after(systemClock, 30_000));
+		await StateTree.read(listing([entry]), "melian/state", "tip", judged, Deadline.after(systemClock, 30_000));
 		await StateTree.read(
 			listing([{ ...entry, path: Buffer.from(entry.path) }]),
+			"melian/state",
 			"tip",
 			judged,
 			Deadline.after(systemClock, 30_000),

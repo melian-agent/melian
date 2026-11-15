@@ -5,6 +5,10 @@ import type { RecordRepository, TreeEntry } from "./repository.ts";
 // The largest record or cell the store reads or writes, in bytes.
 export const fileLimit = 4 * 1024 * 1024;
 
+// The most bytes of records and cells a tip may hold, since a call holds them all in memory. Provisional until a read
+// that does not hold the whole tip replaces it.
+export const tipLimit = 256 * 1024 * 1024;
+
 const cellName = "cell.json";
 const version = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -120,9 +124,10 @@ export class StateTree {
 		return new StateTree([]);
 	}
 
-	// Judges every entry of `commit`'s tree, reusing what `judged` already holds and adding what it reads.
+	// Judges every entry of `branch`'s tip `commit`, reusing what `judged` already holds and adding what it reads.
 	static async read(
 		repository: RecordRepository,
+		branch: string,
 		commit: string,
 		judged: Map<string, Judged>,
 		deadline: Deadline,
@@ -130,11 +135,26 @@ export class StateTree {
 		const entries = await repository.entries(commit, deadline);
 		// Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
 		const keyOf = (entry: TreeEntry) => JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
+		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
+		const sizes = await repository.sizes(readable, deadline);
+		const small = new Map(
+			readable.flatMap((oid) => {
+				const size = sizes.get(oid) ?? Number.POSITIVE_INFINITY;
+				return size <= fileLimit ? [[oid, size] as const] : [];
+			}),
+		);
+		const total = [...small.values()].reduce((sum, size) => sum + size, 0);
+		if (total > tipLimit)
+			throw new RecordError(
+				"unreachable",
+				`${branch} holds ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; disposing changesets brings it under`,
+			);
 		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
-		const wanted = fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid);
-		const sizes = await repository.sizes([...new Set(wanted)], deadline);
-		const small = [...new Set(wanted.filter((oid) => (sizes.get(oid) ?? Number.POSITIVE_INFINITY) <= fileLimit))];
-		const blobs = await repository.blobs(small, deadline);
+		const wanted = new Set(fresh.map((entry) => entry.oid).filter((oid) => small.has(oid)));
+		const blobs = await repository.blobs(
+			new Map([...wanted].map((oid) => [oid, small.get(oid) as number])),
+			deadline,
+		);
 		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
 		return new StateTree(entries.map((entry) => judged.get(keyOf(entry)) as Judged));
 	}

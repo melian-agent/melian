@@ -73,10 +73,74 @@ describe("reading the tree", { timeout: 60_000 }, () => {
 		const reader = await remote.open();
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		expect(keys(await reader.list(changeset))).toEqual(["a", "b"]);
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).toHaveLength(2);
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).toHaveLength(2);
 		blobs.mockClear();
 		expect(keys(await reader.list(changeset))).toEqual(["a", "b"]);
-		expect(blobs.mock.calls.flatMap(([oids]) => oids)).toEqual([]);
+		expect(blobs.mock.calls.flatMap(([sizes]) => [...sizes.keys()])).toEqual([]);
+	});
+});
+
+describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
+	const limit = 256 * 1024 * 1024;
+	const fileLimit = 4 * 1024 * 1024;
+
+	// Reports the blobs it is asked about as `total` bytes in all, raising each, but none past what one file may be.
+	function reportTotal(total: number) {
+		const sizes = RecordRepository.prototype.sizes;
+		return vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(async function (
+			this: RecordRepository,
+			...args
+		) {
+			const found = await sizes.apply(this, args);
+			let left = total - [...found.values()].reduce((sum, size) => sum + size, 0);
+			for (const [oid, size] of found) {
+				const more = Math.min(fileLimit - size, left);
+				found.set(oid, size + more);
+				left -= more;
+			}
+			expect(left).toBe(0);
+			return found;
+		});
+	}
+
+	async function reader() {
+		await (await remote.open()).add(Array.from({ length: 65 }, (_, n) => check(`r${n}`)));
+		return remote.open();
+	}
+
+	it("reads a tip whose records and cells total the limit", async () => {
+		const store = await reader();
+		reportTotal(limit);
+		expect(await store.list(changeset)).toHaveLength(65);
+	});
+
+	it("fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing", async () => {
+		const store = await reader();
+		reportTotal(limit + 1);
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		await expect(store.list(changeset)).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state holds ${limit + 1} bytes of records and cells at its tip, past the store's limit of ${limit}; disposing changesets brings it under`,
+		});
+		expect(blobs).not.toHaveBeenCalled();
+	});
+
+	it("fails as unreachable when git gives more bytes than the sizes it reported", async () => {
+		const store = await reader();
+		const sizes = RecordRepository.prototype.sizes;
+		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(async function (
+			this: RecordRepository,
+			...args
+		) {
+			const found = await sizes.apply(this, args);
+			const [oid, size] = [...found][0]!;
+			found.set(oid, size - 1);
+			return found;
+		});
+		await expect(store.list(changeset)).rejects.toMatchObject({
+			code: "unreachable",
+			message: expect.stringMatching(/^reading blobs in \S+ gave more bytes than their sizes$/),
+		});
 	});
 });
 

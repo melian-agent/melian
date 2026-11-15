@@ -100,12 +100,17 @@ export class RecordRepository {
 		}
 	}
 
-	async run(args: readonly string[], deadline: Deadline, options: { input?: string; index?: string } = {}) {
+	async run(
+		args: readonly string[],
+		deadline: Deadline,
+		options: { input?: string; index?: string; maxBytes?: number } = {},
+	) {
 		await checkConfiguration(this.path);
 		const left = deadline.left();
 		if (left <= 0) throw unreachable(`git ${args[0]} in ${this.path} ran past its deadline`);
 		return git(this.path, ["--git-dir", this.path, ...overrides, ...args], {
 			...(options.input === undefined ? {} : { input: options.input }),
+			...(options.maxBytes === undefined ? {} : { maxBytes: options.maxBytes }),
 			deadlineMs: left,
 			env: { ...environment, ...(options.index === undefined ? {} : { GIT_INDEX_FILE: options.index }) },
 		});
@@ -205,11 +210,15 @@ export class RecordRepository {
 		return sizes;
 	}
 
-	// The bytes of the blobs `oids` name.
-	async blobs(oids: readonly string[], deadline: Deadline): Promise<Map<string, Buffer>> {
+	// The bytes of the blobs `sizes` names, read no further than the sizes it gives.
+	async blobs(sizes: ReadonlyMap<string, number>, deadline: Deadline): Promise<Map<string, Buffer>> {
 		const blobs = new Map<string, Buffer>();
-		if (oids.length === 0) return blobs;
-		const result = await this.run(["cat-file", "--batch"], deadline, { input: `${oids.join("\n")}\n` });
+		if (sizes.size === 0) return blobs;
+		const oids = [...sizes.keys()];
+		// `cat-file --batch` prints a header line, the blob's bytes and a newline for each.
+		const maxBytes = [...sizes].reduce((sum, [oid, size]) => sum + `${oid} blob ${size}\n`.length + size + 1, 0);
+		const result = await this.run(["cat-file", "--batch"], deadline, { input: `${oids.join("\n")}\n`, maxBytes });
+		if (result.truncated) throw unreachable(`reading blobs in ${this.path} gave more bytes than their sizes`);
 		if (result.code !== 0) throw unreachable(`reading blobs failed in ${this.path}`, result);
 		const bytes = result.stdoutBytes;
 		for (let at = 0; at < bytes.length; ) {

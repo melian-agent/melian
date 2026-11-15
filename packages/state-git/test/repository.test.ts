@@ -150,9 +150,11 @@ describe("reading objects", { timeout: 60_000 }, () => {
 
 	it("refuses an object that is missing or is no blob", async () => {
 		const { repository, tip } = await fetched();
-		await expect(repository.blobs([absent], time())).rejects.toSatisfy(unreachable(/is no blob/));
+		await expect(repository.blobs(new Map([[absent, 0]]), time())).rejects.toSatisfy(unreachable(/is no blob/));
 		const tree = (await repository.run(["rev-parse", `${tip}^{tree}`], time())).stdout.trim();
-		await expect(repository.blobs([tree], time())).rejects.toSatisfy(unreachable(/is no blob/));
+		await expect(repository.blobs(await repository.sizes([tree], time()), time())).rejects.toSatisfy(
+			unreachable(/is no blob/),
+		);
 	});
 
 	it("fails as unreachable when git cannot read the blobs", async () => {
@@ -163,7 +165,9 @@ describe("reading objects", { timeout: 60_000 }, () => {
 			const result = await run.apply(this, args);
 			return args[0][0] === "cat-file" && args[0][1] === "--batch" ? { ...result, code: 128 } : result;
 		});
-		await expect(repository.blobs([entry!.oid], time())).rejects.toSatisfy(unreachable(/^reading blobs failed/));
+		await expect(repository.blobs(await repository.sizes([entry!.oid], time()), time())).rejects.toSatisfy(
+			unreachable(/^reading blobs failed/),
+		);
 	});
 });
 

@@ -44,4 +44,5 @@ Melian writes that repository's configuration when it creates it, and checks the
 ## What this gives up
 
 - A stray entry inside one changeset's folder is carried in every later commit until a writer removes it.
-- The adapter's repository is a second copy of the branch's tip on disk. It holds one fetch of the tip, not the branch's history.
+- The adapter's repository is a second copy of the branch on disk. It keeps every object it has fetched, so it grows with the branch's history. The maintainer accepted that on 2026-11-15, until [issue #451](https://github.com/melian-agent/melian/issues/451) collects old objects.
+- A call holds the whole tip in memory. A tip whose records and cells total more than 256 MiB fails every call as `unreachable` until writers dispose of changesets. The limit is provisional, on the coordinator's answer of 2026-11-15; [issue #455](https://github.com/melian-agent/melian/issues/455) designs a read that does not hold the whole tip.

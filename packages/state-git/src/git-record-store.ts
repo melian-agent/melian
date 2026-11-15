@@ -86,7 +86,9 @@ export class GitRecordStore implements RecordStore {
 		return {
 			tip,
 			tree:
-				tip === undefined ? StateTree.empty() : await StateTree.read(this.#repository, tip, this.#judged, deadline),
+				tip === undefined
+					? StateTree.empty()
+					: await StateTree.read(this.#repository, this.#branch, tip, this.#judged, deadline),
 		};
 	}
 
