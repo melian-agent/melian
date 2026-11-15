@@ -2,6 +2,7 @@ import {
 	type AccountPayload,
 	type CheckPayload,
 	type CheckRecord,
+	canonicalJson,
 	type DismissalPayload,
 	type EnolaSnapshot,
 	type FindingSource,
@@ -136,7 +137,7 @@ export class ReviewRecords {
 			sightings: sorted(sightings),
 			// Delivery evidence waits on the coverage ledger, which works it out from the transcript.
 			delivery: null,
-			check: check === undefined ? null : decided(check),
+			check: check === undefined ? null : (decided(check) as DecidedCheck),
 		};
 		return this.#record("lens", run.request, payload);
 	}
@@ -154,7 +155,7 @@ export class ReviewRecords {
 				})),
 			dismissals: [...facts.dismissals].sort((a, b) => compare(a.finding, b.finding)),
 			outcomes: [...facts.outcomes].sort((a, b) => compare(a.candidate, b.candidate)),
-			check: facts.check === undefined ? null : decided(facts.check),
+			check: facts.check === undefined ? null : (decided(facts.check) as DecidedCheck),
 		};
 		return this.#record("verification", key, payload);
 	}
@@ -241,16 +242,17 @@ export class ReviewRecords {
 			v: 1,
 			checks: [...new Set(facts.checks)],
 			records,
-			filled: facts.filled
-				.map((record) => ({
-					name: record.name,
-					status: record.status,
-					reason: orNull(record.reason),
-					error: orNull(record.error),
-					version: orNull(record.version),
-					level: orNull(record.level),
-				}))
-				.sort((a, b) => compare(a.name, b.name)),
+			// Two records alike in every field fill one entry, since an account names each once.
+			filled: [
+				...new Map(
+					facts.filled.map((record) => {
+						const entry = { ...decided(record), status: record.status };
+						return [canonicalJson(entry), entry] as const;
+					}),
+				),
+			]
+				.sort(([a, x], [b, y]) => compare(x.name, y.name) || compare(a, b))
+				.map(([, entry]) => entry),
 			allowSkip: [...new Set(facts.allowSkip)].sort(compare),
 			producers,
 		};
@@ -364,11 +366,11 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 	}
 }
 
-function decided(record: CheckRecord): DecidedCheck {
+function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: CheckRecord["status"] } {
 	const { lineage, coverage, budgetEnded } = record;
 	return {
 		name: record.name,
-		status: record.status as DecidedCheck["status"],
+		status: record.status,
 		reason: orNull(record.reason),
 		error: orNull(record.error),
 		version: orNull(record.version),

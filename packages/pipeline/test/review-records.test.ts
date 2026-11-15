@@ -145,6 +145,7 @@ describe("ReviewRecords", () => {
 			filled: [
 				{ name: "lens.design", status: "failed", reason: "refused", error: "no route", level: "careful" },
 				{ name: "decisions.triage", status: "skipped", reason: "no decision provider is configured" },
+				{ name: "lens.design", status: "failed", reason: "refused", error: "no route", level: "careful" },
 			] as const,
 			allowSkip: ["lens.design", "decisions.triage", "lens.design"],
 			producers: [
@@ -170,6 +171,10 @@ describe("ReviewRecords", () => {
 					error: null,
 					version: null,
 					level: null,
+					budgetEnded: null,
+					caveats: null,
+					coverage: null,
+					lineage: null,
 				},
 				{
 					name: "lens.design",
@@ -178,6 +183,10 @@ describe("ReviewRecords", () => {
 					error: "no route",
 					version: null,
 					level: "careful",
+					budgetEnded: null,
+					caveats: null,
+					coverage: null,
+					lineage: null,
 				},
 			],
 			allowSkip: ["decisions.triage", "lens.design"],

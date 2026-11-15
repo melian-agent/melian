@@ -4,7 +4,7 @@ import { severitySchema } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import { Finding, type StoredFinding } from "./findings.ts";
 import { scrutinyLevels } from "./lens.ts";
-import type { PayloadChecks, RecordJson } from "./record.ts";
+import { canonicalJson, type PayloadChecks, type RecordJson } from "./record.ts";
 import { verificationSchema } from "./verification.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -67,36 +67,38 @@ const budgetEnd = Type.Object(
 	{ budget: Type.Union([Type.Literal("tokens"), Type.Literal("tools")]), limit: count, tokens: count, tools: count },
 	strict,
 );
+// A check record's fields as a review decided them, with `null` where the record leaves one out.
+const decidedFields = {
+	name: text,
+	reason: nullable(Type.String()),
+	error: nullable(Type.String()),
+	version: nullable(text),
+	level: nullable(level),
+	budgetEnded: nullable(budgetEnd),
+	caveats: nullable(Type.Array(Type.String())),
+	coverage: nullable(Type.Object({ graph: nullable(text), review: nullable(text), test: nullable(text) }, strict)),
+	lineage: nullable(
+		Type.Object(
+			{
+				model: text,
+				thinking: nullable(Type.Object({ level: text, wanted: text, by: text }, strict)),
+				wanted: nullable(text),
+				by: text,
+				moved: nullable(Type.Object({ by: text, from: text, to: text }, strict)),
+				outside: Type.Boolean(),
+			},
+			strict,
+		),
+	),
+};
+
 /**
  * The check record a run decided, as the review that ran it counted it, with `null` where the record leaves a field out:
  * a lens's after the plan judged its model, or the verifier's. A reader takes it as the run's result, so a record
  * without one reads as not reviewed.
  */
 export const decidedCheckSchema = Type.Object(
-	{
-		name: text,
-		status: literals(["ran", "ended", "failed"]),
-		reason: nullable(Type.String()),
-		error: nullable(Type.String()),
-		version: nullable(text),
-		level: nullable(level),
-		budgetEnded: nullable(budgetEnd),
-		caveats: nullable(Type.Array(Type.String())),
-		coverage: nullable(Type.Object({ graph: nullable(text), review: nullable(text), test: nullable(text) }, strict)),
-		lineage: nullable(
-			Type.Object(
-				{
-					model: text,
-					thinking: nullable(Type.Object({ level: text, wanted: text, by: text }, strict)),
-					wanted: nullable(text),
-					by: text,
-					moved: nullable(Type.Object({ by: text, from: text, to: text }, strict)),
-					outside: Type.Boolean(),
-				},
-				strict,
-			),
-		),
-	},
+	{ ...decidedFields, status: literals(["ran", "ended", "failed"]) },
 	strict,
 );
 
@@ -289,19 +291,7 @@ export const accountPayloadSchema = Type.Object(
 		v,
 		checks: Type.Array(text),
 		records: Type.Array(recordId),
-		filled: Type.Array(
-			Type.Object(
-				{
-					name: text,
-					status: literals(["skipped", "failed"]),
-					reason: nullable(text),
-					error: nullable(Type.String()),
-					version: nullable(text),
-					level: nullable(level),
-				},
-				strict,
-			),
-		),
+		filled: Type.Array(Type.Object({ ...decidedFields, status: literals(["skipped", "failed"]) }, strict)),
 		allowSkip: Type.Array(text),
 		producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
 	},
@@ -393,7 +383,8 @@ export const reviewPayloads: PayloadChecks = {
 		const { checks, records, filled, allowSkip, producers } = payload as AccountPayload;
 		if (new Set(checks).size !== checks.length) return "names one check twice";
 		if (!ordered(records, byText)) return "lists its records out of ID order, or one twice";
-		if (!ordered(filled, (a, b) => byText(a.name, b.name))) return "fills its checks out of name order, or one twice";
+		if (!ordered(filled, (a, b) => byText(a.name, b.name) || byText(canonicalJson(a), canonicalJson(b))))
+			return "fills its checks out of order, or one twice";
 		if (!ordered(allowSkip, byText)) return "lists the skips it allows out of order, or one twice";
 		const source = (each: AccountPayload["producers"][number]) => `${each.check}@${each.version ?? ""}`;
 		if (!ordered(producers, (a, b) => byText(a.check, b.check) || byText(source(a), source(b))))
