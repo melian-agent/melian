@@ -313,7 +313,12 @@ export async function startVerification(
 	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const { key } = verificationRequest(input, reruns);
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
-	if (unlockModels !== undefined) {
+	const providers = asking.flatMap((candidate) => candidate.route.map((model) => model.provider));
+	// The task the read below found to attach to without unlocking. The commit acts on that alone: any other outcome
+	// writes nothing, and the commit runs again with every asking candidate's route unlocked, since another review can
+	// commit between the read and the commit.
+	let attachesTo: number | undefined;
+	if (unlockModels !== undefined && asking.length > 0) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(input.revision)]
 			?.verification;
@@ -334,8 +339,8 @@ export async function startVerification(
 			previous?.input === key &&
 			record !== undefined &&
 			(record.state.status !== "terminal" || (answered && (!failed || !rerun)));
-		if (!attaches && asking.length > 0)
-			await unlockModels(asking.flatMap((candidate) => candidate.route.map((model) => model.provider)));
+		if (attaches) attachesTo = previous.task;
+		else await unlockModels(providers);
 	}
 	// A reused outcome's claims keep the verdicts the wave that reached it stored.
 	const kept = new Set(
@@ -343,66 +348,75 @@ export async function startVerification(
 			input.reused?.[candidate.key] === undefined ? [] : candidate.state.claims.map(claimKey),
 		),
 	);
-	return root.commit(async (tx) => {
-		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[Revision.key(input.revision)];
-		if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
-		if (!stillOwns(known, lensTask)) return undefined;
-		const previous = known?.verification;
-		const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
-		const results =
-			record?.state.status === "terminal" && record.state.outcome.status === "completed"
-				? (record.state.outcome.result as VerificationResult)
-				: undefined;
-		const failed =
-			results !== undefined &&
-			input.candidates.some((candidate) => {
-				const result = results[candidate.key];
-				return result?.status !== "done" || refused(result.model);
-			});
-		if (previous?.input === key) {
-			if (failed && !rerun && input.candidates.every((candidate) => results![candidate.key] !== undefined))
-				return previous.task as TaskId<VerificationResult>;
-			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
-				return previous.task as TaskId<VerificationResult>;
-		}
-		// Another review's final task may have retired a wave this input reuses, or one the caller ran for a candidate it
-		// holds; that review then decides those claims.
-		const standing = VerificationWaves.of(
-			await tx.doc(VerificationWavesDocument, input.root),
-			Revision.key(input.revision),
-			known?.task,
-		);
-		for (const candidate of input.candidates)
-			if (
-				(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
-				standing.standing(
-					candidateKey(candidate),
-					candidate.state.claims.map(claimKey),
-					waveVersion(input.version),
-				) === undefined
-			)
-				return undefined;
-		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
-		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it, and a
-		// wave that has not finished, which another review's watcher may have started, loses its authority to write.
-		const waves = (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)];
-		if (waves !== undefined) {
-			const finished = [];
-			for (const wave of waves.waves)
-				if ((await tx.task(wave.task as TaskId))!.state.status === "terminal") finished.push(wave);
-			for (const wave of finished)
-				wave.candidates = wave.candidates.filter((candidate) => candidate.claims.every((claim) => kept.has(claim)));
-			waves.waves = finished;
-		}
-		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
-		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
-		index.reviews[Revision.key(input.revision)] = {
-			...entry,
-			verification: { task: created, input: key },
-		};
-		return created;
-	}, context);
+	const unlockFirst = Symbol("unlock first");
+	const commit = () =>
+		root.commit(async (tx): Promise<TaskId<VerificationResult> | typeof unlockFirst | undefined> => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const known = index.reviews[Revision.key(input.revision)];
+			if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
+			if (!stillOwns(known, lensTask)) return undefined;
+			const previous = known?.verification;
+			const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
+			const results =
+				record?.state.status === "terminal" && record.state.outcome.status === "completed"
+					? (record.state.outcome.result as VerificationResult)
+					: undefined;
+			const failed =
+				results !== undefined &&
+				input.candidates.some((candidate) => {
+					const result = results[candidate.key];
+					return result?.status !== "done" || refused(result.model);
+				});
+			const attach =
+				previous?.input === key &&
+				((failed && !rerun && input.candidates.every((candidate) => results![candidate.key] !== undefined)) ||
+					(record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed))));
+			if (attachesTo !== undefined && !(attach && previous.task === attachesTo)) return unlockFirst;
+			if (attach) return previous.task as TaskId<VerificationResult>;
+			// Another review's final task may have retired a wave this input reuses, or one the caller ran for a candidate it
+			// holds; that review then decides those claims.
+			const standing = VerificationWaves.of(
+				await tx.doc(VerificationWavesDocument, input.root),
+				Revision.key(input.revision),
+				known?.task,
+			);
+			for (const candidate of input.candidates)
+				if (
+					(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
+					standing.standing(
+						candidateKey(candidate),
+						candidate.state.claims.map(claimKey),
+						waveVersion(input.version),
+					) === undefined
+				)
+					return undefined;
+			await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
+			// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it, and a
+			// wave that has not finished, which another review's watcher may have started, loses its authority to write.
+			const waves = (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)];
+			if (waves !== undefined) {
+				const finished = [];
+				for (const wave of waves.waves)
+					if ((await tx.task(wave.task as TaskId))!.state.status === "terminal") finished.push(wave);
+				for (const wave of finished)
+					wave.candidates = wave.candidates.filter((candidate) =>
+						candidate.claims.every((claim) => kept.has(claim)),
+					);
+				waves.waves = finished;
+			}
+			const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
+			const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
+			index.reviews[Revision.key(input.revision)] = {
+				...entry,
+				verification: { task: created, input: key },
+			};
+			return created;
+		}, context);
+	const committed = await commit();
+	if (committed !== unlockFirst) return committed;
+	await unlockModels!(providers);
+	attachesTo = undefined;
+	return (await commit()) as TaskId<VerificationResult> | undefined;
 }
 
 /** What identifies a candidate's verification: the candidate less its claims' stored verdicts and speaker. */

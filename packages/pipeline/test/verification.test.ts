@@ -2828,6 +2828,35 @@ describe("verification ownership and budgets", () => {
 			await harness.waitForTask(first, context);
 		}
 	});
+	it("unlocks the candidates' routes when it read a task to attach to and another verification meanwhile replaced it", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		scripts();
+		scripts();
+		const getTask = harness.getTask.bind(harness);
+		let racer: TaskId | undefined;
+		// Once this call has read the finished task it means to attach to, a verification of another version replaces it,
+		// so this call's commit finds an index entry its read never saw and creates a task of its own.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (racer === undefined && args[0] === first)
+				racer = (await startVerification(harness, { ...stored, version: "v2" }, selection, false, context))!;
+			return read;
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(next).not.toBe(first);
+		expect(next).not.toBe(racer);
+		expect(unlock.mock.calls).toEqual([[["faux"]]]);
+		await harness.waitForTask(racer!, context).catch(() => undefined);
+		await harness.waitForTask(next, context);
+	});
 	it("starts a final verification for a revision the index holds no entry for", async () => {
 		const stored = await input();
 		const revision = Revision.key(changeset.revision);
