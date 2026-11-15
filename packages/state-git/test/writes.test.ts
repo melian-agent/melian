@@ -323,7 +323,11 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		});
 		const written = await store.writeCell(changeset, version, `"second"`).catch((error: unknown) => error);
 		vi.restoreAllMocks();
-		expect(written).toMatchObject({ code: "unreachable", message: expect.stringContaining("may have landed") });
+		expect(written).toMatchObject({
+			code: "unreachable",
+			message: expect.stringContaining("may have landed"),
+			cause: expect.objectContaining({ message: "melian/state has not moved since the push" }),
+		});
 		expect((await store.readCell(changeset)).value).toBe(`"second"`);
 	});
 
