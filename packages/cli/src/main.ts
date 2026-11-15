@@ -92,6 +92,8 @@ Options:
                          Review the pull request only at this base and head, as the pull request reports them;
                          refuse before reading a model credential if it moved (review).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
+  --records dir:<path>   Export the review's records to a directory store as its tasks finish, when the base's
+                         melian.yaml sets trust.writers: true; otherwise say so and export nothing (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
                          stored; a completed triage decision is never asked again (review).
@@ -172,6 +174,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				records: { type: "string" },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -222,6 +225,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
+		if (name !== "review" && values.records !== undefined)
+			throw new UsageError("--records is only available for review");
+		if (values.records !== undefined && !/^dir:./.test(values.records))
+			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
 		if (name !== "review" && (expectBase !== undefined || expectHead !== undefined))
@@ -280,6 +287,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						walkthrough: values.walkthrough,
 						trustHead: values["trust-head"],
 						cold: values.cold,
+						...(values.records === undefined ? {} : { records: values.records }),
 						...(values.json ? { json: true } : {}),
 					},
 				);

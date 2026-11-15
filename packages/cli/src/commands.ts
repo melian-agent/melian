@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
 	Changeset,
 	checksOfTier,
 	describeInheritance,
+	DirectoryRecordStore,
 	FindingsLog,
 	Lens,
 	loadConfig,
@@ -15,6 +17,7 @@ import {
 	ReviewPlan,
 	type ReviewProvider,
 	Revision,
+	reviewPayloads,
 	Standards,
 	type StoredRunDetails,
 	userFiles,
@@ -186,6 +189,8 @@ export async function review(
 		readonly cold?: boolean;
 		readonly json?: boolean;
 		readonly notes?: boolean;
+		// Where the review exports its records, as `dir:<path>`, resolved against the working directory.
+		readonly records?: string;
 		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
 		// since is refused before any model credential is read.
 		readonly expect?: { readonly base: string; readonly head: string };
@@ -265,6 +270,18 @@ export async function review(
 				}
 			: loaded;
 	const tier = loaded.stages["pull-request"] ?? "full";
+	// A record counts only from a writer the base trusts, so a store is opened only under that base's policy.
+	const trustsWriters =
+		options.records === undefined
+			? false
+			: (source.kind === "revision"
+					? loaded
+					: (await loadConfig(repoRoot, { kind: "revision", commit: changeset.revision.base }, ".")).config
+				).trust.writers;
+	if (options.records !== undefined && !trustsWriters)
+		io.stderr(
+			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them\n",
+		);
 	spans.step("secrets");
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
@@ -304,7 +321,10 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	let walkthrough: Promise<void> | undefined;
+	let records: DirectoryRecordStore | undefined;
 	try {
+		if (options.records !== undefined && trustsWriters)
+			records = await DirectoryRecordStore.open(resolve(io.cwd, options.records.slice("dir:".length)), reviewPayloads);
 		spans.step("resume");
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
 		const resumed = await reviewHarness.resumedProviders(context);
@@ -405,6 +425,7 @@ export async function review(
 				origin,
 				writer,
 				lensesStarted: summarize,
+				...(records === undefined ? {} : { records }),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
@@ -460,6 +481,7 @@ export async function review(
 			);
 		throw error;
 	} finally {
+		await records?.close();
 		await reviewHarness.close(context);
 	}
 }

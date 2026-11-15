@@ -16,8 +16,10 @@ import { fileURLToPath } from "node:url";
 import {
 	type Decider,
 	type DecisionRequest,
+	DirectoryRecordStore,
 	findingId,
 	Rendering,
+	reviewPayloads,
 	type StoredVerdict,
 	standardsLimits,
 	Verdict,
@@ -535,6 +537,54 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("passed");
 		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
+	});
+
+	it("exports the review's records to a directory store when the base trusts writers", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "main", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(0);
+		expect(review.stderr).not.toContain("records not exported");
+		const changesets = readdirSync(join(store, "changesets"));
+		expect(changesets).toHaveLength(1);
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const kinds = (await records.list(changesets[0]!)).map(({ kind }) => kind);
+		await records.close();
+		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
+	});
+
+	it("exports nothing, and says why in one line, when the base does not trust writers", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+		git(repo, "checkout", "--quiet", "-b", "untrusting", "main");
+		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}trust:\n  writers: false\n`);
+		git(repo, "add", "melian.yaml");
+		git(repo, "commit", "--quiet", "-m", "untrusting policy");
+		git(repo, "checkout", "--quiet", feature);
+		git(repo, "merge", "--quiet", "--no-edit", "untrusting");
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "untrusting", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(0);
+		expect(review.stderr.split("\n").filter((line) => line.includes("records not exported"))).toEqual([
+			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them",
+		]);
+		expect(existsSync(store)).toBe(false);
+	});
+
+	it("refuses --records outside review, and a store that is not a directory", () => {
+		expect(melian(root, ["findings", "main", "--records", "dir:x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining("--records is only available for review"),
+		});
+		expect(melian(root, ["review", "main", "--records", "x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining('--records takes a store such as "dir:<path>"'),
+		});
+		expect(melian(root, ["review", "main", "--records", "dir:"])).toMatchObject({ status: 64 });
 	});
 
 	it("refuses a decision provider it has no adapter for, saying how to triage without one (issue #24)", () => {
