@@ -101,6 +101,7 @@ async function review(
 		readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
 		readonly callers?: CallerContext;
 		readonly config?: MelianConfig;
+		readonly rerun?: boolean;
 	} = {},
 ) {
 	const asked = new Set<string>();
@@ -298,6 +299,57 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(again.task).not.toBe(first.task);
 		// Every run once its commit found it could not attach, then the verifier's wave.
 		expect(unlocked).toEqual([["faux", "faux"], ["faux"]]);
+	});
+
+	it("unlocks every run's provider when it read a task to attach to and a review that ran meanwhile replaced it", async () => {
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		scriptConversations(fake, [
+			{ match: correctness, replies: [() => fauxAssistantMessage("No findings.")] },
+			{
+				match: contracts,
+				replies: [() => fauxAssistantMessage([], { stopReason: "error", errorMessage: "provider down" })],
+			},
+		]);
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+				{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+			],
+		}).catch(() => undefined);
+		const root = (await harness.root(context)).id;
+		const entry = async () =>
+			(await harness.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!.task;
+		const failed = await entry();
+		const unlocked: string[][] = [];
+		const getTask = harness.getTask.bind(harness);
+		let racer: Promise<Awaited<ReturnType<typeof review>>> | undefined;
+		// Once this review has read the failed task it means to attach to, another reviews the same lenses with --rerun,
+		// so a live task asks contracts again, and this review's commit finds that task under its own selection.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (racer === undefined && args[0] === failed) {
+				racer = review(lenses, [], { rerun: true });
+				while ((await entry()) === failed) await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+			return read;
+		});
+		const again = await review(lenses, [], {
+			unlockModels: async (providers) => {
+				unlocked.push([...providers]);
+			},
+		});
+		expect(again.task).toBe((await racer!).task);
+		expect(again.task).not.toBe(failed);
+		// Every run once its commit found a task other than the one it read.
+		expect(unlocked[0]).toEqual(["faux", "faux"]);
 	});
 
 	it("attaches to the first review's lens task when the same lenses come in another order", async () => {
