@@ -469,6 +469,13 @@ it("reads a download whole, in many chunks, before writing any of it", async () 
 	expect({ pulled, written }).toEqual({ pulled: 64, written: [] });
 });
 
+it("keeps a downloaded archive readable by its owner alone", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+	const binary = await cache.materialise(testTool(bytes), "darwin-arm64");
+	expect((await lstat(join(dirname(binary), "archive"))).mode & 0o777).toBe(0o600);
+});
+
 it("writes nothing of a download whose digest does not match", async () => {
 	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
 	const cache = await ToolCache.open(root, { fetch: async () => new Response(Buffer.from("not the pinned archive")) });
