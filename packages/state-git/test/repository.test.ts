@@ -1,6 +1,7 @@
-import { access, chmod, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { access, chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { RecordError } from "@melian-agent/core";
+import { RecordError, stderrLimit } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Deadline, systemClock } from "../src/deadline.ts";
 import { RecordRepository } from "../src/repository.ts";
@@ -15,6 +16,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	await remote.close();
 });
 
@@ -62,6 +64,16 @@ async function marker(): Promise<{ program: string; ran: () => Promise<boolean> 
 				() => false,
 			),
 	};
+}
+
+// A hook script that prints `said` and then more than core's git keeps of standard error.
+async function flooding(path: string, said = ""): Promise<void> {
+	await mkdir(join(path, ".."), { recursive: true });
+	await writeFile(
+		path,
+		`#!/bin/sh\nprintf '%s' "${said}" >&2\nhead -c ${stderrLimit + 1} /dev/zero | tr '\\0' x >&2\n`,
+	);
+	await chmod(path, 0o755);
 }
 
 function unreachable(message: RegExp) {
@@ -242,6 +254,41 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 			unreachable(/^deleting refs\/melian\/fetch\/\S+ failed in /),
 		);
 	});
+	// A git, first on PATH, that runs every command but those whose arguments hold `command`. Those it counts, and answers
+	// by printing `said` and then more of standard error than core's git keeps.
+	async function floodOn(command: string, said: string): Promise<() => Promise<number>> {
+		const bin = join(remote.root, "bin");
+		const calls = join(remote.root, "flooded");
+		const real = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+		await flooding(join(remote.root, "flood.sh"), said);
+		await mkdir(bin, { recursive: true });
+		await writeFile(
+			join(bin, "git"),
+			`#!/bin/sh\ncase " $* " in *" ${command} "*) echo >> '${calls}'; exec '${join(remote.root, "flood.sh")}';; esac\nexec '${real}' "$@"\n`,
+			{ mode: 0o755 },
+		);
+		vi.stubEnv("PATH", `${bin}:${process.env.PATH}`);
+		return async () => (await readFile(calls, "utf8")).length;
+	}
+
+	it("fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods", async () => {
+		await (await remote.open()).add([check("a")]);
+		const repository = await opened();
+		const calls = await floodOn("fetch", "fatal: couldn't find remote ref refs/heads/melian/state\n");
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toSatisfy(
+			unreachable(new RegExp(`^git fetch in \\S+ wrote more than ${stderrLimit} bytes to standard error$`)),
+		);
+		expect(await calls()).toBe(1);
+	});
+
+	it("fails as unreachable, and never retries, when deleting its ref names a held lock and then floods", async () => {
+		const { repository } = await fetched();
+		const calls = await floodOn("update-ref -d", "fatal: cannot lock ref 'refs/melian/fetch/x': File exists\n");
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toSatisfy(
+			unreachable(new RegExp(`^git update-ref in \\S+ wrote more than ${stderrLimit} bytes to standard error$`)),
+		);
+		expect(await calls()).toBe(1);
+	});
 });
 
 describe("reading the objects themselves", { timeout: 60_000 }, () => {
@@ -371,10 +418,18 @@ describe("building a commit", { timeout: 60_000 }, () => {
 });
 
 describe("pushing", { timeout: 60_000 }, () => {
-	it("answers timedOut when git is stopped at its deadline", async () => {
+	it("answers stopped when git is stopped at its deadline", async () => {
 		const { repository, tip } = await fetched();
 		const commit = await repository.commit(tip, [], time());
-		expect(await repository.push(remote.url, remote.branch, commit, tip, oneMillisecond())).toBe("timedOut");
+		expect(await repository.push(remote.url, remote.branch, commit, tip, oneMillisecond())).toBe("stopped");
+	});
+
+	it("answers stopped when the remote floods standard error after the push lands, and the remote holds the commit", async () => {
+		const { repository, tip } = await fetched();
+		const commit = await repository.commit(tip, [], time());
+		await flooding(join(remote.path, "hooks", "post-receive"));
+		expect(await repository.push(remote.url, remote.branch, commit, tip, time())).toBe("stopped");
+		expect(remote.tip()).toBe(commit);
 	});
 
 	it("runs no program a remote spelled as an option names, and fails as unreachable", async () => {

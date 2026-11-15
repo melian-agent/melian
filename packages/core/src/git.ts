@@ -26,8 +26,11 @@ export interface GitOptions {
 	readonly env?: Readonly<Record<string, string>>;
 }
 
-// The most of git's standard error kept. A fetch or push carries there whatever the remote or a credential helper
-// sends, so without a bound one could fill memory inside any deadline. Melian's own tests see at most 250 bytes.
+/**
+ * The most bytes of a Git command's standard error that `git` keeps; past it, `git` stops the command and rejects with
+ * `gitOutputTooLarge`. A fetch or push carries there whatever the remote or a credential helper sends. No command in
+ * Melian's own tests writes more than 250 bytes there.
+ */
 export const stderrLimit = 4 * 1024 * 1024;
 
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours

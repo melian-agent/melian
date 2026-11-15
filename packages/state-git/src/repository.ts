@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { type GitResult, git, RecordError } from "@melian-agent/core";
+import { ChangesetError, type GitResult, git, RecordError, stderrLimit } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 import type { Deadline } from "./deadline.ts";
 
@@ -47,8 +47,9 @@ export type TreeEntry = { readonly mode: string; readonly type: string; readonly
 // A file a commit adds, by its bytes, or removes, by `null`.
 export type TreeChange = { readonly path: string; readonly bytes: string | null };
 
-// How a push ended: it landed, a newer tip refused it, or it ran past its deadline and may have landed.
-export type PushOutcome = "landed" | "stale" | "timedOut";
+// How a push ended: it landed, a newer tip refused it, or Melian stopped git before it ended, at its deadline or
+// past the standard error core's git keeps, and it may have landed.
+export type PushOutcome = "landed" | "stale" | "stopped";
 
 // A command that talks to the remote quotes none of git's text or the remote's: git prints a URL's query, a URL the
 // user's configuration rewrote, and whatever the remote sends, any of which may carry a token. This says where to look.
@@ -62,6 +63,11 @@ function refusal(line: string): string {
 	if (flag.startsWith("[remote rejected]")) return "the remote rejected it";
 	if (flag.startsWith("[rejected]")) return "git rejected it";
 	return "git refused it";
+}
+
+// Core's git stopped a command that wrote more standard error than it keeps, and gave no result to read.
+function overflowed(error: unknown): boolean {
+	return error instanceof ChangesetError && error.code === "gitOutputTooLarge";
 }
 
 function unreachable(message: string, result?: GitResult, cause?: unknown): RecordError {
@@ -137,6 +143,13 @@ export class RecordRepository {
 			...(options.maxBytes === undefined ? {} : { maxBytes: options.maxBytes }),
 			deadlineMs: left,
 			env: { ...environment, ...(options.index === undefined ? {} : { GIT_INDEX_FILE: options.index }) },
+		}).catch((cause: unknown) => {
+			if (!overflowed(cause)) throw cause;
+			throw unreachable(
+				`git ${args[0]} in ${this.path} wrote more than ${stderrLimit} bytes to standard error`,
+				undefined,
+				cause,
+			);
 		});
 	}
 
@@ -299,7 +312,7 @@ export class RecordRepository {
 	}
 
 	// Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push
-	// a newer tip refused is `stale`; one stopped at `deadline` is `timedOut`, and may have landed.
+	// a newer tip refused is `stale`; one Melian stopped before git ended is `stopped`, and may have landed.
 	async push(
 		url: string,
 		branch: string,
@@ -308,19 +321,26 @@ export class RecordRepository {
 		deadline: Deadline,
 	): Promise<PushOutcome> {
 		const ref = `refs/heads/${branch}`;
-		const result = await this.run(
-			[
-				"push",
-				"--porcelain",
-				"--quiet",
-				`--force-with-lease=${ref}:${expected ?? ""}`,
-				"--end-of-options",
-				url,
-				`${commit}:${ref}`,
-			],
-			deadline,
-		);
-		if (result.timedOut) return "timedOut";
+		let result: GitResult;
+		try {
+			result = await this.run(
+				[
+					"push",
+					"--porcelain",
+					"--quiet",
+					`--force-with-lease=${ref}:${expected ?? ""}`,
+					"--end-of-options",
+					url,
+					`${commit}:${ref}`,
+				],
+				deadline,
+			);
+		} catch (cause) {
+			// A remote's hook can write after the ref is updated, so a push stopped for its standard error may have landed.
+			if (cause instanceof RecordError && overflowed(cause.cause)) return "stopped";
+			throw cause;
+		}
+		if (result.timedOut) return "stopped";
 		if (result.code === 0) return "landed";
 		const refused = result.stdout.split("\n").find((line) => line.startsWith("!\t"));
 		if (refused !== undefined && lostRace.test(refused)) return "stale";
