@@ -278,22 +278,66 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		});
 	});
 
-	it("counts as lost when the branch is gone, and pushes again", async () => {
+	it("counts as lost when the branch it was built on is gone, and pushes again", async () => {
 		const store = await remote.open();
-		const push = stopPush(false);
+		await store.add([check("first")]);
+		const push = stopPush(false, () => remote.git(["update-ref", "-d", `refs/heads/${remote.branch}`]));
 		await store.add([check("created")]);
 		expect(push).toHaveBeenCalledTimes(2);
 		expect(keys(await store.list(changeset))).toEqual(["created"]);
 	});
 
-	it("counts as lost without deepening when the tip is still the one it was built on", async () => {
+	it("fails as unreachable, saying it may have landed, when the branch it would create is still absent", async () => {
+		const store = await remote.open();
+		const push = stopPush(false);
+		await expect(store.add([check("unsure")])).rejects.toMatchObject({
+			code: "unreachable",
+			message: expect.stringContaining("may have landed"),
+		});
+		expect(push).toHaveBeenCalledTimes(1);
+	});
+
+	it("never answers false for a cell write whose push lands after the landed check read the tip", async () => {
+		const store = await remote.open();
+		expect(await store.writeCell(changeset, undefined, `"first"`)).toBe(true);
+		const { version } = await store.readCell(changeset);
+		const push = RecordRepository.prototype.push;
+		const fetch = RecordRepository.prototype.fetch;
+		let late: (() => Promise<unknown>) | undefined;
+		vi.spyOn(RecordRepository.prototype, "push").mockImplementationOnce(async function (
+			this: RecordRepository,
+			...args
+		) {
+			late = () => push.apply(this, args);
+			return "timedOut";
+		});
+		vi.spyOn(RecordRepository.prototype, "fetch").mockImplementation(async function (
+			this: RecordRepository,
+			...args
+		) {
+			const tip = await fetch.apply(this, args);
+			const land = late;
+			late = undefined;
+			if (land !== undefined) expect(await land()).toBe("landed");
+			return tip;
+		});
+		const written = await store.writeCell(changeset, version, `"second"`).catch((error: unknown) => error);
+		vi.restoreAllMocks();
+		expect(written).toMatchObject({ code: "unreachable", message: expect.stringContaining("may have landed") });
+		expect((await store.readCell(changeset)).value).toBe(`"second"`);
+	});
+
+	it("fails as unreachable, saying it may have landed, without deepening, when the tip is still the one it was built on", async () => {
 		const store = await remote.open();
 		await store.add([check("first")]);
 		await store.add([check("second")]);
-		stopPush(false);
+		const push = stopPush(false);
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		await store.add([check("retried")]);
-		expect(fetch.mock.calls.map((call) => call[3] ?? 1)).toEqual([1, 1, 1]);
-		expect(keys(await store.list(changeset))).toEqual(["first", "retried", "second"]);
+		await expect(store.add([check("unsure")])).rejects.toMatchObject({
+			code: "unreachable",
+			message: expect.stringContaining("may have landed"),
+		});
+		expect(push).toHaveBeenCalledTimes(1);
+		expect(fetch.mock.calls.map((call) => call[3] ?? 1)).toEqual([1, 1]);
 	});
 });
