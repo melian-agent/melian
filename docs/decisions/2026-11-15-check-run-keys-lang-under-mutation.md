@@ -12,7 +12,7 @@ The request-keys decision leaves out `PATH`, `HOME`, `TMPDIR` and `LANG`, the fo
 
 With mutation on, the check run's request holds `LANG` beside Stryker's facts, the head's trust and the cold flag: the value the tools run with, or null when the Melian process has none. With mutation off it holds no `LANG`, so a macOS host and a Linux builder with different locales still share Biome's, tsc's, Enola's and the guardrails' results. A locale such as `en_AU.UTF-8` names a language, not a machine, so keying it is within rule 6 of [the identity guideline](../guidelines/identity.md#rules).
 
-The key reads `LANG` from the same list the static runner passes to every tool, and the check tasks store the value it read. The runner passes that value to every command in place of the process's, so the value keyed is the value a tool sees, even in a task that a crash left and a shell with another locale resumed. A task an earlier build stored has no value, and its tools run with the process's.
+The key reads `LANG` from the same list the static runner passes to every tool, and the check tasks store the value it read. The runner passes that value to every command in place of the process's, so the value keyed is the value a tool sees, even in a task that a crash left and a shell with another locale resumed. A task an earlier build stored has no value, and its tools run with the process's. Both tasks take a new version for the field, `melian.checks` 3 and `melian.check` 4, so a build from before it refuses a task this one stored rather than run its tools under that build's own locale; a version-3 check keeps the timing start it recorded.
 
 ## What stays out, and why
 

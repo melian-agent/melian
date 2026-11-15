@@ -361,10 +361,13 @@ function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>
 function checkTask(environment: NodeJS.ProcessEnv) {
 	return defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, CheckRunRecord>({
 		name: "melian.check",
-		version: 3,
-		migrate: (input, checkpoint) => ({
+		version: 4,
+		// Version 4 adds `lang`, so a build that would run the tools under its own locale refuses the task. A version-3
+		// task already records its timing start.
+		migrate: (input, checkpoint, from) => ({
 			input: input as unknown as CheckInput,
-			checkpoint: { ...(checkpoint as { phase: "run" }), legacyTiming: true },
+			checkpoint:
+				from === 3 ? (checkpoint as { phase: "run" }) : { ...(checkpoint as { phase: "run" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "run" }),
 		phases: {
@@ -508,7 +511,12 @@ function skippedReason(check: string): string | undefined {
 // A tier's checks on one revision: one child task per deterministic check, waited on together.
 const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	name: "melian.checks",
-	version: 2,
+	// Version 3 adds `lang`, so a build that would run the tools under its own locale refuses the task.
+	version: 3,
+	migrate: (input, checkpoint, from) => {
+		if (from !== 2) throw new Error(`melian.checks cannot resume a version-${from} task`);
+		return { input: input as unknown as ChecksInput, checkpoint: checkpoint as unknown as ChecksState };
+	},
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {

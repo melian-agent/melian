@@ -50,3 +50,18 @@ which has no `lang`. The reopen test in `test/check-lang.test.ts` remaps the
 repository path and commits, creates the task through a token of version 3,
 closes SQLite, and resumes today's checks extension under another `LANG`,
 which the tools then run with.
+
+## A tier that runs a tool
+
+`checks-v2.json` records the `melian.checks` task that main wrote at
+`088aa41f1da8eb250aefcaf28ae930f69a9a5bee`, before its input carried `lang`.
+A Vitest test in a detached worktree of that commit, with `npm ci` from its
+lockfile, ran that commit's own `runChecks` with memory storage, fake models,
+a node execution environment and a `fast` tier of `static.biome` alone, on the
+same repository change as `check-v3.json`. After the run completed,
+`storage.task` supplied the stored kind, version and input. The checkpoint is
+not recorded: the reopen test creates the task through a version-2 token whose
+`initial` is main's, `{ phase: "start" }`. The test in
+`test/check-lang.test.ts` remaps the repository path and commits, closes
+SQLite, and resumes today's checks extension under another `LANG`. The task
+migrates to version 3, and its check runs with the process's `LANG`.
