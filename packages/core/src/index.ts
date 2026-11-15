@@ -486,6 +486,14 @@ export {
 	survivorClasses,
 } from "./mutation-inventory.ts";
 export {
+	type ProcessControl,
+	type ProcessEntry,
+	ProcessTable,
+	parseProcesses,
+	type RecordedProcess,
+	terminateRecorded,
+} from "./process-tree.ts";
+export {
 	type MembershipCandidate,
 	MembershipError,
 	PullRequestMembership,
