@@ -90,6 +90,8 @@ export interface ProbePolicy {
 export interface ProbeSandbox {
 	/** Which system's programs and libraries a probe reads. */
 	readonly platform: "darwin" | "linux";
+	/** Which sandbox confines a probe, by a name the keys that reuse a probe's results hold. */
+	readonly kind: string;
 	/** Why a probe cannot run here, or `undefined` when it can. */
 	unavailable(): string | undefined;
 	open(): Promise<void>;
@@ -497,6 +499,46 @@ function runtimePackage(): string {
 	return dirname(dirname(fileURLToPath(import.meta.resolve("@anthropic-ai/sandbox-runtime"))));
 }
 
+// The paths a probe's policy is built from: its scratch and linked installs, and the host's Node, npm and system paths.
+type PolicyPaths = {
+	readonly platform: "darwin" | "linux";
+	readonly scratch: string;
+	readonly installs: readonly string[];
+	readonly node: readonly string[];
+	readonly npmrc: string;
+	readonly runtime: string;
+	readonly system: readonly string[];
+};
+
+// What a probe may read and write, for its paths.
+function policyFor(paths: PolicyPaths): ProbePolicy {
+	const run = join(paths.scratch, "run");
+	const tree = join(paths.scratch, "tree");
+	return {
+		read: [tree, ...paths.installs, ...paths.node, paths.runtime, join(paths.scratch, "probe"), run, ...paths.system],
+		// A granted Node prefix's `etc` holds the global npmrc, and npm's own directory its builtin one; either can carry a
+		// registry token.
+		deny: ["/", ...paths.node.map((path) => join(path, "etc")), paths.npmrc],
+		denyGlobs: [tree, ...paths.installs].flatMap((root) => denyGlobs.map((pattern) => posix.join(root, pattern))),
+		write: [run],
+		// sandbox-runtime keeps this writable for itself whatever the policy says.
+		denyWrite: paths.platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
+	};
+}
+
+// The shell command the sandbox runs for a probe in `scratch`.
+function commandFor({ scratch, node, timeout }: { scratch: string; node: string; timeout: number }): string {
+	const tree = join(scratch, "tree");
+	const run = join(scratch, "run");
+	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} ${quote(join(scratch, "probe", runnerName))}`;
+}
+
+// The environment a probe in `scratch` starts with. spawn leaves out a variable whose value is undefined.
+function environmentFor({ scratch, node, lang }: { scratch: string; node: string; lang: string | undefined }) {
+	const run = join(scratch, "run");
+	return { PATH: `${dirname(node)}:/usr/bin:/bin`, HOME: join(run, "home"), TMPDIR: join(run, "tmp"), LANG: lang };
+}
+
 /** The parts of sandbox-runtime's manager a probe uses. */
 export type SandboxRuntime = Pick<
 	typeof SandboxManager,
@@ -510,6 +552,7 @@ const sessionsOf = new WeakMap<SandboxRuntime, { count: number; queue: Promise<v
 /** sandbox-runtime as a {@link ProbeSandbox}. Its manager is one per process, so one session serves every open probe. */
 export class RuntimeSandbox implements ProbeSandbox {
 	readonly platform: "darwin" | "linux";
+	readonly kind = "sandbox-runtime";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
@@ -694,6 +737,9 @@ export class Probe {
 		return new Probe(scratch, installs, limits, sandbox);
 	}
 
+	/** The sandbox a probe runs under when its options name none. */
+	static readonly sandbox: ProbeSandbox = runtime;
+
 	/** Whether a probe can run on this machine, by running an empty one. */
 	static async availability(sandbox: ProbeSandbox = runtime): Promise<ProbeAvailability> {
 		try {
@@ -726,31 +772,15 @@ export class Probe {
 	/** What the probe may read and write, as the sandbox is given it. */
 	get policy(): ProbePolicy {
 		const { platform } = this.#sandbox;
-		const system = systemReads[platform].filter((path) => existsSync(path));
-		const run = join(this.#scratch, "run");
-		const tree = join(this.#scratch, "tree");
-		return {
-			read: [
-				tree,
-				...this.#installs,
-				...nodeReads(process.execPath),
-				runtimePackage(),
-				join(this.#scratch, "probe"),
-				run,
-				...system,
-			],
-			// A granted Node prefix's `etc` holds the global npmrc, and npm's own directory its builtin one; either can carry a
-			// registry token.
-			deny: [
-				"/",
-				...nodeReads(process.execPath).map((path) => join(path, "etc")),
-				join(dirname(dirname(realpathSync(process.execPath))), "lib", "node_modules", "npm", "npmrc"),
-			],
-			denyGlobs: [tree, ...this.#installs].flatMap((root) => denyGlobs.map((pattern) => posix.join(root, pattern))),
-			write: [run],
-			// sandbox-runtime keeps this writable for itself whatever the policy says.
-			denyWrite: platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
-		};
+		return policyFor({
+			platform,
+			scratch: this.#scratch,
+			installs: this.#installs,
+			node: nodeReads(process.execPath),
+			npmrc: join(dirname(dirname(realpathSync(process.execPath))), "lib", "node_modules", "npm", "npmrc"),
+			runtime: runtimePackage(),
+			system: systemReads[platform].filter((path) => existsSync(path)),
+		});
 	}
 
 	/** Runs the probe once, within its time and output limits, and ends every process it started. */
@@ -758,11 +788,9 @@ export class Probe {
 		if (this.#closed) throw new ProbeError("closed", "the probe is closed");
 		if (this.#running) throw new ProbeError("invalidProbe", "a probe runs once at a time");
 		this.#running = true;
-		const home = join(this.#scratch, "run", "home");
-		const temporary = join(this.#scratch, "run", "tmp");
 		const node = realpathSync(process.execPath);
 		const tree = join(this.#scratch, "tree");
-		const command = `cd ${quote(tree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && ulimit -t ${Math.ceil(backstop(this.#timeout) / 1000)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", runnerName))}`;
+		const command = commandFor({ scratch: this.#scratch, node, timeout: this.#timeout });
 		const chunks: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
@@ -791,13 +819,7 @@ export class Probe {
 			);
 			child = ProbeProcess.start(argv, {
 				cwd: tree,
-				env: {
-					PATH: `${dirname(node)}:/usr/bin:/bin`,
-					HOME: home,
-					TMPDIR: temporary,
-					// spawn leaves out a variable whose value is undefined.
-					LANG: process.env.LANG,
-				},
+				env: environmentFor({ scratch: this.#scratch, node, lang: process.env.LANG }),
 				timeoutMs: this.#timeout,
 				output: (chunk) => {
 					if (truncated) return;
