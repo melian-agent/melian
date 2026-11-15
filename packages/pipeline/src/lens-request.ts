@@ -1,5 +1,14 @@
 import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
-import { lensListedTools, lensToolLimits, recordPlan, reportFinding, runProbe, skipAttack } from "./lens-tools.ts";
+import { piVersions } from "./harness.ts";
+import {
+	injectionPolicySection,
+	lensListedTools,
+	lensToolLimits,
+	recordPlan,
+	reportFinding,
+	runProbe,
+	skipAttack,
+} from "./lens-tools.ts";
 import { probingWording } from "./probing.ts";
 import { identityNonce, injectionPolicy } from "./untrusted.ts";
 
@@ -41,7 +50,8 @@ type ToolSpec = {
 
 type LensRequestBody = {
 	run: RecordJson;
-	policy: string;
+	pi: { durable: string; ai: string };
+	policy: { section: string; text: string };
 	tools: ToolSpec[];
 	limits: typeof lensToolLimits;
 	continue: string;
@@ -64,8 +74,9 @@ const specOf = ({ name, description, parameters, outputLimits, argumentBytes }: 
 });
 
 /**
- * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the injection policy
- * that renders ahead of its instructions, each tool its planner and prober are offered by name, description and
+ * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the installed Pi
+ * Durable and pi-ai releases that render and send it, the injection policy that renders ahead of its instructions with
+ * the name of the section that tags it, each tool its planner and prober are offered by name, description and
  * schema, the wording a failover sends, the revision's base and head, `escalateAt`, the escalation by its next run's
  * key, the whole probing wording table for a run that probes or escalates, and the standards it quotes as their
  * source gave them. Best-effort context stays out, as rule 5 of the shared record decision says:
@@ -82,7 +93,8 @@ export function lensRequest<Run extends LensRequestRun>(
 		"lens",
 		{
 			run: requestJson(keyed),
-			policy: injectionPolicy(identityNonce),
+			pi: { ...piVersions },
+			policy: { section: injectionPolicySection.key, text: injectionPolicy(identityNonce) },
 			tools: [...read, reportFinding, ...(probes ? [recordPlan] : [])].map(specOf),
 			limits: lensToolLimits,
 			continue: continuePrompt,

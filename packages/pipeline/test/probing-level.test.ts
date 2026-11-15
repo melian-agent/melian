@@ -3226,8 +3226,8 @@ describe("a level that probes", () => {
 // run's request key holds: the run's stored instructions, prompt and prober instructions, the injection policy, the
 // continue prompt, or a template of the probing wording table. Its limits: it reads turns, not tool results, and only
 // the turns this script drives; text inside a boundary is the change's, so it is set aside. Pi wraps each system prompt
-// section in tags named for its key, Pi's own `instructions` and the lens extension's policy section; how Pi renders the
-// request is the one exclusion, so those tags alone pass unkeyed.
+// section in tags named for its key. The key holds the policy section's name, so its tags count as keyed; Pi's own
+// `instructions` tags are Pi Durable's rendering, which the key holds by its installed release.
 describe("the turns a lens run is sent", () => {
 	const boundary = /<untrusted-[^\s>]+(?: label="[^"]*")?>[\s\S]*?<\/untrusted-[^\s>]+>/g;
 	const linesOf = (text: string) =>

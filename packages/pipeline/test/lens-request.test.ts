@@ -1,8 +1,17 @@
+import { readFileSync } from "node:fs";
 import type { LensToolName, Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
+import { piVersions } from "../src/harness.ts";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
-import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
+import {
+	injectionPolicySection,
+	lensListedTools,
+	recordPlan,
+	reportFinding,
+	runProbe,
+	skipAttack,
+} from "../src/lens-tools.ts";
 import { probingWording } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
@@ -117,7 +126,7 @@ describe("lensRequest", () => {
 
 	it("keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition", () => {
 		const { request } = build(sample);
-		expect(request.policy).toBe(injectionPolicy(identityNonce));
+		expect(request.policy).toEqual({ section: "injection_policy", text: injectionPolicy(identityNonce) });
 		expect(request.continue).toBe(continuePrompt);
 		expect(request.tools).toEqual(
 			[lensListedTools.read_file, lensListedTools.search, reportFinding, recordPlan].map(specOf),
@@ -125,6 +134,36 @@ describe("lensRequest", () => {
 		expect(request.probing).toEqual({
 			tools: [lensListedTools.read_file, lensListedTools.search, reportFinding, runProbe, skipAttack].map(specOf),
 		});
+	});
+
+	it("keys the installed Pi Durable and pi-ai releases, which render the conversation and send it", () => {
+		const pins = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).dependencies;
+		expect(build(sample).request.pi).toEqual({
+			durable: pins["@earendil-works/pi-durable"],
+			ai: pins["@earendil-works/pi-ai"],
+		});
+	});
+
+	it("asks again when Pi Durable, pi-ai or the policy's section name changes", () => {
+		const before = build(sample).key;
+		const versions = piVersions as { durable: string; ai: string };
+		const policy = injectionPolicySection as { key: string };
+		const changes: [object, string, string][] = [
+			[versions, "durable", "9.9.9"],
+			[versions, "ai", "9.9.9"],
+			[policy, "key", "policy"],
+		];
+		for (const [target, field, value] of changes) {
+			const record = target as Record<string, string>;
+			const original = record[field]!;
+			try {
+				record[field] = value;
+				expect(build(sample).key, field).not.toBe(before);
+			} finally {
+				record[field] = original;
+			}
+		}
+		expect(build(sample).key).toBe(before);
 	});
 
 	it("keys each offered tool's output limits and argument bound, and the bounds every tool cuts what it shows to", () => {
