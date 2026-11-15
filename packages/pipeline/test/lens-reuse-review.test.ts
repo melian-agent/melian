@@ -258,6 +258,30 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(unlocked).toEqual([["faux"], ["faux", "faux"], ["faux"]]);
 	});
 
+	it("unlocks every run's provider when it meant to attach and a review that ran meanwhile leaves it a run to ask", async () => {
+		const first = await review(lenses);
+		const unlocked: string[][] = [];
+		const unlockModels = async (providers: readonly string[]) => {
+			unlocked.push([...providers]);
+		};
+		const getTask = harness.getTask.bind(harness);
+		let raced = false;
+		// Once this review has read the finished task it means to attach to, another reviews only the correctness lens,
+		// so this review's commit finds a task of another selection and runs both lenses afresh.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (!raced) {
+				raced = true;
+				await review(lenses.filter(({ name }) => name === "correctness"));
+			}
+			return read;
+		});
+		const again = await review(lenses, [], { unlockModels });
+		expect(again.task).not.toBe(first.task);
+		// Every run once its commit found it could not attach, then the verifier's wave.
+		expect(unlocked).toEqual([["faux", "faux"], ["faux"]]);
+	});
+
 	it("attaches to the first review's lens task when the same lenses come in another order", async () => {
 		const first = await review(lenses);
 		const again = await review([...lenses].reverse());
