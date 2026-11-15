@@ -1163,11 +1163,12 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				lensRun({ coverage: { scope: "", paths: ["docs/**"], nearer: [] } }),
 				lensRun({ coverage: { scope: "", paths: ["**"], nearer: [dirname(at.file)] } }),
 				lensRun({ role: "prober" }),
+				lensRun({ coverage: undefined }),
 				lensRun({}),
 				lensRun({ outcome: "ended" }, {}),
 			];
 			const range = vi.fn(async () => runs.shift()!);
-			const names = ["cut", "skipped", "elsewhere", "nearer", "prober only", "covered", "one of two"];
+			const names = ["cut", "skipped", "elsewhere", "nearer", "prober only", "uncovered", "covered", "one of two"];
 			const { status, lines } = await measure(
 				{
 					...env,
@@ -1181,13 +1182,13 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				runners({ range }),
 			);
 			const spent = paid.spend();
-			for (const name of names.slice(0, 5))
+			for (const name of names.slice(0, 6))
 				expect(lines).toContain(
 					`pair pass 1 ${name}: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds ${at.file}, ${spent}`,
 				);
 			expect(lines).toContain(`pair pass 1 covered: found, ${spent}`);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 one of two: found, /));
-			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 5 reviews had none/));
+			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 6 reviews had none/));
 			expect(status).toBe(1);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
