@@ -399,13 +399,13 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
-		// A golden measures its lenses, so the checks a host runs without a model skip with leave, and any other check
-		// that did not finish leaves the review not reviewed.
+		// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
+		// golden's own allowSkip could excuse the lens it measures.
 		const tier = config.stages["pull-request"] ?? "full";
 		const hostChecks = checksOfTier(config, tier).filter((name) =>
 			(deterministicChecks as readonly string[]).includes(name),
 		);
-		config = { ...config, checks: { allowSkip: [...config.checks.allowSkip, ...hostChecks] } };
+		config = { ...config, checks: { allowSkip: hostChecks } };
 		const checks = hostChecks.map(
 			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
 		);
