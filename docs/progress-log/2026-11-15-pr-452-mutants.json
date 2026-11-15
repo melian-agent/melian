@@ -12,7 +12,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -30,7 +30,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -48,7 +48,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -66,7 +66,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -84,7 +84,7 @@
 			"evidence": "lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count",
 				"collected": 1,
 				"failed": true
@@ -102,7 +102,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -120,7 +120,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -138,7 +138,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -156,7 +156,7 @@
 			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
 				"collected": 1,
 				"failed": true
@@ -174,7 +174,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -192,7 +192,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 				"collected": 1,
 				"failed": true
@@ -210,7 +210,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -228,7 +228,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 				"collected": 1,
 				"failed": true
@@ -246,7 +246,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -264,7 +264,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
 				"collected": 1,
 				"failed": true
@@ -282,7 +282,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -300,7 +300,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
 				"collected": 1,
 				"failed": true
@@ -318,7 +318,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -336,7 +336,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
 				"collected": 1,
 				"failed": true
@@ -354,7 +354,7 @@
 			"evidence": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
 				"collected": 1,
 				"failed": true
@@ -372,7 +372,7 @@
 			"evidence": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
 			"survivorClasses": [],
 			"run": {
-				"head": "dff754ca",
+				"head": "e9c95c52",
 				"test": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
 				"collected": 1,
 				"failed": true
