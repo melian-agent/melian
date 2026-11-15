@@ -169,7 +169,7 @@
    "survivorClasses": [
     "compound-condition"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -184,7 +184,7 @@
    "survivorClasses": [
     "compound-condition"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -229,7 +229,7 @@
    "survivorClasses": [
     "compound-condition"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -298,7 +298,7 @@
    "survivorClasses": [
     "dropped-value"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -381,7 +381,7 @@
    "survivorClasses": [
     "nullish-logical"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -409,7 +409,7 @@
    "claim": "killed",
    "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
    "survivorClasses": [],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -424,7 +424,7 @@
    "survivorClasses": [
     "optional-chain"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -451,7 +451,7 @@
    "survivorClasses": [
     "nullish-logical"
    ],
-   "run": "killed at 9b510355: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+   "run": "killed at edf4f108: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",

@@ -37,7 +37,19 @@ After the fix, all 378 tests in the evals package pass, 2 skipped.
 - **27 killed.**
   - This commit's 7: the condition forced true or false, `&&` as `||`, both equality swaps, the second operand forced true, and the emptied `{ probeSandbox }`. The sandbox test kills those that change which backend a scripted or live run gets. The new test kills those that hand a scripted run without the field the unconfined backend.
   - The branch's earlier 20, all killed again. This commit changed `goldens.ts`, which most of them mutate, and `goldens.test.ts`, where most of their named tests live.
+  - The 8 that the sandbox test kills, again at `edf4f108`, after that commit widened the test's note assertion.
 - **3 equivalent.** Forcing `mode.kind === "scripted"` true leaves `mode.probes === "unconfined"` deciding, and only the scripted arm has `probes`. The other two are the `["Stryker was here"]` fallbacks for `ran ?? []`, as [the earlier entry](2026-11-15-issue-457-not-reviewed-goldens.md) says.
 - **9 ignored** string literals.
+
+## The sandbox test's probe time
+
+CI's `check (26)` failed at `cfeda060` on the sandbox test's note assertion, which this pull request added:
+
+```
+AssertionError: expected 'it planned 1 attack and ran 1 probe i…' to match /^it planned 1 attack and ran 1 probe in \d+\.\d s$/
++ Received: "it planned 1 attack and ran 1 probe in under 0.1 s"
+```
+
+On a fast runner, the review prints a probe time below a tenth of a second as "under 0.1", the floor from [pull request #296](https://github.com/melian-agent/melian/pull/296). The host's runs took longer, so the test passed here. `edf4f108` accepts either form. No local test reproduces it, since it depends on how fast the probe runs; CI's failing run stands in.
 
 This is trust code: it decides which probes run outside a sandbox.
