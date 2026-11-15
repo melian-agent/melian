@@ -1254,7 +1254,6 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 	it("accepts a miss whose rule only its own folder's lens declares, in a range that changes other files too", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
-			const head = git(repo, "rev-parse", "feature");
 			const file = defect[0]!.properties.path!;
 			const commit = (message: string) =>
 				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
