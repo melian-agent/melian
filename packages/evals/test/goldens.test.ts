@@ -1269,6 +1269,9 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		});
 		const scripted = await runGolden(golden, { kind: "scripted" });
 		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
+		expect(scripted.ran.find((check) => check.name === "lens.trust-boundary")?.reason).toMatch(
+			/^it planned 1 attack and ran 1 probe in \d+\.\d s$/,
+		);
 		expect(availability.mock.calls.every(([sandbox]) => sandbox !== Probe.sandbox)).toBe(true);
 		availability.mockClear();
 		const fake = testing.createFakeModels();

@@ -314,6 +314,8 @@ export interface GoldenRun {
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
 	readonly toolMismatches: readonly string[];
+	/** The checks the review ran, each with any note it recorded, such as the attacks a probing lens planned and probed. */
+	readonly ran: readonly CheckRecord[];
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -433,6 +435,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				findings,
 				rendered,
 				toolMismatches,
+				ran: reviewed.verdict.ran ?? [],
 				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
 			};
 		} catch (error) {

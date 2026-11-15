@@ -109,6 +109,28 @@ describe("reportGoldens", { timeout: 60_000 }, () => {
 		expect(report.failed).toEqual(["correctness-null-deref"]);
 		expect(report.scores.map((score) => score.golden)).toEqual(["clean-rename"]);
 	});
+	it("prints each note a check that ran recorded under the golden's score, such as a probing lens's attacks", async () => {
+		const ran = [
+			{ name: "lens.correctness", status: "ran" as const },
+			{
+				name: "lens.trust-boundary",
+				status: "ran" as const,
+				reason: "it planned 2 attacks and ran 2 probes in 0.4 s",
+			},
+		];
+		const lines: string[] = [];
+		await reportGoldens(
+			named(goldens, "clean-rename"),
+			async (golden) => ({ ...(await scripted(golden)), ran }),
+			{},
+			(line) => lines.push(line),
+		);
+		expect(lines).toEqual([
+			scores[2],
+			"    lens.trust-boundary: it planned 2 attacks and ran 2 probes in 0.4 s",
+			corpus,
+		]);
+	});
 });
 
 describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
