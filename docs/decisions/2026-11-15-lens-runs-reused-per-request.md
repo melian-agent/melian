@@ -32,6 +32,7 @@ Left out, each with its reason:
 - The preference file's path in the standards' source, which names the host.
 - The lens tools' own code: the text each tool returns to the model, what each tool does, and the lens extension that runs the conversation. The maintainer ruled on 2026-11-15, in the coordinator's session, to leave it out until [issue #437](https://github.com/melian-agent/melian/issues/437) ties a code version to a hash of `lens-tools.ts`, the extension and core's revision readers, in a test. A request is data, and rule 8 of [the identity guideline](../guidelines/identity.md) forbids hashing source at run time. Until then, a change to what a tool returns, with its description and schema unchanged, reuses runs asked under the old code. Only a new base or head asks again: `--rerun` asks only lenses that failed, so it leaves a finished run in place.
 - Chord, Pi's composition runtime, which shows a model nothing.
+- The packages Pi Durable and pi-ai depend on. The key names those two by their own versions alone. The maintainer accepted this on 2026-11-15, in the coordinator's session; the costs below say why.
 
 The index entry lists each run as `<key> request <request key>`. `selectionOf` is that list, sorted, and the instruction fingerprint is gone.
 
@@ -85,5 +86,7 @@ The first review of each head after this lands runs every lens once. Each index 
 Lens records are not exported or imported between hosts here; rule 8 of [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md) can now key them by this request, in a build of its own.
 
 Keying the Pi versions has a cost: an upgrade of Pi Durable or pi-ai asks every lens again once, on the next review of each head, as a first review does. The maintainer accepted that on 2026-11-15, in the coordinator's session. A Pi release can change what a lens is shown with no change to Melian's text: before Pi Durable 1.1.0, every lens brief reached openai-codex as a trailing developer message, and from 1.1.0 it is the system instructions.
+
+The key does not name the packages beneath Pi Durable and pi-ai, and those can change how a request is built. Example: pi-ai 1.1.0 pins `@aws-sdk/client-bedrock-runtime` 3.1127.0, and that client takes `@aws-sdk/core` and `@smithy/core` through caret ranges. A reinstall can resolve newer AWS and Smithy releases that build Bedrock requests differently, while pi-ai still reads 1.1.0, and a review after it copies a lens run the old code asked. Hashing the lockfile or npm's install records, as a check run's key does, would cover it. It was rejected because a check reads the install itself, while a lens reaches it only through a model request: the key would change whenever any dependency moved, a test runner or a linter included, and every lens would run again. A follow-up issue keys only the packages on the path from Pi to a provider's request.
 
 Copying reads only the task the index names for the revision, so a lens changed and then changed back is asked again: the task that held its first answer has been replaced.
