@@ -5,3 +5,11 @@
 "is never left to a build that ignores it, for either task this build stores", in `packages/pipeline/test/check-lang.test.ts`, stores both tasks with today's definitions in SQLite and reopens them under definitions of the old versions. At `149b32f7` it failed for the reported reason: both tasks read `{ kind: "ready", migrates: false }` where `{ kind: "blocked", reason: "task_too_old" }` was expected. After the fix it passes.
 
 Two tests cover the migrations. "is the process's for a tier main stored before its input carried one" reopens a version-2 `melian.checks` task that main recorded at `088aa41f`, `test/fixtures/migrations-from-version/checks-v2.json`; it migrates to version 3 and runs its check with the process's `LANG`. "leaves a tier from before version 2 refused, as it was" calls the migration from versions 2 and 1. The version-3 `melian.check` reopen now also asserts the migrated version and a timing record with its start. `check-task-reopen.test.ts` and `stage-telemetry-reopen.test.ts` assert the new version number, which this bump changes.
+
+## Mutant proof
+
+[The inventory](2026-11-15-issue-454-task-versions-mutants.json), version 2 over `149b32f7...20450f52` with `--claims-in` for `checks.ts`, lists twelve mutants, five in `melian.check`'s migration and seven in `melian.checks`'. At `20450f52`, each named test passed unmutated first. Then a scratch script applied each mutant and ran its named test alone, and each failed it: 12 of 12 killed.
+
+- "reopens a version-1 check with its input intact and no invented timing start" killed the three that change what a version-1 check migrates to: `from === 3` forced true, the legacy checkpoint emptied, and `legacyTiming: false`. The first run had named the version-3 test for the emptied checkpoint, which never takes that branch, and it passed; the version-1 test then failed it.
+- "is the process's for a check main stored before its input carried one" killed `from === 3` forced false and swapped to `!==`, each of which marks a version-3 check legacy.
+- "leaves a tier from before version 2 refused, as it was" killed all seven in `melian.checks`' migration.
