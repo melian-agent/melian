@@ -5,7 +5,8 @@ Builder agent: [pull request #467](https://github.com/melian-agent/melian/pull/4
 ## Rulings and answers
 
 - The live run is the coordinator's, by the maintainer's ruling of 2026-11-09.
-- Hand mutant proof is owed only for changed code that guards trust or durability, by the maintainer's ruling of 2026-11-14. This pass claims mutants in `probing.ts`, `probing-live.ts` and `goldens.ts`.
+- Hand mutant proof is owed only for changed code that guards trust or durability, by the maintainer's ruling of 2026-11-14 in [the narrowing decision](../decisions/2026-11-14-hand-mutation-proof-only-for-trust-and-durability.md). Mutants lists which pass claimed which files.
+- The final rerun of earlier claims at the last head is waived for good, by [the decision of 2026-11-10](../decisions/2026-11-10-final-rerun-waived-until-mutants-verify.md) and [the decision of 2026-11-14](../decisions/2026-11-14-mutants-verify-is-not-built.md) that gave the waiver no end date. Each pass proves its own commits' mutants, and that is this pull request's proof.
 - Pair 1 runs first: the goldens at 3 passes, then the misses at 1 pass. The maintainer ruled this on 2026-11-15, in the coordinator's session.
 - Only a hand-entered `lines` range scores a miss, found or missed. A location derived from a fix decides nothing: the miss is unadjudicated whenever an unrefuted sighting sits at its file under its rule, and missed only when none does. The maintainer chose this, option A of three the coordinator put, on 2026-11-16, in the coordinator's session.
 - The coordinator answered approach questions, which are not rulings:
@@ -65,6 +66,16 @@ Opus 5.5 reviewed `c05b435d...dcf75544` with a fresh context. Its gate passed, 9
 
 The fixes for the round, R3 and R2 landed together after the ruling, so the delta review of record runs once.
 
+## The delta review of record at `31c545c6`
+
+Opus 5.5 reviewed `dcf75544...31c545c6` with a fresh context. It raised:
+
+- R1: a misses entry whose file the base's `trust-boundary` lens never reviews still scored. A `paths` setting that leaves the file out passed every refusal, and the miss scored as missed. It is the second instance of the class "an entry the review cannot score that still scores", after R3 at `dcf75544`. The coordinator answered on approach: close the class with two checks that each ask an authority. `34aad52c` adds both.
+  - Before any provider, the entry is refused, exit 2, when `Lens.select` under the base's loaded configuration leaves its file out of `trust-boundary`'s files, which covers a `paths` exclusion and a disabled lens alike, or when its file is empty or absent at the head.
+  - After the review, a miss scores only when the review's own record shows the lens looked: a completed `trust-boundary` stage in the review's telemetry, other than the prober's, whose `coverage` holds the file by core's `lensCovers`. Each lens stage now carries the coverage its conversation's stored `LensPolicy` holds in `LensDocument`. A review with no such stage prints the miss as unadjudicated, with no score, and says why.
+- R2: the description listed `goldens.ts` among pass 6's claimed files, and pass 6 claimed none of it. Mutants below now says which pass claimed which files, and pass 6's claims on `reviewTarget`'s guards were run by hand.
+- R3: the description did not cite the waiver of the final rerun. Rulings above cites it.
+
 ## Failing tests first
 
 Each fix began with a test that failed at the head before it:
@@ -84,15 +95,28 @@ Each fix began with a test that failed at the head before it:
 - R3: 1 failed of 43, the misses file exiting 0 where 2 was expected.
 - R2: 3 failed of 44 against the code before `0108e526`. A fix of one hunk at the defect matched as `lines`, so its sighting scored as found where the ruling leaves it unadjudicated.
 
-After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, and 45 of 45 at `055d08de`.
+- R1 at `31c545c6`: 3 failed of 47. A miss whose only `trust-boundary` stage was cut printed `missed` where `unadjudicated, no score` was expected. The refusal test, with entries on a file the base's `paths` leaves out, under a disabled lens, on an empty file and on a gone file, read status 0 and no errors where 2 was expected. A lens stage carried no `coverage`.
+
+After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, and 47 of 47 at `34aad52c`.
 
 ## Mutants
 
-`2026-11-15-pr-467-mutants.json` holds the inventory, one pass per range, each from `node scripts/enumerate-mutants.mjs <range> --json --limit 10000` with nothing omitted. Each pass claims the mutants in `probing.ts`, `probing-live.ts` and `goldens.ts`. Every claim was run by hand: a scratch script applied the mutant and ran its named test alone, and a kill counted only when exactly one test ran and failed.
+`2026-11-15-pr-467-mutants.json` holds the inventory, one pass per range, each from `node scripts/enumerate-mutants.mjs <range> --json --limit 10000` with nothing omitted. Each pass claims every mutant in the files its `claimsIn` names, and no pass claims more than was run:
 
-- Pass 6, `c05b435d...5d1cb395`: 459 killed, 3 equivalent. One kill was run in a clean worktree with the mutant committed, since its test reads the checkout's status.
+| Pass | Claimed files |
+| --- | --- |
+| 6 | `probing.ts`, `probing-live.ts`, and 13 rows of `goldens.ts` |
+| 7 | `probing.ts` |
+| 13 | `probing.ts`, `goldens.ts` |
+| 16 | `probing.ts` |
+| 17 | `probing.ts`, `telemetry.ts` |
+
+Every claim was run by hand: a scratch script applied the mutant and ran its named test alone, and a kill counted only when exactly one test ran and failed.
+
+- Pass 6, `c05b435d...5d1cb395`: 471 killed, 4 equivalent. One kill was run in a clean worktree with the mutant committed, since its test reads the checkout's status. 12 kills and 1 equivalence are `goldens.ts` rows, claimed by hand at `5d1cb395` for the delta review's R2: `reviewTarget`'s throw on a review in error, and its throw on a level that ran without probes. Those rows carry their own note, and `goldens.ts` stays out of the pass's `claimsIn`, since its other rows stay unclaimed. The enumerator plants no mutant on the writer handed to the review, so three hand mutants replaced it with a trusted writer, an untrusted one and none; each failed its test, and the pass's `handMutants` records them.
 - Pass 7, `5d1cb395...8fe10c2b`: 87 killed, 1 equivalent. Its two survivors at `8fe10c2b` were rerun at `dcf75544` in pass 13 and killed there.
 - Pass 13, `8fe10c2b...dcf75544`: 139 killed, 5 equivalent, 2 owed a test. Both sat in the "hits overlap" message. The R2 fix rewrote it, removing the optional chain, and its test kills the rewritten line's mutants in pass 16.
 - Pass 16, `f8c3da9e...055d08de`: 76 killed, covering the round's fix, R3 and R2. R3's three survivors at `87f01fae` are among them: two killed by the test `055d08de` adds, and an optional chain removed.
+- Pass 17, `31c545c6...34aad52c`: 73 killed, 3 equivalent, 1 owed a test. The test `e3de7fa1` adds, a `trust-boundary` stage with no coverage, kills it. `telemetry.ts` is claimed because the score's second check reads the coverage it records.
 
 Each equivalence carries its reason in the inventory. Rows outside the claimed files carry a note citing the ruling of 2026-11-14, and ignored rows keep the enumerator's configuration note.
