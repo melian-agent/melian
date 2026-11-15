@@ -1,0 +1,622 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 7,
+   "endLine": 130,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 7,
+   "endLine": 130,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > fails as unreachable, saying it may have landed, when the tip is still the one it was built on",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > fails as unreachable, saying it may have landed, when the tip is still the one it was built on",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 7,
+   "endLine": 130,
+   "endColumn": 21,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tip !== parent",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 23,
+   "endLine": 130,
+   "endColumn": 87,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > fails as unreachable, saying it may have landed, when the tip is still the one it was built on",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > fails as unreachable, saying it may have landed, when the tip is still the one it was built on",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 39,
+   "endLine": 130,
+   "endColumn": 85,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 131,
+   "column": 7,
+   "endLine": 131,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 131,
+   "column": 7,
+   "endLine": 131,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the branch it was built on is gone, and pushes again",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the branch it was built on is gone, and pushes again",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 131,
+   "column": 7,
+   "endLine": 131,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tip !== undefined",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 131,
+   "column": 33,
+   "endLine": 131,
+   "endColumn": 38,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the branch it was built on is gone, and pushes again",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the branch it was built on is gone, and pushes again",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 31,
+   "column": 19,
+   "endLine": 31,
+   "endColumn": 64,
+   "mutatorName": "Regex",
+   "replacement": "/cannot lock ref|Unable to create '.\\.lock'/",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 6,
+   "endLine": 76,
+   "endColumn": 104,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 6,
+   "endLine": 76,
+   "endColumn": 104,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 6,
+   "endLine": 76,
+   "endColumn": 104,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(await repository.#succeed([\"rev-parse\", \"--is-shallow-repository\"], deadline)).trim() === \"false\"",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 6,
+   "endLine": 76,
+   "endColumn": 92,
+   "mutatorName": "MethodExpression",
+   "replacement": "await repository.#succeed([\"rev-parse\", \"--is-shallow-repository\"], deadline)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 33,
+   "endLine": 76,
+   "endColumn": 73,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > opening the repository > refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 34,
+   "endLine": 76,
+   "endColumn": 45,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 47,
+   "endLine": 76,
+   "endColumn": 72,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 76,
+   "column": 97,
+   "endLine": 76,
+   "endColumn": 104,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 78,
+   "column": 4,
+   "endLine": 78,
+   "endColumn": 118,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 139,
+   "column": 3,
+   "endLine": 149,
+   "endColumn": 4,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 140,
+   "column": 4,
+   "endLine": 140,
+   "endColumn": 11,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 141,
+   "column": 4,
+   "endLine": 141,
+   "endColumn": 13,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 142,
+   "column": 4,
+   "endLine": 142,
+   "endColumn": 15,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 143,
+   "column": 4,
+   "endLine": 143,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 144,
+   "column": 4,
+   "endLine": 144,
+   "endColumn": 18,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 145,
+   "column": 4,
+   "endLine": 145,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 146,
+   "column": 4,
+   "endLine": 146,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 148,
+   "column": 4,
+   "endLine": 148,
+   "endColumn": 34,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 152,
+   "column": 6,
+   "endLine": 152,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 152,
+   "column": 6,
+   "endLine": 152,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/repository.test.ts > fetching the tip > says it ran past its deadline when git is stopped at it",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > fetching the tip > says it ran past its deadline when git is stopped at it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 152,
+   "column": 41,
+   "endLine": 152,
+   "endColumn": 95,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 153,
+   "column": 6,
+   "endLine": 153,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 153,
+   "column": 6,
+   "endLine": 153,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > reads an absent branch as an empty store",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > reads an absent branch as an empty store",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 153,
+   "column": 6,
+   "endLine": 153,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "result.code === 0",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > answers each call from the tip as it is then, on any handle",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 155,
+   "column": 21,
+   "endLine": 155,
+   "endColumn": 60,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 37,
+   "column": 159,
+   "endLine": 37,
+   "endColumn": 184,
+   "mutatorName": "hand: alternative removed",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > pushing > answers stale for a race the push reports as [remote rejected] (reference already exists)",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > pushing > answers stale for a race the push reports as [remote rejected] (reference already exists)",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 132,
+   "column": 10,
+   "endLine": 132,
+   "endColumn": 66,
+   "mutatorName": "hand: answer forced",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the tip it was built on is in the history without it, and pushes again",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as lost when the tip it was built on is in the history without it, and pushes again",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 132,
+   "column": 10,
+   "endLine": 132,
+   "endColumn": 66,
+   "mutatorName": "hand: answer forced",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts a cell write as landed when another handle sharing its repository fetches before each check",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 154,
+   "column": 7,
+   "endLine": 154,
+   "endColumn": 53,
+   "mutatorName": "hand: condition forced",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 154,
+   "column": 7,
+   "endLine": 154,
+   "endColumn": 53,
+   "mutatorName": "hand: condition forced",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/fetch.test.ts > reading the branch > reads an absent branch as an empty store",
+   "survivorClasses": [],
+   "run": {
+    "head": "a63479d0",
+    "test": "packages/state-git/test/fetch.test.ts > reading the branch > reads an absent branch as an empty store",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 35,
+ "omitted": 0,
+ "unmutated": []
+}
