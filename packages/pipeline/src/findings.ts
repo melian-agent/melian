@@ -736,6 +736,35 @@ export async function readFindings(
 		});
 }
 
+/** One producer's latest verification of finding `id` at a revision. */
+export type VerificationClaim = { id: string; source: FindingSource; verification: Verification };
+
+/**
+ * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, with the
+ * dismissals the verifier matched left out: a shared record carries no dismissal it does not name.
+ */
+export function verificationClaims(
+	state: FindingsState,
+	revision: string,
+	producers: readonly Producer[],
+): VerificationClaim[] {
+	const counts = selected(producers);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const { sightings, verifications } = state.items[id]!;
+			return Object.entries(sightings[revision] ?? {})
+				.filter(([key, sighting]) => counts(key, sighting))
+				.sort(([a], [b]) => compareText(a, b))
+				.flatMap(([key, sighting]) => {
+					const latest = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
+					if (latest === undefined) return [];
+					const { matches: _, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
+					return [{ id, source: { ...sighting.properties.source }, verification }];
+				});
+		});
+}
+
 // The link of a finding to its root while it holds: the root's own dismissal still stands as it was made, and the
 // finding has no dismissal of its own, which always speaks first.
 function standing(

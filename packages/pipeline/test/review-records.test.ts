@@ -58,6 +58,7 @@ describe("ReviewRecords", () => {
 				},
 				sightings: [low, high],
 				delivery: null,
+				check: null,
 			},
 		});
 	});

@@ -7,6 +7,7 @@ import {
 	MemoryRecordStore,
 	type RecordEnvelope,
 	reviewPayloads,
+	SharedRecord,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -98,15 +99,53 @@ async function review(store: MemoryRecordStore, given: typeof checks = checks) {
 }
 
 describe("a review that names a record store", () => {
-	it("exports each check and lens run, the account, and a round that names them all", async () => {
+	it("exports each check, lens run and verification, the account, and a round that names them all", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { changeset, stored } = await review(store);
 
+		// Each lens run's early copy, with no check, stays beside the final one the round names.
 		const kinds = stored.map(({ kind }) => kind).sort();
-		expect(kinds).toEqual(["account", "check", "check", "check", "lens", "lens", "round"]);
+		expect(kinds).toEqual([
+			"account",
+			"check",
+			"check",
+			"check",
+			"lens",
+			"lens",
+			"lens",
+			"lens",
+			"round",
+			"verification",
+		]);
 		const round = stored.find(({ kind }) => kind === "round")!;
-		const read = (round.payload as { read: { kind: string; key: string }[] }).read;
-		expect(read.map(({ kind }) => kind).sort()).toEqual(["account", "check", "check", "check", "lens", "lens"]);
+		const read = (round.payload as { read: { kind: string; key: string; id: string }[] }).read;
+		expect(read.map(({ kind }) => kind).sort()).toEqual([
+			"account",
+			"check",
+			"check",
+			"check",
+			"lens",
+			"lens",
+			"verification",
+		]);
+		const named = new Set(read.map(({ id }) => id));
+		const lensChecks = stored
+			.filter(({ kind }) => kind === "lens")
+			.filter((record) => named.has(SharedRecord.parseEnvelope(record).id))
+			.map(({ payload }) => (payload as { check: { name: string; status: string } | null }).check);
+		expect(lensChecks.map((check) => [check?.name, check?.status]).sort()).toEqual([
+			["lens.contracts", "ran"],
+			["lens.correctness", "ran"],
+		]);
+		const verification = stored.find(({ kind }) => kind === "verification")!.payload as {
+			claims: { id: string; verification: { verdict: string; matches?: unknown } }[];
+			dismissals: unknown[];
+			check: { name: string; status: string } | null;
+		};
+		expect(verification.check).toMatchObject({ name: "verifier", status: "ran" });
+		expect(verification.claims).toHaveLength(1);
+		expect(verification.claims[0]!.verification.matches).toBeUndefined();
+		expect(verification.dismissals).toEqual([]);
 		const account = stored.find(({ kind }) => kind === "account")!.payload as {
 			checks: string[];
 			filled: { name: string; status: string }[];
@@ -118,6 +157,7 @@ describe("a review that names a record store", () => {
 			"decisions.fast",
 			"lens.correctness",
 			"lens.contracts",
+			"verifier",
 		]);
 		expect(account.filled.map(({ name }) => name)).toEqual(["decisions.fast"]);
 		const contractsRun = stored.find(
@@ -127,7 +167,7 @@ describe("a review that names a record store", () => {
 		expect(stored.every((record) => record.changeset === changeset.id)).toBe(true);
 	});
 
-	it("exports each lens run as its lens ends, with the bytes the round's export adds again", async () => {
+	it("exports each lens run as its lens ends, with no check, which the round's export adds", async () => {
 		const adds: RecordEnvelope[][] = [];
 		const store = new (class extends MemoryRecordStore {
 			override async add(records: RecordEnvelope[]) {
@@ -142,10 +182,14 @@ describe("a review that names a record store", () => {
 		const early = adds.slice(0, last).flat();
 		expect(early.map(({ kind }) => kind)).toEqual(["lens", "lens"]);
 		const final = adds[last]!.filter(({ kind }) => kind === "lens");
-		expect([...early].sort((a, b) => a.key.localeCompare(b.key))).toEqual(
-			[...final].sort((a, b) => a.key.localeCompare(b.key)),
-		);
-		expect(stored.filter(({ kind }) => kind === "lens")).toHaveLength(2);
+		const unchecked = (records: RecordEnvelope[]) =>
+			[...records]
+				.sort((a, b) => a.key.localeCompare(b.key))
+				.map((record) => ({ ...record, payload: { ...(record.payload as object), check: null } }));
+		expect(early.every(({ payload }) => (payload as { check: unknown }).check === null)).toBe(true);
+		expect(final.every(({ payload }) => (payload as { check: unknown }).check !== null)).toBe(true);
+		expect(unchecked(early)).toEqual(unchecked(final));
+		expect(stored.filter(({ kind }) => kind === "lens")).toHaveLength(4);
 	});
 
 	it("exports a host's record that names an absent field as undefined", async () => {

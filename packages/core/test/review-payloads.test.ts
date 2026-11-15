@@ -44,7 +44,28 @@ const verification = {
 	model: "anthropic/opus",
 	version: "v1",
 };
-const lens = (outcome: RecordJson) => ({
+const lineage = {
+	model: "openai/terra",
+	thinking: { level: "low", wanted: "high", by: "melian.local.yaml" },
+	wanted: "anthropic/opus",
+	by: "melian.local.yaml",
+	moved: { by: "lenses.security.route", from: "careful", to: "own route" },
+	outside: true,
+};
+// A check as the review decided it, with every field present.
+const decided = (name: string, version: string, level: string | null) => ({
+	name,
+	status: "ended",
+	reason: "its budget ran out",
+	error: "budget",
+	version,
+	level,
+	budgetEnded,
+	caveats: ["no lens saw callers"],
+	coverage: { graph: "g", review: "r", test: "t" },
+	lineage,
+});
+const lens = (outcome: RecordJson, check: RecordJson | null = decided("lens.security", "abc", "careful")) => ({
 	v: 1,
 	name: "security",
 	version: "abc",
@@ -53,6 +74,7 @@ const lens = (outcome: RecordJson) => ({
 	outcome,
 	sightings: [finding("lens.security", "abc@careful")],
 	delivery: null,
+	check,
 });
 
 // Every shape each kind's payload can take, each with every field present, so removing any one is a refusal.
@@ -116,8 +138,25 @@ const samples: [string, RecordJson][] = [
 			usage: { models: ["anthropic/opus"], tokens: 100, costMicros: 2_500_000 },
 		}),
 	],
-	["lens", lens({ status: "unanswered", reason: "no answer" })],
-	["lens", lens({ status: "exhausted", tried: ["anthropic/opus"], reason: "every model failed" })],
+	["lens", lens({ status: "unanswered", reason: "no answer" }, null)],
+	[
+		"lens",
+		lens(
+			{ status: "exhausted", tried: ["anthropic/opus"], reason: "every model failed" },
+			{
+				name: "lens.security",
+				status: "failed",
+				reason: "every model failed",
+				error: null,
+				version: "abc",
+				level: "careful",
+				budgetEnded: null,
+				caveats: null,
+				coverage: null,
+				lineage: null,
+			},
+		),
+	],
 	[
 		"verification",
 		{
@@ -129,6 +168,7 @@ const samples: [string, RecordJson][] = [
 				{ candidate: "two", outcome: { status: "ended", budgetEnded } },
 				{ candidate: "three", outcome: { status: "unanswered", reason: "no answer" } },
 			],
+			check: decided("verifier", "v1", null),
 		},
 	],
 	[
@@ -418,6 +458,37 @@ describe("review payload checks", () => {
 		expect(check("lens", { ...payload, sightings: [finding("lens.security", "abd@careful")] })).toMatch(
 			/not lens.security@abc@careful/,
 		);
+	});
+
+	it("refuses a lens record that holds another lens's check, or one at another version or level", () => {
+		const payload = samples.find(([kind]) => kind === "lens")?.[1] as Record<string, RecordJson>;
+		const holding = (name: string, version: string | null, level: string | null) =>
+			check("lens", { ...payload, check: decided(name, version as string, level) });
+		expect(holding("lens.security", "abc", "careful")).toBeUndefined();
+		expect(holding("lens.tests", "abc", "careful")).toBe(
+			"holds the check of lens.tests@abc at careful, not lens.security@abc at careful",
+		);
+		expect(holding("lens.security", "abd", "careful")).toBe(
+			"holds the check of lens.security@abd at careful, not lens.security@abc at careful",
+		);
+		expect(holding("lens.security", null, "careful")).toBe(
+			"holds the check of lens.security@ at careful, not lens.security@abc at careful",
+		);
+		expect(holding("lens.security", "abc", "deep")).toBe(
+			"holds the check of lens.security@abc at deep, not lens.security@abc at careful",
+		);
+		expect(holding("lens.security", "abc", null)).toBe(
+			"holds the check of lens.security@abc at no level, not lens.security@abc at careful",
+		);
+		expect(check("lens", { ...payload, check: null })).toBeUndefined();
+	});
+
+	it("refuses a verification that holds a check other than the verifier's", () => {
+		const payload = samples.find(([kind]) => kind === "verification")?.[1] as Record<string, RecordJson>;
+		expect(check("verification", { ...payload, check: decided("lens.security", "v1", null) })).toBe(
+			"holds the check of lens.security, not the verifier's",
+		);
+		expect(check("verification", { ...payload, check: null })).toBeUndefined();
 	});
 
 	it("refuses a verification that matches a claim against a dismissal it does not name", () => {

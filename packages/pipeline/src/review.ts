@@ -49,6 +49,7 @@ import {
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
+	type VerificationPayload,
 	VerificationState,
 	verificationBudget,
 	visibleText,
@@ -95,6 +96,7 @@ import {
 	type SightedFinding,
 	sightedBy,
 	sightingIn,
+	verificationClaims,
 } from "./findings.ts";
 import {
 	backgroundContext,
@@ -2040,6 +2042,16 @@ function lensRecord(
 	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
 }
 
+// A verification outcome as its record holds it, with the budget's end's fields alone.
+function verificationOutcome(outcome: VerificationResult[string]): VerificationPayload["outcomes"][number]["outcome"] {
+	if (outcome.status === "done") return { status: "done", model: outcome.model };
+	if (outcome.status === "ended") {
+		const { budget, limit, tokens, tools } = outcome.budgetEnded;
+		return { status: "ended", budgetEnded: { budget, limit, tokens, tools } };
+	}
+	return { status: outcome.status, reason: outcome.reason };
+}
+
 // Records for the lenses and decision questions the tier names; the lens step owns `lens.*` and `decisions.*`, so a
 // record of either from elsewhere, such as a check runner that skips them, gives way. Every other check's record comes
 // from `supplied`; adjudication calls one with none a check that never started. `lenses` holds the lens step's own
@@ -2971,12 +2983,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			await watch.stop();
 		}
 	};
-	// The record of each run with an outcome and a request key, with the findings it reported at this revision. A run an
-	// older Melian created has no request key, and so no record.
+	// The record of each run with an outcome and a request key, with the findings it reported at this revision and the
+	// check `decided` holds for it once adjudication has decided. A run an older Melian created has no request key, and so
+	// no record.
 	const lensRecords = async (
 		runs: readonly LensRun[],
 		outcomes: LensResult,
-	): Promise<{ name: string; record: SharedRecord }[]> => {
+		decided: ReadonlyMap<string, CheckRecord> = new Map(),
+	): Promise<{ name: string; record: SharedRecord; check?: CheckRecord }[]> => {
 		const state = await harness.snapshot(FindingsDocument, root, context);
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		return runsOf(runs).flatMap((run) => {
@@ -2984,6 +2998,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (outcome === undefined || run.request === undefined) return [];
 			const source = lensSource(run.name, run.version, run.level);
 			const identity = { name: run.name, version: run.version, level: run.level, request: run.request };
+			const check = decided.get(run.key);
 			return [
 				{
 					name: `lens.${run.name}`,
@@ -2991,17 +3006,24 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						{ ...identity, probe: run.probe !== undefined },
 						outcome,
 						state === undefined ? [] : producerSightings(state, reviewed, source),
+						check,
 					),
+					...(check === undefined ? {} : { check }),
 				},
 			];
 		});
 	};
-	// Exports the round's records once adjudication has decided: each check's, each lens run's, the account, and the round
-	// that names them. A repeat review writes the same bytes, so its round names no round of its own key as replaced.
+	// Exports the round's records once adjudication has decided: each check's, each lens run's with the check `decided`
+	// holds for it, the verification's, the account, and the round that names them. `adjudicated` is every check record
+	// adjudication read, so the account fills each skip or failure no record carries. A repeat review writes the same
+	// bytes, so its round names no round of its own key as replaced.
 	const exportRound = async (
 		store: RecordStore,
 		run: string,
 		checks: readonly CheckRecord[],
+		adjudicated: readonly CheckRecord[],
+		decided: ReadonlyMap<string, CheckRecord>,
+		verification: SharedRecord | undefined,
 		accounted: Manifest,
 		producers: readonly Producer[],
 	) => {
@@ -3027,17 +3049,28 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			} as unknown as CheckRunRecord;
 			return [{ name: check.name, record: records.check(run, result, sightings) }];
 		});
-		const lenses = await lensRecords(ran.lenses, lensResult ?? {});
-		const counted = [...exported, ...lenses];
-		const covered = new Set(counted.map(({ name }) => name));
-		const filled = accounted
-			.records()
-			.filter(
-				(record): record is CheckRecord & { status: "skipped" | "failed" } =>
-					(record.status === "skipped" || record.status === "failed") && !covered.has(record.name),
-			);
+		const lenses = await lensRecords(ran.lenses, lensResult ?? {}, decided);
+		const counted = [
+			...exported,
+			...lenses,
+			...(verification === undefined ? [] : [{ name: "verifier", record: verification }]),
+		];
+		const covered = new Set(exported.map(({ name }) => name));
+		// A lens check is carried only by a record that holds it, so a refused variant beside one that ran is filled.
+		const same = (check: CheckRecord) => JSON.stringify(Object.entries(check).sort(([a], [b]) => (a < b ? -1 : 1)));
+		const carried = new Map<string, number>();
+		for (const { check } of lenses)
+			if (check !== undefined) carried.set(same(check), (carried.get(same(check)) ?? 0) + 1);
+		const filled = adjudicated.filter((record): record is CheckRecord & { status: "skipped" | "failed" } => {
+			if (record.status !== "skipped" && record.status !== "failed") return false;
+			if (record.name === "verifier") return verification === undefined;
+			if (!record.name.startsWith("lens.")) return !covered.has(record.name);
+			const left = carried.get(same(record)) ?? 0;
+			if (left > 0) carried.set(same(record), left - 1);
+			return left === 0;
+		});
 		const account = records.account({
-			checks: manifest,
+			checks: adjudicated.some(({ name }) => name === "verifier") ? [...manifest, "verifier"] : manifest,
 			records: counted.map(({ record }) => record),
 			filled,
 			allowSkip: accounted.skippable(),
@@ -3059,8 +3092,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 		await store.add([...read, round].map((record) => record.toJSON()));
 	};
-	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end. The final
-	// export writes the same bytes again, so a failure here costs nothing but the early copy.
+	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
+	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
+	// round names only that copy, so a failure here costs nothing but the early copy.
 	const exportAsLensesEnd = async (task: number, done: Promise<unknown>) => {
 		const store = request.records;
 		if (store === undefined) return;
@@ -3261,6 +3295,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			{ lenses: lenses.map((lens) => lens.name) },
 		);
 	let verificationCheck: CheckRecord | undefined;
+	// The verification task's request key and the outcomes it reached, which its record carries.
+	let verified: { key: string; result: VerificationResult } | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
@@ -3370,6 +3406,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				);
 				const finished = (await harness.waitForTask(verifying, context)).state.outcome;
 				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
+				// The index names the request key the task attached under, which its record is keyed by.
+				const attachedAs = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
+				if (attachedAs?.task === verifying) verified = { key: attachedAs.input, result: results };
 				const ended = Object.values(results).find((result) => result.status === "ended");
 				const failed = candidates
 					.map((candidate) => results[candidate.key])
@@ -3426,14 +3465,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}, context);
 	if (!linked) throw replaced();
 	spans.step("adjudication.prepare");
-	const checks =
-		request.plan?.mark(
-			accounted.records(),
-			ranOn(
-				settled.map(({ run }) => run),
-				lensResult,
-			),
-		) ?? accounted.records();
+	const finishedOn = ranOn(
+		settled.map(({ run }) => run),
+		lensResult,
+	);
+	const checks = request.plan?.mark(accounted.records(), finishedOn) ?? accounted.records();
+	// Marking is per record, so each settled run's own record, marked alone, is the check adjudication reads for it.
+	const standing = request.plan?.mark(records, finishedOn) ?? records;
+	const decided = new Map(settled.map(({ run }, index) => [run.key, standing[index]!]));
 	const lensRan = (key: string) => {
 		const outcome = lensResult?.[key];
 		return outcome?.status === "done" ? outcome : undefined;
@@ -3526,10 +3565,27 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	if (request.records !== undefined) {
+		const findings = await harness.snapshot(FindingsDocument, root, context);
+		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
+		const verification =
+			verified === undefined || verificationCheck === undefined
+				? undefined
+				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
+						claims,
+						dismissals: [],
+						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
+							candidate,
+							outcome: verificationOutcome(outcome),
+						})),
+						check: verificationCheck,
+					});
 		await exportRound(
 			request.records,
 			JSON.stringify(checked?.identity ?? request.checkRun ?? null),
 			options.checks ?? [],
+			verificationCheck === undefined ? checks : [...checks, verificationCheck],
+			decided,
+			verification,
 			accounted,
 			producers,
 		);

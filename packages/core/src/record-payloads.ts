@@ -67,6 +67,39 @@ const budgetEnd = Type.Object(
 	{ budget: Type.Union([Type.Literal("tokens"), Type.Literal("tools")]), limit: count, tokens: count, tools: count },
 	strict,
 );
+/**
+ * The check record a run decided, as the review that ran it counted it, with `null` where the record leaves a field out:
+ * a lens's after the plan judged its model, or the verifier's. A reader takes it as the run's result, so a record
+ * without one reads as not reviewed.
+ */
+export const decidedCheckSchema = Type.Object(
+	{
+		name: text,
+		status: literals(["ran", "ended", "failed"]),
+		reason: nullable(Type.String()),
+		error: nullable(Type.String()),
+		version: nullable(text),
+		level: nullable(level),
+		budgetEnded: nullable(budgetEnd),
+		caveats: nullable(Type.Array(Type.String())),
+		coverage: nullable(Type.Object({ graph: nullable(text), review: nullable(text), test: nullable(text) }, strict)),
+		lineage: nullable(
+			Type.Object(
+				{
+					model: text,
+					thinking: nullable(Type.Object({ level: text, wanted: text, by: text }, strict)),
+					wanted: nullable(text),
+					by: text,
+					moved: nullable(Type.Object({ by: text, from: text, to: text }, strict)),
+					outside: Type.Boolean(),
+				},
+				strict,
+			),
+		),
+	},
+	strict,
+);
+
 const trigger = Type.Union([
 	Type.Object({ kind: Type.Literal("severity"), severity: severitySchema }, strict),
 	Type.Object(
@@ -103,7 +136,9 @@ export const lensOutcomeSchema = Type.Union([
 
 /**
  * A lens record's payload: the lens, its version and level, whether the run probed, its outcome, the findings it
- * reported, and its delivery evidence, `null` until Melian works delivery evidence out.
+ * reported, its delivery evidence, `null` until Melian works delivery evidence out, and the check record the review
+ * decided for the run that stands for the lens, `null` in a record exported as the lens ended, before the review
+ * decided.
  */
 export const lensPayloadSchema = Type.Object(
 	{
@@ -115,6 +150,7 @@ export const lensPayloadSchema = Type.Object(
 		outcome: lensOutcomeSchema,
 		sightings,
 		delivery: Type.Null(),
+		check: nullable(decidedCheckSchema),
 	},
 	strict,
 );
@@ -123,7 +159,7 @@ const source = Type.Object({ check: text, version: nullable(text) }, strict);
 
 /**
  * A verification record's payload: each claim's verdict, each dismissed finding the verifier was shown with the ID of
- * its dismissal record, and each candidate's outcome.
+ * its dismissal record, each candidate's outcome, and the verifier's check record, `null` when the review decided none.
  */
 export const verificationPayloadSchema = Type.Object(
 	{
@@ -146,6 +182,7 @@ export const verificationPayloadSchema = Type.Object(
 				strict,
 			),
 		),
+		check: nullable(decidedCheckSchema),
 	},
 	strict,
 );
@@ -330,13 +367,16 @@ export const reviewPayloads: PayloadChecks = {
 	lens: (payload) => {
 		const refused = shape(lensPayloadSchema, payload);
 		if (refused !== undefined) return refused;
-		const { name, version, level, sightings } = payload as LensPayload;
+		const { name, version, level, sightings, check } = payload as LensPayload;
+		if (check !== null && (check.name !== `lens.${name}` || check.version !== version || check.level !== level))
+			return `holds the check of ${check.name}@${check.version ?? ""} at ${check.level ?? "no level"}, not lens.${name}@${version} at ${level}`;
 		return sightingsOf(sightings, `lens.${name}`, `${version}@${level}`);
 	},
 	verification: (payload) => {
 		const refused = shape(verificationPayloadSchema, payload);
 		if (refused !== undefined) return refused;
-		const { claims, dismissals } = payload as VerificationPayload;
+		const { claims, dismissals, check } = payload as VerificationPayload;
+		if (check !== null && check.name !== "verifier") return `holds the check of ${check.name}, not the verifier's`;
 		const shown = new Set(dismissals.map((each) => each.finding));
 		if (shown.size !== dismissals.length) return "names one dismissed finding twice";
 		for (const [index, claim] of claims.entries())

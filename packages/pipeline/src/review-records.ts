@@ -28,6 +28,8 @@ import {
 import type { CheckRunRecord } from "./checks.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 
+type DecidedCheck = NonNullable<LensPayload["check"]>;
+
 // A lens run's outcome as the lens task stores it, with the fields a record keeps.
 export type LensRunOutcome =
 	| {
@@ -61,6 +63,8 @@ export type VerificationFacts = {
 	readonly claims: readonly { id: string; source: FindingSource; verification: Verification }[];
 	readonly dismissals: readonly { finding: string; record: string }[];
 	readonly outcomes: VerificationPayload["outcomes"];
+	// The verifier's check as the review decided it, or none while its run has not ended.
+	readonly check?: CheckRecord;
 };
 
 /** A dismissal as the findings document's lifecycle keeps it, with what a dismissal record needs present. */
@@ -112,8 +116,16 @@ export class ReviewRecords {
 		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
 	}
 
-	/** A lens run's record, keyed by its request's key, with the findings it reported at this revision. */
-	lens(run: LensRunIdentity, outcome: LensRunOutcome, sightings: readonly StoredFinding[]): SharedRecord {
+	/**
+	 * A lens run's record, keyed by its request's key, with the findings it reported at this revision and, once the review
+	 * has decided it, the check the run stands for.
+	 */
+	lens(
+		run: LensRunIdentity,
+		outcome: LensRunOutcome,
+		sightings: readonly StoredFinding[],
+		check?: CheckRecord,
+	): SharedRecord {
 		const payload: LensPayload = {
 			v: 1,
 			name: run.name,
@@ -124,6 +136,7 @@ export class ReviewRecords {
 			sightings: sorted(sightings),
 			// Delivery evidence waits on the coverage ledger, which works it out from the transcript.
 			delivery: null,
+			check: check === undefined ? null : decided(check),
 		};
 		return this.#record("lens", run.request, payload);
 	}
@@ -141,6 +154,7 @@ export class ReviewRecords {
 				})),
 			dismissals: [...facts.dismissals].sort((a, b) => compare(a.finding, b.finding)),
 			outcomes: [...facts.outcomes].sort((a, b) => compare(a.candidate, b.candidate)),
+			check: facts.check === undefined ? null : decided(facts.check),
 		};
 		return this.#record("verification", key, payload);
 	}
@@ -348,6 +362,43 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 		case "failed":
 			return { name: result.name, status: "failed", reason: result.reason, error: result.error };
 	}
+}
+
+function decided(record: CheckRecord): DecidedCheck {
+	const { lineage, coverage, budgetEnded } = record;
+	return {
+		name: record.name,
+		status: record.status as DecidedCheck["status"],
+		reason: orNull(record.reason),
+		error: orNull(record.error),
+		version: orNull(record.version),
+		level: orNull(record.level),
+		budgetEnded:
+			budgetEnded === undefined
+				? null
+				: {
+						budget: budgetEnded.budget,
+						limit: budgetEnded.limit,
+						tokens: budgetEnded.tokens,
+						tools: budgetEnded.tools,
+					},
+		caveats: record.caveats === undefined ? null : [...record.caveats],
+		coverage:
+			coverage === undefined
+				? null
+				: { graph: orNull(coverage.graph), review: orNull(coverage.review), test: orNull(coverage.test) },
+		lineage:
+			lineage === undefined
+				? null
+				: {
+						model: lineage.model,
+						thinking: lineage.thinking === undefined ? null : { ...lineage.thinking },
+						wanted: orNull(lineage.wanted),
+						by: lineage.by,
+						moved: lineage.moved === undefined ? null : { ...lineage.moved },
+						outside: lineage.outside,
+					},
+	};
 }
 
 function lensOutcome(outcome: LensRunOutcome): LensPayload["outcome"] {
