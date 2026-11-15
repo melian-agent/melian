@@ -1,1404 +1,1402 @@
 {
-	"head": "5a5d4a0d50d65d846ba76f13325fc3ea27829611",
-	"command": "node scripts/enumerate-mutants.mjs origin/main...HEAD --json --limit 10000",
-	"enumerated": {
-		"total": 73,
-		"omitted": 0,
-		"unmutated": [],
-		"baselines": {
-			"records": {
-				"code": 0,
+	"mutants": [
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 7,
+			"column": 34,
+			"endLine": 7,
+			"endColumn": 55,
+			"mutatorName": "MethodExpression",
+			"replacement": "process.argv",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
 				"collected": 1,
-				"failed": 0
-			},
-			"bytes": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"numbers": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"answer": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"elsewhere": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"fits": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"prints": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
-			},
-			"exits": {
-				"code": 0,
-				"collected": 1,
-				"failed": 0
+				"failed": 1,
+				"killed": true
 			}
 		},
-		"rows": [
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 7,
-				"column": 34,
-				"endLine": 7,
-				"endColumn": 55,
-				"mutatorName": "MethodExpression",
-				"replacement": "process.argv",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 8,
-				"column": 4,
-				"endLine": 8,
-				"endColumn": 22,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 8,
-				"column": 4,
-				"endLine": 8,
-				"endColumn": 22,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 8,
-				"column": 4,
-				"endLine": 8,
-				"endColumn": 22,
-				"mutatorName": "EqualityOperator",
-				"replacement": "pull !== undefined",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 8,
-				"column": 24,
-				"endLine": 11,
-				"endColumn": 1,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 9,
-				"column": 1,
-				"endLine": 9,
-				"endColumn": 109,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 9,
-				"column": 22,
-				"endLine": 9,
-				"endColumn": 107,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 10,
-				"column": 1,
-				"endLine": 10,
-				"endColumn": 18,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 12,
-				"column": 4,
-				"endLine": 14,
-				"endColumn": 1,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 13,
-				"column": 76,
-				"endLine": 13,
-				"endColumn": 82,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "equivalent",
-				"evidence": "readFileSync with an empty encoding returns a Buffer, and JSON.parse reads a Buffer as UTF-8 text, so the parsed answer is the same",
-				"survivorClasses": [],
-				"run": {
-					"code": 0,
-					"collected": 1,
-					"failed": 0,
-					"killed": false
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 13,
-				"column": 85,
-				"endLine": 13,
-				"endColumn": 100,
-				"mutatorName": "ObjectLiteral",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 14,
-				"column": 16,
-				"endLine": 17,
-				"endColumn": 1,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 15,
-				"column": 1,
-				"endLine": 15,
-				"endColumn": 44,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 15,
-				"column": 22,
-				"endLine": 15,
-				"endColumn": 42,
-				"mutatorName": "StringLiteral",
-				"replacement": "``",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round-record.mjs",
-				"line": 16,
-				"column": 1,
-				"endLine": 16,
-				"endColumn": 17,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 57,
-				"column": 29,
-				"endLine": 57,
-				"endColumn": 51,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 59,
-				"column": 55,
-				"endLine": 76,
-				"endColumn": 1,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 5,
-				"endLine": 60,
-				"endColumn": 30,
-				"mutatorName": "BooleanLiteral",
-				"replacement": "/^[1-9]\\d*$/.test(runId)",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 5,
-				"endLine": 60,
-				"endColumn": 30,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 5,
-				"endLine": 60,
-				"endColumn": 30,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 6,
-				"endLine": 60,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/[1-9]\\d*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 6,
-				"endLine": 60,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\d*/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 6,
-				"endLine": 60,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[^1-9]\\d*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 6,
-				"endLine": 60,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\d$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 6,
-				"endLine": 60,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\D*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 32,
-				"endLine": 60,
-				"endColumn": 97,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 60,
-				"column": 48,
-				"endLine": 60,
-				"endColumn": 95,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 5,
-				"endLine": 61,
-				"endColumn": 29,
-				"mutatorName": "BooleanLiteral",
-				"replacement": "/^[1-9]\\d*$/.test(pull)",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 5,
-				"endLine": 61,
-				"endColumn": 29,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 5,
-				"endLine": 61,
-				"endColumn": 29,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 6,
-				"endLine": 61,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/[1-9]\\d*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 6,
-				"endLine": 61,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\d*/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 6,
-				"endLine": 61,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[^1-9]\\d*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 6,
-				"endLine": 61,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\d$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 6,
-				"endLine": 61,
-				"endColumn": 18,
-				"mutatorName": "Regex",
-				"replacement": "/^[1-9]\\D*$/",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 31,
-				"endLine": 61,
-				"endColumn": 108,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 61,
-				"column": 47,
-				"endLine": 61,
-				"endColumn": 106,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 63,
-				"column": 5,
-				"endLine": 65,
-				"endColumn": 2,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 65,
-				"column": 9,
-				"endLine": 67,
-				"endColumn": 2,
-				"mutatorName": "BlockStatement",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 66,
-				"column": 2,
-				"endLine": 66,
-				"endColumn": 70,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 66,
-				"column": 18,
-				"endLine": 66,
-				"endColumn": 68,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 5,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 5,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 5,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "LogicalOperator",
-				"replacement": "typeof comment?.body !== \"string\" && typeof comment.html_url !== \"string\"",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 5,
-				"endLine": 68,
-				"endColumn": 38,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 5,
-				"endLine": 68,
-				"endColumn": 38,
-				"mutatorName": "EqualityOperator",
-				"replacement": "typeof comment?.body === \"string\"",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 12,
-				"endLine": 68,
-				"endColumn": 25,
-				"mutatorName": "OptionalChaining",
-				"replacement": "comment.body",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 30,
-				"endLine": 68,
-				"endColumn": 38,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 42,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 42,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "EqualityOperator",
-				"replacement": "typeof comment.html_url === \"string\"",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 68,
-				"column": 70,
-				"endLine": 68,
-				"endColumn": 78,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 69,
-				"column": 2,
-				"endLine": 69,
-				"endColumn": 77,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 69,
-				"column": 18,
-				"endLine": 69,
-				"endColumn": 75,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 5,
-				"endLine": 70,
-				"endColumn": 52,
-				"mutatorName": "BooleanLiteral",
-				"replacement": "comment.issue_url?.endsWith(`/issues/${pull}`)",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 5,
-				"endLine": 70,
-				"endColumn": 52,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 5,
-				"endLine": 70,
-				"endColumn": 52,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 6,
-				"endLine": 70,
-				"endColumn": 52,
-				"mutatorName": "MethodExpression",
-				"replacement": "comment.issue_url?.startsWith(`/issues/${pull}`)",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 6,
-				"endLine": 70,
-				"endColumn": 33,
-				"mutatorName": "OptionalChaining",
-				"replacement": "comment.issue_url.endsWith",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 70,
-				"column": 34,
-				"endLine": 70,
-				"endColumn": 51,
-				"mutatorName": "StringLiteral",
-				"replacement": "``",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 71,
-				"column": 2,
-				"endLine": 71,
-				"endColumn": 91,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 71,
-				"column": 18,
-				"endLine": 71,
-				"endColumn": 89,
-				"mutatorName": "StringLiteral",
-				"replacement": "``",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 72,
-				"column": 27,
-				"endLine": 72,
-				"endColumn": 35,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 72,
-				"column": 58,
-				"endLine": 72,
-				"endColumn": 64,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "equivalent",
-				"evidence": "Hash.update defaults a string input to UTF-8 when the encoding is empty, so the digest is the same; the byte-for-byte test holds it at é",
-				"survivorClasses": [],
-				"run": {
-					"code": 0,
-					"collected": 1,
-					"failed": 0,
-					"killed": false
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 72,
-				"column": 73,
-				"endLine": 72,
-				"endColumn": 78,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 73,
-				"column": 21,
-				"endLine": 73,
-				"endColumn": 70,
-				"mutatorName": "StringLiteral",
-				"replacement": "``",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 5,
-				"endLine": 74,
-				"endColumn": 29,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "true",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 5,
-				"endLine": 74,
-				"endColumn": 29,
-				"mutatorName": "ConditionalExpression",
-				"replacement": "false",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 5,
-				"endLine": 74,
-				"endColumn": 29,
-				"mutatorName": "EqualityOperator",
-				"replacement": "description.length >= 140",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 5,
-				"endLine": 74,
-				"endColumn": 29,
-				"mutatorName": "EqualityOperator",
-				"replacement": "description.length <= 140",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 31,
-				"endLine": 74,
-				"endColumn": 96,
-				"mutatorName": "CallExpression",
-				"replacement": ";",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 74,
-				"column": 47,
-				"endLine": 74,
-				"endColumn": 94,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 75,
-				"column": 8,
-				"endLine": 75,
-				"endColumn": 95,
-				"mutatorName": "ObjectLiteral",
-				"replacement": "{}",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
-			},
-			{
-				"file": "scripts/round.mjs",
-				"line": 75,
-				"column": 17,
-				"endLine": 75,
-				"endColumn": 26,
-				"mutatorName": "StringLiteral",
-				"replacement": "\"\"",
-				"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-				"status": "Ignored",
-				"claim": "killed",
-				"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
-				"survivorClasses": [],
-				"run": {
-					"code": 1,
-					"collected": 1,
-					"failed": 1,
-					"killed": true
-				}
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 8,
+			"column": 4,
+			"endLine": 8,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
 			}
-		]
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 8,
+			"column": 4,
+			"endLine": 8,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 8,
+			"column": 4,
+			"endLine": 8,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "pull !== undefined",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 8,
+			"column": 24,
+			"endLine": 11,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 9,
+			"column": 1,
+			"endLine": 9,
+			"endColumn": 109,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 9,
+			"column": 22,
+			"endLine": 9,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 10,
+			"column": 1,
+			"endLine": 10,
+			"endColumn": 18,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 12,
+			"column": 4,
+			"endLine": 14,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 13,
+			"column": 76,
+			"endLine": 13,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "readFileSync with an empty encoding returns a Buffer, and JSON.parse reads a Buffer as UTF-8 text, so the parsed answer is the same",
+			"survivorClasses": [],
+			"run": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0,
+				"killed": false
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 13,
+			"column": 85,
+			"endLine": 13,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > prints the status to post",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 14,
+			"column": 16,
+			"endLine": 17,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 15,
+			"column": 1,
+			"endLine": 15,
+			"endColumn": 44,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 15,
+			"column": 22,
+			"endLine": 15,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round-record.mjs",
+			"line": 16,
+			"column": 1,
+			"endLine": 16,
+			"endColumn": 17,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > the command > exits 1 when GitHub's answer cannot be read, and refuses to run without the pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 57,
+			"column": 29,
+			"endLine": 57,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 59,
+			"column": 55,
+			"endLine": 76,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 5,
+			"endLine": 60,
+			"endColumn": 30,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "/^[1-9]\\d*$/.test(runId)",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 5,
+			"endLine": 60,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 5,
+			"endLine": 60,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 6,
+			"endLine": 60,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/[1-9]\\d*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 6,
+			"endLine": 60,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\d*/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 6,
+			"endLine": 60,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[^1-9]\\d*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 6,
+			"endLine": 60,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\d$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 6,
+			"endLine": 60,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\D*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 32,
+			"endLine": 60,
+			"endColumn": 97,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 60,
+			"column": 48,
+			"endLine": 60,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 5,
+			"endLine": 61,
+			"endColumn": 29,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "/^[1-9]\\d*$/.test(pull)",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 5,
+			"endLine": 61,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 5,
+			"endLine": 61,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 6,
+			"endLine": 61,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/[1-9]\\d*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 6,
+			"endLine": 61,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\d*/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 6,
+			"endLine": 61,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[^1-9]\\d*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 6,
+			"endLine": 61,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\d$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 6,
+			"endLine": 61,
+			"endColumn": 18,
+			"mutatorName": "Regex",
+			"replacement": "/^[1-9]\\D*$/",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 31,
+			"endLine": 61,
+			"endColumn": 108,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 61,
+			"column": 47,
+			"endLine": 61,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a run or a pull request with no number, rather than record a body under a wrong one",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 63,
+			"column": 5,
+			"endLine": 65,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 65,
+			"column": 9,
+			"endLine": 67,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 66,
+			"column": 2,
+			"endLine": 66,
+			"endColumn": 70,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 66,
+			"column": 18,
+			"endLine": 66,
+			"endColumn": 68,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 5,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 5,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 5,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "LogicalOperator",
+			"replacement": "typeof comment?.body !== \"string\" && typeof comment.html_url !== \"string\"",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 5,
+			"endLine": 68,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 5,
+			"endLine": 68,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof comment?.body === \"string\"",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 12,
+			"endLine": 68,
+			"endColumn": 25,
+			"mutatorName": "OptionalChaining",
+			"replacement": "comment.body",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 30,
+			"endLine": 68,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 42,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 42,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof comment.html_url === \"string\"",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 68,
+			"column": 70,
+			"endLine": 68,
+			"endColumn": 78,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 69,
+			"column": 2,
+			"endLine": 69,
+			"endColumn": 77,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 69,
+			"column": 18,
+			"endLine": 69,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses an answer it cannot read, or one with no body or address",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 5,
+			"endLine": 70,
+			"endColumn": 52,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "comment.issue_url?.endsWith(`/issues/${pull}`)",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 5,
+			"endLine": 70,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 5,
+			"endLine": 70,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 6,
+			"endLine": 70,
+			"endColumn": 52,
+			"mutatorName": "MethodExpression",
+			"replacement": "comment.issue_url?.startsWith(`/issues/${pull}`)",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 6,
+			"endLine": 70,
+			"endColumn": 33,
+			"mutatorName": "OptionalChaining",
+			"replacement": "comment.issue_url.endsWith",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 70,
+			"column": 34,
+			"endLine": 70,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 71,
+			"column": 2,
+			"endLine": 71,
+			"endColumn": 91,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 71,
+			"column": 18,
+			"endLine": 71,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > refuses a comment GitHub placed on another pull request",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 72,
+			"column": 27,
+			"endLine": 72,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 72,
+			"column": 58,
+			"endLine": 72,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "Hash.update defaults a string input to UTF-8 when the encoding is empty, so the digest is the same; the byte-for-byte test holds it at é",
+			"survivorClasses": [],
+			"run": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0,
+				"killed": false
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 72,
+			"column": 73,
+			"endLine": 72,
+			"endColumn": 78,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 73,
+			"column": 21,
+			"endLine": 73,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 5,
+			"endLine": 74,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 5,
+			"endLine": 74,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 5,
+			"endLine": 74,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "description.length >= 140",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 5,
+			"endLine": 74,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "description.length <= 140",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 31,
+			"endLine": 74,
+			"endColumn": 96,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 74,
+			"column": 47,
+			"endLine": 74,
+			"endColumn": 94,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > fits a status description at 140 characters, and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 75,
+			"column": 8,
+			"endLine": 75,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		},
+		{
+			"file": "scripts/round.mjs",
+			"line": 75,
+			"column": 17,
+			"endLine": 75,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "killed",
+			"evidence": "scripts/round-record.test.mjs > commentRecord > records the run, the pull request and the hash of the body GitHub stored, linked to the comment",
+			"survivorClasses": [],
+			"run": {
+				"code": 1,
+				"collected": 1,
+				"failed": 1,
+				"killed": true
+			}
+		}
+	],
+	"total": 73,
+	"omitted": 0,
+	"unmutated": [],
+	"head": "5a5d4a0d50d65d846ba76f13325fc3ea27829611",
+	"command": "node scripts/enumerate-mutants.mjs origin/main...HEAD --json --limit 10000",
+	"baselines": {
+		"records": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"bytes": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"numbers": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"answer": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"elsewhere": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"fits": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"prints": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		},
+		"exits": {
+			"code": 0,
+			"collected": 1,
+			"failed": 0
+		}
 	},
 	"hand": {
 		"note": "Hand mutants of the AGENTS.md check and the workflow record step, which the enumerator does not cover. Each replaces one exact text once and runs its named test alone.",
