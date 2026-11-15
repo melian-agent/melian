@@ -86,8 +86,9 @@ export function checkReusable(input: CheckRequestInput): boolean {
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts,
- * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for each check, the host it runs on, and a working
- * tree's `melian.yaml` text. Only the paths that name the host are left out.
+ * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for each check,
+ * the host it runs on, and a working tree's `melian.yaml` text. It leaves out the paths that name the host, `LANG` when
+ * mutation is off, and `PATH`, `HOME` and `TMPDIR`, which no bounded fact stands for.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
 	return KeyedRequest.of(
