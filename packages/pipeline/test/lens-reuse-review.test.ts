@@ -35,6 +35,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
+import { blindCallers } from "../src/caveats.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -429,6 +430,54 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			);
 			expect(again["lens.correctness"]).toContain(unavailable);
 			expect(again["lens.contracts"]).not.toContain(unavailable);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the caller caveat of a run it copies from a review that had no callers", async () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-reuse-caveat-"));
+		try {
+			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+			const caveatsOf = async (reviewed: readonly Lens[], callers?: CallerContext) => {
+				const plain = () => fauxAssistantMessage("No findings.");
+				scriptConversations(fake, [
+					{ match: correctness, replies: [plain] },
+					{ match: contracts, replies: [plain] },
+				]);
+				const result = await reviewChangeset({
+					harness,
+					changeset: await Changeset.resolve(repo, "main...feature"),
+					config: enabled,
+					lenses: reviewed,
+					standards: [],
+					models: fake.review,
+					...(callers === undefined ? {} : { callers }),
+					checks: [{ name: "guardrails", status: "ran" }],
+				});
+				return Object.fromEntries(
+					(result.verdict.ran ?? [])
+						.filter(({ name }) => name.startsWith("lens."))
+						.map((record) => [record.name, "caveats" in record ? (record.caveats ?? []) : []]),
+				);
+			};
+			const blind = [`${blindCallers}: the host supplied no graph context`];
+			expect((await caveatsOf(lenses))["lens.contracts"]).toEqual(blind);
+
+			// The contracts lens is copied from the review above, which ran it without callers, though this one has them.
+			const again = await caveatsOf(
+				changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
+				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+			);
+			expect(again["lens.contracts"]).toEqual(blind);
+
+			// Asked again with callers, neither lens is copied, so the earlier caveat goes.
+			const fresh = await caveatsOf(
+				lenses.map((lens) => Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look again.` })),
+				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+			);
+			expect(fresh).toEqual({ "lens.contracts": [], "lens.correctness": [] });
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

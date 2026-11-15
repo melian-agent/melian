@@ -1706,12 +1706,16 @@ async function runLenses(
 		const copiedNotes = new Set(
 			input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
 		);
-		const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
+		const earlier = (previous?.input as StoredLensTaskInput | undefined)?.callers;
+		const earlierNotes = earlier?.notes ?? {};
+		// The caveat is the task's, so a copied run that saw no callers keeps the task warning that some lens saw none.
+		const caveat = input.callers?.caveat ?? (copiedNotes.size === 0 ? undefined : earlier?.caveat);
 		const callers =
 			input.callers === undefined
 				? undefined
 				: {
 						...input.callers,
+						...(caveat === undefined ? {} : { caveat }),
 						notes: Object.fromEntries(
 							Object.entries(input.callers.notes).flatMap(([key, notes]) =>
 								!copiedNotes.has(key) ? [[key, notes]] : key in earlierNotes ? [[key, earlierNotes[key]!]] : [],
