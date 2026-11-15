@@ -38,6 +38,10 @@ export class Remote {
 	static async create(): Promise<Remote> {
 		const remote = new Remote(await mkdtemp(join(tmpdir(), "melian-state-git-")));
 		remote.git(["init", "--bare", "--quiet", remote.path], remote.root);
+		// A push starts git's automatic maintenance, which newer git detaches, and it can still be writing into the remote
+		// when the test removes it.
+		remote.git(["config", "receive.autogc", "false"]);
+		remote.git(["config", "maintenance.auto", "false"]);
 		return remote;
 	}
 
