@@ -1680,7 +1680,7 @@ async function runLenses(
 		if (!attaches) {
 			const copied = copiesFrom(record, input.lenses, refused);
 			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
-			unlockedFor = Object.keys(copied).sort().join("\n");
+			unlockedFor = Object.keys(copied).join("\n");
 		}
 	}
 	let replaced: number | undefined;
@@ -1700,7 +1700,7 @@ async function runLenses(
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
 		const reused = copiesFrom(previous, input.lenses, refused);
-		if (checked && Object.keys(reused).sort().join("\n") !== unlockedFor) return undefined;
+		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
 		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
 		const copiedNotes = new Set(
