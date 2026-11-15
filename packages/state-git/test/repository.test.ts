@@ -1,5 +1,5 @@
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Deadline, systemClock } from "../src/deadline.ts";
@@ -57,6 +57,15 @@ describe("opening the repository", { timeout: 60_000 }, () => {
 		const error = await RecordRepository.open(join(host, "records.git"), time()).catch((caught: unknown) => caught);
 		expect(error).toSatisfy(unreachable(/records\.git cannot be read$/));
 		expect(((error as RecordError).cause as NodeJS.ErrnoException).code).toBe("ENOTDIR");
+	});
+
+	it("fetches through a path relative to the process's directory, as it does through an absolute one", async () => {
+		await (await remote.open()).add([check("a")]);
+		const repository = await RecordRepository.open(
+			relative(process.cwd(), join(remote.host(), "records.git")),
+			time(),
+		);
+		expect(await repository.fetch(remote.url, remote.branch, time())).toBe(remote.tip());
 	});
 
 	it("fails as not a directory when its path is a file", async () => {

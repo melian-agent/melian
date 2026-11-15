@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, rename, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { type GitResult, git, RecordError } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 import type { Deadline } from "./deadline.ts";
@@ -60,8 +60,10 @@ export class RecordRepository {
 		this.path = path;
 	}
 
-	// Opens the repository at `path`, creating it with Melian's configuration when it is not there.
-	static async open(path: string, deadline: Deadline): Promise<RecordRepository> {
+	// Opens the repository at `given`, creating it with Melian's configuration when it is not there. The path is made
+	// absolute, since git runs inside the repository and would read a relative one from there.
+	static async open(given: string, deadline: Deadline): Promise<RecordRepository> {
+		const path = resolve(given);
 		const found = await lstat(path).catch((cause: unknown) => {
 			if ((cause as NodeJS.ErrnoException).code !== "ENOENT")
 				throw unreachable(`${path} cannot be read`, undefined, cause);
