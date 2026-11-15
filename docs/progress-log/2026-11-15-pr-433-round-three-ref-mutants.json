@@ -1,0 +1,177 @@
+{
+	"mutants": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 155,
+			"column": 6,
+			"endLine": 157,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 9,
+			"endLine": 156,
+			"endColumn": 113,
+			"mutatorName": "MethodExpression",
+			"replacement": "await this.#succeed([\"rev-parse\", \"--verify\", \"--end-of-options\", `${ref}^{commit}`], deadline)",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 30,
+			"endLine": 156,
+			"endColumn": 94,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > retries deleting its ref while another process holds a lock for a moment, and leaves no ref",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 31,
+			"endLine": 156,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 44,
+			"endLine": 156,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 56,
+			"endLine": 156,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 156,
+			"column": 76,
+			"endLine": 156,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 157,
+			"column": 18,
+			"endLine": 161,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref when reading the fetched tip fails",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref when reading the fetched tip fails",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 159,
+			"column": 4,
+			"endLine": 159,
+			"endColumn": 58,
+			"mutatorName": "hand (the swallow of a failed deletion removed, which Stryker does not generate)",
+			"replacement": "await this.#deleteRef(ref, deadline);",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > reports the read's failure, not the deletion's, when it cannot delete its ref either",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > reports the read's failure, not the deletion's, when it cannot delete its ref either",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 159,
+			"column": 4,
+			"endLine": 159,
+			"endColumn": 58,
+			"mutatorName": "hand (the deletion on a failed read removed, which Stryker does not generate)",
+			"replacement": "",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref when reading the fetched tip fails",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref when reading the fetched tip fails",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 162,
+			"column": 3,
+			"endLine": 163,
+			"endColumn": 36,
+			"mutatorName": "hand (the deletion moved after the hint, as before, which Stryker does not generate)",
+			"replacement": "await this.#keepLast(tip, deadline);\n\t\tawait this.#deleteRef(ref, deadline);",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref before it points the hint at the tip, so a hint that runs out of time leaves no ref",
+			"survivorClasses": [],
+			"run": {
+				"head": "f8d10eaa",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > deletes its ref before it points the hint at the tip, so a hint that runs out of time leaves no ref",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}

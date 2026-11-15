@@ -1,0 +1,566 @@
+{
+	"mutants": [
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 57,
+			"column": 41,
+			"endLine": 59,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 58,
+			"column": 23,
+			"endLine": 58,
+			"endColumn": 72,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 58,
+			"column": 61,
+			"endLine": 58,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 145,
+			"column": 92,
+			"endLine": 145,
+			"endColumn": 97,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 146,
+			"column": 16,
+			"endLine": 146,
+			"endColumn": 68,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 146,
+			"column": 31,
+			"endLine": 146,
+			"endColumn": 67,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 146,
+			"column": 42,
+			"endLine": 146,
+			"endColumn": 67,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "judged.has(keyOf(entry))",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 147,
+			"column": 25,
+			"endLine": 147,
+			"endColumn": 88,
+			"mutatorName": "MethodExpression",
+			"replacement": "fresh.map(entry => entry.oid)",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 147,
+			"column": 35,
+			"endLine": 147,
+			"endColumn": 55,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 147,
+			"column": 64,
+			"endLine": 147,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 149,
+			"column": 11,
+			"endLine": 149,
+			"endColumn": 22,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 149,
+			"column": 27,
+			"endLine": 149,
+			"endColumn": 67,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 149,
+			"column": 36,
+			"endLine": 149,
+			"endColumn": 67,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 152,
+			"column": 29,
+			"endLine": 152,
+			"endColumn": 101,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 153,
+			"column": 35,
+			"endLine": 153,
+			"endColumn": 80,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 162,
+			"column": 18,
+			"endLine": 164,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 163,
+			"column": 65,
+			"endLine": 163,
+			"endColumn": 69,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 34,
+			"endLine": 175,
+			"endColumn": 62,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 35,
+			"endLine": 175,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 49,
+			"endLine": 175,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 65,
+			"endLine": 175,
+			"endColumn": 83,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 66,
+			"endLine": 175,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 175,
+			"column": 75,
+			"endLine": 175,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 176,
+			"column": 17,
+			"endLine": 177,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 177,
+			"column": 12,
+			"endLine": 177,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 177,
+			"column": 59,
+			"endLine": 177,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 182,
+			"column": 4,
+			"endLine": 182,
+			"endColumn": 156,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 182,
+			"column": 112,
+			"endLine": 182,
+			"endColumn": 153,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 187,
+			"column": 4,
+			"endLine": 187,
+			"endColumn": 156,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 187,
+			"column": 112,
+			"endLine": 187,
+			"endColumn": 153,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 205,
+			"column": 4,
+			"endLine": 205,
+			"endColumn": 145,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 205,
+			"column": 120,
+			"endLine": 205,
+			"endColumn": 142,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored"
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 207,
+			"column": 9,
+			"endLine": 207,
+			"endColumn": 27,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 63,
+			"column": 18,
+			"endLine": 63,
+			"endColumn": 49,
+			"mutatorName": "hand (the branch option dropped for its default, which Stryker does not generate)",
+			"replacement": "\"melian/state\"",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the branch it is given > keeps its records there, and neither reads nor writes melian/state",
+			"survivorClasses": [],
+			"run": {
+				"head": "47371472",
+				"test": "packages/state-git/test/store.test.ts > the branch it is given > keeps its records there, and neither reads nor writes melian/state",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 63,
+			"column": 18,
+			"endLine": 63,
+			"endColumn": 49,
+			"mutatorName": "hand (nullish coalescing swapped for a logical and, which Stryker does not generate)",
+			"replacement": "options.branch && \"melian/state\"",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the branch it is given > keeps its records there, and neither reads nor writes melian/state",
+			"survivorClasses": [
+				"nullish-logical"
+			],
+			"run": {
+				"head": "47371472",
+				"test": "packages/state-git/test/store.test.ts > the branch it is given > keeps its records there, and neither reads nor writes melian/state",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 114,
+			"column": 4,
+			"endLine": 114,
+			"endColumn": 78,
+			"mutatorName": "hand (the write's measurement removed, which Stryker does not generate)",
+			"replacement": "",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "bd0a9aca",
+				"test": "packages/state-git/test/store.test.ts > the entries a write may leave > fails as unreachable a write that would leave one entry past the limit, and pushes nothing",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	],
+	"total": 33,
+	"omitted": 0,
+	"unmutated": []
+}
