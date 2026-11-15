@@ -238,6 +238,48 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("naming the remote", { timeout: 60_000 }, () => {
+	const named = /https:\/\/127\.0\.0\.1:9\/x\.git/;
+	const hidden = /melian:|FAKESECRET/;
+
+	it("names a remote whose fetch failed without its user and password", async () => {
+		const repository = await opened();
+		const error = await repository
+			.fetch("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
+			.catch((caught: unknown) => caught);
+		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
+		expect((error as RecordError).message).not.toMatch(hidden);
+	});
+
+	it("names a remote whose fetch ran past its deadline without its user and password", async () => {
+		const repository = await opened();
+		const error = await repository
+			.fetch("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, oneMillisecond())
+			.catch((caught: unknown) => caught);
+		expect(error).toSatisfy(
+			unreachable(new RegExp(`^fetching melian/state from ${named.source} ran past its deadline$`)),
+		);
+	});
+
+	it("names a remote whose push failed without its user and password", async () => {
+		const { repository, tip } = await fetched();
+		const error = await repository
+			.push("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, tip, tip, time())
+			.catch((caught: unknown) => caught);
+		expect(error).toSatisfy(unreachable(new RegExp(`^pushing to melian/state at ${named.source} failed: `)));
+		expect((error as RecordError).message).not.toMatch(hidden);
+	});
+
+	it("names a remote that carries a token as its user alone without it", async () => {
+		const repository = await opened();
+		const error = await repository
+			.fetch("https://FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
+			.catch((caught: unknown) => caught);
+		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
+		expect((error as RecordError).message).not.toMatch(hidden);
+	});
+});
+
 describe("reading objects", { timeout: 60_000 }, () => {
 	it("fails as unreachable on a commit it does not hold", async () => {
 		const { repository } = await fetched();

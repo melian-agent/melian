@@ -45,6 +45,17 @@ export type TreeChange = { readonly path: string; readonly bytes: string | null 
 // How a push ended: it landed, a newer tip refused it, or it ran past its deadline and may have landed.
 export type PushOutcome = "landed" | "stale" | "timedOut";
 
+// The remote as a message names it, a URL's user and password removed, since a remote may carry a token. Git
+// anonymises its own messages so, and no command answers with its form.
+function shown(url: string): string {
+	if (!URL.canParse(url)) return url;
+	const parsed = new URL(url);
+	if (parsed.username === "" && parsed.password === "") return url;
+	parsed.username = "";
+	parsed.password = "";
+	return parsed.href;
+}
+
 function unreachable(message: string, result?: GitResult, cause?: unknown): RecordError {
 	const said = result?.stderr.trim();
 	return new RecordError("unreachable", said ? `${message}: ${said}` : message, { cause });
@@ -149,10 +160,10 @@ export class RecordRepository {
 			],
 			deadline,
 		);
-		if (result.timedOut) throw unreachable(`fetching ${branch} from ${url} ran past its deadline`);
+		if (result.timedOut) throw unreachable(`fetching ${branch} from ${shown(url)} ran past its deadline`);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
-			throw unreachable(`fetching ${branch} from ${url} failed`, result);
+			throw unreachable(`fetching ${branch} from ${shown(url)} failed`, result);
 		}
 		let tip: string;
 		try {
@@ -302,7 +313,7 @@ export class RecordRepository {
 		if (result.code === 0) return "landed";
 		const refused = result.stdout.split("\n").find((line) => line.startsWith("!\t"));
 		if (refused !== undefined && lostRace.test(refused)) return "stale";
-		throw unreachable(`pushing to ${branch} at ${url} failed`, {
+		throw unreachable(`pushing to ${branch} at ${shown(url)} failed`, {
 			...result,
 			stderr: [refused?.split("\t").slice(2).join(" "), result.stderr].filter(Boolean).join("\n"),
 		});

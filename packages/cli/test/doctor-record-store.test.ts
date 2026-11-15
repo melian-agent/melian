@@ -76,6 +76,13 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		expect(line()).toMatch(/^warn records .*records\.git is not a directory$/);
 	});
 
+	it("names an origin that carries a user and password without them", async () => {
+		origin("https://melian:FAKESECRET@127.0.0.1:9/x.git");
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toMatch(/^warn records fetching melian\/state from https:\/\/127\.0\.0\.1:9\/x\.git failed: /);
+		expect(output).not.toMatch(/melian:|FAKESECRET/);
+	});
+
 	it("says the branch holds only what Melian wrote, when it is absent or clean", async () => {
 		origin(remote.url);
 		await doctor(io);
