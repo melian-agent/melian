@@ -172,6 +172,8 @@ export class GitRecordStore implements RecordStore {
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
 		checkCellValue(value);
+		if (Buffer.byteLength(cellBytes({ value, version: randomUUID() })) > fileLimit)
+			throw new RecordError("invalidCell", `a cell is at most ${fileLimit} bytes`);
 		this.#check(changeset);
 		return this.#write((tree) => {
 			tree.refuse(changeset);

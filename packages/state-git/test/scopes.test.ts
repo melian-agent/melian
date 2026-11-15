@@ -1,7 +1,7 @@
 import { RecordError, type RecordStore } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RecordRepository } from "../src/repository.ts";
-import { fileLimit } from "../src/state-tree.ts";
+import { cellBytes, fileLimit } from "../src/state-tree.ts";
 import { changeset, check, filed, keys, other, type Planted, Remote } from "./fixtures/remote.ts";
 
 let remote: Remote;
@@ -231,5 +231,36 @@ describe("a record's size", { timeout: 60_000 }, () => {
 		const reader = await remote.open();
 		await expect(reader.list(changeset)).rejects.toSatisfy(refusal(past.path));
 		expect(blobs.mock.calls.flatMap(([oids]) => oids)).not.toContain(remote.oid(past.path));
+	});
+});
+
+describe("a cell's size", { timeout: 60_000 }, () => {
+	// A cell value whose cell.json is exactly `size` bytes long.
+	function sized(size: number): string {
+		const bare = cellBytes({ value: '""', version: crypto.randomUUID() }).length;
+		return `"${"x".repeat(size - bare)}"`;
+	}
+
+	it("takes a cell of the limit, and refuses one a byte past it before reaching the remote", async () => {
+		const store = await remote.open();
+		expect(cellBytes({ value: sized(fileLimit), version: crypto.randomUUID() }).length).toBe(fileLimit);
+		expect(await store.writeCell(changeset, undefined, sized(fileLimit))).toBe(true);
+		const reader = await remote.open();
+		const { value, version } = await reader.readCell(changeset);
+		expect(value).toBe(sized(fileLimit));
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+		await expect(store.writeCell(changeset, version, sized(fileLimit + 1))).rejects.toMatchObject({
+			code: "invalidCell",
+		});
+		expect(fetch).not.toHaveBeenCalled();
+		expect((await reader.readCell(changeset)).value).toBe(sized(fileLimit));
+	});
+
+	it("counts a cell's size in UTF-8 bytes, not characters", async () => {
+		const store = await remote.open();
+		const wide = sized(fileLimit).replace("x", "\u00e9");
+		const bytes = cellBytes({ value: wide, version: crypto.randomUUID() });
+		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([fileLimit, fileLimit + 1]);
+		await expect(store.writeCell(changeset, undefined, wide)).rejects.toMatchObject({ code: "invalidCell" });
 	});
 });
