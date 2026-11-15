@@ -266,7 +266,11 @@ describe("naming the remote", { timeout: 60_000 }, () => {
 		const error = await repository
 			.push("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, tip, tip, time())
 			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(unreachable(new RegExp(`^pushing to melian/state at ${named.source} failed: `)));
+		expect(error).toSatisfy(
+			unreachable(
+				new RegExp(`^pushing to melian/state at ${named.source} failed, and may have landed; repeat the call: `),
+			),
+		);
 		expect((error as RecordError).message).not.toMatch(hidden);
 	});
 
@@ -359,7 +363,9 @@ describe("pushing", { timeout: 60_000 }, () => {
 		const commit = await repository.commit(tip, [], time());
 		const { program, ran } = await marker();
 		await expect(repository.push(`--receive-pack=${program}`, remote.branch, commit, tip, time())).rejects.toSatisfy(
-			unreachable(/^pushing to melian\/state at --receive-pack=\S+ failed: \S/),
+			unreachable(
+				/^pushing to melian\/state at --receive-pack=\S+ failed, and may have landed; repeat the call: \S/,
+			),
 		);
 		expect(await ran()).toBe(false);
 	});
@@ -369,7 +375,9 @@ describe("pushing", { timeout: 60_000 }, () => {
 		const error = await repository
 			.push(`file://${join(remote.root, "absent.git")}`, remote.branch, tip, tip, time())
 			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(unreachable(/^pushing to melian\/state at file:\S+ failed: \S/));
+		expect(error).toSatisfy(
+			unreachable(/^pushing to melian\/state at file:\S+ failed, and may have landed; repeat the call: \S/),
+		);
 		expect((error as RecordError).message).not.toMatch(/\s$/);
 	});
 
@@ -416,6 +424,24 @@ describe("pushing", { timeout: 60_000 }, () => {
 		await expect(repository.push(remote.url, remote.branch, tip, tip, time())).rejects.toMatchObject({
 			code: "unreachable",
 			message: `pushing to melian/state at ${remote.url} failed: [remote rejected] (pre-receive hook declined)\nerror: failed to push some refs`,
+		});
+	});
+
+	it("fails as unreachable, saying it may have landed, when git reports no refusal of the ref", async () => {
+		const { repository, tip } = await fetched();
+		const run = RecordRepository.prototype.run;
+		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
+			if (args[0][0] !== "push") return run.apply(this, args);
+			return {
+				code: 128,
+				stdout: "",
+				stdoutBytes: Buffer.from(""),
+				stderr: "fatal: the remote end hung up unexpectedly\n",
+			};
+		});
+		await expect(repository.push(remote.url, remote.branch, tip, tip, time())).rejects.toMatchObject({
+			code: "unreachable",
+			message: `pushing to melian/state at ${remote.url} failed, and may have landed; repeat the call: fatal: the remote end hung up unexpectedly`,
 		});
 	});
 });

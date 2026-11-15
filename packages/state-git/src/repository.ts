@@ -313,7 +313,9 @@ export class RecordRepository {
 		if (result.code === 0) return "landed";
 		const refused = result.stdout.split("\n").find((line) => line.startsWith("!\t"));
 		if (refused !== undefined && lostRace.test(refused)) return "stale";
-		throw unreachable(`pushing to ${branch} at ${shown(url)} failed`, {
+		// With no refusal of the ref, git may have stopped after the remote updated it, such as when the connection drops.
+		const unsure = refused === undefined ? ", and may have landed; repeat the call" : "";
+		throw unreachable(`pushing to ${branch} at ${shown(url)} failed${unsure}`, {
 			...result,
 			stderr: [refused?.split("\t").slice(2).join(" "), result.stderr].filter(Boolean).join("\n"),
 		});
