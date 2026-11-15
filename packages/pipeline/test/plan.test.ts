@@ -710,16 +710,24 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		moved?: boolean;
 		rerun?: boolean;
 	}) {
-		rmSync(repo, { recursive: true, force: true });
-		const own = ["name: correctness", "extends: correctness", ...(options.tier === undefined ? [] : ["tier: light"])];
-		repo = baseAndHead(
-			{
-				"src/a.ts": lines("export const a = 1;"),
-				"services/pay/b.ts": lines("export const b = 1;"),
-				"services/pay/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
-			},
-			{ "src/a.ts": lines("export const a = 2;"), "services/pay/b.ts": lines("export const b = 2;") },
-		);
+		// A rerun reviews the commits the review before it made: a commit's hash holds the second it was made, so a rebuilt
+		// repository is another revision.
+		if (options.rerun !== true) {
+			rmSync(repo, { recursive: true, force: true });
+			const own = [
+				"name: correctness",
+				"extends: correctness",
+				...(options.tier === undefined ? [] : ["tier: light"]),
+			];
+			repo = baseAndHead(
+				{
+					"src/a.ts": lines("export const a = 1;"),
+					"services/pay/b.ts": lines("export const b = 1;"),
+					"services/pay/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
+				},
+				{ "src/a.ts": lines("export const a = 2;"), "services/pay/b.ts": lines("export const b = 2;") },
+			);
+		}
 		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 			"src/a.ts",
 			"services/pay/b.ts",
