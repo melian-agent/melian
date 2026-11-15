@@ -1193,24 +1193,29 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		const availability = vi
 			.spyOn(Probe, "availability")
 			.mockImplementation(async (sandbox) =>
-				sandbox === undefined ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
 			);
 		onTestFinished(() => {
 			availability.mockRestore();
 		});
 		const scripted = await runGolden(golden, { kind: "scripted" });
 		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
-		expect(availability.mock.calls.every(([sandbox]) => sandbox !== undefined)).toBe(true);
+		expect(availability.mock.calls.every(([sandbox]) => sandbox !== Probe.sandbox)).toBe(true);
 		availability.mockClear();
 		const fake = testing.createFakeModels();
 		testing.scriptConversations(fake, [
 			{
 				match: "You are the trust-boundary reviewer",
-				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+				replies: [
+					testing.fauxAssistantMessage([testing.fauxToolCall("record_plan", { attacks: [] })], {
+						stopReason: "toolUse",
+					}),
+					testing.fauxAssistantMessage("Planned no attacks."),
+				],
 			},
 		]);
 		const ref = fake.ref();
 		await runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
-		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([undefined]);
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
 	});
 });
