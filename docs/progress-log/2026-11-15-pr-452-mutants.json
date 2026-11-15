@@ -1,0 +1,375 @@
+{
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 90,
+			"mutatorName": "LogicalOperator",
+			"replacement": "/^(?:pull|range)-[0-9a-f]{16}\\.sqlite(?:-wal|-shm)?$/.test(node.name) || node.file",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 61,
+			"mutatorName": "Regex",
+			"replacement": "/(?:pull|range)-[0-9a-f]{16}\\.sqlite(?:-wal|-shm)?$/",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 61,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:pull|range)-[0-9a-f]{16}\\.sqlite(?:-wal|-shm)?/",
+			"claim": "killed",
+			"evidence": "lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 61,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:pull|range)-[0-9a-f]\\.sqlite(?:-wal|-shm)?$/",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 61,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:pull|range)-[^0-9a-f]{16}\\.sqlite(?:-wal|-shm)?$/",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 61,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:pull|range)-[0-9a-f]{16}\\.sqlite(?:-wal|-shm)$/",
+			"claim": "killed",
+			"evidence": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 190,
+			"column": 8,
+			"endLine": 190,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 190,
+			"column": 8,
+			"endLine": 190,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 190,
+			"column": 8,
+			"endLine": 190,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!node.link || scratchName(node.name)",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 190,
+			"column": 8,
+			"endLine": 190,
+			"endColumn": 18,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "node.link",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 217,
+			"column": 8,
+			"endLine": 217,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 217,
+			"column": 8,
+			"endLine": 217,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 217,
+			"column": 8,
+			"endLine": 217,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!node.link || scratchName(node.name)",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under coverage that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 217,
+			"column": 8,
+			"endLine": 217,
+			"endColumn": 18,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "node.link",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under coverage to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 223,
+			"column": 8,
+			"endLine": 223,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 223,
+			"column": 8,
+			"endLine": 223,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 223,
+			"column": 8,
+			"endLine": 223,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!node.link || scratchName(node.name)",
+			"claim": "killed",
+			"evidence": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "lists a dotted name, or one that holds a scratch name, under mutation that CacheScratch does not sweep as not recognised",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 223,
+			"column": 8,
+			"endLine": 223,
+			"endColumn": 18,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "node.link",
+			"claim": "killed",
+			"evidence": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
+			"survivorClasses": [],
+			"run": {
+				"head": "236c1906",
+				"test": "leaves every scratch kind CacheScratch sweeps under mutation to it, and does not list one",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	],
+	"total": 20,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/cache-scratch.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	],
+	"claimsIn": [
+		"packages/pipeline/src/store-prune.ts"
+	]
+}

@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { GraphSnapshot, TestCoverage } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CacheScratch } from "../src/cache-scratch.ts";
 import { CoverageCache } from "../src/coverage-cache.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 import {
@@ -299,11 +300,12 @@ it("keeps every tool entry, pinned or not, until the tool-cache decision's condi
 });
 
 it("keeps changesets, scripted stores, links, scratch and anything it does not recognise", async () => {
-	for (const name of ["pull-1.sqlite", "range-2.sqlite"]) await writeFile(join(state, name), "12345");
-	await writeFile(join(state, "pull-1.sqlite-wal"), "123");
-	await writeFile(join(state, "pull-1.sqlite-shm"), "12");
+	for (const name of ["pull-1111111111111111.sqlite", "range-2222222222222222.sqlite"])
+		await writeFile(join(state, name), "12345");
+	await writeFile(join(state, "pull-1111111111111111.sqlite-wal"), "123");
+	await writeFile(join(state, "pull-1111111111111111.sqlite-shm"), "12");
 	await mkdir(join(state, "scripted"), { recursive: true });
-	await writeFile(join(state, "scripted", "pull-3.sqlite"), "x");
+	await writeFile(join(state, "scripted", "pull-3333333333333333.sqlite"), "x");
 	await mkdir(join(state, "ledger"), { recursive: true });
 	await writeFile(join(state, "notes.txt"), "x");
 	await mkdir(join(state, "graphs", "not-a-key"), { recursive: true });
@@ -335,22 +337,120 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 		].sort(),
 	);
 	expect(prune.changesets).toEqual({ files: 2, bytes: 15 });
-	expect(await exists("scripted/pull-3.sqlite")).toBe(true);
+	expect(await exists("scripted/pull-3333333333333333.sqlite")).toBe(true);
 	expect(await exists("tools/stray")).toBe(true);
 	expect(await exists("tools/linked")).toBe(true);
 });
 
 it("lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count", async () => {
-	await writeFile(join(state, "pull-1.sqlite"), "12345");
-	for (const name of ["pull-1.sqlite.bak", "pull-1.sqlite-walx", "pull-1.sqlite-journal"])
+	await writeFile(join(state, "pull-1111111111111111.sqlite"), "12345");
+	for (const name of [
+		"pull-1111111111111111.sqlite.bak",
+		"pull-1111111111111111.sqlite-walx",
+		"pull-1111111111111111.sqlite-journal",
+	])
 		await writeFile(join(state, name), "1");
 	const prune = await plan();
-	expect([...prune.kept].sort()).toEqual(["pull-1.sqlite-journal", "pull-1.sqlite-walx", "pull-1.sqlite.bak"]);
+	expect([...prune.kept].sort()).toEqual([
+		"pull-1111111111111111.sqlite-journal",
+		"pull-1111111111111111.sqlite-walx",
+		"pull-1111111111111111.sqlite.bak",
+	]);
 	expect(prune.changesets).toEqual({ files: 1, bytes: 5 });
 });
 
+it("counts only names core gives a changeset as changesets, and lists every other .sqlite name as not recognised", async () => {
+	const pull = `pull-${"0123456789abcdef"}`;
+	const range = `range-${"f".repeat(16)}`;
+	await writeFile(join(state, `${pull}.sqlite`), "12345");
+	await writeFile(join(state, `${pull}.sqlite-wal`), "123");
+	await writeFile(join(state, `${range}.sqlite-shm`), "12");
+	await writeFile(join(state, `${range}.sqlite`), "12345");
+	const strangers = [
+		"archive.sqlite",
+		"archive.sqlite-wal",
+		"notes.sqlite-shm",
+		"pull-1.sqlite",
+		`pull-${"a".repeat(17)}.sqlite`,
+		`pull-${"A".repeat(16)}.sqlite`,
+		`review-${"a".repeat(16)}.sqlite`,
+		`x${pull}.sqlite`,
+	];
+	for (const name of strangers) await writeFile(join(state, name), "1");
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual([...strangers].sort());
+	expect(prune.changesets).toEqual({ files: 2, bytes: 15 });
+});
+
+it.each(["graphs", "coverage", "mutation"])(
+	"lists a dotted name, or one that holds a scratch name, under %s that CacheScratch does not sweep as not recognised",
+	async (folder) => {
+		await mkdir(join(state, folder, ".future-cache"), { recursive: true });
+		await writeFile(join(state, folder, ".future-cache", "data"), "x");
+		const near = [
+			".fetch",
+			"x.fetch-1",
+			`.entry-${crypto.randomUUID()}.jsonx`,
+			`x.entry-${crypto.randomUUID()}.json`,
+		];
+		for (const name of near) await writeFile(join(state, folder, name), "x");
+		const prune = await plan();
+		expect(prune.entries).toEqual([]);
+		expect([...prune.kept].sort()).toEqual([".future-cache", ...near].map((name) => `${folder}/${name}`).sort());
+	},
+);
+
+it.each(["graphs", "coverage", "mutation"])(
+	"leaves every scratch kind CacheScratch sweeps under %s to it, and does not list one",
+	async (folder) => {
+		await mkdir(join(state, folder, ".fetch-1-partial"), { recursive: true });
+		await mkdir(join(state, folder, `.graph-${process.pid}-partial`), { recursive: true });
+		await mkdir(join(state, folder, `.prune-${process.pid}-moved`), { recursive: true });
+		await writeFile(join(state, folder, `.entry-${crypto.randomUUID()}.json`), "x");
+		await writeFile(join(state, folder, `index.json.${process.pid}.${crypto.randomUUID()}.tmp`), "x");
+		const prune = await plan();
+		expect(prune.entries).toEqual([]);
+		expect(prune.kept).toEqual([]);
+	},
+);
+
+it.each(["graphs", "coverage", "mutation"])(
+	"lists an old entry- name under %s with a scratch suffix, which CacheScratch never sweeps",
+	async (folder) => {
+		const name = `entry-orphan.${crypto.randomUUID()}.tmp`;
+		await mkdir(join(state, folder), { recursive: true });
+		await writeFile(join(state, folder, name), "x");
+		await utimes(join(state, folder, name), new Date(0), new Date(0));
+		await CacheScratch.open(state);
+		expect(await readFile(join(state, folder, name), "utf8")).toBe("x");
+		expect((await plan()).kept).toEqual([`${folder}/${name}`]);
+	},
+);
+
+it.each(["graphs", "coverage", "mutation"])(
+	"lists a link with a scratch name under %s, which CacheScratch never sweeps",
+	async (folder) => {
+		const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+		outside.push(elsewhere);
+		await mkdir(join(state, folder), { recursive: true });
+		await symlink(elsewhere, join(state, folder, `.graph-${process.pid}-linked`));
+		const prune = await plan();
+		expect(prune.kept).toEqual([`${folder}/.graph-${process.pid}-linked`]);
+	},
+);
+
+it("lists a directory with a changeset file's name, and leaves it out of the changeset count", async () => {
+	const name = "pull-0123456789abcdef.sqlite";
+	await mkdir(join(state, name, "notes"), { recursive: true });
+	await writeFile(join(state, name, "notes", "a"), "12345");
+	await mkdir(join(state, `${name}-wal`));
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual([name, `${name}-wal`]);
+	expect(prune.changesets).toEqual({ files: 0, bytes: 0 });
+});
+
 it("leaves a changeset store byte for byte as it was, and the store reopens", async () => {
-	const file = join(state, "pull-9.sqlite");
+	const file = join(state, "pull-9999999999999999.sqlite");
 	const Note = defineDoc<{ text: string }>({
 		kind: "melian.test-note",
 		version: 1,
@@ -372,7 +472,7 @@ it("leaves a changeset store byte for byte as it was, and the store reopens", as
 		}, context);
 		await graph("f".repeat(40), 30 * day);
 		const before = await sqliteBytes();
-		expect(Object.keys(before)).toContain("pull-9.sqlite");
+		expect(Object.keys(before)).toContain("pull-9999999999999999.sqlite");
 		const prune = await plan();
 		expect(prune.entries.map((entry) => entry.kind)).toEqual(["graph"]);
 		expect(prune.changesets.files).toBe(1);
@@ -581,14 +681,14 @@ it("never removes a changeset, a scripted store or a name it does not recognise,
 	]);
 	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
 	outside.push(elsewhere);
-	await writeFile(join(elsewhere, "pull-9.sqlite"), "theirs");
+	await writeFile(join(elsewhere, "pull-9999999999999999.sqlite"), "theirs");
 	await rm(join(state, orphan), { recursive: true });
 	await symlink(elsewhere, join(state, orphan));
 	const written = {
-		"pull-1.sqlite": "changeset",
-		"pull-1.sqlite-wal": "wal",
-		"pull-1.sqlite-shm": "shm",
-		"scripted/pull-2.sqlite": "scripted",
+		"pull-1111111111111111.sqlite": "changeset",
+		"pull-1111111111111111.sqlite-wal": "wal",
+		"pull-1111111111111111.sqlite-shm": "shm",
+		"scripted/pull-2222222222222222.sqlite": "scripted",
 		"notes.txt": "mine",
 		"ledger/entry": "ledger",
 	};
@@ -598,7 +698,7 @@ it("never removes a changeset, a scripted store or a name it does not recognise,
 	}
 	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
 	for (const [path, text] of Object.entries(written)) expect(await readFile(join(state, path), "utf8")).toBe(text);
-	expect(await readFile(join(elsewhere, "pull-9.sqlite"), "utf8")).toBe("theirs");
+	expect(await readFile(join(elsewhere, "pull-9999999999999999.sqlite"), "utf8")).toBe("theirs");
 	expect(await exists(orphan)).toBe(false);
 	expect(await exists(`graphs/${dead}`)).toBe(false);
 });
@@ -737,7 +837,7 @@ it("refuses a state directory that is itself a link, naming it, and removes noth
 	await rename(state, real);
 	await symlink(real, state);
 	const dead = await graph("f".repeat(40), 30 * day);
-	await writeFile(join(state, "pull-1.sqlite"), "changeset");
+	await writeFile(join(state, "pull-1111111111111111.sqlite"), "changeset");
 	await expect(plan()).rejects.toEqual(
 		new StorePruneError(
 			"linked",
@@ -755,7 +855,7 @@ it("removes on an unchanged store exactly what the plan lists, of every kind", a
 	await mkdir(join(state, "coverage", "2".repeat(64)), { recursive: true });
 	await mkdir(join(state, "mutation", "3".repeat(64)), { recursive: true });
 	await age(`mutation/${"3".repeat(64)}`, 20 * day);
-	await writeFile(join(state, "pull-1.sqlite"), "changeset");
+	await writeFile(join(state, "pull-1111111111111111.sqlite"), "changeset");
 	const prune = await plan();
 	expect(kinds(prune)).toEqual([
 		["unreadable graph", `graphs/${"1".repeat(64)}`],
@@ -766,7 +866,7 @@ it("removes on an unchanged store exactly what the plan lists, of every kind", a
 	expect(prune.changesets).toEqual({ files: 1, bytes: 9 });
 	expect(await prune.apply()).toEqual({ removed: prune.entries, live: [] });
 	for (const entry of prune.entries) for (const path of entry.paths) expect(await exists(path)).toBe(false);
-	expect(await readFile(join(state, "pull-1.sqlite"), "utf8")).toBe("changeset");
+	expect(await readFile(join(state, "pull-1111111111111111.sqlite"), "utf8")).toBe("changeset");
 });
 
 it("plans and removes a graph alone when its coverage folder is a link, and reports what it removed", async () => {
