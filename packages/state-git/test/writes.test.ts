@@ -234,6 +234,9 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		await store.add([check("flooded")]);
 		expect(remote.git(["rev-list", "--count", "refs/heads/melian/state"])).toBe("1");
 		expect(keys(await (await remote.open()).list(changeset))).toEqual(["flooded"]);
+		// A cell, unlike a record, is leased on its version, so a retry of a write that landed would answer false.
+		expect(await store.writeCell(changeset, undefined, '"flooded"')).toBe(true);
+		expect(remote.git(["rev-list", "--count", "refs/heads/melian/state"])).toBe("2");
 	});
 
 	it("counts as landed when its commit is the tip, and pushes no second commit", async () => {
