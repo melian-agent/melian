@@ -124,7 +124,7 @@ describe("the round comment check in AGENTS.md", () => {
 	];
 	const notRecorded = [
 		1,
-		`comment ${bot.id}'s body is not the one run ${runId} recorded for pull request ${pull}\n`,
+		`comment ${bot.id}, or its body, is not what run ${runId} recorded for pull request ${pull}\n`,
 		null,
 	];
 
@@ -257,7 +257,11 @@ describe("the round comment check in AGENTS.md", () => {
 		const wrong = { ...recordOf({ body: "another body" }), id: status.id + 1 };
 		expect(run(bot, [[{ ...genuine, description: `${genuine.description}\n` }]])).toEqual(notRecorded);
 		expect(run(bot, [[{ ...genuine, description: `${genuine.description}\n\n` }]])).toEqual(notRecorded);
-		const forged = (id) => ({ ...genuine, id, description: `run ${runId} x\n99999999999999 ${genuine.description}` });
+		const forged = (id) => ({
+			...genuine,
+			id,
+			description: `run ${runId} x\n99999999999999 ${JSON.stringify(bot.html_url)} ${genuine.description}`,
+		});
 		expect(run(bot, [[wrong, forged(status.id + 2)]])).toEqual(notRecorded);
 		expect(run(bot, [[wrong, forged(10)]])).toEqual(notRecorded);
 	});
@@ -265,6 +269,34 @@ describe("the round comment check in AGENTS.md", () => {
 	it("passes over a record with no description, beside the run's record", () => {
 		const blank = { ...recordOf(bot), id: status.id + 1, description: null };
 		expect(run(bot, [[blank, recordOf(bot)]])).toEqual(passes());
+	});
+
+	it("refuses an older round's genuine body placed in a newer round's comment", () => {
+		const older = { ...bot, id: 6800000001, html_url: `${bot.html_url.split("#")[0]}#issuecomment-6800000001` };
+		const replayed = { ...bot, body: older.body };
+		expect(recordOf(older).description).toBe(recordOf(replayed).description);
+		expect(run(replayed, [[recordOf(older)]])).toEqual(notRecorded);
+	});
+
+	it("passes a genuine comment that a rerun edited in place, under the rerun's record", () => {
+		const edited = { ...bot, body: `${bot.body}\nedited by the rerun` };
+		expect(recordOf(edited).target_url).toBe(recordOf(bot).target_url);
+		expect(run(edited, [[recordOf(edited, { id: status.id + 1 }), recordOf(bot)]])).toEqual(passes(edited));
+	});
+
+	it("refuses a record whose link names a comment in another repository, on another pull request, or none", () => {
+		expect(bot.html_url).toBe(`https://github.com/melian-agent/melian/pull/${pull}#issuecomment-${bot.id}`);
+		for (const target_url of [
+			bot.html_url.replace("melian-agent/melian", "melian-agent/melian-fork"),
+			bot.html_url.replace(`/pull/${pull}#`, "/pull/421#"),
+			bot.html_url.replace(`/pull/${pull}#`, `/issues/${pull}#`),
+			`${bot.html_url}0`,
+			bot.html_url.slice(0, -1),
+			"",
+			null,
+		]) {
+			expect(run(bot, [[{ ...recordOf(bot), target_url }]]), String(target_url)).toEqual(notRecorded);
+		}
 	});
 
 	it("writes the body it hashed, from its one request for the comment, though a second request would read an edit", () => {
