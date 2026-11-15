@@ -1,6 +1,86 @@
 {
-	"note": "Stryker's mutants of scratchName, listed by its instrumenter on a copy of the function, since the enumerator leaves cache-scratch.ts unmutated for its signals; each applied to scratchName alone and run against its named test.",
+	"note": "Mutants the enumerator does not list, each applied alone and run against its named test. In cache-scratch.ts, Stryker's mutants of scratchName, listed by its instrumenter on a copy of the function, since the enumerator leaves that file unmutated for its signals. In store-prune.ts, five written by hand: the old link test restored, every entry read as a file, and each folder's link guard deleted.",
 	"mutants": [
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 176,
+			"column": 81,
+			"endLine": 176,
+			"endColumn": 90,
+			"mutatorName": "hand: the old link test",
+			"replacement": "!node.link",
+			"claim": "killed",
+			"evidence": "lists a directory with a changeset file's name, and leaves it out of the changeset count",
+			"run": {
+				"head": "236c1906",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 91,
+			"column": 9,
+			"endLine": 91,
+			"endColumn": 23,
+			"mutatorName": "hand: every entry a file",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "lists a directory with a changeset file's name, and leaves it out of the changeset count",
+			"run": {
+				"head": "236c1906",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 190,
+			"column": 8,
+			"endLine": 190,
+			"endColumn": 22,
+			"mutatorName": "hand: link guard deleted",
+			"replacement": "",
+			"claim": "killed",
+			"evidence": "lists a link with a scratch name under graphs, which CacheScratch never sweeps",
+			"run": {
+				"head": "236c1906",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 217,
+			"column": 8,
+			"endLine": 217,
+			"endColumn": 22,
+			"mutatorName": "hand: link guard deleted",
+			"replacement": "",
+			"claim": "killed",
+			"evidence": "lists a link with a scratch name under coverage, which CacheScratch never sweeps",
+			"run": {
+				"head": "236c1906",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 223,
+			"column": 8,
+			"endLine": 223,
+			"endColumn": 22,
+			"mutatorName": "hand: link guard deleted",
+			"replacement": "",
+			"claim": "killed",
+			"evidence": "lists a link with a scratch name under mutation, which CacheScratch never sweeps",
+			"run": {
+				"head": "236c1906",
+				"collected": 1,
+				"failed": true
+			}
+		},
 		{
 			"file": "packages/pipeline/src/cache-scratch.ts",
 			"line": 16,
@@ -12,7 +92,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -28,7 +108,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -44,7 +124,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -60,7 +140,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -76,7 +156,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -92,7 +172,7 @@
 			"claim": "killed",
 			"evidence": "lists an old entry- name under graphs with a scratch suffix, which CacheScratch never sweeps",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -108,7 +188,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -124,7 +204,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -140,7 +220,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -156,7 +236,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -172,7 +252,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -188,7 +268,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -204,7 +284,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -220,7 +300,7 @@
 			"claim": "killed",
 			"evidence": "lists a dotted name, or one that holds a scratch name, under graphs that CacheScratch does not sweep as not recognised",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -236,7 +316,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -252,7 +332,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -268,7 +348,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -284,7 +364,7 @@
 			"claim": "killed",
 			"evidence": "keeps changesets, scripted stores, links, scratch and anything it does not recognise",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -300,7 +380,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
@@ -316,7 +396,7 @@
 			"claim": "killed",
 			"evidence": "leaves every scratch kind CacheScratch sweeps under graphs to it, and does not list one",
 			"run": {
-				"head": "e9c95c52",
+				"head": "236c1906",
 				"collected": 1,
 				"failed": true
 			}
