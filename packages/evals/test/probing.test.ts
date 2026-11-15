@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -259,6 +259,20 @@ describe("Miss", () => {
 		expect(() => Miss.load(missesFile([fields, { ...fields, lines: [4, 3] }]))).toThrow(
 			/must be a JSON array of misses/,
 		);
+	});
+
+	it("keeps git's diagnostic on a miss's repository off the terminal, since a misses file's path can carry escapes", () => {
+		const misses = missesFile([{ ...fields, repo: join(scratch, "no\u001b[2Jrepo") }]);
+		const script = `import { Miss } from ${JSON.stringify(join(import.meta.dirname, "../src/probing.ts"))};
+try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.log("refused"); }`;
+		const child = spawnSync(
+			process.execPath,
+			["--conditions=@melian-agent/source", "--input-type=module", "--eval", script],
+			{ encoding: "utf8" },
+		);
+		expect(child.stdout).toBe("refused\n");
+		expect(child.stderr).not.toContain("\u001b");
+		expect(child.stderr).not.toContain("cannot change to");
 	});
 
 	it("vouches for a miss only by both commits its base and head resolve to, and keeps trust-boundary alone at its deep level", async () => {
