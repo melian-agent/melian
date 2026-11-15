@@ -1,0 +1,555 @@
+{
+ "mutants": [
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 404,
+   "column": 15,
+   "endLine": 404,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "config.stages[\"pull-request\"] && \"full\"",
+   "claim": "killed",
+   "evidence": "scripted correctness-deleted-rethrow > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": "killed at dd5dd7dd: scripted correctness-deleted-rethrow > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 404,
+   "column": 29,
+   "endLine": 404,
+   "endColumn": 43,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 404,
+   "column": 48,
+   "endLine": 404,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 405,
+   "column": 21,
+   "endLine": 407,
+   "endColumn": 3,
+   "mutatorName": "MethodExpression",
+   "replacement": "checksOfTier(config, tier)",
+   "claim": "killed",
+   "evidence": "a golden whose review is not reviewed > fails a scripted run whose policy disables a lens its tier names",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: a golden whose review is not reviewed > fails a scripted run whose policy disables a lens its tier names failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 405,
+   "column": 55,
+   "endLine": 406,
+   "endColumn": 60,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 408,
+   "column": 11,
+   "endLine": 408,
+   "endColumn": 59,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 408,
+   "column": 32,
+   "endLine": 408,
+   "endColumn": 57,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 410,
+   "column": 3,
+   "endLine": 410,
+   "endColumn": 97,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 410,
+   "column": 27,
+   "endLine": 410,
+   "endColumn": 96,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 410,
+   "column": 43,
+   "endLine": 410,
+   "endColumn": 52,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 410,
+   "column": 62,
+   "endLine": 410,
+   "endColumn": 94,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 7,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 7,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 7,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "LogicalOperator",
+   "replacement": "mode.kind === \"scripted\" || mode.probes === \"unconfined\"",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 7,
+   "endLine": 415,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a live golden in the host's sandbox even when its mode carries the corpus's probes field",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a live golden in the host's sandbox even when its mode carries the corpus's probes field failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 7,
+   "endLine": 415,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "mode.kind !== \"scripted\"",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 21,
+   "endLine": 415,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 35,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 35,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "EqualityOperator",
+   "replacement": "mode.probes !== \"unconfined\"",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 51,
+   "endLine": 415,
+   "endColumn": 63,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 415,
+   "column": 66,
+   "endLine": 415,
+   "endColumn": 103,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 434,
+   "column": 7,
+   "endLine": 434,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: scripted clean-rename > finds exactly what the golden expects, with its cause, failure scenario, and evidence failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 434,
+   "column": 7,
+   "endLine": 434,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at dd5dd7dd: a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 434,
+   "column": 7,
+   "endLine": 434,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "status.state !== \"error\"",
+   "claim": "killed",
+   "evidence": "a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 434,
+   "column": 24,
+   "endLine": 434,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 434,
+   "column": 33,
+   "endLine": 434,
+   "endColumn": 69,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: a golden whose review is not reviewed > fails a scripted run whose lens ends at its budget failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 436,
+   "column": 21,
+   "endLine": 436,
+   "endColumn": 47,
+   "mutatorName": "LogicalOperator",
+   "replacement": "reviewed.verdict.ran && []",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 436,
+   "column": 45,
+   "endLine": 436,
+   "endColumn": 47,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A fresh verdict always sets `ran` (packages/core/src/adjudication.ts, Adjudication.adjudicate), so the fallback array is never used",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": "not run: equivalent"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 436,
+   "column": 54,
+   "endLine": 436,
+   "endColumn": 109,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 436,
+   "column": 70,
+   "endLine": 436,
+   "endColumn": 86,
+   "mutatorName": "OptionalChaining",
+   "replacement": "reason.includes",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": "killed at dd5dd7dd: a probing golden's sandbox > probes a scripted golden unconfined where sandbox-runtime cannot run, and asks a live run's host for it failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 436,
+   "column": 87,
+   "endLine": 436,
+   "endColumn": 108,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 66,
+   "column": 6,
+   "endLine": 66,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "reportGoldens > prints a note several lenses share once, and only when MELIAN_EVAL_SHOW asks",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: reportGoldens > prints a note several lenses share once, and only when MELIAN_EVAL_SHOW asks failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 66,
+   "column": 6,
+   "endLine": 66,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "reportGoldens > prints each note a lens recorded under the golden's score when MELIAN_EVAL_SHOW asks, such as a probing lens's attacks",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: reportGoldens > prints each note a lens recorded under the golden's score when MELIAN_EVAL_SHOW asks, such as a probing lens's attacks failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 66,
+   "column": 6,
+   "endLine": 66,
+   "endColumn": 34,
+   "mutatorName": "EqualityOperator",
+   "replacement": "env.MELIAN_EVAL_SHOW !== \"1\"",
+   "claim": "killed",
+   "evidence": "reportGoldens > prints a note several lenses share once, and only when MELIAN_EVAL_SHOW asks",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: reportGoldens > prints a note several lenses share once, and only when MELIAN_EVAL_SHOW asks failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 66,
+   "column": 31,
+   "endLine": 66,
+   "endColumn": 34,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 67,
+   "column": 47,
+   "endLine": 67,
+   "endColumn": 105,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "reportGoldens > prints each note a lens recorded under the golden's score when MELIAN_EVAL_SHOW asks, such as a probing lens's attacks",
+   "survivorClasses": [],
+   "run": "killed at dd5dd7dd: reportGoldens > prints each note a lens recorded under the golden's score when MELIAN_EVAL_SHOW asks, such as a probing lens's attacks failed, run alone, one test collected"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 67,
+   "column": 65,
+   "endLine": 67,
+   "endColumn": 102,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  },
+  {
+   "file": "packages/evals/src/live-output.ts",
+   "line": 67,
+   "column": 84,
+   "endLine": 67,
+   "endColumn": 88,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": [],
+   "run": "not run: Stryker ignores this string literal"
+  }
+ ],
+ "total": 38,
+ "omitted": 0,
+ "unmutated": []
+}

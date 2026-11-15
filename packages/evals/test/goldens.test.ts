@@ -27,6 +27,7 @@ import {
 import {
 	buildGoldenRepository,
 	type Golden,
+	type GoldenMode,
 	goldensDirectory,
 	loadGoldens,
 	runGolden,
@@ -702,7 +703,7 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 	{ timeout: 60_000 },
 	(_, golden) => {
 		it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
-			const run = await runGolden(golden, { kind: "scripted" });
+			const run = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 
 			expect(run.toolMismatches).toEqual([]);
 			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
@@ -1267,8 +1268,11 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		onTestFinished(() => {
 			availability.mockRestore();
 		});
-		const scripted = await runGolden(golden, { kind: "scripted" });
+		const scripted = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
+		expect(scripted.notes.find(({ checks }) => checks.includes("lens.trust-boundary"))?.reason).toMatch(
+			/^it planned 1 attack and ran 1 probe in (under 0\.1|\d+\.\d) s$/,
+		);
 		expect(availability.mock.calls.every(([sandbox]) => sandbox !== Probe.sandbox)).toBe(true);
 		availability.mockClear();
 		const fake = testing.createFakeModels();
@@ -1289,6 +1293,69 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		]);
 		const ref = fake.ref();
 		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(
+			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
+		);
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const run = runGolden(golden, { kind: "scripted" });
+		await expect(run).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(run).rejects.toThrow(
+			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
+		);
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("probes a live golden in the host's sandbox even when its mode carries the corpus's probes field", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage([testing.fauxToolCall("record_plan", { attacks: [] })], {
+						stopReason: "toolUse",
+					}),
+					testing.fauxAssistantMessage("Planned no attacks."),
+				],
+			},
+			...["correctness", "contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+				match: `You are the ${lens} reviewer`,
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			})),
+		]);
+		const ref = fake.ref();
+		// Built outside the call, as a shared options bag would be, so TypeScript's excess-property check misses `probes`.
+		const options = {
+			kind: "live" as const,
+			models: fake.review,
+			model: `${ref.provider}/${ref.modelId}`,
+			probes: "unconfined" as const,
+		};
+		const mode: GoldenMode = options;
+		const live = runGolden(golden, mode);
 		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
 		await expect(live).rejects.toThrow(
 			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
@@ -1329,5 +1396,137 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		await expect(
 			runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` }),
 		).rejects.toThrow("deep ran without probes, which cannot run here: no sandbox-runtime here");
+	});
+});
+
+describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
+	const claim = () => loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+	const answered = ["contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+		match: `You are the ${lens} reviewer`,
+		replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+	}));
+	const listing = (count: number) =>
+		testing.fauxAssistantMessage(
+			Array.from({ length: count }, () => testing.fauxToolCall("list_files", {})),
+			{ stopReason: "toolUse" },
+		);
+
+	it("gives no score to a live run whose prober leaves an attack with neither a probe nor a skip", async () => {
+		const golden = claim();
+		const availability = vi.spyOn(Probe, "availability").mockResolvedValue({ available: true });
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the prober for the trust-boundary lens",
+				replies: [
+					testing.fauxAssistantMessage("I read the plan."),
+					testing.fauxAssistantMessage("Still no probe."),
+				],
+			},
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage(
+						[
+							testing.fauxToolCall("record_plan", {
+								attacks: [
+									{
+										target: ".github/workflows/claim.yml",
+										reason: "A release that lands between a claim run's read and its writes is lost.",
+										passing: "The issue carries status: ready after the release's run.",
+										failing: "The issue still carries status: in progress.",
+									},
+								],
+							}),
+						],
+						{
+							stopReason: "toolUse",
+						},
+					),
+					testing.fauxAssistantMessage("Planned 1 attack."),
+				],
+			},
+			{ match: "You are the correctness reviewer", replies: [testing.fauxAssistantMessage("Reported 0 findings.")] },
+			...answered,
+		]);
+		const ref = fake.ref();
+		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(
+			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with neither a probe nor a skip/,
+		);
+	});
+
+	it("gives no score to a live run whose lens without probes ends at its budget", async () => {
+		const golden = claim();
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage([testing.fauxToolCall("record_plan", { attacks: [] })], {
+						stopReason: "toolUse",
+					}),
+					testing.fauxAssistantMessage("Planned no attacks."),
+				],
+			},
+			{
+				match: "You are the correctness reviewer",
+				replies: [listing(200), listing(1), testing.fauxAssistantMessage("Never asked.")],
+			},
+			...answered,
+		]);
+		const ref = fake.ref();
+		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(/^Not reviewed: .*lens\.correctness ended \(.*tool calls/);
+	});
+
+	it("fails a scripted run whose policy disables a lens its tier names", async () => {
+		const golden = loadGoldens().find((each) => each.name === "clean-rename")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-disabled-lens-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(join(copy, "melian.golden.yaml"), "lenses:\n  conventions:\n    enabled: false\n");
+			await expect(runGolden({ ...golden, directory: copy }, { kind: "scripted" })).rejects.toThrow(
+				/^Not reviewed: .*lens\.conventions skipped \(lenses\.conventions\.enabled is false\)/,
+			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("fails a scripted run whose policy disables a lens and lets that lens skip", async () => {
+		const golden = loadGoldens().find((each) => each.name === "clean-rename")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-allow-skip-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(
+				join(copy, "melian.golden.yaml"),
+				"lenses:\n  conventions:\n    enabled: false\nchecks:\n  allowSkip: [lens.conventions]\n",
+			);
+			await expect(runGolden({ ...golden, directory: copy }, { kind: "scripted" })).rejects.toThrow(
+				/^Not reviewed: .*lens\.conventions skipped \(lenses\.conventions\.enabled is false\)/,
+			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("fails a scripted run whose lens ends at its budget", async () => {
+		const golden = claim();
+		const many = Array.from({ length: 200 }, () => ({ name: "list_files", arguments: {} }));
+		const script = {
+			...golden.script,
+			correctness: [{ calls: many }, { calls: [{ name: "list_files", arguments: {} }] }, { text: "Never asked." }],
+		};
+		await expect(runGolden({ ...golden, script }, { kind: "scripted", probes: "unconfined" })).rejects.toThrow(
+			/^Not reviewed: .*lens\.correctness ended /,
+		);
 	});
 });
