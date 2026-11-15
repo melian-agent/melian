@@ -1639,6 +1639,11 @@ function runsOf(lenses: readonly LensRun[]): LensRun[] {
 	return lenses.flatMap((lens) => [lens, ...(lens.escalation?.next === undefined ? [] : [lens.escalation.next])]);
 }
 
+// The provider of every model each run of `lenses` may ask, its prober's included.
+function providersOf(lenses: readonly LensRun[]): string[] {
+	return runsOf(lenses).flatMap((run) => [...run.route, ...(run.probe?.route ?? [])].map((model) => model.provider));
+}
+
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
 // call created, which the harness resumes, rather than running every lens a second time. Returns the task's result,
 // `undefined` when the task did not complete, and the runs and `escalateAt` its stored input holds, which decided its
@@ -1659,6 +1664,8 @@ async function runLenses(
 	// A finished probing run is never reused: a repeat review probes again, so every finding rests on a probe of its own
 	// review. A live one is attached to, which is how a review resumes its own run after a crash.
 	const probes = runsOf(input.lenses).some((run) => run.probe !== undefined);
+	// The lenses this review's commit copies, as read ahead of it, when it unlocked the providers of only the others.
+	let unlockedFor: string | undefined;
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1669,67 +1676,77 @@ async function runLenses(
 			record !== undefined &&
 			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
-		const copied = attaches ? {} : copiesFrom(record, input.lenses, refused);
-		if (!attaches)
-			await unlockModels(
-				runsOf(input.lenses.filter((lens) => copied[lens.key] === undefined)).flatMap((run) =>
-					[...run.route, ...(run.probe?.route ?? [])].map((model) => model.provider),
-				),
-			);
+		if (!attaches) {
+			const copied = copiesFrom(record, input.lenses, refused);
+			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
+			unlockedFor = Object.keys(copied).sort().join("\n");
+		}
 	}
 	let replaced: number | undefined;
-	const taskId = await root.commit(async (tx) => {
-		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[revision];
-		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
-		const attach =
-			same &&
-			(await attachable(tx, known.task, undecided)) &&
-			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
-			!(rerun && (await anyLensFailed(tx, known.task, refused)));
-		if (attach) return known.task as TaskId<LensResult>;
-		await recordRevision(tx, root.id, revision);
-		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
-		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused = copiesFrom(previous, input.lenses, refused);
-		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
-		const copiedNotes = new Set(
-			input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
-		);
-		const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
-		const callers =
-			input.callers === undefined
-				? undefined
-				: {
-						...input.callers,
-						notes: Object.fromEntries(
-							Object.entries(input.callers.notes).flatMap(([key, notes]) =>
-								!copiedNotes.has(key) ? [[key, notes]] : key in earlierNotes ? [[key, earlierNotes[key]!]] : [],
+	// A review that commits while this one unlocks can change what this commit copies. Then it writes nothing, and the
+	// next commit runs with every run's provider unlocked.
+	let taskId: TaskId<LensResult> | undefined;
+	for (let attempt = 0; taskId === undefined; attempt++) {
+		if (attempt > 0) await unlockModels!(providersOf(input.lenses));
+		const checked = unlockModels !== undefined && attempt === 0;
+		taskId = await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const known = index.reviews[revision];
+			const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
+			const attach =
+				same &&
+				(await attachable(tx, known.task, undecided)) &&
+				!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
+				!(rerun && (await anyLensFailed(tx, known.task, refused)));
+			if (attach) return known.task as TaskId<LensResult>;
+			// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
+			const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
+			const reused = copiesFrom(previous, input.lenses, refused);
+			if (checked && Object.keys(reused).sort().join("\n") !== unlockedFor) return undefined;
+			await recordRevision(tx, root.id, revision);
+			// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
+			const copiedNotes = new Set(
+				input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
+			);
+			const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
+			const callers =
+				input.callers === undefined
+					? undefined
+					: {
+							...input.callers,
+							notes: Object.fromEntries(
+								Object.entries(input.callers.notes).flatMap(([key, notes]) =>
+									!copiedNotes.has(key)
+										? [[key, notes]]
+										: key in earlierNotes
+											? [[key, earlierNotes[key]!]]
+											: [],
+								),
 							),
-						),
-					};
-		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
-		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
-		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
-		const asked = input.lenses.filter((lens) => reused[lens.key] === undefined);
-		const sources = runsOf(asked).flatMap((run) => [
-			lensSource(run.name, run.version, run.level),
-			{ check: `lens.${run.name}`, version: run.version },
-		]);
-		await clearSightings(tx, root.id, revision, sources);
-		const copying = new LensTaskInput(
-			input.root,
-			input.revision,
-			input.lenses,
-			input.escalateAt,
-			callers,
-			reused,
-		).toJSON();
-		const created = await tx.createTask(LensTask, copying, { ownership: { kind: "conversation" } });
-		replaced = known?.task;
-		index.reviews[revision] = { task: created, lenses: selection };
-		return created;
-	}, context);
+						};
+			// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
+			// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
+			// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
+			const asked = input.lenses.filter((lens) => reused[lens.key] === undefined);
+			const sources = runsOf(asked).flatMap((run) => [
+				lensSource(run.name, run.version, run.level),
+				{ check: `lens.${run.name}`, version: run.version },
+			]);
+			await clearSightings(tx, root.id, revision, sources);
+			const copying = new LensTaskInput(
+				input.root,
+				input.revision,
+				input.lenses,
+				input.escalateAt,
+				callers,
+				reused,
+			).toJSON();
+			const created = await tx.createTask(LensTask, copying, { ownership: { kind: "conversation" } });
+			replaced = known?.task;
+			index.reviews[revision] = { task: created, lenses: selection };
+			return created;
+		}, context);
+	}
 	// Before anything resumes the replaced run: it asks no model again and its reports no longer count, but a live
 	// task would still hold its conversations open.
 	if (replaced !== undefined && replaced !== taskId) {

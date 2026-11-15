@@ -105,9 +105,10 @@ async function review(
 			return fauxAssistantMessage(fauxToolCall("report_finding", changedReturn), { stopReason: "toolUse" });
 		return fauxAssistantMessage("No findings.");
 	};
+	// Spare replies, for a review that runs inside another's unlock and so takes over its scripts.
 	scriptConversations(fake, [
-		{ match: correctness, replies: [answer("correctness"), answer("correctness")] },
-		{ match: contracts, replies: [answer("contracts"), answer("contracts")] },
+		{ match: correctness, replies: Array.from({ length: 4 }, () => answer("correctness")) },
+		{ match: contracts, replies: Array.from({ length: 4 }, () => answer("contracts")) },
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
 	const result = await reviewChangeset({
@@ -232,6 +233,29 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		);
 		// Each review unlocks its lens runs, then the verifier's wave: the repeat review's lens call names one run.
 		expect(unlocked).toEqual([["faux", "faux"], ["faux"], ["faux"], ["faux"]]);
+	});
+
+	it("unlocks every run's provider when a review that ran during its unlock leaves it nothing to copy", async () => {
+		await review(lenses);
+		const unlocked: string[][] = [];
+		const unlockModels = async (providers: readonly string[]) => {
+			unlocked.push([...providers]);
+			if (unlocked.length > 1) return;
+			// While this review unlocks the one run it means to ask, another changes the contracts lens, so the task this
+			// review then reads holds neither of its runs.
+			await review(
+				changed("contracts", (lens) => ({ instructions: `${lens.instructions} Look again.` })),
+				[],
+			);
+		};
+		const again = await review(
+			changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
+			[],
+			{ unlockModels },
+		);
+		expect(again.copied).toBe("none");
+		// The run it meant to ask, then every run once its commit found the copy gone, then the verifier's wave.
+		expect(unlocked).toEqual([["faux"], ["faux", "faux"], ["faux"]]);
 	});
 
 	it("attaches to the first review's lens task when the same lenses come in another order", async () => {
