@@ -1,0 +1,28 @@
+{
+  "pr_title": "Store node --check's syntax errors as findings",
+  "url": "https://github.com/melian-agent/melian/pull/282",
+  "comments": [
+    {
+      "comment": "A committed link points node --check at a file outside the checkout, and the finding keeps the line node quotes, so the outside file's text is stored and published.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/syntax-check.mjs",
+      "rule": "secret-exposure",
+      "source": "lens.trust-boundary",
+      "cause": "introduced",
+      "failureScenario": "A head commits src/vendor.mjs as a link to a file outside the checkout whose first line holds a token and a syntax error. node --check follows the link and quotes that line, parseCheck keeps the quoted line in the finding's text, and the review stores and publishes the finding, so the token reaches the pull request.",
+      "evidence": [
+        {
+          "file": "src/syntax-check.mjs",
+          "line": 40,
+          "role": "cause"
+        },
+        {
+          "file": "src/syntax-check.mjs",
+          "line": 26,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

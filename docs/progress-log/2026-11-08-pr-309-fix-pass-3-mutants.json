@@ -1,0 +1,136 @@
+{
+ "total": 8,
+ "omitted": 0,
+ "base": "e9a85a5e",
+ "head": "ab460018",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000",
+ "note": "Fix pass 3 of pull request #309: the mutants of the fix for Codex's third review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 131,
+   "column": 44,
+   "endLine": 135,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 132,
+   "column": 6,
+   "endLine": 132,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 132,
+   "column": 6,
+   "endLine": 132,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 132,
+   "column": 6,
+   "endLine": 132,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "lens.name === \"trust-boundary\"",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 132,
+   "column": 20,
+   "endLine": 132,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 133,
+   "column": 26,
+   "endLine": 133,
+   "endColumn": 32,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 134,
+   "column": 19,
+   "endLine": 134,
+   "endColumn": 85,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 134,
+   "column": 47,
+   "endLine": 134,
+   "endColumn": 83,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band",
+   "survivorClasses": [],
+   "run": {
+    "head": "ab460018",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 6,
+  "ignored": 2
+ }
+}
