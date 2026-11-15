@@ -899,3 +899,12 @@ it("counts a store named by core's builders, and keeps a name one hex digit shor
 	expect(prune.kept).toEqual([`${pull.slice(0, -1)}.sqlite`]);
 	expect(prune.changesets).toEqual({ files: 1, bytes: 5 });
 });
+
+it("keeps a name that holds a changeset store's name only after a line break or before more text", async () => {
+	const pull = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
+	const strangers = [`notes\n${pull}.sqlite`, `${pull}.sqlite-journal`];
+	for (const name of strangers) await writeFile(join(state, name), "1");
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual([...strangers].sort());
+	expect(prune.changesets).toEqual({ files: 0, bytes: 0 });
+});
