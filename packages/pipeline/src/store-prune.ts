@@ -73,7 +73,7 @@ async function liveTrees(repoRoot: string, env: NodeJS.ProcessEnv, heads: readon
 	return new Set((await git(repoRoot, env, ["cat-file", "--batch-check=%(objectname)"], commits)).split("\n"));
 }
 
-type Node = { name: string; path: string; directory: boolean; link: boolean };
+type Node = { name: string; path: string; directory: boolean; file: boolean; link: boolean };
 
 async function children(path: string): Promise<Node[]> {
 	try {
@@ -88,6 +88,7 @@ async function children(path: string): Promise<Node[]> {
 			name: entry.name,
 			path: join(path, entry.name),
 			directory: entry.isDirectory(),
+			file: entry.isFile(),
 			link: entry.isSymbolicLink(),
 		}));
 }
@@ -172,7 +173,7 @@ export class StorePrune {
 			const top = await children(root);
 			const coverageLinked = top.some((node) => node.name === "coverage" && node.link);
 			for (const node of top) {
-				if (/^(?:pull|range)-[0-9a-f]{16}\.sqlite(?:-wal|-shm)?$/.test(node.name) && !node.link) {
+				if (/^(?:pull|range)-[0-9a-f]{16}\.sqlite(?:-wal|-shm)?$/.test(node.name) && node.file) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
 				} else if (

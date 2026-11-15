@@ -436,6 +436,16 @@ it("lists a link with a scratch name, which CacheScratch never sweeps", async ()
 	expect(prune.kept).toEqual([`graphs/.graph-${process.pid}-linked`]);
 });
 
+it("lists a directory with a changeset file's name, and leaves it out of the changeset count", async () => {
+	const name = "pull-0123456789abcdef.sqlite";
+	await mkdir(join(state, name, "notes"), { recursive: true });
+	await writeFile(join(state, name, "notes", "a"), "12345");
+	await mkdir(join(state, `${name}-wal`));
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual([name, `${name}-wal`]);
+	expect(prune.changesets).toEqual({ files: 0, bytes: 0 });
+});
+
 it("leaves a changeset store byte for byte as it was, and the store reopens", async () => {
 	const file = join(state, "pull-9999999999999999.sqlite");
 	const Note = defineDoc<{ text: string }>({
