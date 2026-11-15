@@ -575,6 +575,11 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(using.models).toHaveBeenCalledTimes(1);
 		expect(using.availability).toHaveBeenCalledTimes(1);
 		expect(using.golden).toHaveBeenCalledTimes(12);
+		const routed = (label: string) => expect.objectContaining({ probing: expect.objectContaining({ label }) });
+		expect(vi.mocked(using.golden).mock.calls.map(([, mode]) => mode)).toEqual([
+			...Array(6).fill(routed("pair")),
+			...Array(6).fill(routed("off")),
+		]);
 		expect(lines.slice(0, 4)).toEqual([
 			"pair: planner a/plan, prober b/probe on the medium tier",
 			expect.stringMatching(
