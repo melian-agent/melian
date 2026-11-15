@@ -30,6 +30,18 @@ describe("a closed handle", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("the branch it is given", { timeout: 60_000 }, () => {
+	it("keeps its records there, and neither reads nor writes melian/state", async () => {
+		await (await remote.open()).add([check("a")]);
+		const state = remote.tip();
+		const trial = await remote.open({ branch: "melian/trial" });
+		await trial.add([check("b")]);
+		expect((await trial.list(changeset)).map((record) => record.id)).toEqual([check("b").id]);
+		expect(remote.tip()).toBe(state);
+		expect(remote.tip("melian/trial")).toBeDefined();
+	});
+});
+
 describe("writes that change nothing", { timeout: 60_000 }, () => {
 	it("adds no records without reaching the remote", async () => {
 		const store = await remote.open({ remote: `file://${join(remote.root, "absent.git")}` });
