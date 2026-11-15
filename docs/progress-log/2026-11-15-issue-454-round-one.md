@@ -23,3 +23,7 @@ Both source files were restored after each run, and `git status` showed only the
 ## Round two
 
 Round two, at `6529ba81`, read `findings`, not blocking, in 10 minutes for $5.44, with two advisories and nothing above. The row's list of what the request holds was one sentence of 77 words, and is now four. This entry's title now links the issue.
+
+## The review of record
+
+The Opus review of record at `51757f1d` would not block, and raised one P3: `docs/design.md` still said another host imports every record whose key matches, with no word of the ruling that a mutation run never crosses hosts. The design now names that exception beside the sentence, and links the amendment. No test can reproduce a documentation finding.
