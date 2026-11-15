@@ -175,6 +175,50 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(second.lensStages.correctness?.tokens).toBeGreaterThan(0);
 	});
 
+	it("copies nothing from a lens task that ended without completing, and asks every lens again", async () => {
+		let held!: () => void;
+		const asked = new Promise<void>((resolve) => {
+			held = resolve;
+		});
+		// The fake model ignores the abort signal, so each held reply ends as an aborted one once the task is aborted.
+		const pending: (() => void)[] = [];
+		const hang = () => {
+			held();
+			return new Promise<ReturnType<typeof fauxAssistantMessage>>((resolve) => {
+				pending.push(() => resolve(fauxAssistantMessage([], { stopReason: "aborted", errorMessage: "aborted" })));
+			});
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [hang] },
+			{ match: contracts, replies: [hang] },
+		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const first = reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [{ name: "guardrails", status: "ran" }],
+		}).catch(() => undefined);
+		await asked;
+		const root = (await harness.root(context)).id;
+		const entry = (await harness.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!;
+		const aborted = harness.abortTask(entry.task as Parameters<Harness["abortTask"]>[0], context);
+		for (const finish of pending) finish();
+		await aborted;
+		await first;
+		const ended = await harness.getTask(entry.task as Parameters<Harness["getTask"]>[0], context);
+		expect(ended!.state.status).toBe("terminal");
+		expect((ended!.state.outcome as { status: string }).status).not.toBe("completed");
+
+		const again = await review(lenses);
+		expect(again.task).not.toBe(entry.task);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toBe("none");
+	});
+
 	it("unlocks the providers of only the lenses it asks, since a copied lens asks no model", async () => {
 		const unlocked: string[][] = [];
 		const unlockModels = async (providers: readonly string[]) => {
