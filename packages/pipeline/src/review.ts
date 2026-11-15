@@ -1701,8 +1701,8 @@ async function runLenses(
 		}
 	}
 	let replaced: number | undefined;
-	// This commit acts only on what that read found, since a review that commits between the two can change it.
-	// Anything else writes nothing, and the review commits again with every run's provider unlocked.
+	// This commit acts only on what that read found, since a review that commits between the two can change it; anything
+	// else commits again with every provider unlocked. Only lens commits follow this rule yet: issue #474 does the rest.
 	let checked = unlockModels !== undefined;
 	const own = async (tx: Tx): Promise<TaskId<LensResult> | undefined> => {
 		const index = await tx.doc(ReviewIndex, root.id);

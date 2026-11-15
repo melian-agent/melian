@@ -77,6 +77,8 @@ Problem: a review unlocks credentials before the commit that attaches or copies,
 
 Choice: the commit acts only on what its read found: the task it read it would attach to, or the lenses it read it would copy. Any other outcome writes nothing, and the review commits again with every provider unlocked, which may then attach or copy whatever it finds. The coordinator chose this on 2026-11-15, in its session, as a choice of approach, and told the maintainer.
 
+Where it holds: the rule holds today for lens commits in `runLenses` alone. The other read-ahead unlocks predate it: triage's in `review.ts`, the final verification's and each wave's in `verification.ts`, and the walkthrough's in `summarize.ts`. Triage's is known to break it. The review of record at b24d2672 had a first review's triage fail, then a `--rerun` review replace the failed decision task while a second review was between its read and its commit. The second review attached to the new live task with its triage credentials never unlocked. [Issue #474](https://github.com/melian-agent/melian/issues/474) brings every such site under the rule, or says why one needs no change. The coordinator scoped it out of this pull request on 2026-11-15, in its session.
+
 ## How the older clauses now read
 
 - Enclosing functions: the functions and their notes are inside the lens run's request. A repeat call whose request matches attaches to the first call's task, or copies its run. A changed function read on the same head runs that lens again.
