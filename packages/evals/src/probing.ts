@@ -195,8 +195,10 @@ export class Miss {
 				},
 				lenses: lenses.map((lens) => {
 					if (lens.name !== probingLens) return lens;
+					// Whichever level the review picks probes: routing adds a prober only to a level that probes, or to `deep`.
 					const deep = lens.level("deep");
-					return Lens.from({ ...lens.toJSON(), levels: { quick: deep, careful: deep, deep } });
+					const probing = { ...deep, probe: deep.probe ?? {} };
+					return Lens.from({ ...lens.toJSON(), levels: { quick: probing, careful: probing, deep: probing } });
 				}),
 			}),
 		};

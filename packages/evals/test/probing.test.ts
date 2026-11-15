@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultConfig, Finding, Lens, type MelianConfig } from "@melian-agent/core";
@@ -704,6 +704,53 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(seen).toEqual(["plan", "plan"]);
 			expect(run.findings).toEqual([]);
 			expect(run.tiers).toEqual({});
+			expect(run.notes).toEqual([
+				{ reason: expect.stringMatching(/planner found no attack/), checks: ["lens.trust-boundary"] },
+			]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("probes a miss at whichever level its review picks, when its base policy sets no floor", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const seen: string[] = [];
+			const plan = (_: unknown, model: string) => {
+				seen.push(model);
+				return seen.length === 1
+					? fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [] })], { stopReason: "toolUse" })
+					: fauxAssistantMessage("Planned 0.");
+			};
+			// The lens without probes answers too, so a review that drops the probe finishes and fails for that.
+			scriptConversations(fake, [
+				{ match: "Your role at this level: the attack planner", replies: [plan, plan] },
+				{ match: "trust-boundary", replies: [fauxAssistantMessage("No findings.")] },
+			]);
+			// A miss reviews a repository on Melian's own lenses, whose committed levels hold no probe.
+			git(repo, "checkout", "--quiet", "-b", "floorless", base);
+			const policy = readFileSync(join(repo, "melian.yaml"), "utf8");
+			writeFileSync(join(repo, "melian.yaml"), policy.slice(0, policy.indexOf("lenses:")));
+			const lens = ".melian/lenses/trust-boundary/LENS.md";
+			cpSync(join(import.meta.dirname, "../../..", lens), join(repo, lens));
+			const commit = (message: string) => {
+				git(repo, "add", "--all");
+				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
+				return git(repo, "rev-parse", "HEAD");
+			};
+			const floorless = commit("no level floor, no committed probe");
+			cpSync(join(lost.directory, "head/.github"), join(repo, ".github"), { recursive: true });
+			const head = commit("head");
+			const miss = Miss.load(
+				missesFile([{ name: "m", repo, base: floorless, head, file: "x", rule: "fail-open" }]),
+			)[0]!;
+			const run = await runRange(miss.target(ProbeTrust.parse(head)), {
+				kind: "live",
+				models: fake.review,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`pair=${provider}/plan>${provider}/probe`, "medium"),
+			});
+			expect(seen).toEqual(["plan", "plan"]);
 			expect(run.notes).toEqual([
 				{ reason: expect.stringMatching(/planner found no attack/), checks: ["lens.trust-boundary"] },
 			]);
