@@ -138,6 +138,59 @@ describe("the entries a tip may hold", { timeout: 300_000 }, () => {
 	});
 });
 
+describe("the entries a write may leave", { timeout: 300_000 }, () => {
+	const limit = 65_536;
+	// Strays inside another changeset's folder, which refuse only that changeset.
+	const strays = (count: number) =>
+		Object.fromEntries(
+			Array.from({ length: count }, (_, n) => [`changesets/${other}/noise/${n}`, { bytes: "" }] as const),
+		);
+
+	it("pushes a write that leaves the tip exactly at the limit, and disposes there", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit - 1));
+		await store.add([check("a")]);
+		expect(keys(await store.list(changeset))).toEqual(["a"]);
+		await store.dispose(changeset);
+		expect(await store.list(changeset)).toEqual([]);
+	});
+
+	it("fails as unreachable a write that would leave one entry past the limit, and pushes nothing", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit));
+		const tip = remote.tip();
+		await expect(store.add([check("a")])).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state would hold ${limit + 1} entries at its tip, past the store's limit of ${limit}; nothing was pushed, and disposing changesets or removing strays makes room`,
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("measures again the commit it rebuilds after losing a race, and refuses it", async () => {
+		const first = await remote.open();
+		const second = await remote.open();
+		remote.plant(strays(limit - 2));
+		const push = RecordRepository.prototype.push;
+		let raced = false;
+		const pushes = vi.spyOn(RecordRepository.prototype, "push").mockImplementation(async function (
+			this: RecordRepository,
+			...args
+		) {
+			if (!raced) {
+				raced = true;
+				await first.add([check("a"), check("b")]);
+			}
+			return push.apply(this, args);
+		});
+		await expect(second.add([check("c"), check("d")])).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state would hold ${limit + 2} entries at its tip, past the store's limit of ${limit}; nothing was pushed, and disposing changesets or removing strays makes room`,
+		});
+		expect(pushes).toHaveBeenCalledTimes(2);
+		expect(keys(await first.list(changeset))).toEqual(["a", "b"]);
+	});
+});
+
 describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 	const limit = 256 * 1024 * 1024;
 	const fileLimit = 4 * 1024 * 1024;
@@ -181,6 +234,33 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 			message: `melian/state holds ${limit + 1} bytes of records and cells at its tip, past the store's limit of ${limit}; disposing changesets brings it under`,
 		});
 		expect(blobs).not.toHaveBeenCalled();
+	});
+
+	// A tip of `count` records, with git reporting every blob at what one file may be, so 64 of them total the limit.
+	async function fullFiles(count: number) {
+		await (await remote.open()).add(Array.from({ length: count }, (_, n) => check(`r${n}`)));
+		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(
+			async (oids) => new Map(oids.map((oid) => [oid, fileLimit])),
+		);
+		return remote.open();
+	}
+
+	it("pushes a write that leaves the tip exactly at the limit, and disposes there", async () => {
+		const store = await fullFiles(63);
+		await store.add([check("x")]);
+		expect(await store.list(changeset)).toHaveLength(64);
+		await store.dispose(changeset);
+		expect(await store.list(changeset)).toEqual([]);
+	});
+
+	it("fails as unreachable a write that would leave the tip past the limit, and pushes nothing", async () => {
+		const store = await fullFiles(64);
+		const tip = remote.tip();
+		await expect(store.add([check("x")])).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state would hold ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; nothing was pushed, and disposing changesets makes room`,
+		});
+		expect(remote.tip()).toBe(tip);
 	});
 
 	// One cell's bytes at `count` changesets' paths, with git reporting every blob at what one file may be.

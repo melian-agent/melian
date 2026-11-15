@@ -53,6 +53,11 @@ function parseCell(text: string): Cell | undefined {
 	return cell;
 }
 
+// Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
+function keyOf(entry: TreeEntry): string {
+	return JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
+}
+
 function changesetName(name: string | undefined): string | undefined {
 	if (name === undefined) return undefined;
 	try {
@@ -137,19 +142,50 @@ export class StateTree {
 		judged: Map<string, Judged>,
 		deadline: Deadline,
 	): Promise<StateTree> {
+		const { entries, small } = await StateTree.#measure(repository, branch, commit, deadline, false);
+		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
+		const wanted = new Set(fresh.map((entry) => entry.oid).filter((oid) => small.has(oid)));
+		const blobs = await repository.blobs(
+			new Map([...wanted].map((oid) => [oid, small.get(oid) as number])),
+			deadline,
+		);
+		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
+		return new StateTree(entries.map((entry) => judged.get(keyOf(entry)) as Judged));
+	}
+
+	// Fails as unreachable when `commit`, which a write is about to push to `branch`, holds more than a call may read.
+	static async measure(
+		repository: RecordRepository,
+		branch: string,
+		commit: string,
+		deadline: Deadline,
+	): Promise<void> {
+		await StateTree.#measure(repository, branch, commit, deadline, true);
+	}
+
+	// The entries of `commit` and the sizes of its readable blobs, once both are within the limits. A write's commit, which
+	// `before` says is not yet pushed, is refused in words that say so.
+	static async #measure(
+		repository: RecordRepository,
+		branch: string,
+		commit: string,
+		deadline: Deadline,
+		before: boolean,
+	): Promise<{ entries: TreeEntry[]; small: Map<string, number> }> {
+		const [holds, lists] = before ? ["would hold", "would list"] : ["holds", "lists"];
+		const remedy = (what: string) =>
+			before ? `nothing was pushed, and ${what} makes room` : `${what} brings it under`;
 		const entries = await repository.entries(commit, deadline, listingLimit);
 		if (entries === undefined)
 			throw new RecordError(
 				"unreachable",
-				`${branch} lists more than ${listingLimit} bytes of entries at its tip, past the store's limit; disposing changesets or removing strays brings it under`,
+				`${branch} ${lists} more than ${listingLimit} bytes of entries at its tip, past the store's limit; ${remedy("disposing changesets or removing strays")}`,
 			);
 		if (entries.length > entryLimit)
 			throw new RecordError(
 				"unreachable",
-				`${branch} holds ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; disposing changesets or removing strays brings it under`,
+				`${branch} ${holds} ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; ${remedy("disposing changesets or removing strays")}`,
 			);
-		// Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
-		const keyOf = (entry: TreeEntry) => JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const sizes = await repository.sizes(readable, deadline);
 		const small = new Map(
@@ -166,16 +202,9 @@ export class StateTree {
 		if (total > tipLimit)
 			throw new RecordError(
 				"unreachable",
-				`${branch} holds ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; disposing changesets brings it under`,
+				`${branch} ${holds} ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; ${remedy("disposing changesets")}`,
 			);
-		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
-		const wanted = new Set(fresh.map((entry) => entry.oid).filter((oid) => small.has(oid)));
-		const blobs = await repository.blobs(
-			new Map([...wanted].map((oid) => [oid, small.get(oid) as number])),
-			deadline,
-		);
-		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
-		return new StateTree(entries.map((entry) => judged.get(keyOf(entry)) as Judged));
+		return { entries, small };
 	}
 
 	// Only a regular file where a record or cell may sit is worth reading; everything else is a stray by its path alone.

@@ -111,6 +111,7 @@ export class GitRecordStore implements RecordStore {
 			const { changes, value } = decide(tree);
 			if (changes.length === 0) return value;
 			const commit = await this.#repository.commit(tip, changes, deadline);
+			await StateTree.measure(this.#repository, this.#branch, commit, deadline);
 			// A push ends by three quarters of what is left, inside the call's deadline, so the landed check keeps the rest.
 			const push = deadline.within((deadline.left() * 3) / 4);
 			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, push);
