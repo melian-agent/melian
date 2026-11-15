@@ -157,14 +157,27 @@ export interface MissFinding {
 	readonly headline: string;
 	readonly failureScenario?: string;
 	readonly sightedBy: FindingSource;
+	/** For a hit on a fix of several hunks in the miss's file, the hunks it overlaps, for the reader to adjudicate. */
+	readonly hunks?: readonly (readonly [number, number])[];
 }
 
-/** What a review found of a miss: the findings that answer it, and those at its file under its rule beside its lines. */
-export interface MissMatch {
-	readonly matched: "lines" | "file and rule";
-	readonly hits: readonly MissFinding[];
-	readonly near: readonly MissFinding[];
-}
+/**
+ * What a review found of a miss: the findings that answer it, and those at its file under its rule beside its lines.
+ * A fix of several hunks in the file may repair more than the miss, so a hit on one is `fix hunks`, left to the reader
+ * as a hit by file and rule is.
+ */
+export type MissMatch =
+	| {
+			readonly matched: "lines" | "file and rule";
+			readonly hits: readonly MissFinding[];
+			readonly near: readonly MissFinding[];
+	  }
+	| {
+			readonly matched: "fix hunks";
+			readonly hunks: readonly (readonly [number, number])[];
+			readonly hits: readonly MissFinding[];
+			readonly near: readonly MissFinding[];
+	  };
 
 /** A `needs-execution` miss: a finding a review missed in a range of a clone, which only running code would catch. */
 export class Miss {
@@ -310,15 +323,20 @@ export class Miss {
 				(sighting.properties.path ?? sighting.locations[0]!.physicalLocation.artifactLocation.uri) === this.file,
 		);
 		if (location.by === "file and rule") return { matched: "file and rule", hits: claims.map(shown), near: [] };
-		const overlaps = (finding: Finding) => {
+		const overlapped = (finding: Finding) => {
 			const [start, end] = finding.lines();
-			return location.ranges.some(([first, last]) => first <= end && start <= last);
+			return location.ranges.filter(([first, last]) => first <= end && start <= last);
 		};
-		return {
-			matched: "lines",
-			hits: claims.filter(overlaps).map(shown),
-			near: claims.filter((finding) => !overlaps(finding)).map(shown),
-		};
+		const near = claims.filter((finding) => overlapped(finding).length === 0).map(shown);
+		const hits = claims.filter((finding) => overlapped(finding).length > 0);
+		if (location.by === "fix" && location.ranges.length > 1)
+			return {
+				matched: "fix hunks",
+				hunks: location.ranges,
+				hits: hits.map((finding) => ({ ...shown(finding), hunks: overlapped(finding) })),
+				near,
+			};
+		return { matched: "lines", hits: hits.map(shown), near };
 	}
 }
 
@@ -462,6 +480,8 @@ export interface ProbingReview {
 	readonly matched?: MissMatch["matched"];
 	readonly hits?: MissMatch["hits"];
 	readonly near?: MissMatch["near"];
+	/** For a miss located by a fix of several hunks in its file, those hunks. */
+	readonly hunks?: readonly (readonly [number, number])[];
 	readonly error?: string;
 	readonly notes: RangeRun["notes"];
 	readonly sharedProberTier: readonly string[];
@@ -637,7 +657,7 @@ export async function measureProbing(
 			const record = (
 				run: RangeRun,
 				line: string,
-				review: Pick<ProbingReview, "name" | "kind" | "score" | "found" | "matched" | "hits" | "near">,
+				review: Pick<ProbingReview, "name" | "kind" | "score" | "found" | "matched" | "hits" | "near" | "hunks">,
 			) => {
 				telemetry.push(run.telemetry);
 				const sharing = Object.entries(run.tiers)
@@ -698,11 +718,15 @@ export async function measureProbing(
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
 				if (hit) found += 1;
+				const span = (ranges: readonly (readonly [number, number])[]) =>
+					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
 				const said = !hit
 					? "missed"
-					: match.matched === "lines"
-						? "found"
-						: "found, unadjudicated: matched by file and rule alone";
+					: match.matched === "fix hunks"
+						? `found, unadjudicated: the fix changed ${match.hunks.length} hunks in ${miss.file} (${span(match.hunks)}), and the hits overlap ${span(match.hunks.filter((hunk) => match.hits.some((each) => each.hunks?.includes(hunk))))}`
+						: match.matched === "lines"
+							? "found"
+							: "found, unadjudicated: matched by file and rule alone";
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",

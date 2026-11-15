@@ -391,6 +391,39 @@ describe("Miss", () => {
 			hits: [shown(finding), shown(near)],
 			near: [],
 		});
+		const fix = (ranges: [number, number][]) => ({ by: "fix", fixCommit: sha, ranges }) as const;
+		expect(miss.match(both([finding, near]), fix([[start, start]]))).toEqual({
+			matched: "lines",
+			hits: [shown(finding)],
+			near: [shown(near)],
+		});
+		expect(
+			miss.match(
+				both([finding, near]),
+				fix([
+					[1, 1],
+					[start, start],
+					[end, end + 1],
+				]),
+			),
+		).toEqual({
+			matched: "fix hunks",
+			hunks: [
+				[1, 1],
+				[start, start],
+				[end, end + 1],
+			],
+			hits: [
+				{
+					...shown(finding),
+					hunks: [
+						[start, start],
+						[end, end + 1],
+					],
+				},
+			],
+			near: [shown(near)],
+		});
 		const elsewhere = Finding.from({ ...near.toJSON(), properties: { ...near.properties, path: "other.ts" } });
 		expect(miss.match(both([elsewhere]), { by: "lines", ranges: [[1, 1_000_000]] })).toEqual({
 			matched: "lines",
@@ -677,8 +710,16 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const head = git(repo, "rev-parse", "feature");
 			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
 			const [start, end] = defect[0]!.lines();
+			git(repo, "checkout", "--quiet", "-b", "fixed", "feature");
+			const path = join(repo, at.file);
+			const text = readFileSync(path, "utf8").split("\n");
+			const last = text.length - 1;
+			text[start - 1] = "// fixed";
+			writeFileSync(path, `${text.join("\n")}// appended\n`);
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "fix");
 			const misses = missesFile([
 				{ name: "hit", repo, base, head, ...at, lines: [start, end] },
+				{ name: "two hunks", repo, base, head, ...at, fix: "fixed" },
 				{ name: "beside", repo, base, head, ...at, lines: [end + 1, end + 2] },
 				{ name: "miss", repo, base, head: "feature", file: "other.ts", rule: "fail-open" },
 				{ name: "loose", repo, base, head, ...at },
@@ -688,14 +729,14 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await measure(settings, refused)).toMatchObject({
 				status: 2,
 				errors: [
-					"MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of hit, beside, miss, loose, so their probes cannot run",
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of hit, two hunks, beside, miss, loose, so their probes cannot run",
 				],
 			});
 			expect(refused.models).not.toHaveBeenCalled();
 			const unprobed = runners({ range: vi.fn(async () => ran(defect)) });
 			expect((await measure({ ...settings, MELIAN_EVAL_PROBE_ROUTES: "off=a/plan" }, unprobed)).status).toBe(0);
 			expect(vi.mocked(unprobed.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
-				Array(12).fill(false),
+				Array(15).fill(false),
 			);
 			const using = runners({ range: vi.fn(async () => ran(defect)) });
 			const out = join(scratch, "misses-results.json");
@@ -705,11 +746,14 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(status).toBe(0);
 			expect(using.golden).not.toHaveBeenCalled();
-			expect(using.range).toHaveBeenCalledTimes(12);
+			expect(using.range).toHaveBeenCalledTimes(15);
 			expect(vi.mocked(using.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
-				Array(12).fill(true),
+				Array(15).fill(true),
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 hit: found, 14 tokens/));
+			expect(lines).toContainEqual(
+				`pair pass 1 two hunks: found, unadjudicated: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the hits overlap ${start}-${start}, ${paid.spend()}`,
+			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 beside: missed, 14 tokens/));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 miss: missed, 14 tokens/));
 			expect(lines).toContainEqual(
@@ -717,7 +761,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					/^pair pass 1 loose: found, unadjudicated: matched by file and rule alone, 14 tokens/,
 				),
 			);
-			expect(lines).toContain("pair: worst miss recall 0.50; mean miss recall 0.50; 168 tokens, $12");
+			expect(lines).toContain("pair: worst miss recall 0.60; mean miss recall 0.60; 210 tokens, $15");
 			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
 			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
 			const shown = {
@@ -728,10 +772,22 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				sightedBy: defect[0]!.properties.source,
 			};
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
-				misses: { found: 2, total: 4 },
+				misses: { found: 3, total: 5 },
 				failed: [],
 				reviews: [
 					{ name: "hit", found: true, matched: "lines", hits: [shown], near: [], ...review },
+					{
+						name: "two hunks",
+						found: true,
+						matched: "fix hunks",
+						hunks: [
+							[start, start],
+							[last, last + 1],
+						],
+						hits: [{ ...shown, hunks: [[start, start]] }],
+						near: [],
+						...review,
+					},
 					{ name: "beside", found: false, matched: "lines", hits: [], near: [shown], ...review },
 					{ name: "miss", found: false, matched: "file and rule", hits: [], near: [], ...review },
 					{ name: "loose", found: true, matched: "file and rule", hits: [shown], near: [], ...review },
