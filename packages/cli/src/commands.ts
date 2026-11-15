@@ -403,6 +403,7 @@ export async function review(
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
+				writer,
 				lensesStarted: summarize,
 			}));
 		} catch (error) {

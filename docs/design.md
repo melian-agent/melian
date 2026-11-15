@@ -363,6 +363,8 @@ Solution: Pi's storage is working state and stays local, SQLite in a clone and t
 
 Alternative record stores behind the same port: a directory, object storage, Postgres, Cloudflare Durable Objects.
 
+The state directory keeps every changeset file until the shared record holds its records. `melian store prune` removes only cache Melian can rebuild: Enola graphs for trees no branch or worktree holds, their coverage, and stale mutation partitions. It keeps every tool download. It keeps anything it does not recognise. [The store retention decision](decisions/2026-11-14-store-retention.md) sets the rules, and records the maintainer's ruling that a merged pull request's changeset is deleted only once the shared record lists its records, never compacted.
+
 Stored rounds expose their identity through `Round.revisionKey()`. A verdict written under a head-only key keeps that key explicitly, with no invented base. Round document version 2 restores the head and key from version 1's empty-head representation, preserving the round ID and verdict.
 
 ## Trust and isolation
@@ -457,6 +459,14 @@ Solution: a lens may write a probe, a short Node script with its fixture files, 
 - Fail closed. Where sandbox-runtime does not support the platform, lacks a dependency or fails to start, a probe is refused with its reason and never runs unconfined. `melian doctor` runs an empty probe and prints whether it ran, and `melian probe <dir> --trust-head` runs one from the command line.
 
 What it gives up: the probe shares the reviewer's kernel, so an escape from sandbox-runtime or a kernel bug is an escape. On macOS a child that detaches between two scans of the process table outlives the probe, still confined. Linux needs unprivileged user namespaces, which Ubuntu 24.04 restricts by default. A microVM would give the probe its own kernel; it was deferred because it needs a VM runtime and nested virtualisation, which builders' VMs and Actions runners may lack. [The decision](decisions/2026-11-07-probes-run-under-sandbox-runtime.md) records the ruling and each limit.
+
+### A level that probes
+
+Built in milestone 2 by [issue #288](https://github.com/melian-agent/melian/issues/288)'s first pull request; its goldens and live measurement follow.
+
+Problem: probes run, but no lens could ask for one, so the reviews of record kept finding by running what rounds missed by reading.
+
+Solution: a lens level's `probe` makes it run as two conversations. The planner, on the level's tier, reads the change, the decisions at base and the findings of the change's last earlier revision, and records a numbered attack plan, each attack with its reason and what a passing and a failing probe would print. The prober, on `probe.prober`'s tier or the level's, receives that plan alone and answers every attack with a probe through `run_probe`, or a skip with its reason. A finding names a probe that failed. The review runs each probe a claim cites again before its verifier starts, once a probe, in a durable task a concurrent review attaches to, as [the probe-reruns decision](decisions/2026-11-12-probe-reruns.md) records. A finished probing run is never reused: a repeat review plans and probes again, and runs every lens of its review again, as [the decision of 2026-11-14](decisions/2026-11-14-probing-runs-not-reused.md) records. A lens task with a level that probes starts no verification wave. The verifier receives the plan, the probe and both runs, and cannot confirm a claim whose probe did not fail again. The level's token and tool budgets and each probe's time limit bound the probes, below fixed limits no level can lift: 48 probes a run, and 64 MiB of git's listing of the head, as [the fixed-limits decision](decisions/2026-11-09-probing-fixed-limits.md) records. Telemetry shows the budgets, the probes and their time. No shipped level probes yet: by the maintainer's ruling of 2026-11-07, the built-in `trust-boundary` lens's `deep` level turns probing on once the live measurement picks the planner and prober routes, and until then a level that probes is one a repository or an eval's own lens declares. Where a probe may not run, for a fork's head, under `trust.writers: false`, on a host where the sandbox cannot run, or for a head whose own tree refuses probes, past its limits or with a link out of it, the level runs as it would without `probe`, and its record says why. The review tries the head's tree before it chooses to probe, by the maintainer's ruling of 2026-11-13. [The decision](decisions/2026-11-07-trust-boundary-level-that-probes.md) records the rulings and what it gives up.
 
 ## Interaction model
 

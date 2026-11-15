@@ -23,6 +23,7 @@ import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
+import { storePrune } from "./store.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
 
@@ -66,8 +67,11 @@ Commands:
   compare export <range|#pr> [--out <path>] [--json]
                          Write the local comparison record as markdown, or its whole document as JSON.
   tools [fetch <name>]   List pinned tool readiness, or fetch and verify one tool. Exits 0 success, 1 failure.
-  mutants list <range|#pr> [--json] [--limit N|--all]
-                         Enumerate changed production lines without running tests or head code. Exits 0 success, 1 failure.
+  mutants list <range|#pr> [<file>...] [--claims-in <file>]... [--json] [--limit N|--all]
+                         Enumerate changed production lines without running tests or head code. --claims-in records a
+                         file whose mutants owe a claim. Files after the range limit the listing, for reading only;
+                         such a listing cannot be sampled. Each file must be one the range changes.
+                         Exits 0 success, 1 failure.
   mutants sample <inventory>
                          Print deterministic probes from a complete classified inventory. Exits 0 success, 1 refused.
   probe <dir> --trust-head [--timeout <seconds>] [--json]
@@ -75,6 +79,10 @@ Commands:
                          under the sandbox: no network, writes to its scratch alone, reads of the tree, the install,
                          Node and the system alone. Exits 0 when it exits 0, 1 when it fails, times out or floods its output,
                          2 when it cannot run here.
+  store prune [--apply]  Print the rebuildable cache Melian's state directory holds past its retention, and the space
+                         removing it frees; --apply removes it. Changeset files are never removed. Exits 0, or 1
+                         when a static check is running, which stops prune removing anything, or when the state
+                         directory is a link, which prune does not follow.
   doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
                          access.
 
@@ -96,6 +104,7 @@ Options:
   --notes                Show each distinct lens note once (review, findings).
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --accept              Accept rejected members (compare refresh only).
+  --apply               Remove what the dry run lists (store prune).
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -157,6 +166,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				round: { type: "string" },
 				rounds: { type: "boolean" },
 				accept: { type: "boolean" },
+				apply: { type: "boolean", default: false },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
@@ -180,6 +190,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				note: { type: "string" },
 				only: { type: "boolean", default: false },
 				from: { type: "string", multiple: true, default: [] },
+				"claims-in": { type: "string", multiple: true },
 				color: { type: "boolean", default: true },
 				help: { type: "boolean", short: "h", default: false },
 			},
@@ -202,9 +213,13 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--round is only available for findings and compare");
 		if (values.accept !== undefined && (name !== "compare" || rest[0] !== "refresh"))
 			throw new UsageError("--accept is only available for compare refresh");
+		if (values.apply && name !== "store") throw new UsageError("--apply is only available for store prune");
 		const scoped: Io = { ...io, color: io.color && values.color };
 		if (name !== "mutants" && values.limit !== undefined)
 			throw new UsageError("--limit is only available for mutants list");
+		const claimsIn = values["claims-in"];
+		if ((name !== "mutants" || rest[0] !== "list") && claimsIn !== undefined)
+			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
 		const expectBase = values["expect-base"];
@@ -232,10 +247,14 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					(!/^\d+$/.test(values.limit) || !Number.isSafeInteger(Number(values.limit)))
 				)
 					throw new UsageError("--limit takes a non-negative safe integer");
-				return await listMutants(scoped, one(targets, "mutants list", "range or pull request"), {
+				const [target, ...limitedTo] = targets;
+				if (target === undefined) throw new UsageError("mutants list takes a range or pull request");
+				return await listMutants(scoped, target, {
 					json: values.json,
 					all: values.all,
 					...(values.limit === undefined ? {} : { limit: Number(values.limit) }),
+					...(claimsIn === undefined ? {} : { claimsIn }),
+					...(limitedTo.length === 0 ? {} : { limitedTo }),
 				});
 			}
 			case "review": {
@@ -415,6 +434,9 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					...(seconds === undefined ? {} : { timeout: Number(seconds) * 1000 }),
 				});
 			}
+			case "store":
+				if (rest.length !== 1 || rest[0] !== "prune") throw new UsageError("store takes prune");
+				return await storePrune(scoped, values.apply);
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");
 				return await doctor(scoped);

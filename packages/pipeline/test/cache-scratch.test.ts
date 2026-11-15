@@ -197,3 +197,20 @@ it("never probes pid 0 or 1 from a name, and sweeps such an old path by age", as
 	await expect(lstat(fresh)).resolves.toBeDefined();
 	for (const directory of stale) await expect(lstat(directory)).rejects.toMatchObject({ code: "ENOENT" });
 });
+
+it("sweeps what a dead pruner left, keeps a live pruner's, and sweeps an old pidless prune name by age", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-prune-"));
+	const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
+	await once(child, "exit");
+	const graph = join(root, "graphs");
+	await mkdir(graph);
+	const dead = join(graph, `.prune-${child.pid}-moved`);
+	const live = join(graph, `.prune-${process.pid}-moved`);
+	const old = join(graph, ".prune-old");
+	for (const path of [dead, live, old]) await mkdir(path);
+	await utimes(old, new Date(0), new Date(0));
+	await GraphCache.open(root);
+	await expect(lstat(dead)).rejects.toMatchObject({ code: "ENOENT" });
+	await expect(lstat(old)).rejects.toMatchObject({ code: "ENOENT" });
+	expect((await lstat(live)).isDirectory()).toBe(true);
+});

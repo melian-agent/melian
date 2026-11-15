@@ -52,6 +52,7 @@ function passthrough(
 	const asked: { command: string; policy: ProbePolicy }[] = [];
 	const sandbox = {
 		platform: overrides.platform ?? "darwin",
+		kind: "fake",
 		unavailable: vi.fn(() => overrides.unavailable),
 		open: vi.fn(overrides.open ?? (async () => {})),
 		wrap: vi.fn(
