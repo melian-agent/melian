@@ -505,6 +505,25 @@ export {
 	SharedRecord,
 } from "./record.ts";
 export {
+	type CheckPayload,
+	checkPayloadSchema,
+	checkResultSchema,
+	type DismissalPayload,
+	dismissalPayloadSchema,
+	type LensPayload,
+	lensOutcomeSchema,
+	lensPayloadSchema,
+	reviewPayloads,
+	type TelemetryPayload,
+	type TriagePayload,
+	telemetryPayloadSchema,
+	triagePayloadSchema,
+	type VerificationPayload,
+	verificationPayloadSchema,
+	type WalkthroughPayload,
+	walkthroughPayloadSchema,
+} from "./record-payloads.ts";
+export {
 	disposalMark,
 	MemoryRecordSpace,
 	MemoryRecordStore,
