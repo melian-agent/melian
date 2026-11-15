@@ -131,6 +131,11 @@ describe("payload checks", () => {
 		);
 	});
 
+	it("lets tests parse a record of every kind core lists but a round", () => {
+		for (const kind of ["check", "lens", "verification", "walkthrough", "triage", "telemetry", "marker"])
+			expect(SharedRecord.parse(envelope({ kind }), testPayloads).kind).toBe(kind);
+	});
+
 	it("checks stored bytes the same way", () => {
 		const record = SharedRecord.parse(envelope({}), { check: () => undefined });
 		expect(refusal(() => SharedRecord.read(record.bytes, record.id)).code).toBe("unvalidatedKind");
