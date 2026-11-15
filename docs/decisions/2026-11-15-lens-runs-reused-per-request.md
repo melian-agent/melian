@@ -18,10 +18,10 @@ Choice: `lensRequest` in `packages/pipeline/src/lens-request.ts` keys each run t
 
 - the run as the lens task stores it, rendered under the fixed identity nonce: its name, version, level, route, thinking, budgets, instructions and prompt, the enclosing functions included;
 - the injection policy that renders ahead of the instructions;
-- every tool the run is offered, by name, description and schema, and a probing run's planner and prober tools and reminders;
+- every tool the run is offered, by name, description and schema, a probing run's planner and prober tools included;
 - the wording a failover sends;
 - the base and head, `escalateAt`, and the run a quick run escalates to by its key, or why it is capped;
-- for a run that escalates to another, the wording that carries its findings to that run, since that run is copied only with it;
+- for a run that probes or escalates to another, the whole `probingWording` table, as rule 8 of [the identity guideline](../guidelines/identity.md) says: it holds the plan the prober reads, the prober's reminders, and the wording that carries a quick run's findings to the run it escalates to, which is copied only with it. Two reviews in a row found a string the key had left out when it picked fields from the table, so it keys the table whole. A changed probing string asks every probing or escalating lens again once;
 - the standards it quotes, by their raw text, their source and whether they are trusted.
 
 Left out, each with its reason:

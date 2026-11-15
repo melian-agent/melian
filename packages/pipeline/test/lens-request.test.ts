@@ -3,7 +3,7 @@ import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
 import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
-import { answerPrompt, probingWording, recordPlanPrompt } from "../src/probing.ts";
+import { probingWording } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
 const sample = {
@@ -110,8 +110,6 @@ describe("lensRequest", () => {
 		);
 		expect(request.probing).toEqual({
 			tools: [lensListedTools.read_file, lensListedTools.search, reportFinding, runProbe, skipAttack].map(specOf),
-			plan: recordPlanPrompt,
-			answer: answerPrompt([1, 2]),
 		});
 	});
 
@@ -130,14 +128,17 @@ describe("lensRequest", () => {
 		expect(new Set([moves, capped, none]).size).toBe(3);
 	});
 
-	it("keys the wording that carries a quick run's findings to the run it escalates to, and only when it moves on", () => {
-		const { carriedHeading, carried, carriedLabel, carriedRow } = probingWording;
-		expect(build(sample).request.carried).toEqual({ carriedHeading, carried, carriedLabel, carriedRow });
-		const capped = build({ ...sample, escalation: { cap: "at its ceiling" } as unknown as Sample["escalation"] });
-		expect(capped.request).not.toHaveProperty("carried");
-		expect(build({ ...sample, escalation: undefined as unknown as Sample["escalation"] }).request).not.toHaveProperty(
-			"carried",
+	it("keys the whole probing wording table for a run that probes or carries its findings on, and only then", () => {
+		const { probe: _, ...plain } = sample.run;
+		const capped = { cap: "at its ceiling" } as unknown as Sample["escalation"];
+		const none = undefined as unknown as Sample["escalation"];
+		expect(build(sample).request.wording).toEqual(probingWording);
+		expect(build({ ...sample, escalation: none }).request.wording).toEqual(probingWording);
+		expect(build({ ...sample, run: plain as Sample["run"] }).request.wording).toEqual(probingWording);
+		expect(build({ ...sample, run: plain as Sample["run"], escalation: capped }).request).not.toHaveProperty(
+			"wording",
 		);
+		expect(build({ ...sample, run: plain as Sample["run"], escalation: none }).request).not.toHaveProperty("wording");
 	});
 
 	it("writes neither escalation field for a run with no escalation severity and no next run", () => {
