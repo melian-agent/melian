@@ -262,7 +262,7 @@ describe("built-in lenses", () => {
 			contracts: "acfe949c2b5b",
 			conventions: "52519f16435c",
 			correctness: "c49c348ce9f1",
-			design: "298ee7d06e4f",
+			design: "be363583ad90",
 			"removed-behaviour": "0885fd05330f",
 			tests: "a9ed7d3ea22c",
 			"trust-boundary": "7d072a9e5e2c",
