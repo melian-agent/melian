@@ -56,10 +56,24 @@ A copied lens carries its outcomes into the new task's input, each naming the ta
 
 A probing run is never copied, so every finding it reports rests on a probe of its own review. A repeat review of a selection with a finished probing run now plans and probes again alone, and copies the review's other lenses. This is the way out [the probing-runs decision](2026-11-14-probing-runs-not-reused.md) named and left for [issue #427](https://github.com/melian-agent/melian/issues/427); only the copy is built here, not the hint.
 
+## A copy needs the same callers
+
+Problem: a lens task stores one record of the callers its lenses were shown: each lens's notes, the caveat that says no lens saw who calls the changed code, and the key of the call graph they came from. Once a task held copied runs beside new ones, that record described the new review alone. Four reviews found four instances. A copied lens lost its own notes; it lost the earlier caveat; it gained a caveat that said no lens saw callers when it had; and its coverage claimed a graph its model never saw, after Enola was upgraded for the same tree.
+
+Choice: a review copies runs only from a task shown the same callers as it. `callersShown` in `packages/pipeline/src/review.ts` takes that from each stored record: the graph's key, `GraphSnapshot.key` of the record's coverage parts, and the caveat. A review without Enola stores no record, and matches only another without one. When they differ, the review asks every lens again, so a task mixes runs only when one caller record is true of them all. The coordinator chose this on 2026-11-15, in its session, as a choice of approach rather than a ruling, and told the maintainer.
+
+Left out of the match:
+
+- The cache root, which names the host.
+- The paths, which follow the revision, and a copy already shares it.
+- Each lens's notes. A file's caller query can fail in one review and not the other with the same graph and caveat, so a copied lens keeps its notes from the task that asked it.
+
+What it costs: a repeat review of a head asks every lens again when Enola's availability, or the graph's key, changed between the two reviews. Both are rare. The first needs Enola to fail, or the host to supply no graph, in one review only. The second needs an upgrade of Enola, the compiler or Enola's configuration, which rebuilds the graph for the same tree. The request key is unchanged, so callers stay best effort, as [the caller context decision](2026-10-07-caller-context-outside-the-attach-key.md) says. Keeping a caller record with each copied run would copy more often, but it changes the lens task's stored shape; [issue #437](https://github.com/melian-agent/melian/issues/437) can weigh it as a later gain.
+
 ## How the older clauses now read
 
 - Enclosing functions: the functions and their notes are inside the lens run's request. A repeat call whose request matches attaches to the first call's task, or copies its run. A changed function read on the same head runs that lens again.
-- Caller context: the caller section stays outside the key, now as the request's `bestEffort` part rather than through the instruction fingerprint.
+- Caller context: the caller section stays outside the key, now as the request's `bestEffort` part rather than through the instruction fingerprint. A copy also needs the earlier task to have been shown the same callers, as above.
 - Review attachment: a repeat call whose every lens request matches attaches and never duplicates. One whose requests differ creates a task that copies the unchanged lenses from a completed task.
 - Lens run identity: a review reuses a stored run when the run's request key matches, either by attaching to its task or by copying it.
 - Probing repeat: a repeat review of a selection with a finished probing run runs the probing lens again, and pays for it alone. A crash after the lens task finished does the same.

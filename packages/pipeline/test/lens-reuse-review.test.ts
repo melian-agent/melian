@@ -14,6 +14,7 @@ import {
 } from "@melian-agent/core";
 import {
 	CallerContext,
+	type CallerData,
 	CoverageCache,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -96,7 +97,11 @@ function changed(name: string, change: (lens: Lens) => Partial<ReturnType<Lens["
 async function review(
 	reviewed: readonly Lens[],
 	standards: Standards | [] = [],
-	extra: { readonly unlockModels?: (providers: readonly string[]) => Promise<void> } = {},
+	extra: {
+		readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
+		readonly callers?: CallerContext;
+		readonly config?: MelianConfig;
+	} = {},
 ) {
 	const asked = new Set<string>();
 	const answer = (name: string) => (messages: readonly Message[]) => {
@@ -136,7 +141,10 @@ async function review(
 	const root = (await harness.root(context)).id;
 	const entry = (await harness.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!;
 	const task = await harness.getTask(entry.task as Parameters<Harness["getTask"]>[0], context);
-	const input = task!.input as { reused?: Record<string, unknown> };
+	const input = task!.input as {
+		reused?: Record<string, unknown>;
+		callers?: { notes: Record<string, string[]>; caveat?: string };
+	};
 	const copied = "reused" in input ? Object.keys(input.reused ?? {}).map((key) => key.split("@")[0]) : "none";
 	const outcome = task!.state.outcome as { result: Record<string, { conversation?: string }> };
 	const conversations = Object.fromEntries(
@@ -146,7 +154,16 @@ async function review(
 		Revision.key(changeset.revision)
 	]!;
 	const usage = Object.fromEntries(details.lenses.map(({ name, usage }) => [name, usage]));
-	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations, task: entry.task, usage };
+	return {
+		review: result,
+		asked: [...asked].sort(),
+		lensStages,
+		copied,
+		conversations,
+		task: entry.task,
+		usage,
+		callers: input.callers,
+	};
 }
 
 describe("a repeat review copies each lens run whose request is unchanged", () => {
@@ -390,127 +407,74 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
+});
 
-	it("keeps a copied lens's caller notes from the review that asked it, not the one that copied it", async () => {
-		const root = mkdtempSync(join(tmpdir(), "melian-reuse-notes-"));
-		try {
-			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
-			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
-			const notesOf = async (reviewed: readonly Lens[], callers?: CallerContext, settings = enabled) => {
-				const plain = () => fauxAssistantMessage("No findings.");
-				scriptConversations(fake, [
-					{ match: correctness, replies: [plain] },
-					{ match: contracts, replies: [plain] },
-				]);
-				const result = await reviewChangeset({
-					harness,
-					changeset: await Changeset.resolve(repo, "main...feature"),
-					config: settings,
-					lenses: reviewed,
-					standards: [],
-					models: fake.review,
-					...(callers === undefined ? {} : { callers }),
-					checks: [{ name: "guardrails", status: "ran" }],
-				});
-				return Object.fromEntries(
-					(result.verdict.ran ?? [])
-						.filter(({ name }) => name.startsWith("lens."))
-						.map((record) => [record.name, "reason" in record ? (record.reason ?? "") : ""]),
-				);
-			};
-			const unavailable = "Callers unavailable: the host supplied no graph context";
-			const first = await notesOf(
-				lenses,
-				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
-			);
-			expect(first["lens.contracts"]).not.toContain(unavailable);
+describe("a repeat review copies a lens run only from a task shown the same callers", () => {
+	const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+	let root: string;
+	let enabled: MelianConfig;
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "melian-reuse-callers-"));
+		enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+	});
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-			const again = await notesOf(
-				changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
-			);
-			expect(again["lens.correctness"]).toContain(unavailable);
-			expect(again["lens.contracts"]).not.toContain(unavailable);
+	const graph = (data: Partial<CallerData> = {}, graphParts = parts) =>
+		CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts: graphParts, ...data }, root);
+	const lookTwice = () => changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` }));
 
-			// The correctness lens is copied from the review above, which ran it without callers, though this one has them.
-			const third = await notesOf(
-				lenses.map((lens) => Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look twice.` })),
-				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
-			);
-			expect(third["lens.correctness"]).toContain(unavailable);
-			expect(third["lens.contracts"]).not.toContain(unavailable);
-
-			// A review with Enola off keeps no caller notes, so a lens copied from it carries none into one with Enola on.
-			const off = lenses.map((lens) =>
-				Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look off.` }),
-			);
-			await notesOf(off, undefined, config);
-			await notesOf(
-				off.map((lens) =>
-					lens.name === "correctness"
-						? Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} On.` })
-						: lens,
-				),
-				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
-			);
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const index = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews;
-			const task = await harness.getTask(
-				index[Revision.key(changeset.revision)]!.task as Parameters<Harness["getTask"]>[0],
-				context,
-			);
-			const input = task!.input as { reused?: object; callers: { notes: Record<string, unknown> } };
-			expect(Object.keys(input.reused ?? {}).map((key) => key.split("@")[0])).toEqual(["contracts"]);
-			expect(Object.keys(input.callers.notes).map((key) => key.split("@")[0])).toEqual(["correctness"]);
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
+	it("copies the unchanged lens when both reviews were shown the same graph and caveat", async () => {
+		await review(lenses, [], { config: enabled, callers: graph() });
+		const again = await review(lookTwice(), [], { config: enabled, callers: graph() });
+		expect(again.asked).toEqual(["correctness"]);
+		expect(again.copied).toEqual(["contracts"]);
 	});
 
-	it("keeps the caller caveat of a run it copies from a review that had no callers", async () => {
-		const root = mkdtempSync(join(tmpdir(), "melian-reuse-caveat-"));
-		try {
-			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
-			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
-			const caveatsOf = async (reviewed: readonly Lens[], callers?: CallerContext) => {
-				const plain = () => fauxAssistantMessage("No findings.");
-				scriptConversations(fake, [
-					{ match: correctness, replies: [plain] },
-					{ match: contracts, replies: [plain] },
-				]);
-				const result = await reviewChangeset({
-					harness,
-					changeset: await Changeset.resolve(repo, "main...feature"),
-					config: enabled,
-					lenses: reviewed,
-					standards: [],
-					models: fake.review,
-					...(callers === undefined ? {} : { callers }),
-					checks: [{ name: "guardrails", status: "ran" }],
-				});
-				return Object.fromEntries(
-					(result.verdict.ran ?? [])
-						.filter(({ name }) => name.startsWith("lens."))
-						.map((record) => [record.name, "caveats" in record ? (record.caveats ?? []) : []]),
-				);
-			};
-			const blind = [`${blindCallers}: the host supplied no graph context`];
-			expect((await caveatsOf(lenses))["lens.contracts"]).toEqual(blind);
+	it("asks every lens again when the earlier review saw callers and this one has none", async () => {
+		await review(lenses, [], { config: enabled, callers: graph() });
+		const again = await review(lookTwice(), [], { config: enabled });
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toEqual("none");
+		expect(again.callers?.caveat).toBe(`${blindCallers}: the host supplied no graph context`);
+	});
 
-			// The contracts lens is copied from the review above, which ran it without callers, though this one has them.
-			const again = await caveatsOf(
-				changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
-				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
-			);
-			expect(again["lens.contracts"]).toEqual(blind);
+	it("asks every lens again when the earlier review had no callers and this one has them", async () => {
+		await review(lenses, [], { config: enabled });
+		const again = await review(lookTwice(), [], { config: enabled, callers: graph() });
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toEqual("none");
+		expect(again.callers).not.toHaveProperty("caveat");
+	});
 
-			// Asked again with callers, neither lens is copied, so the earlier caveat goes.
-			const fresh = await caveatsOf(
-				lenses.map((lens) => Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look again.` })),
-				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
-			);
-			expect(fresh).toEqual({ "lens.contracts": [], "lens.correctness": [] });
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
+	it("asks every lens again when the graph was rebuilt for the same tree", async () => {
+		await review(lenses, [], { config: enabled, callers: graph() });
+		const again = await review(lookTwice(), [], {
+			config: enabled,
+			callers: graph({}, { ...parts, version: "0.0.2" }),
+		});
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toEqual("none");
+	});
+
+	it("asks every lens again when Enola was off for the earlier review", async () => {
+		await review(lenses);
+		const again = await review(lookTwice(), [], { config: enabled, callers: graph() });
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toEqual("none");
+	});
+
+	it("keeps a copied lens's caller notes from the review that asked it when only a file's caller query differs", async () => {
+		const groups = [{ file: "src/a.ts", symbol: "a", callers: [], truncated: false }];
+		const failed = "Callers unavailable for src/a.ts: the query timed out";
+		await review(lenses, [], { config: enabled, callers: graph({ groups }) });
+		const again = await review(lookTwice(), [], {
+			config: enabled,
+			callers: graph({ groups, issues: [{ file: "src/a.ts", reason: "the query timed out" }] }),
+		});
+		expect(again.copied).toEqual(["contracts"]);
+		const notes = Object.fromEntries(
+			Object.entries(again.callers?.notes ?? {}).map(([key, notes]) => [key.split("@")[0], notes]),
+		);
+		expect(notes).toEqual({ contracts: [], correctness: [failed] });
 	});
 });

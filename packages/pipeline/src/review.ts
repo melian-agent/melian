@@ -12,6 +12,7 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	GraphSnapshot,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -1610,17 +1611,30 @@ function selectionOf(lenses: readonly LensRun[]): string[] {
 	return lenses.map((lens) => `${lens.key} request ${lens.request ?? "none"}`).sort();
 }
 
+// What a lens task's runs were shown of callers: the key of the graph they came from and the caveat. A task copies runs
+// only from one shown the same, so its one caller record is true of every run it holds. The cache root names the host,
+// and the paths follow the revision, which a copy already shares.
+function callersShown(callers: StoredCallers | undefined): string | undefined {
+	if (callers === undefined) return undefined;
+	return JSON.stringify([
+		callers.coverage === undefined ? null : GraphSnapshot.key(callers.coverage.parts),
+		callers.caveat ?? null,
+	]);
+}
+
 // The lenses of `lenses` a new lens task copies from `previous`, the task the review's index entry names, when it
-// completed.
+// completed and its runs were shown the callers `callers` shows.
 function copiesFrom(
 	previous: TaskRecord<unknown, unknown, unknown> | undefined,
 	lenses: readonly LensRun[],
+	callers: StoredCallers | undefined,
 	refused: (key: string, model: string) => boolean,
 ): Record<string, LensCopy<LensResult[string]>> {
 	if (previous?.state.status !== "terminal") return {};
 	const { outcome } = previous.state;
 	if (outcome.status !== "completed") return {};
 	const earlier = previous.input as StoredLensTaskInput;
+	if (callersShown(earlier.callers) !== callersShown(callers)) return {};
 	return lensCopies(
 		{
 			task: previous.id,
@@ -1678,7 +1692,7 @@ async function runLenses(
 			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
 		if (!attaches) {
-			const copied = copiesFrom(record, input.lenses, refused);
+			const copied = copiesFrom(record, input.lenses, input.callers, refused);
 			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
 			unlockedFor = Object.keys(copied).join("\n");
 		}
@@ -1699,27 +1713,25 @@ async function runLenses(
 		if (attach) return known.task as TaskId<LensResult>;
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused = copiesFrom(previous, input.lenses, refused);
+		const reused = copiesFrom(previous, input.lenses, input.callers, refused);
 		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
 		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
 		const copiedNotes = new Set(
 			input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
 		);
-		const earlier = (previous?.input as StoredLensTaskInput | undefined)?.callers;
-		const earlierNotes = earlier?.notes ?? {};
-		// The caveat is the task's, so a copied run that saw no callers keeps the task warning that some lens saw none.
-		const caveat = input.callers?.caveat ?? (copiedNotes.size === 0 ? undefined : earlier?.caveat);
+		// Its graph and caveat match, but a file's caller query can have failed in one review only.
+		const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
 		const callers =
 			input.callers === undefined
 				? undefined
 				: {
 						...input.callers,
-						...(caveat === undefined ? {} : { caveat }),
 						notes: Object.fromEntries(
-							Object.entries(input.callers.notes).flatMap(([key, notes]) =>
-								!copiedNotes.has(key) ? [[key, notes]] : key in earlierNotes ? [[key, earlierNotes[key]!]] : [],
-							),
+							Object.entries(input.callers.notes).map(([key, notes]) => [
+								key,
+								copiedNotes.has(key) ? earlierNotes[key]! : notes,
+							]),
 						),
 					};
 		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
