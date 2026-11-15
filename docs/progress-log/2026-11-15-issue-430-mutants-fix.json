@@ -1,0 +1,36 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 279,
+      "column": 34,
+      "endLine": 279,
+      "endColumn": 61,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
+      "survivorClasses": [],
+      "run": {
+        "head": "a98ff61e",
+        "test": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 279,
+      "column": 42,
+      "endLine": 279,
+      "endColumn": 46,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    }
+  ],
+  "total": 2,
+  "omitted": 0,
+  "unmutated": []
+}
