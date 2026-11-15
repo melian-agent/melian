@@ -252,14 +252,16 @@ export class Miss {
 	/**
 	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code:
 	 * `trust-boundary` alone, every level its `deep`, under the base's policy. Its head is the reviewer's own only when
-	 * `trust` vouches for its commit.
+	 * `trust` vouches for both commits, since the base's policy decides what a probe may read.
 	 */
 	target(trust: ProbeTrust): ReviewTarget & { readonly head: string } {
 		const base = this.commit(this.base);
 		const head = this.headCommit();
-		const writer: WriterTrust = trust.vouches(head)
-			? { trusted: true, by: "reviewer" }
-			: { trusted: false, detail: `this invocation does not vouch for ${head}` };
+		const unvouched = [base, head].filter((commit) => !trust.vouches(commit));
+		const writer: WriterTrust =
+			unvouched.length === 0
+				? { trusted: true, by: "reviewer" }
+				: { trusted: false, detail: `this invocation does not vouch for ${unvouched.join(" and ")}` };
 		return {
 			repo: this.repo,
 			base,
@@ -341,7 +343,7 @@ export class Miss {
 	}
 }
 
-/** The heads an invocation vouches for, by commit, so a miss's probes run only on code the reviewer has read. */
+/** The commits an invocation vouches for, so a miss's probes run only on code and policy the reviewer has read. */
 export class ProbeTrust {
 	private readonly commits: ReadonlySet<string>;
 
@@ -581,7 +583,7 @@ export async function measureProbing(
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
 			throw new Error(
-				`MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of ${unvouched.join(", ")}, so their probes cannot run`,
+				`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of ${unvouched.join(", ")}, so their probes cannot run`,
 			);
 		if (settings.probes) {
 			const availability = await runners.availability();
@@ -717,20 +719,23 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				if (hit) found += 1;
+				// A hit not located at the defect's own lines may be another defect's, so it gets no score until adjudicated.
+				const unadjudicated = hit && match.matched !== "lines";
+				if (unadjudicated) failed.push(miss.name);
+				else if (hit) found += 1;
 				const span = (ranges: readonly (readonly [number, number])[]) =>
 					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
 				const said = !hit
 					? "missed"
 					: match.matched === "fix hunks"
-						? `found, unadjudicated: the fix changed ${match.hunks.length} hunks in ${miss.file} (${span(match.hunks)}), and the hits overlap ${span(match.hunks.filter((hunk) => match.hits.some((each) => each.hunks?.includes(hunk))))}`
+						? `unadjudicated, no score: the fix changed ${match.hunks.length} hunks in ${miss.file} (${span(match.hunks)}), and the hits overlap ${span(match.hunks.filter((hunk) => match.hits.some((each) => each.hunks?.includes(hunk))))}`
 						: match.matched === "lines"
 							? "found"
-							: "found, unadjudicated: matched by file and rule alone";
+							: "unadjudicated, no score: matched by file and rule alone";
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
-					found: hit,
+					...(unadjudicated ? {} : { found: hit }),
 					...match,
 				});
 			}

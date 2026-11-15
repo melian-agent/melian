@@ -252,13 +252,13 @@ describe("Miss", () => {
 		);
 	});
 
-	it("vouches for a head by the commit it resolves to, and keeps trust-boundary alone at its deep level", async () => {
+	it("vouches for a miss only by both commits its base and head resolve to, and keeps trust-boundary alone at its deep level", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
 			const miss = Miss.load(missesFile([{ ...fields, repo, base, head: "feature" }]))[0]!;
 			expect(miss.headCommit()).toBe(head);
-			const vouched = miss.target(ProbeTrust.parse(head));
+			const vouched = miss.target(ProbeTrust.parse(`${base},${head}`));
 			expect(vouched).toMatchObject({
 				repo,
 				base,
@@ -266,6 +266,14 @@ describe("Miss", () => {
 				writer: { trusted: true, by: "reviewer" },
 			});
 			expect(miss.target(ProbeTrust.parse(sha)).writer).toEqual({
+				trusted: false,
+				detail: `this invocation does not vouch for ${base} and ${head}`,
+			});
+			expect(miss.target(ProbeTrust.parse(head)).writer).toEqual({
+				trusted: false,
+				detail: `this invocation does not vouch for ${base}`,
+			});
+			expect(miss.target(ProbeTrust.parse(base)).writer).toEqual({
 				trusted: false,
 				detail: `this invocation does not vouch for ${head}`,
 			});
@@ -747,7 +755,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(lines).toContain("pair: other lens checks on the prober's medium tier: none");
 	});
 
-	it("runs the misses alone, scoring their share found, and refuses a head the invocation does not vouch for", async () => {
+	it("runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
@@ -772,22 +780,29 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await measure(settings, refused)).toMatchObject({
 				status: 2,
 				errors: [
-					"MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of hit, two hunks, beside, miss, loose, so their probes cannot run",
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of hit, two hunks, beside, miss, loose, so their probes cannot run",
+				],
+			});
+			expect(refused.models).not.toHaveBeenCalled();
+			expect(await measure({ ...settings, MELIAN_EVAL_PROBE_TRUST: head }, refused)).toMatchObject({
+				status: 2,
+				errors: [
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of hit, two hunks, beside, miss, loose, so their probes cannot run",
 				],
 			});
 			expect(refused.models).not.toHaveBeenCalled();
 			const unprobed = runners({ range: vi.fn(async () => ran(defect)) });
-			expect((await measure({ ...settings, MELIAN_EVAL_PROBE_ROUTES: "off=a/plan" }, unprobed)).status).toBe(0);
+			expect((await measure({ ...settings, MELIAN_EVAL_PROBE_ROUTES: "off=a/plan" }, unprobed)).status).toBe(1);
 			expect(vi.mocked(unprobed.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
 				Array(15).fill(false),
 			);
 			const using = runners({ range: vi.fn(async () => ran(defect)) });
 			const out = join(scratch, "misses-results.json");
 			const { status, lines } = await measure(
-				{ ...settings, MELIAN_EVAL_PROBE_TRUST: head, MELIAN_EVAL_PROBE_OUT: out },
+				{ ...settings, MELIAN_EVAL_PROBE_TRUST: `${base},${head}`, MELIAN_EVAL_PROBE_OUT: out },
 				using,
 			);
-			expect(status).toBe(0);
+			expect(status).toBe(1);
 			expect(using.golden).not.toHaveBeenCalled();
 			expect(using.range).toHaveBeenCalledTimes(15);
 			expect(vi.mocked(using.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
@@ -795,16 +810,16 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 hit: found, 14 tokens/));
 			expect(lines).toContainEqual(
-				`pair pass 1 two hunks: found, unadjudicated: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the hits overlap ${start}-${start}, ${paid.spend()}`,
+				`pair pass 1 two hunks: unadjudicated, no score: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the hits overlap ${start}-${start}, ${paid.spend()}`,
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 beside: missed, 14 tokens/));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 miss: missed, 14 tokens/));
 			expect(lines).toContainEqual(
 				expect.stringMatching(
-					/^pair pass 1 loose: found, unadjudicated: matched by file and rule alone, 14 tokens/,
+					/^pair pass 1 loose: unadjudicated, no score: matched by file and rule alone, 14 tokens/,
 				),
 			);
-			expect(lines).toContain("pair: worst miss recall 0.60; mean miss recall 0.60; 210 tokens, $15");
+			expect(lines).toContain("pair: no score, 6 reviews had none, 210 tokens, $15");
 			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
 			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
 			const shown = {
@@ -815,13 +830,11 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				sightedBy: defect[0]!.properties.source,
 			};
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
-				misses: { found: 3, total: 5 },
-				failed: [],
+				failed: ["two hunks", "loose"],
 				reviews: [
 					{ name: "hit", found: true, matched: "lines", hits: [shown], near: [], ...review },
 					{
 						name: "two hunks",
-						found: true,
 						matched: "fix hunks",
 						hunks: [
 							[start, start],
@@ -833,9 +846,24 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					},
 					{ name: "beside", found: false, matched: "lines", hits: [], near: [shown], ...review },
 					{ name: "miss", found: false, matched: "file and rule", hits: [], near: [], ...review },
-					{ name: "loose", found: true, matched: "file and rule", hits: [shown], near: [], ...review },
+					{ name: "loose", matched: "file and rule", hits: [shown], near: [], ...review },
 				],
 			});
+			const adjudicated = runners({ range: vi.fn(async () => ran(defect)) });
+			const scored = await measure(
+				{
+					...settings,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "hit", repo, base, head, ...at, lines: [start, end] },
+						{ name: "beside", repo, base, head, ...at, lines: [end + 1, end + 2] },
+						{ name: "miss", repo, base, head: "feature", file: "other.ts", rule: "fail-open" },
+					]),
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				adjudicated,
+			);
+			expect(scored.status).toBe(0);
+			expect(scored.lines).toContain("pair: worst miss recall 0.33; mean miss recall 0.33; 126 tokens, $9");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
@@ -868,7 +896,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				...env,
 				MELIAN_EVAL_MISSES: misses,
 				MELIAN_EVAL_PROBE_PASSES: "2",
-				MELIAN_EVAL_PROBE_TRUST: head,
+				MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
 				MELIAN_EVAL_PROBE_OUT: out,
 			};
 			expect((await measure(settings, using)).status).toBe(1);
@@ -922,7 +950,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				MELIAN_EVAL_MISSES: misses,
 				MELIAN_EVAL_PROBE_SET: "misses",
 				MELIAN_EVAL_PROBE_PASSES: "1",
-				MELIAN_EVAL_PROBE_TRUST: head,
+				MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
 				MELIAN_EVAL_PROBE_OUT: out,
 			};
 			expect((await measure(settings, using)).status).toBe(0);
@@ -1025,7 +1053,7 @@ describe("runRange", { timeout: 60_000 }, () => {
 			scriptConversations(fake, [{ match: "Your role at this level: the attack planner", replies: [plan, plan] }]);
 			const head = git(repo, "rev-parse", "feature");
 			const miss = Miss.load(missesFile([{ name: "m", repo, base, head, file: "x", rule: "fail-open" }]))[0]!;
-			const run = await runRange(miss.target(ProbeTrust.parse(head)), {
+			const run = await runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), {
 				kind: "live",
 				models: fake.review,
 				verifierModel: `${provider}/plan`,
@@ -1053,7 +1081,7 @@ describe("runRange", { timeout: 60_000 }, () => {
 			const miss = Miss.load(
 				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] }]),
 			)[0]!;
-			const run = await runRange(miss.target(ProbeTrust.parse(head)), {
+			const run = await runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), {
 				kind: "live",
 				models: fake.review,
 				verifierModel: `${provider}/plan`,
@@ -1102,7 +1130,7 @@ describe("runRange", { timeout: 60_000 }, () => {
 			const miss = Miss.load(
 				missesFile([{ name: "m", repo, base: floorless, head, file: "x", rule: "fail-open" }]),
 			)[0]!;
-			const run = await runRange(miss.target(ProbeTrust.parse(head)), {
+			const run = await runRange(miss.target(ProbeTrust.parse(`${floorless},${head}`)), {
 				kind: "live",
 				models: fake.review,
 				verifierModel: `${provider}/plan`,
@@ -1117,23 +1145,27 @@ describe("runRange", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("gives no score to a range whose head the invocation does not vouch for, since its probes cannot run", async () => {
+	it("gives no score to a range whose base or head the invocation does not vouch for, since its probes cannot run", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			scriptConversations(fake, [
-				{ match: "trust-boundary", replies: [fauxAssistantMessage("Nothing to report.")] },
+				{
+					match: "trust-boundary",
+					replies: [fauxAssistantMessage("Nothing to report."), fauxAssistantMessage("Nothing to report.")],
+				},
 			]);
 			const miss = Miss.load(
 				missesFile([{ name: "m", repo, base, head: "feature", file: "x", rule: "fail-open" }]),
 			)[0]!;
-			await expect(
-				runRange(miss.target(ProbeTrust.parse(sha)), {
-					kind: "live",
-					models: fake.review,
-					verifierModel: `${provider}/plan`,
-					probing: ProbingCombination.parse(`pair=${provider}/plan>${provider}/probe`, "medium"),
-				}),
-			).rejects.toThrow(/lens\.trust-boundary: .*ran without probes/);
+			for (const vouched of [sha, git(repo, "rev-parse", "feature")])
+				await expect(
+					runRange(miss.target(ProbeTrust.parse(vouched)), {
+						kind: "live",
+						models: fake.review,
+						verifierModel: `${provider}/plan`,
+						probing: ProbingCombination.parse(`pair=${provider}/plan>${provider}/probe`, "medium"),
+					}),
+				).rejects.toThrow(/lens\.trust-boundary: .*ran without probes/);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
