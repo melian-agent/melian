@@ -144,8 +144,8 @@ const missSchema = Type.Object(
 const missesSchema = Type.Array(missSchema, { minItems: 1 });
 
 /**
- * Where a miss's defect sits, which decides whether a finding answers it: the lines a misses file names, the lines its
- * fix changed, or only its file and rule, which leaves a hit for the reader to adjudicate.
+ * Where a miss's defect sits: the lines a misses file names, which alone decide whether a finding answers it, the lines
+ * its fix changed, or only its file and rule. The last two show the reader where to look and decide nothing.
  */
 export type MissLocation =
 	| { readonly by: "lines"; readonly ranges: readonly (readonly [number, number])[] }
@@ -167,14 +167,14 @@ export interface MissFinding {
 	readonly evidence?: FindingEvidence;
 	/** The verifier's verdict on the claim and its reason, which the score follows whether or not a probe was sound. */
 	readonly verification?: Verification;
-	/** For a hit on a fix of several hunks in the miss's file, the hunks it overlaps, for the reader to adjudicate. */
+	/** For a hit on a miss located by its fix, the hunks it overlaps, for the reader to adjudicate. */
 	readonly hunks?: readonly (readonly [number, number])[];
 }
 
 /**
  * What a review found of a miss: the findings that answer it, and those at its file under its rule beside its lines.
- * A fix of several hunks in the file may repair more than the miss, so a hit on one is `fix hunks`, left to the reader
- * as a hit by file and rule is.
+ * A fix's diff says which lines changed, not which defect each held, so a miss it locates is `fix hunks`, left to the
+ * reader as one matched by file and rule is.
  */
 export type MissMatch =
 	| {
@@ -185,7 +185,7 @@ export type MissMatch =
 	| {
 			readonly matched: "fix hunks";
 			readonly hunks: readonly (readonly [number, number])[];
-			readonly hits: readonly MissFinding[];
+			readonly hits: readonly (MissFinding & Required<Pick<MissFinding, "hunks">>)[];
 			readonly near: readonly MissFinding[];
 	  };
 
@@ -382,7 +382,7 @@ export class Miss {
 		};
 		const near = claims.filter((finding) => overlapped(finding).length === 0).map(shown);
 		const hits = claims.filter((finding) => overlapped(finding).length > 0);
-		if (location.by === "fix" && location.ranges.length > 1)
+		if (location.by === "fix")
 			return {
 				matched: "fix hunks",
 				hunks: location.ranges,
@@ -533,7 +533,7 @@ export interface ProbingReview {
 	readonly matched?: MissMatch["matched"];
 	readonly hits?: MissMatch["hits"];
 	readonly near?: MissMatch["near"];
-	/** For a miss located by a fix of several hunks in its file, those hunks. */
+	/** For a miss located by its fix, the hunks the fix changed in its file. */
 	readonly hunks?: readonly (readonly [number, number])[];
 	readonly error?: string;
 	readonly notes: RangeRun["notes"];
@@ -771,19 +771,23 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				// A hit not located at the defect's own lines may be another defect's, so it gets no score until adjudicated.
-				const unadjudicated = hit && match.matched !== "lines";
+				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
+				const unadjudicated = match.matched !== "lines" && (hit || match.near.length > 0);
 				if (unadjudicated) failed.push(miss.name);
 				else if (hit) found += 1;
 				const span = (ranges: readonly (readonly [number, number])[]) =>
 					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
-				const said = !hit
-					? "missed"
+				const overlapped = ({ hunks, hits }: Extract<MissMatch, { matched: "fix hunks" }>) => {
+					const overlaps = hunks.filter((hunk) => hits.some((each) => each.hunks.includes(hunk)));
+					return overlaps.length === 0 ? "none of them" : span(overlaps);
+				};
+				const said = !unadjudicated
+					? hit
+						? "found"
+						: "missed"
 					: match.matched === "fix hunks"
-						? `unadjudicated, no score: the fix changed ${match.hunks.length} hunks in ${miss.file} (${span(match.hunks)}), and the hits overlap ${span(match.hunks.filter((hunk) => match.hits.some((each) => each.hunks?.includes(hunk))))}`
-						: match.matched === "lines"
-							? "found"
-							: "unadjudicated, no score: matched by file and rule alone";
+						? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
+						: "unadjudicated, no score: matched by file and rule alone";
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",

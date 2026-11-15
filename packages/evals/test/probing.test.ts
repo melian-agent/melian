@@ -562,8 +562,9 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		});
 		const fix = (ranges: [number, number][]) => ({ by: "fix", fixCommit: sha, ranges }) as const;
 		expect(miss.match(both([finding, near]), fix([[start, start]]))).toEqual({
-			matched: "lines",
-			hits: [shown(finding)],
+			matched: "fix hunks",
+			hunks: [[start, start]],
+			hits: [{ ...shown(finding), hunks: [[start, start]] }],
 			near: [shown(near)],
 		});
 		expect(
@@ -992,7 +993,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 hit: found, 14 tokens/));
 			expect(lines).toContainEqual(
-				`pair pass 1 two hunks: unadjudicated, no score: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the hits overlap ${start}-${start}, ${paid.spend()}`,
+				`pair pass 1 two hunks: unadjudicated, no score: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the sightings overlap ${start}-${start}, ${paid.spend()}`,
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 beside: missed, 14 tokens/));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 miss: missed, 14 tokens/));
@@ -1055,6 +1056,87 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(scored.status).toBe(0);
 			expect(scored.lines).toContain("pair: worst miss recall 0.33; mean miss recall 0.33; 126 tokens, $9");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("scores a miss located by its fix only when no sighting sits at its file under its rule, however many hunks the fix has", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const [start] = defect[0]!.lines();
+			const path = join(repo, at.file);
+			const original = readFileSync(path, "utf8").split("\n");
+			const last = original.length - 1;
+			const fixed = (branch: string, edit: (text: string[]) => string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, "feature");
+				writeFileSync(path, edit([...original]));
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					branch,
+				);
+			};
+			const line = (index: number) => (text: string[]) => {
+				text[index - 1] = "// fixed";
+				return text.join("\n");
+			};
+			fixed("at-defect", line(start));
+			fixed("far-off", line(10));
+			fixed("both-ends", (text) => `${line(start)(text)}// appended\n`);
+			const stored = defect[0]!.toJSON();
+			const [location] = stored.locations;
+			const second = Finding.from({
+				...stored,
+				locations: [
+					{
+						...location!,
+						physicalLocation: {
+							...location!.physicalLocation,
+							region: { ...location!.physicalLocation.region, startLine: last, endLine: last },
+						},
+					},
+				],
+				properties: { ...defect[0]!.properties, id: "second" },
+			});
+			const using = runners({ range: vi.fn(async () => ran([defect[0]!, second])) });
+			const { status, lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "one hunk", repo, base, head, ...at, fix: "at-defect" },
+						{ name: "off every hunk", repo, base, head, ...at, fix: "far-off" },
+						{ name: "two hits", repo, base, head, ...at, fix: "both-ends" },
+						{ name: "nothing there", repo, base, head, file: at.file, rule: "secret-exposure", fix: "at-defect" },
+					]),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				using,
+			);
+			const spent = paid.spend();
+			expect(lines).toContain(
+				`pair pass 1 one hunk: unadjudicated, no score: the fix changed 1 hunk in ${at.file} (${start}-${start}), and the sightings overlap ${start}-${start}, ${spent}`,
+			);
+			expect(lines).toContain(
+				`pair pass 1 off every hunk: unadjudicated, no score: the fix changed 1 hunk in ${at.file} (10-10), and the sightings overlap none of them, ${spent}`,
+			);
+			expect(lines).toContain(
+				`pair pass 1 two hits: unadjudicated, no score: the fix changed 2 hunks in ${at.file} (${start}-${start}, ${last}-${last + 1}), and the sightings overlap ${start}-${start}, ${last}-${last + 1}, ${spent}`,
+			);
+			expect(lines).toContain(`pair pass 1 nothing there: missed, ${spent}`);
+			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 3 reviews had none/));
+			expect(status).toBe(1);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
