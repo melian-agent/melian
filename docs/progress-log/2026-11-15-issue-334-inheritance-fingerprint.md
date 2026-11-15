@@ -2,7 +2,7 @@
 
 `cbbb0a71` pins the behaviour with five tests. In `packages/core/test/restatement.test.ts`, under "an inheritance and the fingerprint": (a) "moves an inherited finding out of its group while another stays live, which alone changes the fingerprint" and (b) "changes the fingerprint through a merged report's dismissed flag, whichever root it inherits", each asserting both whole fingerprint values. In `packages/pipeline/test/publish.test.ts`, under "publication planning recovery > an inherited dismissal at one head": (c) "posts a review and recounts the status when one of two live findings inherits", (d) "posts a review again and fails the status again when the inheritance is revoked" and (e) "posts no review when the root switches, and names the new root in a reply, the status and the ledger".
 
-Each test was run against seven mutations of the source at `026babda`, one at a time, with the source restored after each. A test that failed is marked killed.
+Each test was run against seven mutations of the source at `026babda`, one at a time, with the source restored after each. `a9f7ee93` then dropped two properties from test c's second finding that the stored shape does not have, which tsc refused; the seven runs at `a9f7ee93` gave the same results. A test that failed is marked killed.
 
 | Mutation | Killed by |
 | --- | --- |
