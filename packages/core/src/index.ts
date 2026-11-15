@@ -296,6 +296,7 @@ export {
 	type TierStatus,
 	type UnknownModel,
 } from "./plan.ts";
+export { type LensProbingWording, lensProbingWording } from "./probing-wording.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,

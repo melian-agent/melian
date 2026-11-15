@@ -21,6 +21,7 @@ import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, matchesGlobs, Refused } from "./pattern.ts";
+import { lensProbingWording } from "./probing-wording.ts";
 import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
@@ -409,6 +410,15 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 		const tools = own?.budget.tools ?? declared.budget.tools;
 		const ended = own?.budget.ended ?? declared.budget.ended;
 		const probe = own?.probe;
+		if (probe !== undefined && !lensProbingWording.has(name)) {
+			const worded = [...lensProbingWording.keys()];
+			throw new LensError(
+				"missingField",
+				file,
+				`${file}: lens ${name}, level ${level}: "probe" needs probing wording of the lens's own, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
+				{ field: `levels.${level}.probe`, lens: name, level },
+			);
+		}
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
