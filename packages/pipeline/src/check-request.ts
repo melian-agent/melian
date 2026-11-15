@@ -31,6 +31,8 @@ export type CheckRequestInput = {
 		readonly cold: boolean;
 	};
 	readonly host: HostFacts;
+	/** The `LANG` every tool runs with, or null when unset. Keyed only with mutation, whose tests are the head's code. */
+	readonly lang: string | null;
 	/**
 	 * For a working-tree source, every `melian.yaml` the guardrails would read for the touched paths, or `unread` when
 	 * they could not be read whole, which makes the run not reusable.
@@ -69,7 +71,7 @@ function policySource(source: RepositorySource): unknown {
 function strykerFrom({
 	stryker: { source, ...stryker },
 	...mutation
-}: NonNullable<CheckRequestInput["mutation"]>): unknown {
+}: NonNullable<CheckRequestInput["mutation"]>): Record<string, unknown> {
 	return { ...mutation, stryker: { ...stryker, source: { from: source.from } } };
 }
 
@@ -83,8 +85,8 @@ export function checkReusable(input: CheckRequestInput): boolean {
 
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
- * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts and the head's trust
- * when mutation testing is on, the version of Melian's own code for each check, the host it runs on, and a working
+ * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts,
+ * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for each check, the host it runs on, and a working
  * tree's `melian.yaml` text. Only the paths that name the host are left out.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
@@ -96,7 +98,8 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			tools: input.tools,
 			analysers: input.analysers,
 			install: input.install,
-			...(input.mutation === undefined ? {} : { mutation: strykerFrom(input.mutation) }),
+			// Biome and tsc store no tool text, so `LANG` changes no finding of theirs; the head's tests can read it.
+			...(input.mutation === undefined ? {} : { mutation: { ...strykerFrom(input.mutation), lang: input.lang } }),
 			checks: checkVersions,
 			host: input.host,
 			policy: input.policy,

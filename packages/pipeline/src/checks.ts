@@ -39,7 +39,7 @@ import {
 import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { installDigests, MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
-import { runStaticTool, staticToolSource, staticToolVersion } from "./static.ts";
+import { runStaticTool, staticToolSource, staticToolVersion, toolLocale } from "./static.ts";
 import { SupersessionReview } from "./supersession.ts";
 import { TaskTiming } from "./task-timing.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -675,6 +675,7 @@ async function runIdentity(
 			: {}),
 		// The local environment runs every tool on this host. One that runs tools elsewhere must supply its own host facts.
 		host: hostFacts(),
+		lang: toolLocale(),
 		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
 	};
 	const policy = checkRequest(facts).key.slice(0, 16);

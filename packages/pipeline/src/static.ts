@@ -119,6 +119,10 @@ function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
 	return { env, inheritEnv: false };
 }
 
+export function toolLocale(): string | null {
+	return toolEnvironment().env.LANG ?? null;
+}
+
 function quote(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
