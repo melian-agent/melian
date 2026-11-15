@@ -1,0 +1,183 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "0a48283f36ef4f9431990981df2891f19ce229b0",
+    "head": "1809708ea80c5e7bcf7d70f146768f0169b12b37"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 6,
+      "endLine": 1714,
+      "endColumn": 12,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "690e0e2cd916f043f6e32b1e0609c885965fb86335fcb322c7fdbd62870f005f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 6,
+      "endLine": 1714,
+      "endColumn": 12,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5938cba717ce62cf79c1a084e58bbe12875b5afdd83be16591d9f4bb953df25f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 21,
+      "endLine": 1714,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c6a05fefc06555639d3a6b18a28d70c9b67d5a74abc5f88ceb1f5c3af7fecb43",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 21,
+      "endLine": 1714,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "94c88e7d53c2d6944467f2c6482cc3d7086d878b89cae7d76a69c83d9fa1a5ae",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 21,
+      "endLine": 1714,
+      "endColumn": 57,
+      "mutatorName": "LogicalOperator",
+      "replacement": "checked || unlockedFor !== undefined",
+      "status": "generated",
+      "id": "67b90a4ff47f4276a060921d3726fb48dea1b93dae4f215ac58adbdc6d275220",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 32,
+      "endLine": 1714,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c0148500531e7dba9acc940be53d9485f2a330f1983d221fb35ed4e26711ae3e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "unlocking credentials",
+            "runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1714,
+      "column": 32,
+      "endLine": 1714,
+      "endColumn": 57,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unlockedFor === undefined",
+      "status": "generated",
+      "id": "38a7f0a2841ad44c2b6f677af2ac28287be1ba836d165fd105b6d6442ecb2c70",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 7,
+  "omitted": 0,
+  "unmutated": []
+}
