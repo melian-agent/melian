@@ -10,7 +10,7 @@ The maintainer read the finding on 2026-11-15, in the coordinator's session, and
 
 ## The fix
 
-The scripted arm of `GoldenMode` gains `probes?: "unconfined"`. Only that value hands the harness `unconfinedSandbox()`. Without it, a scripted golden probes in the host's sandbox, as a live one always has. The live arm has no such field, so model-written probes can't run unconfined from any type-correct call. `live.ts` needs no change.
+The scripted arm of `GoldenMode` gains `probes?: "unconfined"`. Only that value hands the harness `unconfinedSandbox()`. Without it, a scripted golden probes in the host's sandbox, as a live one always has. The live arm has no such field, and the guard reads the mode's kind as well, so a live mode built elsewhere that carries the field still probes in the sandbox. `live.ts` needs no change.
 
 The eval tests that run probing goldens pass the field: the corpus loop, the sandbox test, and the claim golden's budget test. The rest run goldens that never probe, so they keep the default.
 
@@ -34,11 +34,11 @@ After the fix, all 378 tests in the evals package pass, 2 skipped.
 
 `node scripts/enumerate-mutants.mjs origin/main...HEAD` at `9b510355` listed 39, with none omitted. This commit's line has 10. [The inventory](2026-11-15-issue-457-probe-trust-mutants.json) records every claim and its run. Each claimed mutant ran against its named test alone, with one test collected:
 
-- **27 killed.**
+- **27 killed**, and one more after the review of record: see [its entry](2026-11-15-issue-457-review-of-record.md).
   - This commit's 7: the condition forced true or false, `&&` as `||`, both equality swaps, the second operand forced true, and the emptied `{ probeSandbox }`. The sandbox test kills those that change which backend a scripted or live run gets. The new test kills those that hand a scripted run without the field the unconfined backend.
   - The branch's earlier 20, all killed again. This commit changed `goldens.ts`, which most of them mutate, and `goldens.test.ts`, where most of their named tests live.
   - The 8 that the sandbox test kills, again at `edf4f108`, after that commit widened the test's note assertion.
-- **3 equivalent.** Forcing `mode.kind === "scripted"` true leaves `mode.probes === "unconfined"` deciding, and only the scripted arm has `probes`. The other two are the `["Stryker was here"]` fallbacks for `ran ?? []`, as [the earlier entry](2026-11-15-issue-457-not-reviewed-goldens.md) says.
+- **2 equivalent**: the `["Stryker was here"]` fallbacks for `ran ?? []`, as [the earlier entry](2026-11-15-issue-457-not-reviewed-goldens.md) says. This entry first called a third equivalent, forcing `mode.kind === "scripted"` true; the review of record showed it is not.
 - **9 ignored** string literals.
 
 ## The sandbox test's probe time

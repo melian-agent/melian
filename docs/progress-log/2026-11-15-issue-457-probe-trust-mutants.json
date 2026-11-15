@@ -25,7 +25,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -37,7 +40,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -142,7 +148,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -154,7 +163,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -209,12 +221,12 @@
    "endColumn": 31,
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
-   "claim": "equivalent",
-   "evidence": "Forcing `mode.kind === \"scripted\"` true leaves `mode.probes === \"unconfined\"`, and only the scripted arm of `GoldenMode` has `probes`, so no type-correct live mode reaches the unconfined backend",
+   "claim": "killed",
+   "evidence": "a probing golden's sandbox > probes a live golden in the host's sandbox even when its mode carries the corpus's probes field",
    "survivorClasses": [
     "compound-condition"
    ],
-   "run": "not run: equivalent"
+   "run": "killed at 8f4ae9f3: a probing golden's sandbox > probes a live golden in the host's sandbox even when its mode carries the corpus's probes field failed, run alone, one test collected"
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -241,7 +253,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -283,7 +298,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -353,7 +371,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -436,7 +457,10 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -534,7 +558,10 @@
    "replacement": "``",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "ignored by the enumeration config: a string literal"
+   "note": "ignored by the enumeration config: a string literal",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
   }
  ],
  "total": 39,
