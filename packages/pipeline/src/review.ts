@@ -12,6 +12,7 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	type FindingSource,
 	GraphSnapshot,
 	Lens,
 	type LensBudget,
@@ -33,6 +34,7 @@ import {
 	ModelRoutingError,
 	mutationSkipHasLeave,
 	parseModelReference,
+	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
@@ -40,6 +42,7 @@ import {
 	resolveModelRoute,
 	type ScrutinyLevel,
 	type Severity,
+	SharedRecord,
 	Standards,
 	StandardsReading,
 	type StandardsSection,
@@ -62,7 +65,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
-import { checksExtensionFor, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
+import { type CheckRunRecord, checksExtensionFor, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -83,6 +86,7 @@ import {
 	findingsVersion,
 	overlapsSite,
 	type Producer,
+	producerSightings,
 	type Restating,
 	readFindings,
 	recordInheritances,
@@ -169,6 +173,7 @@ import {
 	stillOwns,
 	undecided,
 } from "./review-index.ts";
+import { ReviewRecords } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
@@ -1341,6 +1346,8 @@ interface ReviewSettings {
 	readonly writer?: WriterTrust;
 	/** Run `static.mutation` from nothing in the automatic checks, as a review that may pass must; see `RunChecksInput`. */
 	readonly cold?: boolean;
+	/** The store a review exports its records to as its tasks finish. */
+	readonly records?: RecordStore;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;
 	readonly context?: Context;
@@ -2892,6 +2899,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// candidate, which the next wave verifies again with every sighting; the final step reuses each wave outcome whose
 	// candidate it still holds. Any failure here leaves the work to the final step.
 	const startedWaves: number[] = [];
+	// A watch of the waves document, which holds each lens's end, opened for `task` while the index names it, so the
+	// document exists before the first lens ends.
+	const watchWaves = async (task: number) => {
+		await (await harness.root(context)).commit(async (tx) => {
+			if (stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], task))
+				await VerificationWaves.open(tx, root, reviewed, task);
+		}, context);
+		return harness.watchDoc(VerificationWavesDocument, root, context);
+	};
 	const verifyAsLensesEnd = async (task: number, done: Promise<unknown>) => {
 		if (request.plan?.refusal("verifier") !== undefined) return;
 		const record = await harness.getTask(task as TaskId, context);
@@ -2901,11 +2917,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		if (runsOf(runs.lenses).some((run) => run.probe !== undefined)) return;
 		const rule = new EscalationRule(runs.escalateAt ?? escalateAt);
 		const stored = new Map(runs.lenses.map((run) => [run.key, run]));
-		await (await harness.root(context)).commit(async (tx) => {
-			if (stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], task))
-				await VerificationWaves.open(tx, root, reviewed, task);
-		}, context);
-		const watch = await harness.watchDoc(VerificationWavesDocument, root, context);
+		const watch = await watchWaves(task);
 		if (watch === undefined) return;
 		let wake = () => {};
 		let finished = false;
@@ -2959,6 +2971,136 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			await watch.stop();
 		}
 	};
+	// The record of each run with an outcome and a request key, with the findings it reported at this revision. A run an
+	// older Melian created has no request key, and so no record.
+	const lensRecords = async (
+		runs: readonly LensRun[],
+		outcomes: LensResult,
+	): Promise<{ name: string; record: SharedRecord }[]> => {
+		const state = await harness.snapshot(FindingsDocument, root, context);
+		const records = ReviewRecords.of(changeset.id, { base, head });
+		return runsOf(runs).flatMap((run) => {
+			const outcome = outcomes[run.key];
+			if (outcome === undefined || run.request === undefined) return [];
+			const source = lensSource(run.name, run.version, run.level);
+			const identity = { name: run.name, version: run.version, level: run.level, request: run.request };
+			return [
+				{
+					name: `lens.${run.name}`,
+					record: records.lens(
+						{ ...identity, probe: run.probe !== undefined },
+						outcome,
+						state === undefined ? [] : producerSightings(state, reviewed, source),
+					),
+				},
+			];
+		});
+	};
+	// Exports the round's records once adjudication has decided: each check's, each lens run's, the account, and the round
+	// that names them. A repeat review writes the same bytes, so its round names no round of its own key as replaced.
+	const exportRound = async (
+		store: RecordStore,
+		run: string,
+		checks: readonly CheckRecord[],
+		accounted: Manifest,
+		producers: readonly Producer[],
+	) => {
+		const state = await harness.snapshot(FindingsDocument, root, context);
+		const records = ReviewRecords.of(changeset.id, { base, head });
+		const sighted = (source: FindingSource) =>
+			state === undefined ? [] : producerSightings(state, reviewed, source);
+		const exported = checks.flatMap((check) => {
+			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
+			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
+			const counted = check.status === "ran" || check.status === "provisional";
+			const sightings = counted
+				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
+				: [];
+			// A host's record may leave out the count and the notes a run writes; its sightings and none stand for them.
+			const given = Object.fromEntries(Object.entries(check).filter(([, value]) => value !== undefined));
+			const result = {
+				findings: sightings.length,
+				notes: [],
+				reason: "",
+				error: "",
+				...given,
+			} as unknown as CheckRunRecord;
+			return [{ name: check.name, record: records.check(run, result, sightings) }];
+		});
+		const lenses = await lensRecords(ran.lenses, lensResult ?? {});
+		const counted = [...exported, ...lenses];
+		const covered = new Set(counted.map(({ name }) => name));
+		const filled = accounted
+			.records()
+			.filter(
+				(record): record is CheckRecord & { status: "skipped" | "failed" } =>
+					(record.status === "skipped" || record.status === "failed") && !covered.has(record.name),
+			);
+		const account = records.account({
+			checks: manifest,
+			records: counted.map(({ record }) => record),
+			filled,
+			allowSkip: accounted.skippable(),
+			producers,
+		});
+		const read = [...counted.map(({ record }) => record), account];
+		const own = records.round(read, undefined, [], []).key;
+		const stored = await store.list(changeset.id);
+		const roundsAt = (revision: string | undefined) =>
+			stored.filter((each) => each.kind === "round" && each.revision === revision);
+		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
+		const round = records.round(
+			read,
+			undefined,
+			roundsAt(reviewed)
+				.filter((each) => each.key !== own)
+				.map((each) => SharedRecord.parseEnvelope(each).id),
+			previous === undefined ? [] : roundsAt(previous).map((each) => SharedRecord.parseEnvelope(each).id),
+		);
+		await store.add([...read, round].map((record) => record.toJSON()));
+	};
+	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end. The final
+	// export writes the same bytes again, so a failure here costs nothing but the early copy.
+	const exportAsLensesEnd = async (task: number, done: Promise<unknown>) => {
+		const store = request.records;
+		if (store === undefined) return;
+		const record = await harness.getTask(task as TaskId, context);
+		if (record === undefined || record.state.status === "terminal") return;
+		const runs = (record.input as unknown as StoredLensTaskInput).lenses;
+		const watch = await watchWaves(task);
+		if (watch === undefined) return;
+		let wake = () => {};
+		let finished = false;
+		const stop = () => {
+			finished = true;
+			wake();
+		};
+		done.then(stop, stop);
+		watch.start(async () => wake());
+		const exported = new Set<string>();
+		try {
+			for (;;) {
+				const changed = new Promise<void>((resolve) => {
+					wake = resolve;
+				});
+				const ended = VerificationWaves.of(
+					await harness.snapshot(VerificationWavesDocument, root, context),
+					reviewed,
+					task,
+				).ended() as unknown as LensResult;
+				const fresh = Object.fromEntries(Object.entries(ended).filter(([key]) => !exported.has(key)));
+				const made = await lensRecords(runs, fresh);
+				if (made.length > 0) await store.add(made.map(({ record }) => record.toJSON()));
+				for (const key of Object.keys(fresh)) exported.add(key);
+				if (finished) return;
+				await changed;
+			}
+		} catch {
+			return;
+		} finally {
+			await watch.stop();
+		}
+	};
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	spans.end();
 	const {
@@ -2979,7 +3121,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					return judged?.refusal !== undefined;
 				},
 				unlockModels,
-				verifyAsLensesEnd,
+				(task, done) =>
+					Promise.all([verifyAsLensesEnd(task, done), exportAsLensesEnd(task, done)]).then(() => undefined),
 				request.lensesStarted,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
@@ -3381,6 +3524,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: [],
 			findings,
 		});
+	}
+	if (request.records !== undefined) {
+		await exportRound(
+			request.records,
+			JSON.stringify(checked?.identity ?? request.checkRun ?? null),
+			options.checks ?? [],
+			accounted,
+			producers,
+		);
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],

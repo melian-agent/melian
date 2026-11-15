@@ -162,6 +162,19 @@ export function sightedBy(state: FindingsState, revision: string, source: Findin
 		});
 }
 
+// Each finding `source` reported at `revision`, in ID order, as it reported it: the lifecycle's status stays out, so a dismissal never changes a shared record's bytes.
+export function producerSightings(state: FindingsState, revision: string, source: FindingSource): StoredFinding[] {
+	const key = producerKey(source);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const sighting = state.items[id]!.sightings[revision]?.[key];
+			if (sighting === undefined) return [];
+			const copy = JSON.parse(JSON.stringify(sighting)) as ProducerFinding;
+			return [{ ...copy, properties: { ...copy.properties, status: "new" } }];
+		});
+}
+
 // How many findings `source` has sighted at `revision`.
 export function sightingCount(state: FindingsState, revision: string, source: FindingSource): number {
 	const key = producerKey(source);
