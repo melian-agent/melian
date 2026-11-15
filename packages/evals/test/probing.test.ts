@@ -954,7 +954,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				{ name: "hit", repo, base, head, ...at, lines: [start, end] },
 				{ name: "two hunks", repo, base, head, ...at, fix: "fixed" },
 				{ name: "beside", repo, base, head, ...at, lines: [end + 1, end + 2] },
-				{ name: "miss", repo, base, head: "feature", file: "other.ts", rule: "fail-open" },
+				{ name: "miss", repo, base, head: "feature", file: ".github/workflows/claim.yml", rule: "secret-exposure" },
 				{ name: "loose", repo, base, head, ...at },
 			]);
 			const settings = { ...env, MELIAN_EVAL_MISSES: misses, MELIAN_EVAL_PROBE_SET: "misses" };
@@ -1040,7 +1040,14 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					MELIAN_EVAL_MISSES: missesFile([
 						{ name: "hit", repo, base, head, ...at, lines: [start, end] },
 						{ name: "beside", repo, base, head, ...at, lines: [end + 1, end + 2] },
-						{ name: "miss", repo, base, head: "feature", file: "other.ts", rule: "fail-open" },
+						{
+							name: "miss",
+							repo,
+							base,
+							head: "feature",
+							file: ".github/workflows/claim.yml",
+							rule: "secret-exposure",
+						},
 					]),
 					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
 				},
@@ -1058,8 +1065,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		try {
 			const head = git(repo, "rev-parse", "feature");
 			const misses = missesFile([
-				{ name: "hit", repo, base, head, file: "other.ts", rule: "fail-open" },
-				{ name: "next", repo, base, head, file: "other.ts", rule: "fail-open" },
+				{ name: "hit", repo, base, head, file: ".github/workflows/claim.yml", rule: "secret-exposure" },
+				{ name: "next", repo, base, head, file: ".github/workflows/claim.yml", rule: "secret-exposure" },
 			]);
 			let goldenCall = 0;
 			let missCall = 0;
@@ -1118,12 +1125,56 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("refuses, before any provider, a miss whose file the range leaves alone, whose rule the lens does not declare, or whose lines run past its file", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const length = git(repo, "show", `${head}:${at.file}`).split("\n").length;
+			const entry = (name: string, fields: Record<string, unknown>) => ({
+				name,
+				repo,
+				base,
+				head,
+				...at,
+				...fields,
+			});
+			const valid = entry("valid", { lines: [length, length] });
+			const settings = {
+				...env,
+				MELIAN_EVAL_PROBE_SET: "misses",
+				MELIAN_EVAL_PROBE_PASSES: "1",
+				MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+			};
+			const refused = runners();
+			const misses = missesFile([
+				entry("unchanged", { file: "README.md" }),
+				valid,
+				entry("misspelt", { rule: "fail_open" }),
+				entry("past", { lines: [length, length + 1] }),
+			]);
+			expect(await measure({ ...settings, MELIAN_EVAL_MISSES: misses }, refused)).toMatchObject({
+				status: 2,
+				errors: [
+					`The misses file cannot be scored: unchanged: README.md is not among the files ${base}...${head} changes; misspelt: fail_open is not a rule the base's trust-boundary lens declares; past: lines ${length}-${length + 1} run past ${at.file}, which has ${length} lines at ${head}`,
+				],
+			});
+			expect(refused.models).not.toHaveBeenCalled();
+			expect(refused.range).not.toHaveBeenCalled();
+			const using = runners();
+			expect((await measure({ ...settings, MELIAN_EVAL_MISSES: missesFile([valid]) }, using)).status).toBe(0);
+			expect(using.range).toHaveBeenCalledTimes(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("records what it measured: the checkout's commit, and each miss's names and the commits they resolve to", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
 			git(repo, "branch", "moving-base", base);
-			const fields = { file: "other.ts", rule: "fail-open" };
+			const fields = { file: ".github/workflows/claim.yml", rule: "secret-exposure" };
 			const misses = missesFile([
 				{ name: "named", repo, base: "moving-base", head: "feature", ...fields, lines: [2, 3] },
 			]);

@@ -11,6 +11,7 @@ import {
 	lensTierSchema,
 	type MelianConfig,
 	type MemberClaim,
+	openSource,
 	parseModelReference,
 	type Verification,
 	VerificationState,
@@ -39,6 +40,7 @@ type Print = (line: string) => void;
 
 const probingLens = "trust-boundary";
 const probingCheck = `lens.${probingLens}`;
+const maxMissBytes = 16 * 1024 * 1024;
 
 /** The goldens a probing measurement scores: those named for `trust-boundary`'s level that probes. */
 export const probingGoldenPrefix = "trust-boundary-probe-";
@@ -244,6 +246,29 @@ export class Miss {
 			oldLines === 0 ? [Math.max(oldStart, 1), oldStart + 1] : [oldStart, oldStart + oldLines - 1],
 		);
 		return { by: "fix", fixCommit, ranges };
+	}
+
+	/**
+	 * Why the miss cannot be scored on `target`, or `undefined` when it can: its file must be one the range changes, its
+	 * rule one the base's `trust-boundary` lens declares for that file, and its lines inside the file at the head.
+	 */
+	async refusal(
+		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
+	): Promise<string | undefined> {
+		const { revision } = await Changeset.resolve(this.repo, target.range);
+		if (!revision.files.some((file) => file.path === this.file))
+			return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
+		const lens = (await Lens.load(this.repo, { kind: "revision", commit: target.base }, [this.file])).find(
+			(each) => each.name === probingLens,
+		);
+		if (!lens?.rules.some(({ id }) => id === this.rule))
+			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
+		if (this.lines === undefined) return undefined;
+		const source = await openSource(this.repo, { kind: "revision", commit: target.head });
+		const text = (await source.readText(this.file, maxMissBytes)) ?? "";
+		const length = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+		if (this.lines[1] <= length) return undefined;
+		return `${this.name}: lines ${this.lines[0]}-${this.lines[1]} run past ${this.file}, which has ${length} lines at ${target.head}`;
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -596,15 +621,17 @@ export async function measureProbing(
 		settings = ProbingSettings.parse(env);
 		const probing = runners.goldens().filter((golden) => golden.name.startsWith(probingGoldenPrefix) && golden.live);
 		goldens = settings.set === "misses" ? [] : selectGoldens(probing, settings.golden);
-		misses =
+		const targets =
 			settings.set === "goldens"
 				? []
-				: await Promise.all(
-						Miss.load(settings.misses!).map(async (miss) => {
-							const target = miss.target(settings.trust);
-							return { miss, target, location: await miss.locate(target.head) };
-						}),
-					);
+				: Miss.load(settings.misses!).map((miss) => ({ miss, target: miss.target(settings.trust) }));
+		const refused = (await Promise.all(targets.map(({ miss, target }) => miss.refusal(target)))).filter(
+			(refusal) => refusal !== undefined,
+		);
+		if (refused.length > 0) throw new Error(`The misses file cannot be scored: ${refused.join("; ")}`);
+		misses = await Promise.all(
+			targets.map(async ({ miss, target }) => ({ miss, target, location: await miss.locate(target.head) })),
+		);
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
 			throw new Error(
