@@ -27,6 +27,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -127,7 +128,9 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 	const conversations = Object.fromEntries(
 		Object.entries(outcome.result).map(([key, { conversation }]) => [key.split("@")[0], conversation]),
 	);
-	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations, task: entry.task };
+	const details = (await harness.snapshot(VerdictDocument, root, context))!.details![Revision.key(changeset.revision)]!;
+	const usage = Object.fromEntries(details.lenses.map(({ name, usage }) => [name, usage]));
+	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations, task: entry.task, usage };
 }
 
 describe("a repeat review copies each lens run whose request is unchanged", () => {
@@ -151,6 +154,9 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			(second.review.verdict.ran ?? []).filter(({ name }) => name.startsWith("lens.")).map(({ name }) => name),
 		).toEqual(["lens.contracts", "lens.correctness"]);
 		expect(second.lensStages.contracts).toEqual({ outcome: "reused", tokens: undefined });
+		expect(first.usage.contracts).toBeDefined();
+		expect(second.usage.contracts).toBeUndefined();
+		expect(second.usage.correctness).toBeDefined();
 		expect(second.lensStages.correctness?.outcome).toBe("ran");
 		expect(second.lensStages.correctness?.tokens).toBeGreaterThan(0);
 	});
