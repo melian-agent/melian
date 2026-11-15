@@ -2,7 +2,7 @@ import type { LensToolName, Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
-import { lensListedTools, lensToolLimits, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
+import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
 import { probingWording } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
@@ -129,7 +129,7 @@ describe("lensRequest", () => {
 
 	it("keys each offered tool's output limits and argument bound, and the bounds every tool cuts what it shows to", () => {
 		const { request } = build(sample);
-		expect(request.limits).toEqual(lensToolLimits);
+		expect(request.limits).toEqual({ shownBytes: 48 * 1024, readLines: 2000 });
 		const read = request.tools.find(({ name }) => name === "read_file") as Record<string, unknown>;
 		expect(read.outputLimits).toEqual(lensListedTools.read_file.outputLimits);
 		expect(read.argumentBytes).toBe(8192);
