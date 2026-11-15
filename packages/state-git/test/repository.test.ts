@@ -276,9 +276,23 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		const repository = await opened();
 		const calls = await floodOn("fetch", "fatal: couldn't find remote ref refs/heads/melian/state\n");
 		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toSatisfy(
-			unreachable(new RegExp(`^git fetch in \\S+ wrote more than ${stderrLimit} bytes to standard error$`)),
+			unreachable(
+				new RegExp(
+					`^fetching melian/state from the clone's origin wrote more than ${stderrLimit} bytes to standard error; ${see}$`,
+				),
+			),
 		);
 		expect(await calls()).toBe(1);
+	});
+
+	it("leaves the repository's own errors as they are, such as a configuration that is gone", async () => {
+		const repository = await opened();
+		const config = join(repository.path, "config");
+		await rm(config);
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toMatchObject({
+			code: "unreachable",
+			message: `${config} cannot be read`,
+		});
 	});
 
 	it("leaves core's other git errors as they are, such as a git that cannot start", async () => {

@@ -180,7 +180,13 @@ export class RecordRepository {
 				`+refs/heads/${branch}:${ref}`,
 			],
 			deadline,
-		);
+		).catch((cause: unknown) => {
+			if (!(cause instanceof RecordError && overflowed(cause.cause))) throw cause;
+			throw new RecordError(
+				"unreachable",
+				`fetching ${branch} from the clone's origin wrote more than ${stderrLimit} bytes to standard error; ${seeGit(branch)}`,
+			);
+		});
 		if (result.timedOut) throw unreachable(`fetching ${branch} from the clone's origin ran past its deadline`);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
