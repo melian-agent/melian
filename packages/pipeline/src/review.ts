@@ -1320,7 +1320,8 @@ interface ReviewSettings {
 	 */
 	readonly rerun?: boolean;
 	/**
-	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing.
+	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing, unless another
+	 * review committed between a step's read and its commit: the step then unlocks every provider it could ask first.
 	 * Before any wait, hosts also unlock {@link ReviewHarness.resumedProviders}, which uses stored routes.
 	 */
 	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;

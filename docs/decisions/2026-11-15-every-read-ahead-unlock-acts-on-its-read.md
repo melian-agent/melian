@@ -1,6 +1,7 @@
 # Every read-ahead credential unlock acts only on what its read found
 
 Amends: [A lens run is reused by its request key, one lens at a time](2026-11-15-lens-runs-reused-per-request.md), the paragraph "Where it holds"
+Amends: [Credentials follow concrete task routes](2026-10-08-credentials-follow-concrete-task-routes.md), the sentence "Finished tasks need no unlock"
 
 Status: for [issue #474](https://github.com/melian-agent/melian/issues/474), whose brief asks that every read-ahead unlock follow the rule, or say why one needs no change. The coordinator scoped the issue on 2026-11-15, in its session. The fixes and the reasons below are the builder's.
 
@@ -35,6 +36,8 @@ A commit that refuses gives the step a signal it cannot mistake for a result. Tr
 ## What it costs
 
 A refused commit costs one more commit and the credential commands the read had skipped. It happens only when another review commits between the read and the commit.
+
+Those commands run even when the second commit attaches to a task that finished in the meantime, which the concrete-route decision said needs no unlock. That sentence now holds except after a refused commit. Reading again before the second commit would not help: another review can commit between that read and the commit too, so the step would refuse and read again with no bound. Unlocking every provider ends the loop at the second commit, and the credential store runs each command once per process.
 
 ## Tests
 
