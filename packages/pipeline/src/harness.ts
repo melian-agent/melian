@@ -84,6 +84,7 @@ export {
 	SystemEntry,
 	section,
 	type TaskId,
+	type TaskRecord,
 	type ToolExecutionApi,
 	type ToolRegistration,
 	ToolResultEntry,

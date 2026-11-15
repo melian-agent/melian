@@ -108,6 +108,7 @@ import {
 	type Registry,
 	type Storage,
 	type TaskId,
+	type TaskRecord,
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
@@ -1612,21 +1613,13 @@ function selectionOf(lenses: readonly LensRun[]): string[] {
 // The lenses of `lenses` a new lens task copies from `previous`, the task the review's index entry names, when it
 // completed.
 function copiesFrom(
-	previous:
-		| {
-				readonly id: number;
-				readonly input: unknown;
-				readonly state: {
-					readonly status: string;
-					readonly outcome?: { readonly status: string; readonly result?: unknown };
-				};
-		  }
-		| undefined,
+	previous: TaskRecord<unknown, unknown, unknown> | undefined,
 	lenses: readonly LensRun[],
 	refused: (key: string, model: string) => boolean,
 ): Record<string, LensCopy<LensResult[string]>> {
-	const { outcome } = previous?.state ?? {};
-	if (previous?.state.status !== "terminal" || outcome?.status !== "completed") return {};
+	if (previous?.state.status !== "terminal") return {};
+	const { outcome } = previous.state;
+	if (outcome.status !== "completed") return {};
 	const earlier = previous.input as StoredLensTaskInput;
 	return lensCopies(
 		{
