@@ -28,6 +28,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lensListedTools } from "../src/lens-tools.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -117,7 +118,12 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 			.filter(({ name }) => name.startsWith("lens "))
 			.map((stage) => [stage.name.slice("lens ".length), { outcome: stage.outcome, tokens: stage.tokens }]),
 	);
-	return { review: result, asked: [...asked].sort(), lensStages };
+	const root = (await harness.root(context)).id;
+	const entry = (await harness.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!;
+	const task = await harness.getTask(entry.task as Parameters<Harness["getTask"]>[0], context);
+	const input = task!.input as { reused?: Record<string, unknown> };
+	const copied = "reused" in input ? Object.keys(input.reused ?? {}).map((key) => key.split("@")[0]) : "none";
+	return { review: result, asked: [...asked].sort(), lensStages, copied };
 }
 
 describe("a repeat review copies each lens run whose request is unchanged", () => {
@@ -125,12 +131,14 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		const first = await review(lenses);
 		expect(first.asked).toEqual(["contracts", "correctness"]);
 		expect(first.review.findings.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+		expect(first.copied).toBe("none");
 
 		const second = await review(
 			changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
 		);
 
 		expect(second.asked).toEqual(["correctness"]);
+		expect(second.copied).toEqual(["contracts"]);
 		expect(second.review.findings.map(({ id }) => id)).toEqual(first.review.findings.map(({ id }) => id));
 		expect(
 			(second.review.verdict.ran ?? []).filter(({ name }) => name.startsWith("lens.")).map(({ name }) => name),
