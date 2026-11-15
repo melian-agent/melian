@@ -187,6 +187,20 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		expect(await fetchRefs(repository)).toBe("");
 	});
 
+	it("reports the read's failure, not the deletion's, when it cannot delete its ref either", async () => {
+		const { repository } = await fetched();
+		const run = RecordRepository.prototype.run;
+		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
+			if (args[0][0] === "rev-parse") throw new RecordError("unreachable", "rev-parse ran past its deadline");
+			if (args[0][0] === "update-ref" && args[0][1] === "-d")
+				throw new RecordError("unreachable", "deleting ran past its deadline");
+			return run.apply(this, args);
+		});
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toThrow(
+			"rev-parse ran past its deadline",
+		);
+	});
+
 	it("deletes its ref before it points the hint at the tip, so a hint that runs out of time leaves no ref", async () => {
 		const { repository } = await fetched();
 		failFirst(
