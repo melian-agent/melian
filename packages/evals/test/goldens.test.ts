@@ -11,7 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { basename, dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	Changeset,
@@ -37,7 +37,9 @@ import {
 } from "@melian-agent/evals";
 import { Probe } from "@melian-agent/pipeline";
 import * as testing from "@melian-agent/pipeline/testing";
+import { parseAst } from "vite";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { parse } from "yaml";
 
 const goldens = loadGoldens();
 
@@ -203,7 +205,83 @@ describe("the golden corpus", () => {
 			"trust-boundary-terminal-escape",
 		]);
 	});
+
+	// A live run scores every lens on a golden, so a tree that names a file it lacks draws a finding no expectation holds.
+	it("holds every file a golden's modules import and its workflows run", () => {
+		const missing: string[] = [];
+		for (const golden of goldens) {
+			for (const tree of ["base", "head"].map((side) => join(golden.directory, side)).filter(existsSync)) {
+				for (const entry of readdirSync(tree, { recursive: true, withFileTypes: true })) {
+					if (!entry.isFile()) continue;
+					const path = join(entry.parentPath, entry.name);
+					const named = /\.(?:[cm]?js|[cm]?ts)$/.test(entry.name)
+						? moduleImports(readFileSync(path, "utf8"), entry.name).map((specifier) =>
+								join(entry.parentPath, specifier),
+							)
+						: /\.ya?ml$/.test(entry.name) && relative(tree, entry.parentPath) === join(".github", "workflows")
+							? workflowScripts(readFileSync(path, "utf8"), tree)
+							: [];
+					for (const target of named)
+						if (!existsSync(target))
+							missing.push(`${relative(goldensDirectory, path)}: ${relative(tree, target)}`);
+				}
+			}
+		}
+		expect(missing).toEqual([]);
+	});
 });
+
+function moduleImports(text: string, name: string): string[] {
+	const specifiers: string[] = [];
+	const visit = (node: unknown): void => {
+		if (typeof node !== "object" || node === null) return;
+		const { type, source } = node as { type?: string; source?: { type?: string; value?: unknown } };
+		const importing = ["ImportDeclaration", "ExportNamedDeclaration", "ExportAllDeclaration", "ImportExpression"];
+		if (type !== undefined && importing.includes(type) && source?.type === "Literal") {
+			if (typeof source.value === "string" && source.value.startsWith(".")) specifiers.push(source.value);
+		}
+		for (const value of Object.values(node)) visit(value);
+	};
+	visit(parseAst(text, { lang: /\.[cm]?ts$/.test(name) ? "ts" : "js" }));
+	return specifiers;
+}
+
+// Reads only `node <relative path>` in a step's `run:`, from its `working-directory`, and skips a script in a checkout of
+// another repository. Any other argument after `node`, such as a variable or an option, fails the test unread.
+function workflowScripts(text: string, tree: string): string[] {
+	type Step = {
+		uses?: string;
+		with?: { path?: string; repository?: string };
+		run?: string;
+		"working-directory"?: string;
+	};
+	const workflow = parse(text) as { jobs?: Record<string, { steps?: Step[] }> };
+	const workspace = "/workspace";
+	const paths: string[] = [];
+	for (const { steps = [] } of Object.values(workflow.jobs ?? {})) {
+		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
+		const at = (step: Step) => posix.join(workspace, step.with?.path ?? ".");
+		const own = checkouts.find((step) => step.with?.repository === undefined);
+		const foreign = checkouts.filter((step) => step.with?.repository !== undefined).map(at);
+		for (const step of steps) {
+			for (const [, argument] of step.run?.matchAll(/(?:^|[\s(;|&])node\s+([^\s;|&)]+)/g) ?? []) {
+				if (!/^(?:\.{1,2}\/)*[\w.-]+(?:\/[\w.-]+)*\.[cm]?[jt]s$/.test(argument!)) {
+					paths.push(join(tree, `unreadable: node ${argument}`));
+					continue;
+				}
+				const script = posix.join(workspace, step["working-directory"] ?? ".", argument!);
+				const within = (root: string) => script.startsWith(`${root}/`);
+				if (foreign.some(within)) continue;
+				paths.push(
+					own !== undefined && within(at(own))
+						? join(tree, posix.relative(at(own), script))
+						: join(tree, `outside every checkout: ${argument}`),
+				);
+			}
+		}
+	}
+	return paths;
+}
 
 describe("a golden's standards and policy", () => {
 	it("supplies design-only base vocabulary to the scripted golden conversation", async () => {

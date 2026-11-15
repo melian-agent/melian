@@ -156,20 +156,27 @@ jobs:
             echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
             exit 1
           fi
-      # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
-      # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
-      # so Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
+      # The default branch's commit, which the gate required, supplies every helper script, so neither the pull
+      # request's head nor its base decides what runs with the logins; both stay review data. The whole history, so
+      # Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
       # token, and none stays in .git/config, where a head's tool configuration could read it.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: melian
           fetch-depth: 0
           persist-credentials: false
+      # Melian's CLI comes from its own repository at a reviewed commit, pinned as an action is.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: melian-agent/melian
+          ref: fc0d175510bb9705dbbef7a5361ddd62016d79de
+          path: melian-cli
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
-        working-directory: melian
+        working-directory: melian-cli
       # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
       # approved. Refuse one that moved, before the step that holds them; the report then posts its stale notice. Seconds
       # remain between this read and Melian's own, and the comment's check of what the round reviewed covers them.
@@ -218,14 +225,14 @@ jobs:
             printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
           fi
           unset token CODEX_AUTH_B64
-          node packages/cli/bin/melian.js doctor || true
+          node ../melian-cli/packages/cli/bin/melian.js doctor || true
           set +e
-          node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$raw/verdict.json" 2> "$raw/round.err"
+          node ../melian-cli/packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
           node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
-          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2> /dev/null
+          node ../melian-cli/packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2> /dev/null
           git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2> /dev/null
           exit 0
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

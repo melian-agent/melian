@@ -64,7 +64,7 @@
               },
               {
                 "file": ".github/workflows/melian-round.yml",
-                "line": 235,
+                "line": 242,
                 "role": "context"
               }
             ],
@@ -92,7 +92,7 @@
           "name": "report_finding",
           "arguments": {
             "file": ".github/workflows/melian-round.yml",
-            "line": 219,
+            "line": 226,
             "rule": "secret-exposure",
             "severity": "P1",
             "explanation": {
@@ -104,12 +104,12 @@
             "evidence": [
               {
                 "file": ".github/workflows/melian-round.yml",
-                "line": 219,
+                "line": 226,
                 "role": "cause"
               },
               {
                 "file": ".github/workflows/melian-round.yml",
-                "line": 230,
+                "line": 237,
                 "role": "context"
               }
             ],
