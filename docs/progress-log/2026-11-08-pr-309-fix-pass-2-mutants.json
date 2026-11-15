@@ -1,0 +1,188 @@
+{
+ "total": 10,
+ "omitted": 0,
+ "unmutated": [],
+ "base": "f4fb83fd",
+ "head": "b08bb79b",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~2...HEAD --json --limit 10000",
+ "note": "Fix pass 2 of pull request #309: the mutants of the two fixes for Codex's second review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 153,
+   "column": 2,
+   "endLine": 153,
+   "endColumn": 110,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > keeps the spend of a review that fails after a model answered",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 258,
+   "column": 9,
+   "endLine": 258,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 258,
+   "column": 9,
+   "endLine": 258,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 258,
+   "column": 42,
+   "endLine": 261,
+   "endColumn": 6,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 259,
+   "column": 6,
+   "endLine": 259,
+   "endColumn": 61,
+   "mutatorName": "AssignmentOperator",
+   "replacement": "tokens -= error.telemetry.total?.total.totalTokens ?? 0",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 259,
+   "column": 16,
+   "endLine": 259,
+   "endColumn": 61,
+   "mutatorName": "LogicalOperator",
+   "replacement": "error.telemetry.total?.total.totalTokens && 0",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 259,
+   "column": 16,
+   "endLine": 259,
+   "endColumn": 44,
+   "mutatorName": "OptionalChaining",
+   "replacement": "error.telemetry.total.total",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > counts nothing for a failed miss review that spent nothing",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 260,
+   "column": 6,
+   "endLine": 260,
+   "endColumn": 58,
+   "mutatorName": "AssignmentOperator",
+   "replacement": "cost -= error.telemetry.total?.total.cost.total ?? 0",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 260,
+   "column": 14,
+   "endLine": 260,
+   "endColumn": 58,
+   "mutatorName": "LogicalOperator",
+   "replacement": "error.telemetry.total?.total.cost.total && 0",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > gives no headline score to a combination with a failed review, and counts that review's spend and time",
+   "survivorClasses": [],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 260,
+   "column": 14,
+   "endLine": 260,
+   "endColumn": 42,
+   "mutatorName": "OptionalChaining",
+   "replacement": "error.telemetry.total.total",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing's totals > counts nothing for a failed miss review that spent nothing",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "f6739eb5",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 10
+ }
+}
