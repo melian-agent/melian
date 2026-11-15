@@ -40,6 +40,7 @@ import * as testing from "@melian-agent/pipeline/testing";
 import { parseAst } from "vite";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { parse } from "yaml";
+import { GoldenRunError } from "../src/run-error.ts";
 
 const goldens = loadGoldens();
 
@@ -1287,7 +1288,46 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 			})),
 		]);
 		const ref = fake.ref();
-		await runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(
+			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
+		);
 		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("gives no score to a live run whose probing lens fell back without probes and ended at its budget", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage(
+						Array.from({ length: 60 }, () => testing.fauxToolCall("list_files", {})),
+						{ stopReason: "toolUse" },
+					),
+					testing.fauxAssistantMessage([testing.fauxToolCall("list_files", {})], { stopReason: "toolUse" }),
+					testing.fauxAssistantMessage("Never asked."),
+				],
+			},
+			...["correctness", "contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+				match: `You are the ${lens} reviewer`,
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			})),
+		]);
+		const ref = fake.ref();
+		await expect(
+			runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` }),
+		).rejects.toThrow("deep ran without probes, which cannot run here: no sandbox-runtime here");
 	});
 });

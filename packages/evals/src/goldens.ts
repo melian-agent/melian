@@ -403,6 +403,11 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				writer,
 			};
 			const reviewed = await reviewChangeset(review);
+			// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
+			const unprobed = [...(reviewed.verdict.ran ?? []), ...reviewed.verdict.notRun].find(({ reason }) =>
+				reason?.includes(" ran without probes"),
+			);
+			if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),
 				...(await guardrailFindings(golden, repo, changeset, source)),
