@@ -209,7 +209,11 @@ export class Miss {
 		if (this.lines !== undefined) return { by: "lines", ranges: [this.lines] };
 		if (this.fix === undefined) return { by: "file and rule" };
 		const fixCommit = this.commit(this.fix);
-		const { revision } = await Changeset.resolve(this.repo, `${this.headCommit()}..${fixCommit}`);
+		const { revision } = await Changeset.resolve(this.repo, {
+			base: this.headCommit(),
+			head: fixCommit,
+			mode: "twoDot",
+		});
 		const hunks = revision.files
 			.filter((file) => (file.oldPath ?? file.path) === this.file)
 			.flatMap((file) => file.hunks);
