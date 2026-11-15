@@ -246,6 +246,17 @@ describe("a record's size", { timeout: 60_000 }, () => {
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
+	it("counts a record's size in UTF-8 bytes, not characters", async () => {
+		const store = await remote.open();
+		const bare = filed(check("big", changeset, { pad: "" })).bytes.length;
+		const wide = check("big", changeset, { pad: `\u00e9${"x".repeat(fileLimit - bare - 1)}` });
+		const { bytes } = filed(wide);
+		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([fileLimit, fileLimit + 1]);
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+		await expect(store.add([wide])).rejects.toMatchObject({ code: "invalidRecord" });
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
 	it("reads a file of the limit, and leaves one a byte past it unread as a stray", async () => {
 		const store = await remote.open();
 		const atLimit = filed(sized(fileLimit));
