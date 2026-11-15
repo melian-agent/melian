@@ -1,0 +1,5314 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "0129288b67b3d8391c08a04443f6e7197dca7217",
+    "head": "83f6af62f630b69928f3cc45bfe1942090a97fa4"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/lens-request.ts",
+    "packages/pipeline/src/lens-reuse.ts",
+    "packages/pipeline/src/review.ts",
+    "packages/pipeline/src/probing.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 8,
+      "column": 1,
+      "endLine": 8,
+      "endColumn": 243,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "caaa709038cb319222ee2957c74526d9c88b62d1a7861d74fa5ca95969060a6f"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 49,
+      "column": 15,
+      "endLine": 49,
+      "endColumn": 109,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "f7c97e396fee05c6a9e67410366a23a839590c929c242ec8b1505e7930f2afb8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 49,
+      "column": 75,
+      "endLine": 49,
+      "endColumn": 108,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d32d47e8c584960d5b57c200f98f475c2a188a3b947ccc0b5d640cd38714ae95",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 61,
+      "column": 87,
+      "endLine": 89,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "43d1c5fbbbbab229501aeac4b3f757a10f46ca97201a8737fb00b0f1083495a3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 62,
+      "column": 40,
+      "endLine": 62,
+      "endColumn": 45,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2ffbe4c541d41db08d8f73756267ffebaddabbf2b1f848c87cfb4c6be3ee145b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 63,
+      "column": 30,
+      "endLine": 63,
+      "endColumn": 61,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "72e50e7d3f1d6190b37bf7d109d2a5ed4665c197b11091c28e3e3a1ccf66c121",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 64,
+      "column": 16,
+      "endLine": 64,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fb5ef5726399373974a3ebcb8507e56c6b963bb43031f87997496eb20e7112fb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "offers a run that does not probe no planner tool, and keys no probing text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 64,
+      "column": 16,
+      "endLine": 64,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "059bb292754059f2b3a94fd4855dbc54f9aafac1db830052c673953fe2033007",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 64,
+      "column": 16,
+      "endLine": 64,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "keyed.probe === undefined",
+      "status": "generated",
+      "id": "860c01a9c2c326b0939df30b9da74f3b5190f289ca7ae4cdec0c9010c11af3cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 66,
+      "column": 2,
+      "endLine": 66,
+      "endColumn": 8,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3ef4f0b62956ca6412ea8a7bb5e031ed397123a82a2c7ddef50e40358230621a"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 67,
+      "column": 2,
+      "endLine": 86,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5e399174be2ef8a563379eaf1954e1e17157944e38e9620d2a62636050b36cf5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 70,
+      "column": 10,
+      "endLine": 70,
+      "endColumn": 67,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "c802c8d652aca2163534c20b308c3d854d3ce142689c4b9237b0e8c7a3ff7d2a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 70,
+      "column": 48,
+      "endLine": 70,
+      "endColumn": 60,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "e224435acac14e508144b3a9d5d358cc70eec7ed38cf5e286a62c8ed83563d81",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 70,
+      "column": 63,
+      "endLine": 70,
+      "endColumn": 65,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "17793d764ef2ada131a0d88ecb7850fb11095e8c4018f36344a6ff5cba186d00",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "offers a run that does not probe no planner tool, and keys no probing text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 73,
+      "column": 6,
+      "endLine": 79,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0ce9d763ba47e97b781014edebd97b85f9b17c58e2f032859650b27cc8f7c294",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 74,
+      "column": 15,
+      "endLine": 78,
+      "endColumn": 7,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5d91cb618c6bb0e637cc8606697f63cf0c4dd318e4481eb29a341332e4e18de8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 75,
+      "column": 14,
+      "endLine": 75,
+      "endColumn": 60,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "01ddb3cdb174c3d42c8015c3f439aba314b11d1fafa499aa0d5d03a9f9cfb511",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 77,
+      "column": 28,
+      "endLine": 77,
+      "endColumn": 34,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "af5891919d202313f2c750418c1f770e545c0527c497f7cb379b471c4e81e18b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 83,
+      "column": 7,
+      "endLine": 83,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "13614d83d393a6622395dd17017345e3467907a62da3451a0c3e85749a1c6ab8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 83,
+      "column": 7,
+      "endLine": 83,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6fe0cc5954c32ee486d82d93e2e4dc655adcc2f10d195a23baf253773d85670e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "writes neither escalation field for a run with no escalation severity and no next run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 83,
+      "column": 7,
+      "endLine": 83,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "input.escalateAt !== undefined",
+      "status": "generated",
+      "id": "7c2c3dc2a3ae84b47f68fca1e206e49414db8a5eabbcdf26f379834e811c1fb8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 83,
+      "column": 45,
+      "endLine": 83,
+      "endColumn": 77,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "049b7fdafbbe9808f7cc35bf539c17e1709b051e51954f9759cb37aa1ba96db3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 84,
+      "column": 7,
+      "endLine": 84,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7634e22e8063b707cde63ef37db8c7714d01f2c64b81c57a227d2d70add3dfa2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 84,
+      "column": 7,
+      "endLine": 84,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "35774a8688300d066338ca3843446e21334d6454124debf4ccb08138802ee091",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "writes neither escalation field for a run with no escalation severity and no next run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 84,
+      "column": 7,
+      "endLine": 84,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "input.escalation !== undefined",
+      "status": "generated",
+      "id": "9479e979cc941f3aff77eeca6255411e2a1d6d6212e40578c2e317b2b6eeb8a9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 84,
+      "column": 45,
+      "endLine": 84,
+      "endColumn": 84,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c82f93b9c819395ba3a6e800a275d27893fd6341f03bfb7694029e323578e125",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 84,
+      "column": 59,
+      "endLine": 84,
+      "endColumn": 82,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2afe7459cb1924c540a9e605b4fb24cc8a5fae4d64bb9e9bfd7eded6d23d9e57",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys every input but the nonce"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 87,
+      "column": 2,
+      "endLine": 87,
+      "endColumn": 66,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "04f1bd534d6d314bb7ad9755b1b7dceeef0dfc17296e70f05badb543c9bfb43d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "shows the lens its run under the review's nonce with its callers, and keys it under the fixed one without"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 87,
+      "column": 59,
+      "endLine": 87,
+      "endColumn": 63,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e61d931a2a820c3526b363d1e1300422bbda3d9c8ec7d48d9a47f6086b754662",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "shows the lens its run under the review's nonce with its callers, and keys it under the fixed one without"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 28,
+      "column": 2,
+      "endLine": 37,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d5c04bdb4ed1e185d64253a3e9f236e2c68d4580c1a860acf11be08d8abca062",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "551b36435cdbe36cc62e8dc3756e488428506403cb514217283cfd5b6291eedd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "794007c754795e0e267675ac9215890aad3593c7b8ce77f0845a05165bc964a2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 25,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome !== undefined && outcome.status === \"done\" && outcome.budgetEnded === undefined && outcome.capped === undefined && !(outcome.model !== undefined && refused(run.key, outcome.model)) || run.probe === undefined",
+      "status": "generated",
+      "id": "4c85139ecea29a486cefff3908f6ae23c9cc1a570d68e8c83defd7357e479173",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 34,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "dc1c33014e84953116ea9471f6ada9eabd4b41e38cf4e21d27207698fea529d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 34,
+      "endColumn": 67,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome !== undefined && outcome.status === \"done\" && outcome.budgetEnded === undefined && outcome.capped === undefined || !(outcome.model !== undefined && refused(run.key, outcome.model))",
+      "status": "generated",
+      "id": "388f44ba3cbff402a639f2c8787d198d46c35827bfff9a5b5b3ff59f36e39cd8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 33,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0eef955832faecab9a7870755e3f8a76a18867a0cf883126be5cad5546403e87",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 33,
+      "endColumn": 30,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome !== undefined && outcome.status === \"done\" && outcome.budgetEnded === undefined || outcome.capped === undefined",
+      "status": "generated",
+      "id": "85905015bd924270aae3c27892dc902d24d76abaf18fca5f7376e12ad60edea6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 32,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "374e64020c566b184c08576e80b4cfc50d27c061128c36c67a7735b862e9b275",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 32,
+      "endColumn": 35,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome !== undefined && outcome.status === \"done\" || outcome.budgetEnded === undefined",
+      "status": "generated",
+      "id": "a6cf4faf6555f364da39bc0150d56f1dd27a47638a5e611874ddfda270cd5135",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 31,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a733a6e18d91222370877f5cc1be1f3c3481ae63641de4b35faec8a2a7194dc3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 31,
+      "endColumn": 27,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome !== undefined || outcome.status === \"done\"",
+      "status": "generated",
+      "id": "665925a7b4fc2d762822615fe14a579feebf1469ae35b892ab69d4cf7f1f9e55",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 30,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "017c901f02eb9f2e01aaf12f756643013b3d77e83603719967cc9fd334be3b5f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run whose escalated run is missing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 30,
+      "column": 2,
+      "endLine": 30,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "outcome === undefined",
+      "status": "generated",
+      "id": "51ddf688a0145b0740d8d7afbce7651d35027dee37bb72f14151a4ed077b0185",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 31,
+      "column": 2,
+      "endLine": 31,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "46d1cd683fa05cbc8ff47e64689e66f55a2f0803705848c1436a81b36c64423f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 31,
+      "column": 2,
+      "endLine": 31,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "outcome.status !== \"done\"",
+      "status": "generated",
+      "id": "64cb7655c6f860d5c193a6ff8ade0c5854ed3c4541bc42dfae0ffd71208f883a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 31,
+      "column": 21,
+      "endLine": 31,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4643e239c5bc031925deea618108ca852596bc8a9953135c24b28347583021e8"
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 32,
+      "column": 2,
+      "endLine": 32,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e682bb74c155e6110c259d143eba04393e5ef5d75ceff5656f2f525299186428",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a run whose budget ended"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 32,
+      "column": 2,
+      "endLine": 32,
+      "endColumn": 35,
+      "mutatorName": "EqualityOperator",
+      "replacement": "outcome.budgetEnded !== undefined",
+      "status": "generated",
+      "id": "b275b04ef46bbff0ccbeb6e381e1d29c1da9afb91b55f0a95fce49b6315cf454",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 33,
+      "column": 2,
+      "endLine": 33,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f4cbe9ce239515f02d189725f6b5d9c02d311b0a4a05f14c60726d54aaaef308",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a capped run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 33,
+      "column": 2,
+      "endLine": 33,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "outcome.capped !== undefined",
+      "status": "generated",
+      "id": "45cce726c407a648a2144960e1952f87efa8b70275ba8a31ea58244d4f089766",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 2,
+      "endLine": 34,
+      "endColumn": 67,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "outcome.model !== undefined && refused(run.key, outcome.model)",
+      "status": "generated",
+      "id": "58257687f98b1506697ff64bc3c9afc5fa254f701f50c305688f7d539d59ed38",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 4,
+      "endLine": 34,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "87f73f84277ceb3f0fda4394367e957489728876496c9745df337e581756525a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 4,
+      "endLine": 34,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0d969dd8680b116e7f2d0d953f19691fa2d3f29ed63ca26dd3c14f1c9c1a924d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a run that ended on a model the plan now refuses"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 4,
+      "endLine": 34,
+      "endColumn": 66,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome.model !== undefined || refused(run.key, outcome.model)",
+      "status": "generated",
+      "id": "6c2606c47d1df4150c0fbd63787a5fe4a568dc94d0aefca96e497f503fe210d0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 4,
+      "endLine": 34,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0caa667a1802738253374a42d0a077778911d826846dacb9c7ccafbd6e395639",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a run with no model recorded, since nothing names one to refuse"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 34,
+      "column": 4,
+      "endLine": 34,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "outcome.model === undefined",
+      "status": "generated",
+      "id": "a180cd6b41e2d0ef7160fff13cfb8fef593137a08780968e16a76c0c161c552b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a run that ended on a model the plan now refuses"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 35,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c38686a3d85486f31255121a0ab5934c7fb0d6956fb915065905844b1cfb53e7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a probing run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 35,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "run.probe !== undefined",
+      "status": "generated",
+      "id": "cf8c80c58ffc739aadc4590a038cf46656521256aa4c76059afe3ed803753f93",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 53,
+      "column": 67,
+      "endLine": 76,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "10f0020b5a3792b375454496a456c2e29c4d9837a768d9dfc640c3de4d473bf9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 55,
+      "column": 29,
+      "endLine": 74,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e14c521e104fa04c4a773b9e5092794679b8d45435f6eaa3e9b5f5ab2aba4417",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 56,
+      "column": 6,
+      "endLine": 56,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3c40e601555da7a0edf6afbffb67ab59d21049ab8532897ffd968f7abd3e5c0d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 56,
+      "column": 6,
+      "endLine": 56,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b7e57883d134791316f2d1d24979c3738ed2d0ef74d1a4274c5692a98cf7139c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies nothing for a run with no request key, as an older task's runs have"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 56,
+      "column": 6,
+      "endLine": 56,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "first.request !== undefined",
+      "status": "generated",
+      "id": "cd1cfb0150cc2a30ad630a4f44bad9c3ff1e254f50052d6f6f924c3802f429ed",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 57,
+      "column": 39,
+      "endLine": 57,
+      "endColumn": 77,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "5498b28d77dd1de6444849c9513538e9f65d1a94225255c5e393a0bb1e15856b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 57,
+      "column": 48,
+      "endLine": 57,
+      "endColumn": 77,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6aff98d65f82404250d48e9cf82fe8dd2c298329748c9de8703c615d3994210e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 57,
+      "column": 48,
+      "endLine": 57,
+      "endColumn": 77,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "81680dca6cde898d52f73afef44c6c3547d52da32015c5fa7977f87f3fb1a07e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 57,
+      "column": 48,
+      "endLine": 57,
+      "endColumn": 77,
+      "mutatorName": "EqualityOperator",
+      "replacement": "run.request !== first.request",
+      "status": "generated",
+      "id": "2c273834569ae9b16c5621f8c87673f3ccd89ee1873885e674cc493b8821a591",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 58,
+      "column": 6,
+      "endLine": 58,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1d976a94bc31387a76e7689ecd3cfec151cb859127d946fc84162c47acae7152",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 58,
+      "column": 6,
+      "endLine": 58,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d964c39bbad9882cf8bf1b4edbdd8df6818b212cbbaa2dde98ff615bd69d9b7d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 58,
+      "column": 6,
+      "endLine": 58,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "earlier !== undefined",
+      "status": "generated",
+      "id": "13efab904c9b60cb96c853c3e08daf9e0cacbf783c714702666500f4a4075071",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 60,
+      "column": 6,
+      "endLine": 60,
+      "endColumn": 42,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "finished(earlier, outcome, refused)",
+      "status": "generated",
+      "id": "e594e970afe5b4fdc44ec48a7301efdb492bf82228c932c3765c706bb88bc306",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 60,
+      "column": 6,
+      "endLine": 60,
+      "endColumn": 42,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "398a42e1bac826d54f4368d88f3b83ef7e5e84dc2818410778f04a084dd61d9b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 60,
+      "column": 6,
+      "endLine": 60,
+      "endColumn": 42,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cd03640e8441ba4eae91454fe757396e8488bdd487823abb0323edc189a75445",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a failed run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 61,
+      "column": 41,
+      "endLine": 61,
+      "endColumn": 62,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "ccef2cbf031ec8ab1cfea737f2973990b91888867b26a62d976457518e4a98d0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 61,
+      "column": 42,
+      "endLine": 61,
+      "endColumn": 61,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "06742925055d4085647b403c76a27c6a4849c7e6e5e0f0d776b5f785bb6741f5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 62,
+      "column": 13,
+      "endLine": 62,
+      "endColumn": 36,
+      "mutatorName": "OptionalChaining",
+      "replacement": "outcome!.escalation.to",
+      "status": "generated",
+      "id": "4f30268a2c2856452ca8eb998acb3946cd60902c202f57e9dc9a0a3e1e7af72e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 63,
+      "column": 6,
+      "endLine": 63,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "43db9aa25420aaf05c35684c616b8edb43e1ff40c363bd024e26a6b1a55f101c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 63,
+      "column": 6,
+      "endLine": 63,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5b3b19def8c283c4536be6d601d582557e8acf282a30ae8c418a32b5d3f5570d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 63,
+      "column": 6,
+      "endLine": 63,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "to === undefined",
+      "status": "generated",
+      "id": "12c0ec5830d0c543fe03bdb6cd5640834192722f4c437d874a4ef9c8f707e4b9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 63,
+      "column": 24,
+      "endLine": 67,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "df15828ea4b614f6345249af6662a7a7dc5168ec5cc2aac7eb5aee8ff16df243",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 64,
+      "column": 16,
+      "endLine": 64,
+      "endColumn": 40,
+      "mutatorName": "OptionalChaining",
+      "replacement": "earlier.escalation.next",
+      "status": "generated",
+      "id": "a9829126ed26a5e72446b731d2fd20ad4b3a3689ecfff503ed9d029ca6966cbc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run that escalated to a run other than the one it names"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 93,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4c7b075a259ba9749fecc9ac78624d41e1f08043d9f18ce03352a23031fbcfb6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 93,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "63ee627707df5d47243f1ed6a663b482e5eab2e69252994024d540bfd853b3c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run whose escalated run did not finish"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 93,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(next === undefined || next.key !== to) && !finished(next, previous.result[to], refused)",
+      "status": "generated",
+      "id": "a1aecf0ccd100bf6455e3f0e29a986e9e097d91c4c7fe0251f4c87ab237f5722",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run whose escalated run did not finish"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "95cdfd20da048ffaebe4490860737021a353c869ad30ec28ab4692f6fca3f826",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run that escalated to a run other than the one it names"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 44,
+      "mutatorName": "LogicalOperator",
+      "replacement": "next === undefined && next.key !== to",
+      "status": "generated",
+      "id": "8d4a1722ba93bc09c9d40eab0299366f91264ae15538fd3d62005f136c9356cd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run that escalated to a run other than the one it names"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b412ad169f2716dd738e563eb75c95a6b8de01a635d420b6deba825c0cca8301",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run that escalated to a run other than the one it names"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 7,
+      "endLine": 65,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "next !== undefined",
+      "status": "generated",
+      "id": "ada01710a4f43fbdb5d815ccf6029292216da833b567544c9248099f589d7cef",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 29,
+      "endLine": 65,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2911e4a534a973b63fe50ba858b835759f06379157cf0a2becd3a4b59376218a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "never copies a quick run that escalated to a run other than the one it names"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 29,
+      "endLine": 65,
+      "endColumn": 44,
+      "mutatorName": "EqualityOperator",
+      "replacement": "next.key === to",
+      "status": "generated",
+      "id": "40cac16ff11278dcb86917da011432a888e9f6ec3f51056d913e928fc50582a3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 65,
+      "column": 48,
+      "endLine": 65,
+      "endColumn": 93,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "finished(next, previous.result[to], refused)",
+      "status": "generated",
+      "id": "00593bd54692b91891f6cbe5e0ed9a71427b73f3a7b9053dac45c277bb4fa863",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 66,
+      "column": 13,
+      "endLine": 66,
+      "endColumn": 41,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "87098dd3a09080fcf480ee1c22c96576de767c478765de6c169095d8df03ce5b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a quick run with the run it escalated to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 68,
+      "column": 22,
+      "endLine": 73,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0a6d3b07b3274932b9da777b030c54083606937ef146b471611409d20ad28f0f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 71,
+      "column": 13,
+      "endLine": 71,
+      "endColumn": 90,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "bee3c81a782e1221574d422f71ca9b5547c23fbddcdb01d394b52114b4528f81",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 71,
+      "column": 30,
+      "endLine": 71,
+      "endColumn": 90,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "32de64a39b8f4526dfaa150645ef61d9af01a6fddfd08fe6357fca9f1254f0b2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 71,
+      "column": 40,
+      "endLine": 71,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "470665d4996d02deb9427661784dde6881e62e0d87b369fa1be729973c772a6c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-reuse.ts",
+      "line": 71,
+      "column": 59,
+      "endLine": 71,
+      "endColumn": 87,
+      "mutatorName": "LogicalOperator",
+      "replacement": "each.reused && previous.task",
+      "status": "generated",
+      "id": "7710e96bd778b708a869e16f810716b202d7dd99fa44f8bc9145e6ca62a2481b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse.test.ts",
+          "path": [
+            "lensCopies",
+            "copies a lens whose request matches a finished run, naming the task that asked it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 231,
+      "column": 8,
+      "endLine": 231,
+      "endColumn": 73,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3091319a112069b2c811a4b94d24797d650516b23a1a1c66c1142f3c813e95f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "a head's bound",
+            "names the host a probe runs on by its sandbox, and the architecture and version of this process's Node"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 6,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3095ca69d79e438450e8e5a0b25dae961634a4f7ff41ec5a7860bcb4c737f869",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 6,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "82a848c80230522000564a042d58c2899f95cb941fdd43a1b3ed21d53882179a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 6,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "LogicalOperator",
+      "replacement": "reused !== undefined || Object.keys(reused).length > 0",
+      "status": "generated",
+      "id": "4188cc362c06f528f78e95c7a394406e1f22c9d3afa26c8417caf33841cbb01f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 6,
+      "endLine": 274,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c36c3afdef1c92f857128e3cc3927c102b7b9ef4a00b13a5cb0ec983d85de576",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 6,
+      "endLine": 274,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reused === undefined",
+      "status": "generated",
+      "id": "2472b78981557149fdc17590f7c4f487b653afe7db5b666dc5bba11472b94245",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 30,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "52b4b2e37be43b2b7ee8860c9a7c0278bb81c5efb960a4f8484171e86ad1e811",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 30,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Object.keys(reused).length >= 0",
+      "status": "generated",
+      "id": "3cc9e118b4f9ee1b9980a7dd3d868722c8c22bd9e3a3d27ec863bec7d3556861",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 274,
+      "column": 30,
+      "endLine": 274,
+      "endColumn": 60,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Object.keys(reused).length <= 0",
+      "status": "generated",
+      "id": "c273fb2514ce1c9334cd541011c9326ee07cad62fd5a64cb6c55ebc0450b67d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 300,
+      "column": 7,
+      "endLine": 300,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4e068e7a3cdd573ba5494f12a92361bf2b98505809474ad553f516d3bd8cad61",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 300,
+      "column": 7,
+      "endLine": 300,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "68c10de682d6c1a5e84797bce552d9ce67fc8b4a715f0e21fb3a445c192579be",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "reviews recorded before levels joined the keys",
+            "resumes a lens task an older Melian created, at version 1, under the current definition"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 300,
+      "column": 7,
+      "endLine": 300,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "this.reused !== undefined",
+      "status": "generated",
+      "id": "cb61767627421acaded5bc38948de727c7fac214b0f2d25b582ca254d695573a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 300,
+      "column": 40,
+      "endLine": 300,
+      "endColumn": 63,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "85903e5c48828b1987ea7e8a0483defde565a3aa7ac4baae5b738fc84e20467f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 3,
+      "endLine": 485,
+      "endColumn": 93,
+      "mutatorName": "MethodExpression",
+      "replacement": "entry.lenses.some(lens => !/^[^@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/.test(lens))",
+      "status": "generated",
+      "id": "5507e4424926533c31e9604475b09b3ea5282ff36050d4ca6cc75a9ac91f8b7b",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "One entry's lines all come from one task: a version-7 task sets a request key on every run and a version-6 task on none, so no entry mixes lines with and without a key, and some and every agree."
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 22,
+      "endLine": 485,
+      "endColumn": 92,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ec88b590d47cc6c64e340ddb6fc468319c79941415407dcb8f881d08dc777ab8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "aborts, on opening, a crashed lens run an older Melian indexed, which no review can attach to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 32,
+      "endLine": 485,
+      "endColumn": 92,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/.test(lens)",
+      "status": "generated",
+      "id": "5ce7ab1d2ebdf3b0c8874e0a06cb08301964826e9338eb1b4b1f75119ea24837",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/[^@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "5284f1c500003529ec691e39592e928563eb8a39317c5917446adb24a98f91ab",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "Every index line is either `<key> request <64 hex|none>` from selectionOf or an older form with no ` request ` in it, so no line matches the unanchored pattern only at a later offset."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}/",
+      "status": "generated",
+      "id": "5f4f3b3fd94519bedce5e900917aaa5adc75b7061991b987cce59130d080dbac",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "selectionOf ends every line with the request key or `none`, and older forms carry no ` request `, so no written line holds 64 hex digits after ` request ` followed by more text."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "d13172b71e49255912974c8ffc2505bab49d1072fbc741a7f7546092d10f3939",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "5e54c63e9fc62fc18cd096ea253de3660bd8a562775ee81fd9a5e605c91c4666",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\S]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "d4be9ebbf265b6c168203d0072279e3e65fe7fa9c04a09d4926032fe246f3392",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "ac4086af810be7dc669dcb7c9ed6dcf0b25cd892f7448b698fd9343b7dc4a0ee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[@\\s]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "5bf09249095bf909e07676dfcc751e9eadefdbbd44bd78fa66f42628af507ebb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\S]+@[^@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "160e4f406a0291598a21d48fcf44f2fda2f1766e6f30209991bf649c6064827a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\s] request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "409d3a84ed90dab46f361bc283eaa519376152a296e50a9e64351d79fe5d6d26",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[@\\s]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "a18e143a5f028b201886147c645b973ed6873446252018232101c1f81a8970a6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\S]+ request [0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "23e6caff66f71f1e06874efe448c1ff722df45bb1b72696323576932d4f01157",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\s]+ request [0-9a-f]$/",
+      "status": "generated",
+      "id": "f944635536c619620c6a9f4fdcc0bd3155d9dd6e4ee770d7a9133ef8902b9faf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 485,
+      "column": 33,
+      "endLine": 485,
+      "endColumn": 81,
+      "mutatorName": "Regex",
+      "replacement": "/^[^@\\s]+@[^@\\s]+@[^@\\s]+ request [^0-9a-f]{64}$/",
+      "status": "generated",
+      "id": "4cba260d633c15ffdf87e0533c20316b41633b984fc006322ab0689a926c9fc0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "keeps settled transcript ends after a kill before the parent records its result"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 545,
+      "column": 9,
+      "endLine": 545,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b86a291f656c46cda46f3617c9b4ccf54a5ee975704cd993f0d403a0509c5188",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 545,
+      "column": 9,
+      "endLine": 545,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "488401126421c7fd5f8a543fd99f7132e3c59172a5670dddaa12d0d4a92b4ada",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 545,
+      "column": 9,
+      "endLine": 545,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "task.input.reused?.[lens.key] !== undefined",
+      "status": "generated",
+      "id": "8e2dd41988474a46a86ddd4d21761dc6b20a33246dd45329ebcff4e99c3e4707",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 545,
+      "column": 9,
+      "endLine": 545,
+      "endColumn": 38,
+      "mutatorName": "OptionalChaining",
+      "replacement": "task.input.reused[lens.key]",
+      "status": "generated",
+      "id": "041deb36ba793730753f5b7a4b978ddc7172e3151eabd892c82c6505a80ee802",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 762,
+      "column": 19,
+      "endLine": 762,
+      "endColumn": 44,
+      "mutatorName": "OptionalChaining",
+      "replacement": "input.reused[first.key]",
+      "status": "generated",
+      "id": "c4e30972222e893070cb5fefe2064d1aebb3669af1d59d41847510b616e394a7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 763,
+      "column": 8,
+      "endLine": 763,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "73e716c0d8f0cfd67a87819709dba20dcdae6a8350c2c9a3960967f5d9c5140e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 763,
+      "column": 8,
+      "endLine": 763,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5b44d9843527444719787bebf15b926935c2533081bf9753139880ca63a29b59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 763,
+      "column": 8,
+      "endLine": 763,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "copied === undefined",
+      "status": "generated",
+      "id": "ce94e97f41278694b4b25ba94e8fa39fb42907134ba88969acb8aa472af15d3d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 849,
+      "column": 12,
+      "endLine": 849,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "67caed57022591a0e333a4411ff8f48a6687e9440b751efcae61b77567237a7d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 849,
+      "column": 12,
+      "endLine": 849,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "65593a7fbfba555727c18acd6066f4070807fa60734ed70a3292a0c48640fc81",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 849,
+      "column": 12,
+      "endLine": 849,
+      "endColumn": 50,
+      "mutatorName": "EqualityOperator",
+      "replacement": "checkpoint.children[key] !== undefined",
+      "status": "generated",
+      "id": "c0da208ed56b68e0c0fd11e957a68d6bd0e49e20a4c046c7ff84153f33e52175",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 849,
+      "column": 58,
+      "endLine": 849,
+      "endColumn": 100,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "82b69fc921dcf6693639e5974aca3542f31e91fddfb287f3baed591274f7448b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 998,
+      "column": 9,
+      "endLine": 998,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "563ff59b1a065039b2ea80e4a882aafbe66f03782bf2f03e33e460c90f310cc6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 998,
+      "column": 9,
+      "endLine": 998,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cc8e02b9325ac4b05b6c201bb51282a54ed20a99a392a438aabea0db76244b5a",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "resumed providers of a stored route",
+            "counts no provider for a lens the task copies, and every provider of the lens it asks"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 998,
+      "column": 9,
+      "endLine": 998,
+      "endColumn": 48,
+      "mutatorName": "EqualityOperator",
+      "replacement": "input.reused?.[first.key] === undefined",
+      "status": "generated",
+      "id": "4ad8cef5661089f9aae214ad0c6d3d4fc5e0b572d91d77a77d084cf06f584ca2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 998,
+      "column": 9,
+      "endLine": 998,
+      "endColumn": 34,
+      "mutatorName": "OptionalChaining",
+      "replacement": "input.reused[first.key]",
+      "status": "generated",
+      "id": "ea9729555b4ffb269040df9b74e981e2d859b903d3387d3f80492f3c4738b26b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 998,
+      "column": 57,
+      "endLine": 998,
+      "endColumn": 59,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "9f84c6abaef915ad01bba1cae04f5208982ba53a17dc2214962e14259b1c1076",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "resumed providers of a stored route",
+            "counts no provider for a lens the task copies, and every provider of the lens it asks"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1609,
+      "column": 8,
+      "endLine": 1609,
+      "endColumn": 84,
+      "mutatorName": "MethodExpression",
+      "replacement": "lenses.map(lens => `${lens.key} request ${lens.request ?? \"none\"}`)",
+      "status": "generated",
+      "id": "1f08921dce353e739a88149df6ca8e393bde3aab6f5f578ccf56b7ecf4cecab8",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "attaches to the first review's lens task when the same lenses come in another order"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1609,
+      "column": 19,
+      "endLine": 1609,
+      "endColumn": 76,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "50543a5f646000f1c45b30e3709a64bd43218715267281a7e76c052e105ac6dc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1609,
+      "column": 29,
+      "endLine": 1609,
+      "endColumn": 76,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "22f33598afefa816a8dc2d71502b2433a01aa2a549671ace543f1a2b5e2b7b53"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1609,
+      "column": 52,
+      "endLine": 1609,
+      "endColumn": 74,
+      "mutatorName": "LogicalOperator",
+      "replacement": "lens.request && \"none\"",
+      "status": "generated",
+      "id": "a3234bc66af542135b03f96c7f01716858a794f09e7a7046d5badd2062b7187a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1609,
+      "column": 68,
+      "endLine": 1609,
+      "endColumn": 74,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5cb56703b7d772feaf09a3e735edeabc68d2cfadab8e161bee9e7c171760dbff"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1667,
+      "column": 19,
+      "endLine": 1667,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "11245196e3bb6495d41fc9b3b35137f047dd899bbb140010db424ee0aa74b6ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1667,
+      "column": 19,
+      "endLine": 1667,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "19d1c78d5a9957c448519797b751dcb9e702a958229559a2c6fad633a54038ff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1667,
+      "column": 19,
+      "endLine": 1667,
+      "endColumn": 44,
+      "mutatorName": "EqualityOperator",
+      "replacement": "known?.task !== undefined",
+      "status": "generated",
+      "id": "f064e968347ad0fb7c68b6441f98195df426f564319fc5036b72dcebcecc08e0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1667,
+      "column": 19,
+      "endLine": 1667,
+      "endColumn": 30,
+      "mutatorName": "OptionalChaining",
+      "replacement": "known.task",
+      "status": "generated",
+      "id": "1ecf04b0806fcb0f62769bb679991f93d8d2a2cb16c39107ae2681022370b026",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d1afca0efa5ec98bf64a0aa648af57ce6349b22cc41a4ad38ab29b3d45cd5101",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "45605080aa626bd22a7a1e8ca5e15d22189282e143b60a0bad8236d349ef84f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "LogicalOperator",
+      "replacement": "previous?.state.status === \"terminal\" || previous.state.outcome.status === \"completed\"",
+      "status": "generated",
+      "id": "dc0007fa56acabce1728ca1a63a1c32dd37d65e884d640f6171dc868f0b5c830",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "881c0afd76836d1345dc32fa6f2bb24386b3664b5fc37dd82f43ec2a50adedee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "previous?.state.status !== \"terminal\"",
+      "status": "generated",
+      "id": "7bb8123be411a24d376d2ce7af55bcec9aa2c06ccc7bdebf894db41d26786adc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 3,
+      "endLine": 1669,
+      "endColumn": 18,
+      "mutatorName": "OptionalChaining",
+      "replacement": "previous.state",
+      "status": "generated",
+      "id": "6895e73c6c44196e309ba50e908ab65497e6c12b58ffd2efc7b67085df8ddc23",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 30,
+      "endLine": 1669,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6bc8e1a813f59f3478cef0c89c286f1b1a9fb096ad795fb8740c10f35f9a66df"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 44,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fbd66ea20e2b15ec6e5db2b0453872840b5d6892e03c11a8c04f2af5984066ae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "on a repeat review after a task ended without deciding",
+            "starts a lens task in place of an aborted one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 44,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "EqualityOperator",
+      "replacement": "previous.state.outcome.status !== \"completed\"",
+      "status": "generated",
+      "id": "6d84ca3194e31cd7b3895018b1efab29b1b10af1c4f9fdb3381d0861c3ca3d8f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1669,
+      "column": 78,
+      "endLine": 1669,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c2aa16cc503df0d1528e1f03db2b1329de2a39929a77b13fa668f03bc63de804"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1671,
+      "column": 6,
+      "endLine": 1675,
+      "endColumn": 7,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "352345ad4a61a17c44ef68781b0756c582049aab1ddeb1f57b468ef0d507e89c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1683,
+      "column": 16,
+      "endLine": 1683,
+      "endColumn": 77,
+      "mutatorName": "MethodExpression",
+      "replacement": "input.lenses",
+      "status": "generated",
+      "id": "ec9ecec8436113ea0219a83efed3b7afc6648014445d3451b08c38ea4654a299",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1683,
+      "column": 36,
+      "endLine": 1683,
+      "endColumn": 76,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1b92115848e34ab0657fdd843d2b675a85635ac2babd56989caa12136c13fa83",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "reviews recorded before levels joined the keys",
+            "reads a sighting stored under the lens's version alone, and replaces it with a fresh run rather than attach"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1683,
+      "column": 46,
+      "endLine": 1683,
+      "endColumn": 76,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "408426002ea9e660c51116134b1c06046d1538b2747a62b66c51d6fc442c5f11",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1683,
+      "column": 46,
+      "endLine": 1683,
+      "endColumn": 76,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d0b336c17f2fe09924df09482136f2b702258e980f4a9d49e643a3c0b572ff33",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "reviews recorded before levels joined the keys",
+            "reads a sighting stored under the lens's version alone, and replaces it with a fresh run rather than attach"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1683,
+      "column": 46,
+      "endLine": 1683,
+      "endColumn": 76,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reused[lens.key] !== undefined",
+      "status": "generated",
+      "id": "ef8263234e1cab62f6dea667b51c8dc8943f3922e770ddc387e5122fc3e94f7a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1697,
+      "column": 57,
+      "endLine": 1697,
+      "endColumn": 96,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "277c29e7b058276d4a89ce6ddeb943e7f99e2cae06092683512b95bad2efae92",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1697,
+      "column": 70,
+      "endLine": 1697,
+      "endColumn": 94,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f9c38c95440e8a29f0f3f359cb65599d1748f5a587f2af87d35950b96bd2774f",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "An ownership of {} fails type checking, since TaskOptions requires its kind, and Pi Durable's transaction treats any ownership whose kind is not task as the conversation's, as the original says."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1697,
+      "column": 78,
+      "endLine": 1697,
+      "endColumn": 92,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9c5fff42c16feded9e766dd9e8e3377a07c2e6d2990737ecec93ef66b0662522"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2502,
+      "column": 17,
+      "endLine": 2506,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0625410c5a82965e724c94f080f4e12479d971e83c5fb04bc3dc3cefd70cf079",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks every lens again when the standards' source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2504,
+      "column": 44,
+      "endLine": 2504,
+      "endColumn": 91,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e17ebae7afe62150802c58a3aef763ac6de80fdecf20f499158fdc0b74ded5b8",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks every lens again when the same standards are read at another commit"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2585,
+      "column": 20,
+      "endLine": 2585,
+      "endColumn": 56,
+      "mutatorName": "OptionalChaining",
+      "replacement": "routeAt(lens, level).route.thinking",
+      "status": "generated",
+      "id": "98f32b6290839de51e976e3845e74d85983a9bd560affa3217d81c2a091b7ba8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/plan.test.ts",
+          "path": [
+            "reviewChangeset with a plan, for a lens two folders define",
+            "runs again under --rerun a variant that finished on a refused fallback"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2586,
+      "column": 17,
+      "endLine": 2586,
+      "endColumn": 82,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "29e48e85b8351812831ff85397b682f8180694b0afec6e7df47230e4d6990bec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2588,
+      "column": 9,
+      "endLine": 2620,
+      "endColumn": 6,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "30c4c53a0b2a3f485eb33e49f62163923f66564139312442325c0dc37df9ec03",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2588,
+      "column": 74,
+      "endLine": 2620,
+      "endColumn": 5,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5afd992476acc9b5d9bff8fd0b2d4464c36dd3f05941c27ff28eca429a79e53b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2589,
+      "column": 10,
+      "endLine": 2589,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b1b6694e8abd557820dc0371a0d1e5394be51df2c5e29670054e21af89118a72"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2590,
+      "column": 11,
+      "endLine": 2590,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f8d3eb2d7b0260a73812767e948ccbbd80dd4b7813f4d6b628bb48526b2ff82f"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2594,
+      "column": 9,
+      "endLine": 2594,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f604f36ce5b4a13c66e7d2feb6c10a6c4a5df3e090befd8f57f4716a1845bf73",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/thinking-routes.test.ts",
+          "path": [
+            "changes the lens attachment when only thinking changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2594,
+      "column": 9,
+      "endLine": 2594,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ded91e59afbb4ce7b57579372cd0ddb7c6a84846502d4d59aa8a7085e1c90782",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "With no thinking set the run gains thinking: undefined, which the request JSON drops and the stored task input, being JSON, never holds, so the key and the run are unchanged."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2594,
+      "column": 9,
+      "endLine": 2594,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "thinking !== undefined",
+      "status": "generated",
+      "id": "d0ff6787e4ff2c6412b4db26efb8365dd15edd21d3110fc02eb83ec35301006a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/thinking-routes.test.ts",
+          "path": [
+            "changes the lens attachment when only thinking changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2594,
+      "column": 39,
+      "endLine": 2594,
+      "endColumn": 51,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "21b0fbd2ef3e6e01427daa7097ab7789af345b48556362d429aee7f84aa66e88",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/thinking-routes.test.ts",
+          "path": [
+            "changes the lens attachment when only thinking changes"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2598,
+      "column": 6,
+      "endLine": 2607,
+      "endColumn": 24,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "ruled.renderInstructions(reading.sections, level, neighbours, (text, label = \"listing\") => quoteUntrusted(label, text, boundary), standardsSource, callers ? options.callers?.render(covers, boundary) : undefined) + baseline(boundary) - planning(boundary)",
+      "status": "generated",
+      "id": "6222dc55ac794340de6022d5c1c1acecf1f484bf4c3206e1f2caaf41e0d0a6d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2598,
+      "column": 6,
+      "endLine": 2606,
+      "endColumn": 24,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "ruled.renderInstructions(reading.sections, level, neighbours, (text, label = \"listing\") => quoteUntrusted(label, text, boundary), standardsSource, callers ? options.callers?.render(covers, boundary) : undefined) - baseline(boundary)",
+      "status": "generated",
+      "id": "7587cbf22e725c938243f6ef5c99ca0991eb3a72c8427774f15c7e5a22f96032",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2602,
+      "column": 7,
+      "endLine": 2602,
+      "endColumn": 73,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "dd84e2c6673c262a64d1ebd7ae06046a79bf0b4c51be18ba772d9069ea2a796a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "runs each lens as its own conversation and returns the findings on the root"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2602,
+      "column": 22,
+      "endLine": 2602,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "693f0b6b0823c8df2113a350d8cc9e7f2e8bf97b76ef652068077d532260dc21"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2604,
+      "column": 17,
+      "endLine": 2604,
+      "endColumn": 40,
+      "mutatorName": "OptionalChaining",
+      "replacement": "options.callers.render",
+      "status": "generated",
+      "id": "229fd3b975b1ac8f7c2e306492fbafaa4fccdc2907a03cdd24b828149dc9ef73",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2609,
+      "column": 23,
+      "endLine": 2609,
+      "endColumn": 49,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ad3a677cf39b38fe690a9a8b4d7f3538b63b409bae8a5df981f5dbd7c4659b63",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2609,
+      "column": 23,
+      "endLine": 2609,
+      "endColumn": 49,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ef19e372e8b731570db863c4b17b0633784037208119f94b43b9baee941c421a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-standards.test.ts",
+          "path": [
+            "per-lens standards",
+            "replaces a completed lens task when only standards omissions change"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2609,
+      "column": 23,
+      "endLine": 2609,
+      "endColumn": 49,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reading.omitted.length >= 0",
+      "status": "generated",
+      "id": "867bc21162b1636f52dcdd99be6c0fa88ea1e3eee4545262f5e1c981c27a8baa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2609,
+      "column": 23,
+      "endLine": 2609,
+      "endColumn": 49,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reading.omitted.length <= 0",
+      "status": "generated",
+      "id": "9350731994a05441adf99ad1651664f27bc076ed36bdbf286d455725c28ea4c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2615,
+      "column": 65,
+      "endLine": 2617,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b3eaf39c8222360c7ba0d196536c1c3e333d7194e6de46450ea5ef4f024f67c4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "the head's functions in a lens's prompt",
+            "carries the function around each hunk at a level that reads functions"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2616,
+      "column": 10,
+      "endLine": 2616,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "897615fe7b889ac6563350df70191f67604b5a9b964ef6d96a9aae426bbff960",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "the head's functions in a lens's prompt",
+            "carries the function around each hunk at a level that reads functions"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2616,
+      "column": 10,
+      "endLine": 2616,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7bc35ec585d09117d2b3c7ea3888f13ab19dc68d3b897985256a823f358e371d",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "ChangePrompt.render reads options.functions only through options.functions !== undefined, so functions: undefined renders as no functions."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2616,
+      "column": 10,
+      "endLine": 2616,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "functions !== undefined",
+      "status": "generated",
+      "id": "ad9a96ea469067d56c9d6d88205125813c07b6108bec4026656b5711ed113ef2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "the head's functions in a lens's prompt",
+            "carries the function around each hunk at a level that reads functions"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2616,
+      "column": 41,
+      "endLine": 2616,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a81109ee31d3e1de1a4c751b66378b977bf9f1666c57df90e591a8e5c1e79082",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "the head's functions in a lens's prompt",
+            "carries the function around each hunk at a level that reads functions"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2618,
+      "column": 9,
+      "endLine": 2618,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5e65a1be875311af2165ec724995e4e22ece7fe15f98a11fd8c44a14344c1e71",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "escalation",
+            "keeps one note that a call could not read the functions when both runs read functions, and runs again with none once a repeat call can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2618,
+      "column": 9,
+      "endLine": 2618,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c690e0e0f3252d7e27a337da07b55d85b18c52de2d4be8942429ca85b2abecd5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2618,
+      "column": 9,
+      "endLine": 2618,
+      "endColumn": 45,
+      "mutatorName": "EqualityOperator",
+      "replacement": "functions?.unavailable !== undefined",
+      "status": "generated",
+      "id": "62ea36ad5799442c7bcc338aa7932445988016e9b6ff709351be79ab852acc8c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2618,
+      "column": 9,
+      "endLine": 2618,
+      "endColumn": 31,
+      "mutatorName": "OptionalChaining",
+      "replacement": "functions.unavailable",
+      "status": "generated",
+      "id": "ee3d57dae29a07be9c2bac247066cc4cc7b3cce94669bd37d8fd25b47b877c85",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2618,
+      "column": 53,
+      "endLine": 2618,
+      "endColumn": 86,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2ee23d4577ac75a59ede9502d43b5b7d5f2813c4a63f7830354615cc1cdbfbce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "escalation",
+            "keeps one note that a call could not read the functions when both runs read functions, and runs again with none once a repeat call can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2619,
+      "column": 9,
+      "endLine": 2619,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d5b8bc0a985f54a67385c037ea36bfbe4294479f74c9bedff726a29fe7e9f83a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-repeat.test.ts",
+          "path": [
+            "a repeat review of a level that probes",
+            "plans and probes again rather than reuse the first review's finished probing run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2619,
+      "column": 9,
+      "endLine": 2619,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "87085b76f8768a91e398901a7d36110e4704ef2fbe1c22f1235d5236474049a8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2619,
+      "column": 9,
+      "endLine": 2619,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probing !== undefined",
+      "status": "generated",
+      "id": "ea5537ee141720faf3c197761b5469fbab4752bdbbc0806ce6ea797a2830801d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2619,
+      "column": 38,
+      "endLine": 2619,
+      "endColumn": 60,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4d0b8695767b549c81dbaa6ae4c6c4a83697f3fab7cdc0e1cba1ffce790a0b51",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-repeat.test.ts",
+          "path": [
+            "a repeat review of a level that probes",
+            "plans and probes again rather than reuse the first review's finished probing run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2625,
+      "column": 8,
+      "endLine": 2625,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b01c9e15155a7ee41a4a861f4d86662a5b66c6849cdc5e8bfc0036d1dca6f5f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "tells the host only once the index names the run that replaces an earlier one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2625,
+      "column": 8,
+      "endLine": 2625,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e31c59d506bc3427cfc33c9c1b161f402a6c8d2ff7b69fb560ee6674fdc108e1",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The request JSON drops a field left undefined, so escalateAt: undefined keys as no escalateAt, and the run built from it is unchanged."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2625,
+      "column": 8,
+      "endLine": 2625,
+      "endColumn": 46,
+      "mutatorName": "EqualityOperator",
+      "replacement": "config.triage.escalateAt !== undefined",
+      "status": "generated",
+      "id": "eceab465214d2f844c1bd57f68e035cf676beffda4c22641e0d68d9fa1c66037",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "tells the host only once the index names the run that replaces an earlier one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2625,
+      "column": 54,
+      "endLine": 2625,
+      "endColumn": 94,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4fc953895f2009386a94d363af7f6f413858e3900fbbf25eb4d8034f2139ea72",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "tells the host only once the index names the run that replaces an earlier one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2626,
+      "column": 8,
+      "endLine": 2626,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2ebed1d55d85bc2de1e33e181f6f083508775666155ef358fba55d12e387dec2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "escalation",
+            "keeps one note that a call could not read the functions when only the escalated run reads functions, and runs again with none once a repeat call can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2626,
+      "column": 8,
+      "endLine": 2626,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "be86aae6b4f048d973e66fbd37cefbdfd267da3837437b031ef4009b465432ab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2626,
+      "column": 8,
+      "endLine": 2626,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "escalation !== undefined",
+      "status": "generated",
+      "id": "a1e9626cdb62ccfa672a69c2fb720df1a1ef69fce5c61b46d0dbffcbf5f66343",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2630,
+      "column": 8,
+      "endLine": 2630,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "741499c075d683d31d367f6c0f998931adb275e2720da6cad2f3825907e95095",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "escalation",
+            "keeps one note that a call could not read the functions when only the escalated run reads functions, and runs again with none once a repeat call can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2630,
+      "column": 8,
+      "endLine": 2630,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3995d65164c39b3f18209207d82fd1535951ad27ec15ec9acd0e208b8f9a33eb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "omits the whole-review quick caveat when another selected lens is refused"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2630,
+      "column": 8,
+      "endLine": 2630,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "escalation.next !== undefined",
+      "status": "generated",
+      "id": "2c7332121ca633441c2527a255f799b11c8b4b6542d4899310eacacc9b9f506b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "omits the whole-review quick caveat when another selected lens is refused"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2631,
+      "column": 11,
+      "endLine": 2631,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b52e6d36ecfb072673eaf1a91203f1db265355fbf835267f8d80077f91193640",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "It keys every capped escalation alike, so only a quick run whose cap reason alone changed is copied rather than asked again. The reason never reaches the model and the note renders from the current run, so the copy answers as the asked run would."
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2631,
+      "column": 18,
+      "endLine": 2631,
+      "endColumn": 52,
+      "mutatorName": "LogicalOperator",
+      "replacement": "escalation.cap && \"at its ceiling\"",
+      "status": "generated",
+      "id": "704bfb3d4d045ef980d3d4f23c15352c61d74d91918e3932e4e998a291646bc7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "omits the quick caveat when a policy ceiling chooses quick without triage"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2631,
+      "column": 36,
+      "endLine": 2631,
+      "endColumn": 52,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ef83fc77c9f15839c55da6fd780f3f41b406562c34ee9f32f56fee5ebb8777f4"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2632,
+      "column": 11,
+      "endLine": 2632,
+      "endColumn": 45,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ac2c09005ae1aabdc131b268d5bc82bf2ff6e150e99179fea7dc9062da5e2e77",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "escalation",
+            "keeps one note that a call could not read the functions when only the escalated run reads functions, and runs again with none once a repeat call can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2638,
+      "column": 8,
+      "endLine": 2638,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "786754c5f571fab511024f9cfaf36a5075a3f04e01a28eb08912f00978700f39",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2638,
+      "column": 8,
+      "endLine": 2638,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "253302233f28949920a29902c4e5fb6af8913ab5cecb4c1522c59a96938f41ba",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "A run that does not escalate gains escalation: undefined, which every reader treats as absent and the stored task input, being JSON, never holds."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2638,
+      "column": 8,
+      "endLine": 2638,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "escalation !== undefined",
+      "status": "generated",
+      "id": "5f4369ff3bb2dc2e1a3fd5844548e8e91cc44b57a7bc20fdf2f0bd59983dc4d4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2638,
+      "column": 40,
+      "endLine": 2638,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3921a82df9f5551f8df89d271e493b5a3f3aed5d544f671f012152cfc4b5c3ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2643,
+      "column": 3,
+      "endLine": 2643,
+      "endColumn": 35,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "bf2ed7a96efc2670af5576782d2320ae28f972be947fa71e4af6996832f06146",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2659,
+      "column": 2,
+      "endLine": 2659,
+      "endColumn": 46,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "b6983b0fd4b0a10c834ddb1df49a90b639c5b23e240c93622cb94b9c32af3941",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "290cd18af62f964e9cbd07ad85c92700d718d02f360be116d3dc0c504c31fcfc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3478f0571bd0617022dbb513bb202e13b0e68c2017d521ed78438a46bf239838",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 79,
+      "mutatorName": "LogicalOperator",
+      "replacement": "lensRan(key)?.usage === undefined && lensRan(key)?.reused !== undefined",
+      "status": "generated",
+      "id": "fab7e665a973e4c8b15f73dd8f8e0bcbe1ad34999fb375281b8182e911630d2f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2b510060788dbc69f9deadb430affc823eb690746eb5f6afcb721b19ac7b4289",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "When a run has no usage the details gain usage: structuredClone(undefined), that is usage: undefined, which the stored verdict, being JSON, never holds."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "lensRan(key)?.usage !== undefined",
+      "status": "generated",
+      "id": "90541b01d9d010f53b27c94778ccc52e62a2ff76c3686999815d4b1a5078a353",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 8,
+      "endLine": 3266,
+      "endColumn": 27,
+      "mutatorName": "OptionalChaining",
+      "replacement": "lensRan(key).usage",
+      "status": "generated",
+      "id": "da5e9eae4f637e0acdc81d40d4f2b7d5a6c037ea89f1c9304c643d0947a820e5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "keeps the triage note on the record of a lens that did not finish, after the reason it did not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 45,
+      "endLine": 3266,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d18e23dbef5052c3a3d06e21b15a3439d924019060a00857f1cbc0b71db4758d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review copies each lens run whose request is unchanged",
+            "asks only the lens whose instructions changed, keeps the copied lens's finding, and charges it nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 45,
+      "endLine": 3266,
+      "endColumn": 79,
+      "mutatorName": "EqualityOperator",
+      "replacement": "lensRan(key)?.reused === undefined",
+      "status": "generated",
+      "id": "3df9c4703b500ff8368fe12d64b2fe014f0408150bf9b45fbb7ad2865adaae4d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3266,
+      "column": 45,
+      "endLine": 3266,
+      "endColumn": 65,
+      "mutatorName": "OptionalChaining",
+      "replacement": "lensRan(key).reused",
+      "status": "generated",
+      "id": "f1570e4d834d5660ba4f7bcd3aa1eb79a4bc2e8152d1da299600ee0af01b2aca",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The right operand runs only when the left found a usage, and a usage comes only from a run lensRan returned, so lensRan(key) is defined there."
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3268,
+      "column": 7,
+      "endLine": 3268,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2007b72b52ba7a8769c1cd436201940a3de19d402132c41a4227377bd2276f53",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/stage-telemetry.test.ts",
+          "path": [
+            "stage telemetry contract",
+            "derives model intervals from transcripts and times deterministic stages through dismissal and publication"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3268,
+      "column": 32,
+      "endLine": 3268,
+      "endColumn": 51,
+      "mutatorName": "OptionalChaining",
+      "replacement": "lensRan(key).usage",
+      "status": "generated",
+      "id": "cc729b391d3380027ecb273d0c616ac40a9cc4ee990cc6510c5453c797a89079",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The clone runs only after the condition found a usage, which comes only from a run lensRan returned, so lensRan(key) is defined there."
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 616,
+      "column": 7,
+      "endLine": 616,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "61b60fe7af178c5ca56212b47796e9d21f1ad3ba2e36528f69d1486f62d6a6f4"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 616,
+      "column": 7,
+      "endLine": 616,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e2eee923979d3edea7eaeb470acbf46ab6d769299b52e9ca92f3cc4776e49943"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 616,
+      "column": 7,
+      "endLine": 616,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "name === \"melian.lens\"",
+      "status": "generated",
+      "id": "580cc0835108b0e19976d0b955aa9b7a6fd3f4fb44ff1c79545b98af9c8ac432"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 616,
+      "column": 16,
+      "endLine": 616,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "94cc8a56cd0a923ef07c2c816c1ba6c99f9d7d635dff91ec51de30c625a14a8d"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 617,
+      "column": 18,
+      "endLine": 618,
+      "endColumn": 12,
+      "mutatorName": "OptionalChaining",
+      "replacement": "(task.input as {\n  reused?: Record<string, {\n    outcomes: Record<string, CopiedRun>;\n  }>;\n} | null).reused",
+      "status": "generated",
+      "id": "d3c225f474cf30cbd5da08fc64a45f72152600f91aab9eb6d612d9f9a728487d"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 619,
+      "column": 35,
+      "endLine": 619,
+      "endColumn": 47,
+      "mutatorName": "LogicalOperator",
+      "replacement": "copied && {}",
+      "status": "generated",
+      "id": "39dc7cc7f554ac1a1a961dbca21c2783663983fd2daf292522c881e7fb9f74d0"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 619,
+      "column": 57,
+      "endLine": 619,
+      "endColumn": 95,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "285333e2b43d4081d75000bcff10677a4c5473f3d0e32381bbf5b012f7b4c302"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 619,
+      "column": 98,
+      "endLine": 628,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3ed325a47e7e5379383183973ca4357e718b32256472456ad8bb1a5dd894e9a6"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 620,
+      "column": 8,
+      "endLine": 620,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6ff58c43cc33a517b2b089ecaf9ef2433deb543ab04ed3e1655bc0a508742a44"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 620,
+      "column": 8,
+      "endLine": 620,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2f2e0eb490c96760c3963f7609137ed1707e4b1de8c34b6a1cb5a35fac56a98c"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 620,
+      "column": 8,
+      "endLine": 620,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "run.conversation !== undefined",
+      "status": "generated",
+      "id": "457c355e05597933d560c9f1d64dcb3d8723768e9358bff34c679f43b97cb69a"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 622,
+      "column": 19,
+      "endLine": 624,
+      "endColumn": 11,
+      "mutatorName": "OptionalChaining",
+      "replacement": "(await this.document(LensDocument, {\n  kind: \"conversation\",\n  conversationId: run.conversation\n}, context)).lens",
+      "status": "generated",
+      "id": "884c5dfb36fea08dc9fd586a5dabbfb8c6576c1abe1f463d01e3a21546fd12ee"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 623,
+      "column": 39,
+      "endLine": 623,
+      "endColumn": 97,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9790547c8ba2ce9552f8eae9a88d3c42f6bbd177008852ff5b851842638230fa"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 623,
+      "column": 47,
+      "endLine": 623,
+      "endColumn": 61,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e4d566d8cfeff2eab73dcff2c3c0ce6a41dd2d731257a3e9c3a58dafa86a13c8"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 625,
+      "column": 20,
+      "endLine": 625,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3979a97ae6e980cc8efbf81bd2f0f14dcb119e8f11673db05656dec35b910a21"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 625,
+      "column": 58,
+      "endLine": 625,
+      "endColumn": 83,
+      "mutatorName": "LogicalOperator",
+      "replacement": "policy!.level && \"legacy\"",
+      "status": "generated",
+      "id": "48c191c91750b5cedd6484c2b911ad60e3d69613a88e22c1f591936d2faba438"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 625,
+      "column": 75,
+      "endLine": 625,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1062c8adaaf7997a8f9040cb28ce061d6401eaf171e9e2935de914dba3056f24"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 627,
+      "column": 14,
+      "endLine": 627,
+      "endColumn": 56,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4c54d087beb790b9ffbe429ce5812ced7bc284157f331df68b4e4c8406b6b577"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 627,
+      "column": 34,
+      "endLine": 627,
+      "endColumn": 38,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "52962dcd27606049908c8a4a50128f35c71ac92544741a2bd27d4e047438277a"
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 627,
+      "column": 49,
+      "endLine": 627,
+      "endColumn": 54,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9c3cb51203db9371a988d84ae747d4a8112e56de827299ec7d0f9549e8fab898"
+    }
+  ],
+  "total": 257,
+  "omitted": 0,
+  "unmutated": []
+}
