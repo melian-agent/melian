@@ -31,6 +31,7 @@ import {
 	createMemoryStorage,
 	openReviewHarness,
 	type ReviewModels,
+	readFindings,
 	reviewChangeset,
 	type StageTelemetry,
 	TelemetryReader,
@@ -336,6 +337,8 @@ export interface ReviewTarget {
 		config: MelianConfig,
 		lenses: readonly Lens[],
 	) => { config: MelianConfig; lenses: readonly Lens[] };
+	/** A check whose own sightings at the head the run also returns, unmerged with any other check's. */
+	readonly sightingsOf?: string;
 }
 
 /** A range's review: the findings, the terminal rendering an author would see, and what each lens ran on. */
@@ -352,6 +355,11 @@ export interface RangeRun {
 	readonly notes: readonly { readonly reason: string; readonly checks: readonly string[] }[];
 	/** The tier each lens that ran was routed by, by check name. A lens on its own route has none. */
 	readonly tiers: Readonly<Record<string, LensTier>>;
+	/**
+	 * The target's `sightingsOf` check's findings at the head as it reported them: its own lines, message and failure
+	 * scenario, before the verdict merged them with another check's. Absent when the target names no check.
+	 */
+	readonly sightings?: readonly Finding[];
 }
 
 /** A golden's review. */
@@ -494,8 +502,22 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			...Object.values(reviewed.verdict.findings).flat(),
 			...(golden === undefined ? [] : await guardrailFindings(golden, repo, changeset, source)),
 		];
+		const sightingsOf = target.sightingsOf;
+		const sightings =
+			sightingsOf === undefined
+				? {}
+				: {
+						sightings: await readFindings(
+							reviewHarness.harness,
+							(await reviewHarness.harness.root(backgroundContext)).id,
+							Revision.key(changeset.revision),
+							backgroundContext,
+							{ producers: [{ check: sightingsOf }], asReported: true },
+						),
+					};
 		return {
 			findings,
+			...sightings,
 			rendered: FindingsLog.of(findings).render(),
 			toolMismatches,
 			notes: reviewed.verdict.lensNotes(),

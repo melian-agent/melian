@@ -9,6 +9,7 @@ import {
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
+	scriptLenses,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -75,6 +76,7 @@ function ran(findings: readonly Finding[], fields: Partial<RangeRun> = {}): Rang
 	return {
 		telemetry: paid,
 		findings,
+		sightings: findings,
 		rendered: "rendered review\n",
 		toolMismatches: [],
 		notes: [],
@@ -279,31 +281,62 @@ describe("Miss", () => {
 		}
 	});
 
-	it("finds a miss only at its file, under its rule, from trust-boundary, and unrefuted", async () => {
+	it("finds a miss only at its file, under its rule, in a trust-boundary sighting the verdict leaves unrefuted", async () => {
 		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
 		const finding = reviewed.findings[0]!;
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
 		const loose = { by: "file and rule" } as const;
-		const found = (findings: readonly Finding[], which = miss) => which.match(findings, loose).hits.length > 0;
+		const found = (findings: readonly Finding[], sightings = findings, which = miss) =>
+			which.match({ findings, sightings }, loose).hits.length > 0;
 		expect(found([finding])).toBe(true);
 		expect(found([])).toBe(false);
-		const changed = (properties: object) => [
-			Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, ...properties } }),
-		];
-		expect(found(changed({ path: "other.ts" }))).toBe(false);
-		const security = { ...finding.properties.source!, check: "lens.security" };
-		expect(found(changed({ source: security, reportedBy: [security] }))).toBe(false);
-		expect(found(changed({ source: security }))).toBe(true);
-		expect(found(changed({ verification: { verdict: "refuted", reason: "no" } }))).toBe(false);
-		expect(found(changed({ verification: undefined }))).toBe(true);
-		expect(found(changed({ source: undefined, reportedBy: undefined }))).toBe(false);
-		const claim = { ruleId: finding.ruleId, source: finding.properties.source!, failureScenario: "s", evidence: [] };
-		const merged = { source: { check: "lens.security", version: "v" }, otherClaims: [claim] };
-		expect(found(changed(merged))).toBe(true);
-		const refuted = { ...claim, id: finding.id, verification: { verdict: "refuted", reason: "no" } };
-		expect(found(changed({ otherClaims: [refuted] }))).toBe(false);
+		const changed = (properties: object) =>
+			Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, ...properties } });
+		expect(found([changed({ path: "other.ts" })])).toBe(false);
 		const other = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: "other-rule" }]))[0]!;
-		expect(found([finding], other)).toBe(false);
+		expect(found([finding], [finding], other)).toBe(false);
+		const refuted = { verification: { verdict: "refuted", reason: "no" } };
+		expect(found([changed(refuted)], [finding])).toBe(false);
+		expect(found([finding], [changed(refuted)])).toBe(true);
+		const claim = finding.claims()[0]!;
+		const security = { check: "lens.security", version: "v" };
+		const speaker = { source: security, reportedBy: [security], verification: undefined };
+		expect(found([changed({ ...speaker, otherClaims: [claim] })], [finding])).toBe(true);
+		expect(
+			found([changed({ ...speaker, otherClaims: [{ ...claim, verification: refuted.verification }] })], [finding]),
+		).toBe(false);
+		const twice = [
+			claim,
+			{ ...claim, source: { ...claim.source, version: "w" }, verification: refuted.verification },
+		];
+		expect(found([changed({ ...speaker, otherClaims: twice })], [finding])).toBe(true);
+		expect(found([changed({ ...speaker, otherClaims: twice.toReversed() })], [finding])).toBe(true);
+	});
+
+	it("gives a miss no score when the verdict and the lens's sightings disagree on which claims it made", async () => {
+		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
+		const finding = reviewed.findings[0]!;
+		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
+		const loose = { by: "file and rule" } as const;
+		expect(() => miss.match({ findings: [finding] }, loose)).toThrow(
+			"m: its review returned no lens.trust-boundary sightings to score",
+		);
+		expect(() => miss.match({ findings: [], sightings: [finding] }, loose)).toThrow(
+			`m: lens.trust-boundary sighted ${finding.id}, which the verdict holds no claim for`,
+		);
+		expect(() => miss.match({ findings: [finding], sightings: [] }, loose)).toThrow(
+			`m: the verdict holds a lens.trust-boundary claim ${finding.id} that the lens never sighted`,
+		);
+		const security = { check: "lens.security", version: "v" };
+		const elsewhere = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, source: security, reportedBy: [security], otherClaims: undefined },
+		});
+		expect(miss.match({ findings: [elsewhere], sightings: [] }, loose)).toEqual({
+			matched: "file and rule",
+			hits: [],
+			near: [],
+		});
 	});
 
 	it("counts a finding only where it overlaps the miss's lines, and records the ones beside them", async () => {
@@ -311,14 +344,14 @@ describe("Miss", () => {
 		const finding = found.findings[0]!;
 		const [start, end] = finding.lines();
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
-		const at = (first: number, last: number, id: string) => {
-			const stored = finding.toJSON();
+		const at = (first: number, last: number, id: string, from = finding) => {
+			const stored = from.toJSON();
 			const [location] = stored.locations;
 			const region = { ...location!.physicalLocation.region, startLine: first, endLine: last };
 			return Finding.from({
 				...stored,
 				locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
-				properties: { ...finding.properties, id },
+				properties: { ...from.properties, id },
 			});
 		};
 		const near = at(end + 5, end + 6, "near");
@@ -327,9 +360,11 @@ describe("Miss", () => {
 			lines: each.lines(),
 			headline: each.headline().headline,
 			failureScenario: each.properties.failureScenario,
+			sightedBy: each.properties.source,
 		});
+		const both = (sightings: readonly Finding[]) => ({ findings: sightings, sightings });
 		expect(
-			miss.match([finding, near], {
+			miss.match(both([finding, near]), {
 				by: "lines",
 				ranges: [
 					[end + 1, end + 4],
@@ -341,23 +376,49 @@ describe("Miss", () => {
 			hits: [shown(finding)],
 			near: [shown(near)],
 		});
-		expect(miss.match([finding, near], { by: "lines", ranges: [[end + 1, end + 4]] })).toEqual({
+		expect(miss.match(both([finding, near]), { by: "lines", ranges: [[end + 1, end + 4]] })).toEqual({
 			matched: "lines",
 			hits: [],
 			near: [shown(finding), shown(near)],
 		});
-		expect(miss.match([near], { by: "lines", ranges: [[end + 6, end + 9]] }).hits).toEqual([shown(near)]);
-		expect(miss.match([near], { by: "lines", ranges: [[end - 9, end + 5]] }).hits).toEqual([shown(near)]);
-		expect(miss.match([finding, near], { by: "file and rule" })).toEqual({
+		expect(miss.match(both([near]), { by: "lines", ranges: [[end + 6, end + 9]] }).hits).toEqual([shown(near)]);
+		expect(miss.match(both([near]), { by: "lines", ranges: [[end - 9, end + 5]] }).hits).toEqual([shown(near)]);
+		expect(miss.match(both([finding, near]), { by: "file and rule" })).toEqual({
 			matched: "file and rule",
 			hits: [shown(finding), shown(near)],
 			near: [],
 		});
 		const elsewhere = Finding.from({ ...near.toJSON(), properties: { ...near.properties, path: "other.ts" } });
-		expect(miss.match([elsewhere], { by: "lines", ranges: [[1, 1_000_000]] })).toEqual({
+		expect(miss.match(both([elsewhere]), { by: "lines", ranges: [[1, 1_000_000]] })).toEqual({
 			matched: "lines",
 			hits: [],
 			near: [],
+		});
+		// A merged speaker from another lens keeps its own lines and words; the lens's own sighting says where it looked.
+		const sighting = at(46, 47, finding.id);
+		const security = { check: "lens.security", version: "v" };
+		const speaker = (lines: [number, number]) =>
+			Finding.from({
+				...at(...lines, "speaker").toJSON(),
+				properties: {
+					...at(...lines, "speaker").properties,
+					source: security,
+					reportedBy: [security],
+					failureScenario: "the security lens's words",
+					otherClaims: [finding.claims()[0]!],
+				},
+			});
+		const location = { by: "lines", ranges: [[46, 47]] } as const;
+		expect(miss.match({ findings: [speaker([40, 44])], sightings: [sighting] }, location)).toEqual({
+			matched: "lines",
+			hits: [shown(sighting)],
+			near: [],
+		});
+		const swapped = at(40, 44, finding.id);
+		expect(miss.match({ findings: [speaker([46, 47])], sightings: [swapped] }, location)).toEqual({
+			matched: "lines",
+			hits: [],
+			near: [shown(swapped)],
 		});
 	});
 
@@ -656,6 +717,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				lines: [start, end],
 				headline: defect[0]!.headline().headline,
 				failureScenario: defect[0]!.properties.failureScenario,
+				sightedBy: defect[0]!.properties.source,
 			};
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
 				misses: { found: 2, total: 4 },
@@ -672,7 +734,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review", async () => {
+	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review or one it could not score", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
@@ -691,7 +753,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				range: vi.fn(async () => {
 					missCall += 1;
 					if (missCall === 4) throw new Error("clone gone");
-					return ran([]);
+					return missCall === 3 ? ran(defect, { sightings: [] }) : ran([]);
 				}),
 			});
 			const out = join(scratch, "failures.json");
@@ -719,11 +781,16 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			});
 			expect(second).toStrictEqual({
 				goldens: { precision: 1, recall: 0 },
-				failed: ["next"],
+				failed: ["hit", "next"],
 				reviews: [
 					{ name: lost.name, kind: "golden", score: { ...scoreGolden(lost, []) }, ...scored },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
-					{ name: "hit", kind: "miss", ...unmatched, ...scored },
+					{
+						name: "hit",
+						kind: "miss",
+						error: `hit: the verdict holds a lens.trust-boundary claim ${defect[0]!.id} that the lens never sighted`,
+						...scored,
+					},
 					{ name: "next", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
 				],
 			});
@@ -863,6 +930,34 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(run.notes).toEqual([
 				{ reason: expect.stringMatching(/planner found no attack/), checks: ["lens.trust-boundary"] },
 			]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("returns trust-boundary's own sightings at the head beside the verdict, and a golden's run returns none", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const paths = ["src/scan.ts", "src/rules.ts"];
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, paths);
+			scriptLenses(fake, lenses, { "trust-boundary": failOpen.script["trust-boundary"]!, verifier: {} });
+			const miss = Miss.load(
+				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] }]),
+			)[0]!;
+			const run = await runRange(miss.target(ProbeTrust.parse(head)), {
+				kind: "live",
+				models: fake.review,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+			});
+			expect(run.findings.map((finding) => finding.id)).toHaveLength(1);
+			expect(run.sightings!.map((each) => [each.id, each.properties.source.check, each.lines()])).toEqual([
+				[run.findings[0]!.id, "lens.trust-boundary", [16, 16]],
+			]);
+			expect(miss.match(run, await miss.locate()).hits).toHaveLength(1);
+			expect(await runGolden(failOpen, { kind: "scripted" })).not.toHaveProperty("sightings");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

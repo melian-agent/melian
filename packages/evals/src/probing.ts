@@ -3,19 +3,20 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
 	Changeset,
 	type Finding,
+	type FindingSource,
 	Lens,
 	type LensLevels,
 	type LensTier,
 	lensTierSchema,
 	type MelianConfig,
 	parseModelReference,
+	VerificationState,
 	visibleText,
 } from "@melian-agent/core";
 import { type ProbeAvailability, type ReviewModels, StageTelemetry, type WriterTrust } from "@melian-agent/pipeline";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import {
-	answers,
 	type Golden,
 	type GoldenRun,
 	type GoldenScore,
@@ -146,12 +147,16 @@ export type MissLocation =
 	| { readonly by: "fix"; readonly fixCommit: string; readonly ranges: readonly (readonly [number, number])[] }
 	| { readonly by: "file and rule" };
 
-/** A finding a miss's review reported at its file under its rule, as the results file shows it for adjudication. */
+/**
+ * A `trust-boundary` sighting at a miss's file under its rule, as the results file shows it for adjudication: its lines
+ * and words are the ones `sightedBy`, that lens at one of its levels, reported, whichever claim speaks for its defect.
+ */
 export interface MissFinding {
 	readonly id: string;
 	readonly lines: readonly [number, number];
 	readonly headline: string;
 	readonly failureScenario?: string;
+	readonly sightedBy: FindingSource;
 }
 
 /** What a review found of a miss: the findings that answer it, and those at its file under its rule beside its lines. */
@@ -243,6 +248,7 @@ export class Miss {
 			head,
 			range: `${base}...${head}`,
 			writer,
+			sightingsOf: probingCheck,
 			scope: (config, lenses) => ({
 				config: {
 					...config,
@@ -261,18 +267,43 @@ export class Miss {
 	}
 
 	/**
-	 * What a review found of the miss. A finding answers it when it is an unrefuted `trust-boundary` claim at its file
-	 * under its rule, merged or not, and overlaps its lines; with no lines, file and rule alone decide.
+	 * What a review found of the miss, scored on `trust-boundary`'s own sightings, since a merged finding keeps only its
+	 * speaker's lines. A sighting answers the miss when the verdict holds its claim, by ID, unrefuted, and it sits at the
+	 * miss's file under its rule and overlaps its lines; with no lines, file and rule alone decide. Throws when the
+	 * sightings and the verdict's claims disagree, which leaves the miss unscored rather than missed.
 	 */
-	match(findings: readonly Finding[], location: MissLocation): MissMatch {
-		const shown = (finding: Finding): MissFinding => ({
-			id: finding.id,
-			lines: finding.lines(),
-			headline: finding.headline().headline,
-			failureScenario: finding.properties.failureScenario,
+	match(run: Pick<RangeRun, "findings" | "sightings">, location: MissLocation): MissMatch {
+		const { sightings } = run;
+		if (sightings === undefined)
+			throw new Error(`${this.name}: its review returned no ${probingCheck} sightings to score`);
+		const unrefuted = new Map<string, boolean>();
+		for (const finding of run.findings)
+			for (const claim of VerificationState.from(finding).claims)
+				if (claim.source.check === probingCheck)
+					unrefuted.set(claim.id, unrefuted.get(claim.id) === true || claim.verification?.verdict !== "refuted");
+		for (const sighting of sightings)
+			if (!unrefuted.has(sighting.id))
+				throw new Error(
+					`${this.name}: ${probingCheck} sighted ${sighting.id}, which the verdict holds no claim for`,
+				);
+		const sighted = new Set(sightings.map((sighting) => sighting.id));
+		for (const id of unrefuted.keys())
+			if (!sighted.has(id))
+				throw new Error(
+					`${this.name}: the verdict holds a ${probingCheck} claim ${id} that the lens never sighted`,
+				);
+		const shown = (sighting: Finding): MissFinding => ({
+			id: sighting.id,
+			lines: sighting.lines(),
+			headline: sighting.headline().headline,
+			failureScenario: sighting.properties.failureScenario,
+			sightedBy: sighting.properties.source,
 		});
-		const claims = findings.filter((finding) =>
-			answers({ file: this.file, rule: this.rule, source: probingCheck }, finding),
+		const claims = sightings.filter(
+			(sighting) =>
+				unrefuted.get(sighting.id) === true &&
+				sighting.ruleId === this.rule &&
+				(sighting.properties.path ?? sighting.locations[0]!.physicalLocation.artifactLocation.uri) === this.file,
 		);
 		if (location.by === "file and rule") return { matched: "file and rule", hits: claims.map(shown), near: [] };
 		const overlaps = (finding: Finding) => {
@@ -651,9 +682,16 @@ export async function measureProbing(
 			}
 			let found = 0;
 			for (const { miss, target, location } of misses) {
-				const run = await tried(miss.name, "miss", () => runners.range(target, mode));
-				if (run === undefined) continue;
-				const match = miss.match(run.findings, location);
+				const scored = await tried(miss.name, "miss", async () => {
+					const run = await runners.range(target, mode);
+					try {
+						return { run, match: miss.match(run, location) };
+					} catch (error) {
+						throw new GoldenRunError(error, run.telemetry);
+					}
+				});
+				if (scored === undefined) continue;
+				const { run, match } = scored;
 				const hit = match.hits.length > 0;
 				if (hit) found += 1;
 				const said = !hit
