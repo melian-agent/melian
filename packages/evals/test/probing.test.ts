@@ -843,6 +843,25 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(results.results[1].passes[1]).toMatchObject({ goldens: { precision: 1, recall: 1 }, failed: [] });
 	});
 
+	it("pools a pass's precision over its goldens, so a false positive on a clean golden lowers the pass, its worst and its mean", async () => {
+		let call = 0;
+		const using = runners({
+			golden: vi.fn(async (each: Golden) => {
+				call += 1;
+				const reported = each === lost || (each === clean && call <= 3) ? defect : [];
+				return { golden: each, ...ran(reported) };
+			}),
+		});
+		const out = join(scratch, "results.json");
+		await measure({ ...env, MELIAN_EVAL_PROBE_OUT: out }, using);
+		const [result] = JSON.parse(readFileSync(out, "utf8")).results;
+		const precisions = result.passes.map((pass: { goldens: { precision: number } }) => pass.goldens.precision);
+		// Pooled, the first pass is 1 of 2; a mean of each golden's precision would make it 2 of 3.
+		expect(precisions).toEqual([0.5, 1, 1]);
+		expect(result.worst.precision).toBe(0.5);
+		expect(result.mean.precision).toBeCloseTo(5 / 6);
+	});
+
 	it("prints the rendered review under MELIAN_EVAL_SHOW=1, and runs one pass for one golden", async () => {
 		const using = runners();
 		const { status, lines } = await measure(
