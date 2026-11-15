@@ -486,9 +486,12 @@ function verifierText(): unknown {
 	};
 }
 
-/** What a wave's outcome was judged under beyond its candidate: the verifier's version and the fixed text it is given. */
+/**
+ * What a wave's outcome was judged under beyond its candidate: the verifier's version and the fixed text it is given. No
+ * probe reruns: a wave never starts for a level that probes.
+ */
 export function waveIdentity(version: string): RecordJson {
-	return requestJson({ version, text: verifierText() });
+	return requestJson({ version, text: verifierText(), reruns: {} });
 }
 
 /** The version a wave records and is compared under, so a wave stands only while the verifier's text is unchanged too. */
@@ -498,8 +501,9 @@ export function waveVersion(version: string): string {
 
 /**
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
- * nonce, which is drawn afresh on every review, and the outcomes it reuses, with each candidate by its identity and the fixed text the verifier is given beyond its
- * version.
+ * nonce, which is drawn afresh on every review, and the outcomes it reuses. It holds each candidate by its identity, the
+ * fixed text the verifier is given beyond its version, and `reruns`, the probe reruns this review read, which the
+ * verifier is shown.
  */
 export function verificationRequest(
 	{
@@ -520,7 +524,7 @@ export function verificationRequest(
 			revision,
 			candidates: candidates.map(candidateIdentity),
 			text: verifierText(),
-			...(Object.keys(reruns).length === 0 ? {} : { reruns }),
+			reruns,
 		}),
 		{ nonce },
 	);

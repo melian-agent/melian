@@ -96,6 +96,20 @@ describe("verificationRequest", () => {
 		expect(moved.request).not.toHaveProperty("revision.repoRoot");
 	});
 
+	// The probe reruns are what the verifier is shown of each claim's probe, so they are an input of its request.
+	it("keys the probe reruns the verifier is shown, and a review with none as the empty value", () => {
+		const ran = (exitCode: number) => ({
+			result: { exitCode, signal: null, output: "out", truncated: false, timedOut: false },
+			milliseconds: 5,
+		});
+		expect(verificationRequest(sample).request).toHaveProperty("reruns", {});
+		const failed = verificationRequest(sample, { probe: ran(1) });
+		expect(failed.request).toHaveProperty("reruns", { probe: ran(1) });
+		expect(verificationRequest(sample, { probe: ran(0) }).key).not.toBe(failed.key);
+		expect(verificationRequest(sample, { probe: { refused: "no sandbox" } }).key).not.toBe(failed.key);
+		expect(verificationRequest(sample, {}).key).toBe(verificationRequest(sample).key);
+	});
+
 	it("keys the tools and the prompt the verifier is given", () => {
 		const { text } = verificationRequest(sample).request as {
 			text: { tools: { name: string }[]; prompt: string };
