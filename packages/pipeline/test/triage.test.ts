@@ -170,6 +170,39 @@ function choosing(level: "skip" | ScrutinyLevel, name = "recorded"): RecordedDec
 
 const version = () => lenses.find((lens) => lens.name === "correctness")!.version;
 
+type StoredRun = {
+	key: string;
+	band?: string;
+	route: { provider: string; modelId: string }[];
+	escalation?: { next?: StoredRun; cap?: string };
+};
+
+// The revision's index entry, and its task's first lens run in the words the selection once spelt it in: its key, its
+// band, the severity that escalates it, where it escalates or why it is capped, and its route.
+async function indexedRun() {
+	const root = (await harness.root(context)).id;
+	const entry = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+	const input = (await harness.getTask(entry.task as TaskId, context))!.input as unknown as {
+		lenses: StoredRun[];
+		escalateAt?: string;
+	};
+	const run = input.lenses[0]!;
+	expect(entry.lenses).toEqual([`${run.key} request ${(run as { request?: string }).request}`]);
+	expect(entry.lenses[0]).toMatch(/ request [0-9a-f]{64}$/);
+	const on = (route: StoredRun["route"]) => route.map(({ provider, modelId }) => `${provider}/${modelId}`).join(", ");
+	const next = run.escalation?.next;
+	const escalation =
+		next !== undefined
+			? ` escalates to ${next.key} (${on(next.route)})`
+			: run.key.endsWith("@quick")
+				? ` capped ${run.escalation?.cap ?? "at its ceiling"}`
+				: "";
+	return {
+		entry,
+		described: `${run.key} band ${run.band} escalateAt ${input.escalateAt}${escalation} on ${on(run.route)}`,
+	};
+}
+
 // The ID of the first finding a quicker run carried into the request `messages` hold.
 function carriedId(messages: readonly Message[]): string {
 	const input = messages
@@ -1404,8 +1437,7 @@ describe("triage under a review plan", () => {
 		expect(provenance!.lenses).toEqual([`correctness@${version()}@quick`]);
 		expect(provenance!.plan).toEqual(plan.toJSON());
 		// Its escalation to careful would be refused, so the run is keyed as capped by the plan.
-		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
-		expect(index!.reviews[revision()]!.lenses[0]).toContain(
+		expect((await indexedRun()).described).toContain(
 			`capped since the plan refuses careful: ${plan.refusal("heavy")}`,
 		);
 	});
@@ -1566,16 +1598,10 @@ describe("escalation", () => {
 		expect(reviewed.findings.map((finding) => finding.properties.source)).toEqual([
 			{ check: "lens.correctness", version: `${version()}@quick` },
 		]);
-		const root = (await harness.root(context)).id;
-		const index = await harness.snapshot(ReviewIndex, root, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
-				),
-			),
-		]);
-		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+		);
+		expect((await readProvenance(harness, (await harness.root(context)).id, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
 		]);
 	});
@@ -1584,7 +1610,7 @@ describe("escalation", () => {
 		["both runs read functions", true],
 		["only the escalated run reads functions", false],
 	])(
-		"keeps one note that the first call could not read the functions when %s, whether a repeat call could or not",
+		"keeps one note that a call could not read the functions when %s, and runs again with none once a repeat call can",
 		async (_, quickReads) => {
 			const reading = lenses.map((lens) =>
 				lens.name === "correctness"
@@ -1600,7 +1626,9 @@ describe("escalation", () => {
 			);
 			const decider = choosing("quick");
 			await open(decider);
-			scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+			const requests = scriptConversations(fake, [
+				{ match: correctness, replies: [severe, done, done, severe, done, done] },
+			]);
 			const unreadable = vi
 				.spyOn(EnclosingFunctions, "read")
 				.mockImplementation(async () => Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }));
@@ -1612,7 +1640,10 @@ describe("escalation", () => {
 
 			expect(lensRecord(first)?.reason?.startsWith(`${note}; escalated from quick to careful`)).toBe(true);
 			expect(lensRecord(first)?.reason?.split(note)).toHaveLength(2);
-			expect(lensRecord(repeat)?.reason).toBe(lensRecord(first)?.reason);
+			// The functions join the run's request, so the repeat call that reads them asks the lens again.
+			expect(requests[correctness]).toHaveLength(6);
+			expect(lensRecord(repeat)?.reason ?? "").not.toContain("could not be read");
+			expect(lensRecord(repeat)).toMatchObject({ level: "careful" });
 		},
 	);
 
@@ -1657,8 +1688,7 @@ describe("escalation", () => {
 			{ match: correctness, replies: [severe, done, done, severe, done, done] },
 		]);
 		await review({ decider });
-		const root = (await harness.root(context)).id;
-		const before = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+		const before = await indexedRun();
 		await review({ decider });
 		expect(requests[correctness]).toHaveLength(3);
 		const changed = lenses.map((lens) => {
@@ -1676,10 +1706,11 @@ describe("escalation", () => {
 
 		const reviewed = await review({ decider, lenses: changed });
 
-		const after = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
-		expect(after.task).not.toBe(before.task);
-		expect(after.lenses[0]!.split(" escalates to ")[0]).toBe(before.lenses[0]!.split(" escalates to ")[0]);
-		expect(after.lenses).not.toEqual(before.lenses);
+		// The quick run reads as it did, yet its request holds its escalation's, so the whole lens runs again.
+		const after = await indexedRun();
+		expect(after.entry.task).not.toBe(before.entry.task);
+		expect(after.described).toBe(before.described);
+		expect(after.entry.lenses).not.toEqual(before.entry.lenses);
 		expect(requests[correctness]).toHaveLength(6);
 		expect(systemPromptOf(requests[correctness]![2]!)).toContain(statedBudget.careful);
 		expect(systemPromptOf(requests[correctness]![5]!)).toContain("at most 9 findings");
@@ -2107,14 +2138,9 @@ describe("escalation", () => {
 		const reviewed = await review({ decider, config: lower });
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
-		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P2 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
-				),
-			),
-		]);
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@quick band quick-deep escalateAt P2 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+		);
 	});
 
 	it("keys a quick run by where it escalates, capped at its ceiling or to its next level", async () => {
@@ -2123,26 +2149,17 @@ describe("escalation", () => {
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done] }]);
 		const capped = { ...config, lenses: { correctness: { level: { ceiling: "quick" } } } } as const;
 		await review({ decider, config: capped });
-		const root = (await harness.root(context)).id;
-		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-quick escalateAt P1 capped at its ceiling on faux/medium$`,
-				),
-			),
-		]);
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@quick band quick-quick escalateAt P1 capped at its ceiling on faux/medium`,
+		);
 
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
 		const second = await review({ decider });
 
 		expect(lensRecord(second)).toMatchObject({ level: "careful" });
-		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
-				),
-			),
-		]);
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+		);
 	});
 
 	it("never lets a review at one level attach to a review of the revision at another", async () => {
@@ -2173,15 +2190,9 @@ describe("escalation", () => {
 		expect(fake.provider.state.callCount).toBe(calls + 1);
 		expect(lensRecord(second)).toMatchObject({ level: "deep" });
 		expect(second.findings).toEqual([]);
-		const root = (await harness.root(context)).id;
-		const index = await harness.snapshot(ReviewIndex, root, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@deep instructions [a-f0-9]{64} band deep-deep escalateAt P1 on faux/heavy$`,
-				),
-			),
-		]);
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@deep band deep-deep escalateAt P1 on faux/heavy`,
+		);
 	});
 });
 
@@ -2404,14 +2415,9 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		expect(fake.provider.state.callCount).toBe(1);
 		expect(reviewed.findings).toEqual([]);
-		const index = await harness.snapshot(ReviewIndex, root.id, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([
-			expect.stringMatching(
-				new RegExp(
-					`^correctness@${version()}@careful instructions [a-f0-9]{64} band quick-deep escalateAt P1 on faux/heavy$`,
-				),
-			),
-		]);
+		expect((await indexedRun()).described).toBe(
+			`correctness@${version()}@careful band quick-deep escalateAt P1 on faux/heavy`,
+		);
 		// The fresh run of the lens replaces the earlier run's sightings at the revision, the bare-version one included.
 		const after = await readFindings(harness, root.id, revision(), context, { producers: [atVersion] });
 		expect(after).toEqual([]);
@@ -2456,7 +2462,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(6);
+		expect(definition.version).toBe(7);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,

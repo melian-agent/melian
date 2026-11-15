@@ -1,11 +1,4 @@
-import {
-	type GraphKeyParts,
-	KeyedRequest,
-	type LensToolName,
-	type RecordJson,
-	requestJson,
-	type Severity,
-} from "@melian-agent/core";
+import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
 import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "./lens-tools.ts";
 import { answerPrompt, recordPlanPrompt } from "./probing.ts";
 import { identityNonce, injectionPolicy } from "./untrusted.ts";
@@ -19,16 +12,23 @@ export type LensRequestRun = { readonly tools: readonly LensToolName[]; readonly
 
 /** What a lens run is asked, before it is keyed. */
 export type LensRequestInput<Run extends LensRequestRun> = {
-	/** The run as the lens task stores it, with everything it quotes inside boundaries of `nonce`. */
-	readonly run: (nonce: string) => Run;
+	/**
+	 * The run as the lens task stores it, with everything it quotes inside boundaries of `nonce`, and with the caller
+	 * section only when `callers` is set: rule 5 of the shared record decision keeps that section out of the key.
+	 */
+	readonly run: (nonce: string, callers: boolean) => Run;
 	readonly nonce: string;
 	readonly base: string;
 	readonly head: string;
 	readonly escalateAt?: Severity;
 	/** The key of the run a quick run escalates to, or why it is capped; absent for a run that never escalates. */
 	readonly escalation?: { readonly next: string } | { readonly cap: string };
-	/** The Enola snapshot the graph tools read, when the review has one. */
-	readonly graph?: GraphKeyParts;
+	/**
+	 * The standards the instructions quote, by their raw text, their source less any preference file's path, and whether
+	 * they are trusted. The rendered text alone can hide a change: under the fixed nonce, texts that differ only in a copy
+	 * of the nonce render alike, and a change of source or trust can leave the text as it was.
+	 */
+	readonly standards: unknown;
 };
 
 type ToolSpec = { name: string; description: string; parameters: unknown };
@@ -43,7 +43,7 @@ type LensRequestBody = {
 	head: string;
 	escalateAt?: Severity;
 	escalation?: { next: string } | { cap: string };
-	graph?: GraphKeyParts;
+	standards: RecordJson;
 };
 
 const specOf = ({ name, description, parameters }: ToolSpec): ToolSpec => ({ name, description, parameters });
@@ -51,14 +51,15 @@ const specOf = ({ name, description, parameters }: ToolSpec): ToolSpec => ({ nam
 /**
  * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the injection policy
  * that renders ahead of its instructions, each tool its planner and prober are offered by name, description and
- * schema, the wording a failover and a probing run's reminders send, the revision's base and head, `escalateAt`, the
- * escalation by its next run's key, and the Enola snapshot the graph tools read. The lens task reads
- * `unkeyed.nonce`, the same run under the review's own nonce.
+ * schema, the wording a failover and a probing run's reminders send, the revision's base and head, `escalateAt`,
+ * the escalation by its next run's key, and the standards it quotes as their source gave them. Best-effort context stays out, as rule 5 of the shared record decision says:
+ * the caller section, and the Enola graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under the
+ * review's own nonce with its caller section.
  */
 export function lensRequest<Run extends LensRequestRun>(
 	input: LensRequestInput<Run>,
-): KeyedRequest<LensRequestBody, { readonly nonce: Run }> {
-	const keyed = input.run(identityNonce);
+): KeyedRequest<LensRequestBody, { readonly nonce: string; readonly bestEffort: Run }> {
+	const keyed = input.run(identityNonce, false);
 	const read = keyed.tools.map((tool) => lensListedTools[tool]);
 	const probes = keyed.probe !== undefined;
 	return KeyedRequest.of(
@@ -81,8 +82,8 @@ export function lensRequest<Run extends LensRequestRun>(
 			head: input.head,
 			...(input.escalateAt === undefined ? {} : { escalateAt: input.escalateAt }),
 			...(input.escalation === undefined ? {} : { escalation: { ...input.escalation } }),
-			...(input.graph === undefined ? {} : { graph: { ...input.graph } }),
+			standards: requestJson(input.standards),
 		},
-		{ nonce: input.run(input.nonce) },
+		{ nonce: input.nonce, bestEffort: input.run(input.nonce, true) },
 	);
 }

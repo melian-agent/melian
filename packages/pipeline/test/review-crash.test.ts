@@ -762,7 +762,9 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		}
 	});
 
-	it("attaches a repeat call that cannot read the functions, and keeps the first call's function blocks", async () => {
+	// Enclosing functions join the lens run's request, by the maintainer's ruling of 2026-11-14, so a repeat call that
+	// reads none asks again in a task of its own, and the crashed run is aborted rather than resumed.
+	it("runs again, rather than attach, a repeat call that cannot read the functions the first call read", async () => {
 		const database = join(dir, "functions.sqlite");
 		const log = join(dir, "functions.jsonl");
 		await killWhen("functions", (events) => count(events, "model-request") === 2, database, log);
@@ -808,9 +810,9 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			.filter((message) => message.role === "user")
 			.map(textOf)
 			.join("\n");
-		expect(prompt).toMatch(/label="function">\nsrc\/user\.ts:6-8 managerName\n/);
-		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason ?? "").not.toContain(
-			"could not be read",
+		expect(prompt).not.toContain('label="function"');
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason ?? "").toContain(
+			"no compiler on the repeat",
 		);
 	});
 
@@ -992,7 +994,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
 			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
 		]);
-		// The entry as version 2 of the review index stored it: each lens by name and version, with no route.
+		// The entry as version 2 of the review index stored it: each lens by name and version, with no route or request.
 		const older = await openHarness(await openSqliteStorage(database), {
 			models: fake.models,
 			registry: createReviewRegistry(),
@@ -1004,7 +1006,10 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[reviewedRevision()]!;
-			index.reviews[reviewedRevision()] = { ...entry, lenses: entry.lenses.map((lens) => lens.split(" on ")[0]!) };
+			index.reviews[reviewedRevision()] = {
+				...entry,
+				lenses: entry.lenses.map((lens) => lens.split(" request ")[0]!),
+			};
 		}, context);
 		await older.close(context);
 
