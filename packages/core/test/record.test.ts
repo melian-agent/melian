@@ -316,7 +316,7 @@ describe("SharedRecord", () => {
 			expect(parse(envelope({ kind, supersedes: [hex("1")] })).supersedes).toEqual([hex("1")]);
 		});
 
-		it.each(["check", "lens", "verification", "walkthrough", "telemetry", "marker"])(
+		it.each(["check", "lens", "verification", "walkthrough", "triage", "telemetry", "marker"])(
 			"refuses supersedes on a %s",
 			(kind) => {
 				expect(refusal(envelope({ kind, supersedes: [hex("1")] })).code).toBe("supersedesNotAllowed");

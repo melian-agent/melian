@@ -77,6 +77,7 @@ describe("payload checks", () => {
 		"lens",
 		"verification",
 		"walkthrough",
+		"triage",
 		"telemetry",
 		"marker",
 		"dismissal",

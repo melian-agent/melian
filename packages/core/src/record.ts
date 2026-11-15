@@ -43,7 +43,7 @@ export type RoundManifest = {
 	before: string[];
 };
 
-const kinds = new Set(["check", "lens", "verification", "walkthrough", "round", "telemetry", "marker"]);
+const kinds = new Set(["check", "lens", "verification", "walkthrough", "triage", "round", "telemetry", "marker"]);
 // Rule 4: only what a command writes into a slot of its own may supersede.
 const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment", "comparison"]);
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
