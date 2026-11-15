@@ -150,6 +150,28 @@ describe("a stray entry inside one changeset's folder", { timeout: 60_000 }, () 
 		expect(keys(await store.list(other))).toEqual(["kept"]);
 	});
 
+	it("names a path that is not UTF-8 as git lists it, so names that differ only there stay apart", async () => {
+		const store = await remote.open();
+		await store.add([check("kept")]);
+		const folder = Buffer.from(`changesets/${changeset}/`);
+		const names = [
+			[0x80],
+			[0x81],
+			[0x5c, 0x22, 0x09, 0x7f, 0xc3, 0xa9, 0xff],
+			[0x07, 0x08, 0x0a, 0x0b, 0x0c, 0x0d, 0x01, 0x1f, 0x20, 0x7e, 0xfe],
+		];
+		remote.plantRaw(
+			names.map((name) => [Buffer.concat([folder, Buffer.from(name), Buffer.from(".json")]), { bytes: "" }]),
+		);
+		const listed = remote
+			.git(["ls-tree", "-r", "--name-only", `refs/heads/${remote.branch}`])
+			.split("\n")
+			.filter((line) => line.startsWith('"'));
+		expect(listed).toHaveLength(4);
+		expect(await store.strays()).toEqual(listed);
+		await expect(store.list(changeset)).rejects.toSatisfy(refusal(listed[0]!));
+	});
+
 	it("carries the entry along unchanged in a commit another changeset's write pushes", async () => {
 		const path = `changesets/${changeset}/notes.txt`;
 		const store = await plantedBeside({ [path]: { bytes: "notes" } });

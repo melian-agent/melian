@@ -62,6 +62,31 @@ function decode(bytes: Buffer): string | undefined {
 	}
 }
 
+const escapes: Readonly<Record<number, string>> = {
+	7: "a",
+	8: "b",
+	9: "t",
+	10: "n",
+	11: "v",
+	12: "f",
+	13: "r",
+	34: '"',
+	92: "\\",
+};
+
+// A path that is not UTF-8 in git's own quoted form, as `git ls-tree` prints it, so a writer can find the entry. Git
+// cannot be asked for one path's form, since a process argument cannot carry bytes that are not UTF-8.
+function quoted(path: Buffer): string {
+	let text = "";
+	for (const byte of path) {
+		const letter = escapes[byte];
+		if (letter !== undefined) text += `\\${letter}`;
+		else if (byte < 0x20 || byte >= 0x7f) text += `\\${byte.toString(8).padStart(3, "0")}`;
+		else text += String.fromCharCode(byte);
+	}
+	return `"${text}"`;
+}
+
 // What an entry is once judged. A record or cell is filed under its changeset; anything else is a stray, filed under
 // the changeset whose folder holds it, or under none when it sits anywhere else.
 export type Judged =
@@ -129,7 +154,7 @@ export class StateTree {
 		const stray: Judged = {
 			is: "stray",
 			changeset: path === undefined ? StateTree.#rawScope(entry.path) : changeset,
-			path: path ?? entry.path.toString("utf8"),
+			path: path ?? quoted(entry.path),
 		};
 		if (path === undefined || changeset === undefined || bytes === undefined || !StateTree.#readable(entry))
 			return stray;
