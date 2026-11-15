@@ -7,6 +7,7 @@ import { type ToolArtifact, ToolManifest, type ToolPin } from "@melian-agent/cor
 import { CacheScratch } from "./cache-scratch.ts";
 
 const archiveLimit = 128 * 1024 * 1024;
+const slabSize = 1024 * 1024;
 const expandedLimit = 256 * 1024 * 1024;
 const binaryLimit = 96 * 1024 * 1024;
 const metadataLimit = 4 * 1024 * 1024;
@@ -265,18 +266,32 @@ export class ToolCache {
 		if (!response.ok || !response.body)
 			throw new ToolCacheError("toolFailed", `Download failed: HTTP ${response.status}`);
 		// Nothing is awaited between chunks: Node 22's and 24's undici crashes when a connection closes on a paused body.
-		const chunks: Uint8Array[] = [];
+		// Chunks are copied into slabs because a body of one-byte chunks costs hundreds of bytes for each one kept.
+		const slabs: Buffer[] = [];
+		let slab = Buffer.allocUnsafe(slabSize);
+		let used = 0;
 		const hash = createHash("sha256");
 		let size = 0;
 		for await (const chunk of response.body) {
 			size += chunk.byteLength;
 			if (size > archiveLimit) throw new ToolCacheError("outputTooLarge", "Tool archive exceeds 128 MiB");
 			hash.update(chunk);
-			chunks.push(chunk);
+			const view = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+			for (let offset = 0; offset < view.length; ) {
+				const copied = view.copy(slab, used, offset);
+				offset += copied;
+				used += copied;
+				if (used === slabSize) {
+					slabs.push(slab);
+					slab = Buffer.allocUnsafe(slabSize);
+					used = 0;
+				}
+			}
 		}
+		if (used > 0) slabs.push(slab.subarray(0, used));
 		if (hash.digest("hex") !== expected)
 			throw new ToolCacheError("invalidOutput", "Tool archive SHA-256 mismatch; nothing extracted");
-		await writeFile(target, chunks, { flag: "wx", mode: 0o600 });
+		await writeFile(target, slabs, { flag: "wx", mode: 0o600 });
 	}
 
 	#extract(compressed: Buffer, wanted: string): Buffer {

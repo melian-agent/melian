@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type * as fs from "node:fs/promises";
 import {
 	chmod,
@@ -469,21 +469,55 @@ it("reads a download whole, in many chunks, before writing any of it", async () 
 	expect({ pulled, written }).toEqual({ pulled: 64, written: [] });
 });
 
-it("writes the chunks it read, with no joined copy of the archive", async () => {
-	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
-	const middle = Math.floor(bytes.length / 2);
-	const halves = [new Uint8Array(bytes.subarray(0, middle)), new Uint8Array(bytes.subarray(middle))];
+it("keeps a download in slabs of 1 MiB, however finely it arrives", async () => {
+	const text = randomBytes(1_500_000).toString("base64");
+	const bytes = toolArchive([{ name: "enola", text }]);
+	const pieces: Uint8Array[] = [];
+	for (let offset = 0; offset < bytes.length; ) {
+		const length = offset < 2000 ? 1 : 7919;
+		pieces.push(new Uint8Array(bytes.subarray(offset, offset + length)), new Uint8Array(0));
+		offset += length;
+	}
 	const body = new ReadableStream<Uint8Array>({
 		start(controller) {
-			for (const half of halves) controller.enqueue(new Uint8Array(half));
+			for (const piece of pieces) controller.enqueue(piece);
 			controller.close();
 		},
 	});
 	const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
-	await cache.materialise(testTool(bytes), "darwin-arm64");
-	const archives = vi.mocked(writeFile).mock.calls.filter(([path]) => String(path).endsWith("archive"));
-	expect(archives.map(([, data]) => data)).toEqual([halves]);
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe(text);
+	const [written] = archiveWrites();
+	expect(written?.map((slab) => slab.byteLength)).toEqual([1024 * 1024, bytes.length - 1024 * 1024]);
+	expect(Buffer.concat(written ?? []).equals(bytes)).toBe(true);
 });
+
+for (const [size, name, slabs] of [
+	[1024 * 1024, "one slab", [1024 * 1024]],
+	[1024 * 1024 + 1, "two slabs", [1024 * 1024, 1]],
+] as const) {
+	it(`writes a download of ${size} bytes as ${name}`, async () => {
+		const bytes = randomBytes(size);
+		const body = new ReadableStream<Uint8Array>({
+			start(controller) {
+				for (let offset = 0; offset < size; offset += 4096)
+					controller.enqueue(new Uint8Array(bytes.subarray(offset, offset + 4096)));
+				controller.close();
+			},
+		});
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toThrow();
+		const [written] = archiveWrites();
+		expect(written?.map((slab) => slab.byteLength)).toEqual(slabs);
+		expect(Buffer.concat(written ?? []).equals(bytes)).toBe(true);
+	});
+}
+
+function archiveWrites(): Uint8Array[][] {
+	return vi
+		.mocked(writeFile)
+		.mock.calls.filter(([path]) => String(path).endsWith("archive"))
+		.map(([, data]) => data as Uint8Array[]);
+}
 
 it("keeps a downloaded archive readable by its owner alone", async () => {
 	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
