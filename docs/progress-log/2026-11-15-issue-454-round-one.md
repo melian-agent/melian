@@ -43,3 +43,4 @@ Round four, at `22c8f2ff`, read `findings`, blocking, in 10 minutes for $4.30. T
 ## Round five
 
 Round five, at `a3496387`, read `findings`, not blocking, in 8.5 minutes for $3.60. It raised one P2 acknowledge from the identity lens: `PATH`, `HOME` and `TMPDIR` can change on one host too, from shell to shell, while every keyed fact stays the same, so a review there can reuse a mutation run made under different values. The decision stated only the cross-host limit. On the coordinator's instruction, the decision's limit section and the identity row now state the same-host limit, and what [issue #458](https://github.com/melian-agent/melian/issues/458) would leave for `PATH`. The finding stays an acknowledge, for the maintainer's read.
+The maintainer accepted the same-host limit on 2026-11-15, in the coordinator's session, and the decision now says so.
