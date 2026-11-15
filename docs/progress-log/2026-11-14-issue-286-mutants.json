@@ -1400,7 +1400,7 @@
 	},
 	"hand": {
 		"note": "Hand mutants of the AGENTS.md check and the workflow record step, which the enumerator does not cover. Each replaces one exact text once and runs its named test alone.",
-		"head": "14968999d5f6a906baa923a986dbdd88eaf0f364",
+		"head": "f9d3d2e09b4c86773f9f9eb5aacac7374d9d75c3",
 		"baselines": {
 			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record set by any account but melian-status-bot's": {
 				"code": 0,
@@ -1483,6 +1483,16 @@
 				"failed": 0
 			},
 			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > writes the body it hashed, from its one request for the comment, though a second request would read an edit": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0
+			},
+			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an older round's genuine body placed in a newer round's comment": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0
+			},
+			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record whose link names a comment in another repository, on another pull request, or none": {
 				"code": 0,
 				"collected": 1,
 				"failed": 0
@@ -1717,8 +1727,8 @@
 			{
 				"id": "H15",
 				"file": "AGENTS.md",
-				"from": "[ \"$record\" = \"\\\"run $id pull $pull body sha256 $hash\\\"\" ]",
-				"to": "[[ \"$record\" == \"\\\"run $id pull $pull body sha256 $hash\"* ]]",
+				"from": "[ \"$record\" = \"$expected\" ]",
+				"to": "[ -n \"$record\" ]",
 				"claim": "killed",
 				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record whose hash was cut or lengthened",
 				"survivorClasses": [],
@@ -1727,7 +1737,8 @@
 					"collected": 1,
 					"failed": 1,
 					"killed": true
-				}
+				},
+				"note": "Reworked at f9d3d2e0, when the check came to compare whole record lines: the old prefix mutant is equivalent under the JSON quoting."
 			},
 			{
 				"id": "H16",
@@ -1798,8 +1809,8 @@
 						"\\(.description)"
 					],
 					[
-						"[ \"$record\" = \"\\\"run $id pull $pull body sha256 $hash\\\"\" ]",
-						"[ \"$record\" = \"run $id pull $pull body sha256 $hash\" ]"
+						"${JSON.stringify(`run ${id} pull ${pull} body sha256 ${hash}`)}",
+						"run ${id} pull ${pull} body sha256 ${hash}"
 					]
 				],
 				"to": null,
@@ -1811,7 +1822,8 @@
 					"collected": 1,
 					"failed": 1,
 					"killed": true
-				}
+				},
+				"note": "Reworked at f9d3d2e0 for the new texts."
 			},
 			{
 				"id": "H21",
@@ -1980,6 +1992,72 @@
 					"failed": 1,
 					"killed": true
 				}
+			},
+			{
+				"id": "H31",
+				"file": "AGENTS.md",
+				"from": [
+					[
+						"\\(.target_url | @json) ",
+						""
+					],
+					[
+						"${JSON.stringify(comment.html_url)} ",
+						""
+					]
+				],
+				"to": null,
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an older round's genuine body placed in a newer round's comment",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				},
+				"note": "Added at f9d3d2e0, after the review of record found the link unchecked."
+			},
+			{
+				"id": "H32",
+				"file": "AGENTS.md",
+				"from": "JSON.stringify(comment.html_url)",
+				"to": "JSON.stringify(comment.issue_url)",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > reads a comment melian-status-bot posted, whose body its run recorded",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				},
+				"note": "Added at f9d3d2e0."
+			},
+			{
+				"id": "H33",
+				"file": "AGENTS.md",
+				"from": [
+					[
+						"\\(.target_url | @json)",
+						"\\(.target_url | .[0:40] | @json)"
+					],
+					[
+						"JSON.stringify(comment.html_url)",
+						"JSON.stringify(comment.html_url.slice(0, 40))"
+					]
+				],
+				"to": null,
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record whose link names a comment in another repository, on another pull request, or none",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				},
+				"note": "Added at f9d3d2e0."
 			},
 			{
 				"id": "W1",
