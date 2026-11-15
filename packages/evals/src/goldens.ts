@@ -583,7 +583,10 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-function matchesClaim(comment: GoldenComment, claim: MemberClaim): boolean {
+// What a match reads of an expected finding, so a probing miss matches as a golden's comment does.
+type ExpectedClaim = Pick<GoldenComment, "file" | "alternativeFiles" | "rule" | "source">;
+
+function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 	return (
 		claim.verification?.verdict !== "refuted" &&
 		claim.ruleId === comment.rule &&
@@ -592,7 +595,7 @@ function matchesClaim(comment: GoldenComment, claim: MemberClaim): boolean {
 }
 
 // Match a merged defect through the claim that supplied the expected rule and source.
-function answers(comment: GoldenComment, finding: Finding): boolean {
+export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
 	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
 	const { reportedBy, source, otherClaims = [] } = finding.properties;

@@ -14,6 +14,7 @@ import { type ProbeAvailability, type ReviewModels, StageTelemetry, type WriterT
 import Type from "typebox";
 import Value from "typebox/value";
 import {
+	answers,
 	type Golden,
 	type GoldenRun,
 	type GoldenScore,
@@ -204,15 +205,9 @@ export class Miss {
 		};
 	}
 
-	/** Whether a review found the miss: an unrefuted `trust-boundary` finding at its file under its rule. */
+	/** Whether a review found the miss: an unrefuted `trust-boundary` claim at its file under its rule, merged or not. */
 	found(findings: readonly Finding[]): boolean {
-		return findings.some(
-			(finding) =>
-				finding.properties.path === this.file &&
-				finding.ruleId === this.rule &&
-				finding.properties.verification?.verdict !== "refuted" &&
-				finding.properties.source?.check === probingCheck,
-		);
+		return findings.some((finding) => answers({ file: this.file, rule: this.rule, source: probingCheck }, finding));
 	}
 }
 

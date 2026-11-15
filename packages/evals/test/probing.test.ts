@@ -279,10 +279,17 @@ describe("Miss", () => {
 			Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, ...properties } }),
 		];
 		expect(miss.found(changed({ path: "other.ts" }))).toBe(false);
-		expect(miss.found(changed({ source: { ...finding.properties.source, check: "lens.security" } }))).toBe(false);
+		const security = { ...finding.properties.source!, check: "lens.security" };
+		expect(miss.found(changed({ source: security, reportedBy: [security] }))).toBe(false);
+		expect(miss.found(changed({ source: security }))).toBe(true);
 		expect(miss.found(changed({ verification: { verdict: "refuted", reason: "no" } }))).toBe(false);
 		expect(miss.found(changed({ verification: undefined }))).toBe(true);
-		expect(miss.found(changed({ source: undefined }))).toBe(false);
+		expect(miss.found(changed({ source: undefined, reportedBy: undefined }))).toBe(false);
+		const claim = { ruleId: finding.ruleId, source: finding.properties.source!, failureScenario: "s", evidence: [] };
+		const merged = { source: { check: "lens.security", version: "v" }, otherClaims: [claim] };
+		expect(miss.found(changed(merged))).toBe(true);
+		const refuted = { ...claim, id: finding.id, verification: { verdict: "refuted", reason: "no" } };
+		expect(miss.found(changed({ otherClaims: [refuted] }))).toBe(false);
 		const other = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: "other-rule" }]))[0]!;
 		expect(other.found([finding])).toBe(false);
 	});
