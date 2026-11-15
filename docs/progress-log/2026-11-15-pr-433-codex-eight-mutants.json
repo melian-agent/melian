@@ -1,0 +1,189 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 29,
+   "column": 25,
+   "endLine": 29,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "equivalent: git turns replacement refs off whenever GIT_NO_REPLACE_OBJECTS is set, an empty value included; run by hand, it survives the replacement test",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 32,
+   "column": 17,
+   "endLine": 32,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "equivalent: an empty graft path names no file, so git reads no grafts; run by hand, it survives the grafts test",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 322,
+   "column": 17,
+   "endLine": 322,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 322,
+   "column": 17,
+   "endLine": 322,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, saying it may have landed, when git reports no refusal of the ref",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, saying it may have landed, when git reports no refusal of the ref",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 322,
+   "column": 17,
+   "endLine": 322,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "refused !== undefined",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 322,
+   "column": 41,
+   "endLine": 322,
+   "endColumn": 81,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 322,
+   "column": 84,
+   "endLine": 322,
+   "endColumn": 86,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 323,
+   "column": 20,
+   "endLine": 323,
+   "endColumn": 75,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 8,
+ "omitted": 0,
+ "unmutated": [],
+ "byHand": [
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 29,
+   "column": 1,
+   "endLine": 29,
+   "endColumn": 29,
+   "mutatorName": "hand: environment entry removed",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > reading the objects themselves > lists the fetched tip's own tree when records.git holds a replacement for it",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > reading the objects themselves > lists the fetched tip's own tree when records.git holds a replacement for it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 32,
+   "column": 1,
+   "endLine": 32,
+   "endColumn": 34,
+   "mutatorName": "hand: environment entry removed",
+   "replacement": "",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > reading the objects themselves > answers ancestry from the commits themselves when records.git holds a grafts file",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > reading the objects themselves > answers ancestry from the commits themselves when records.git holds a grafts file",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 32,
+   "column": 17,
+   "endLine": 32,
+   "endColumn": 33,
+   "mutatorName": "hand: graft file that exists",
+   "replacement": "\"/dev/null\"",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > reading the objects themselves > answers ancestry from the commits themselves when records.git holds a grafts file",
+   "survivorClasses": [],
+   "run": {
+    "head": "1044a05d",
+    "test": "packages/state-git/test/repository.test.ts > reading the objects themselves > answers ancestry from the commits themselves when records.git holds a grafts file",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ]
+}

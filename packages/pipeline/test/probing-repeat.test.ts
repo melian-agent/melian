@@ -31,14 +31,18 @@ const planNone = () => ({
 
 const contracts = { lens: "contracts", match: "You are the contracts reviewer" };
 
-// Reviews one head on one store twice and says whether the second review asked the planner again.
-async function plannedAgain(plain?: typeof contracts): Promise<boolean> {
+// Reviews one head on one store twice and says whether the second review asked the planner, and the plain lens, again.
+async function askedAgain(plain?: typeof contracts): Promise<{ planner: boolean; plain: boolean }> {
 	const database = join(dir, "state.sqlite");
 	for (const index of [0, 1]) {
 		const { harness, review, requests } = await probingReview(repo, database, planNone(), undefined, plain);
 		try {
 			await review();
-			if (index === 1) return (requests[plannerMatch] ?? []).length > 0;
+			if (index === 1)
+				return {
+					planner: (requests[plannerMatch] ?? []).length > 0,
+					plain: plain !== undefined && (requests[plain.match] ?? []).length > 0,
+				};
 		} finally {
 			await harness.close(context);
 		}
@@ -48,10 +52,10 @@ async function plannedAgain(plain?: typeof contracts): Promise<boolean> {
 
 describe("a repeat review of a level that probes", { timeout: 60_000 }, () => {
 	it("plans and probes again rather than reuse the first review's finished probing run", async () => {
-		expect(await plannedAgain()).toBe(true);
+		expect((await askedAgain()).planner).toBe(true);
 	});
 
-	it("plans again when the review's other lens does not probe", async () => {
-		expect(await plannedAgain(contracts)).toBe(true);
+	it("plans again, and copies the review's other lens, which does not probe", async () => {
+		expect(await askedAgain(contracts)).toEqual({ planner: true, plain: false });
 	});
 });

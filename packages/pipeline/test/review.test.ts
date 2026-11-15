@@ -3565,6 +3565,49 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
 	});
 
+	it("records no coverage failure for an aborted task whose quick lens could escalate and whose callers have no graph", async () => {
+		const registry = createReviewRegistry();
+		const decider = new RecordedDecider({
+			triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+		});
+		registry.install(decisionExtension(decider));
+		await open(registry);
+		const heavy = fake.ref("heavy");
+		const escalating = {
+			...config,
+			models: {
+				medium: { model: `${heavy.provider}/${heavy.modelId}` },
+				heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+			},
+			lenses: {
+				contracts: { enabled: false },
+				correctness: { level: { floor: "quick" as const, ceiling: "deep" as const } },
+			},
+		};
+		const held = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{ match: correctness, replies: [async () => held.promise.then(() => fauxAssistantMessage("Done."))] },
+		]);
+		const callers = CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }, dir);
+		const first = reviewed({ config: escalating, decider, callers }).catch((caught: unknown) => caught);
+		let aborted: number | undefined;
+		try {
+			while (aborted === undefined) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				aborted = (await entry())?.task;
+			}
+			await harness.abortTask(aborted as TaskId, context);
+		} finally {
+			held.resolve();
+		}
+
+		const failure = await first;
+		expect(failure).toMatchObject({ code: "lensFailed" });
+		const lens = (failure as ReviewError).verdict?.notRun.find((check) => check.name === "lens.correctness");
+		expect(lens).toBeDefined();
+		expect(lens!.reason ?? "").not.toContain("Review coverage unavailable");
+	});
+
 	it("keeps credentials locked for a review that attaches to a lens task still running", async () => {
 		const release = Promise.withResolvers<void>();
 		scriptConversations(fake, [

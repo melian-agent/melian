@@ -1,0 +1,101 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 8,
+   "endLine": 130,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+   "survivorClasses": [],
+   "run": {
+    "head": "5367d492",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > counts as landed when its commit is the tip, and pushes no second commit",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 8,
+   "endLine": 130,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+   "survivorClasses": [],
+   "run": {
+    "head": "5367d492",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 8,
+   "endLine": 130,
+   "endColumn": 22,
+   "mutatorName": "EqualityOperator",
+   "replacement": "tip !== parent",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+   "survivorClasses": [],
+   "run": {
+    "head": "5367d492",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 24,
+   "endLine": 130,
+   "endColumn": 88,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+   "survivorClasses": [],
+   "run": {
+    "head": "5367d492",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 130,
+   "column": 40,
+   "endLine": 130,
+   "endColumn": 86,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "5367d492",
+    "test": "packages/state-git/test/writes.test.ts > a push stopped at its deadline > never answers false for a cell write whose push lands after the landed check read the tip",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 5,
+ "omitted": 0,
+ "unmutated": []
+}

@@ -1,0 +1,18 @@
+{
+  "commit": "0129288b",
+  "base": "653d2f2f1e3aeaee50ca6b95bae23d829d3400f6",
+  "head": "8335949a8be5e1d573a0e2b51f10c5c16a9e7b31",
+  "revision": "653d2f2f1e3aeaee50ca6b95bae23d829d3400f6..8335949a8be5e1d573a0e2b51f10c5c16a9e7b31",
+  "lensTask": {
+    "version": 6
+  },
+  "verdict": "findings",
+  "findings": [
+    "8f3f919a7c886b44"
+  ],
+  "lenses": [
+    "contracts@dd8fb36095b4@careful instructions 907256e7d5e0f0521e5d5161e32458cebe11540a7cb370ddce0d9d96a3d4b959 band quick-deep escalateAt P1 on faux/heavy",
+    "correctness@18c49f913df8@careful instructions fc8facd77468a6de9b4c4d7bb9b5f17c5f2cd5796379a83f28f55dd2e178d17b band quick-deep escalateAt P1 on faux/heavy"
+  ],
+  "task": 9
+}

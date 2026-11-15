@@ -154,6 +154,16 @@ describe("a head's bound", () => {
 		},
 	);
 
+	it("names the host a probe runs on by its sandbox, and the architecture and version of this process's Node", () => {
+		const sandbox = unconfinedSandbox();
+		expect(probingHost(sandbox)).toEqual({
+			platform: sandbox.platform,
+			sandbox: sandbox.kind,
+			arch: process.arch,
+			node: process.versions.node,
+		});
+	});
+
 	it("refuses a head whose tree git cannot list, saying what git said", async () => {
 		const missing = `tree ${"2".repeat(40)}\nauthor a <a@example.com> 0 +0000\ncommitter a <a@example.com> 0 +0000\n\nm\n`;
 		const head = execFileSync("git", ["hash-object", "-t", "commit", "-w", "--literally", "--stdin"], {

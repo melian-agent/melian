@@ -1,0 +1,281 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 157,
+   "column": 65,
+   "endLine": 163,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 158,
+   "column": 2,
+   "endLine": 162,
+   "endColumn": 3,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "for (let attempt = 1; false; attempt++) {\n  const result = await this.run([\"update-ref\", \"refs/melian/last\", tip], deadline);\n  if (result.code === 0 || attempt === 20) return;\n  await deadline.sleep(10);\n}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 158,
+   "column": 26,
+   "endLine": 158,
+   "endColumn": 35,
+   "mutatorName": "UpdateOperator",
+   "replacement": "attempt--",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 158,
+   "column": 37,
+   "endLine": 162,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote (hangs: an empty loop body never yields, so the test, run alone, ran past its 120 s timeout)",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true,
+    "timedOut": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 159,
+   "column": 33,
+   "endLine": 159,
+   "endColumn": 72,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 159,
+   "column": 34,
+   "endLine": 159,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 159,
+   "column": 48,
+   "endLine": 159,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > stays in the handle's own repository, never pushed to the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 7,
+   "endLine": 160,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 7,
+   "endLine": 160,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 7,
+   "endLine": 160,
+   "endColumn": 42,
+   "mutatorName": "LogicalOperator",
+   "replacement": "result.code === 0 && attempt === 20",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 7,
+   "endLine": 160,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > updates it once for each fetch when nothing holds its lock",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 7,
+   "endLine": 160,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "result.code !== 0",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 28,
+   "endLine": 160,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+   "survivorClasses": [
+    "compound-condition",
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 160,
+   "column": 28,
+   "endLine": 160,
+   "endColumn": 42,
+   "mutatorName": "EqualityOperator",
+   "replacement": "attempt !== 20",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "e248ed8e",
+    "test": "packages/state-git/test/hint.test.ts > the last tip a handle fetched > gives up updating it after twenty tries at a held lock, and the call still answers",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 14,
+ "omitted": 0,
+ "unmutated": []
+}

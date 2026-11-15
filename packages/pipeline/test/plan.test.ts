@@ -479,21 +479,27 @@ describe("reviewChangeset with a plan", () => {
 		expect(again.review.verdict.attention()).toEqual([]);
 	});
 
-	it("treats an index entry from before routes joined its key as stale, and reads only the run that replaces it", async () => {
-		await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
-		// The entry as review index version 2 stored it: each lens by name and version, with no route.
+	it("treats an index entry from before routes joined its key as stale, and copies the runs its task answered", async () => {
+		const first = await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
+		// The entry as review index version 2 stored it: each lens by name and version, with no route or request.
 		const root = await harness.root(context);
 		const revision = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
+		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[revision]!;
-			index.reviews[revision] = { ...entry, lenses: entry.lenses.map((lens) => lens.split(" on ")[0]!) };
+			index.reviews[revision] = { ...entry, lenses: entry.lenses.map((lens) => lens.split(" request ")[0]!) };
 		}, context);
 
 		const again = await planned({ model: heavy, accept: [heavy] });
 
-		expect(again.answered).toEqual(["heavy", "heavy"]);
-		expect(again.review.verdict.attention()).toEqual([]);
+		const after = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(after).not.toBe(before);
+		expect(again.answered).toEqual([]);
+		expect(again.review.verdict.attention().map(({ id }) => id)).toEqual(
+			first.review.verdict.attention().map(({ id }) => id),
+		);
+		expect(first.review.verdict.attention()).toHaveLength(1);
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {
@@ -611,8 +617,11 @@ describe("a lens run a later review replaced", () => {
 		const root = await harness.root(context);
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(changeset.revision)];
 		expect(entry?.task).toBeDefined();
-		expect(entry?.lenses.every((lens) => lens.endsWith(` on ${heavy}`))).toBe(true);
 		const named = await harness.getTask(entry!.task as TaskId, context);
+		const runs = (named!.input as { lenses: { route: { provider: string; modelId: string }[] }[] }).lenses;
+		expect(runs.map(({ route }) => route.map(({ provider, modelId }) => `${provider}/${modelId}`))).toEqual(
+			runs.map(() => [heavy]),
+		);
 		expect(named?.state).toMatchObject({ status: "terminal", outcome: { status: "completed" } });
 		const details = (await harness.snapshot(VerdictDocument, root.id, context))?.details?.[
 			Revision.key(changeset.revision)
@@ -701,16 +710,24 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		moved?: boolean;
 		rerun?: boolean;
 	}) {
-		rmSync(repo, { recursive: true, force: true });
-		const own = ["name: correctness", "extends: correctness", ...(options.tier === undefined ? [] : ["tier: light"])];
-		repo = baseAndHead(
-			{
-				"src/a.ts": lines("export const a = 1;"),
-				"services/pay/b.ts": lines("export const b = 1;"),
-				"services/pay/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
-			},
-			{ "src/a.ts": lines("export const a = 2;"), "services/pay/b.ts": lines("export const b = 2;") },
-		);
+		// A rerun reviews the commits the review before it made: a commit's hash holds the second it was made, so a rebuilt
+		// repository is another revision.
+		if (options.rerun !== true) {
+			rmSync(repo, { recursive: true, force: true });
+			const own = [
+				"name: correctness",
+				"extends: correctness",
+				...(options.tier === undefined ? [] : ["tier: light"]),
+			];
+			repo = baseAndHead(
+				{
+					"src/a.ts": lines("export const a = 1;"),
+					"services/pay/b.ts": lines("export const b = 1;"),
+					"services/pay/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
+				},
+				{ "src/a.ts": lines("export const a = 2;"), "services/pay/b.ts": lines("export const b = 2;") },
+			);
+		}
 		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 			"src/a.ts",
 			"services/pay/b.ts",
@@ -836,7 +853,8 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		const first = await reviewVariants(options);
 		const again = await reviewVariants({ ...options, rerun: true });
 
-		// The root's lens runs on heavy; the variant fails over from heavy to backup, which heavy's policy refuses.
+		// The root's lens runs on heavy; the variant fails over from heavy to backup, which heavy's policy refuses. The
+		// rerun copies the root's finished run and asks only the variant again.
 		expect([...first.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
 		expect(first.run.stages.filter(({ name }) => name === "lens correctness").map(({ outcome }) => outcome)).toEqual([
 			"ran",
@@ -847,9 +865,15 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			status: "failed",
 			reason: expect.stringContaining("which models.heavy.accept does not list"),
 		});
-		expect([...again.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
+		expect([...again.answered].sort()).toEqual(["backup", "heavy"]);
 	});
 });
+
+type StoredRun = {
+	name: string;
+	thinking?: string;
+	route: { provider: string; modelId: string }[];
+};
 
 describe("reviewChangeset with a lens route", () => {
 	// A review whose committed melian.yaml routes no tier and gives each lens in `routes` its own route; `preferred` is a
@@ -918,12 +942,18 @@ describe("reviewChangeset with a lens route", () => {
 		});
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
-		const selection = index?.reviews[Revision.key(changeset.revision)]?.lenses ?? [];
-		return { plan, review, answered, selection };
+		const task = index?.reviews[Revision.key(changeset.revision)]?.task;
+		const stored = task === undefined ? undefined : await harness.getTask(task as TaskId, context);
+		const runs = ((stored?.input as { lenses?: StoredRun[] } | undefined)?.lenses ?? []).map((run) => ({
+			name: run.name,
+			thinking: run.thinking,
+			route: run.route.map(({ provider, modelId }) => `${provider}/${modelId}`).join(", "),
+		}));
+		return { plan, review, answered, runs };
 	}
 
 	it("runs each lens on its own route though its tiers route nothing, and warns of no tier", async () => {
-		const { plan, review, answered, selection } = await routed({
+		const { plan, review, answered, runs } = await routed({
 			correctness: { model: backup, thinking: "high" },
 			contracts: { model: heavy },
 		});
@@ -937,17 +967,16 @@ describe("reviewChangeset with a lens route", () => {
 			undefined,
 		]);
 		expect(plan.warnings().filter((text) => text.startsWith("no model for"))).toEqual([]);
-		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`thinking high`);
-		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`on ${backup}`);
-		expect(selection.find((entry) => entry.startsWith("contracts@"))).not.toContain("thinking");
+		expect(runs.find(({ name }) => name === "correctness")).toMatchObject({ thinking: "high", route: backup });
+		expect(runs.find(({ name }) => name === "contracts")?.thinking).toBeUndefined();
 	});
 
 	it("keeps each lens route's fallbacks in its run's route", async () => {
-		const { selection } = await routed({
+		const { runs } = await routed({
 			correctness: { model: backup, fallbacks: [heavy] },
 			contracts: { model: heavy },
 		});
-		expect(selection.find((entry) => entry.startsWith("correctness@"))).toContain(`on ${backup}, ${heavy}`);
+		expect(runs.find(({ name }) => name === "correctness")?.route).toBe(`${backup}, ${heavy}`);
 	});
 
 	it("runs a lens the plan did not plan on its tier, not on the route the plan never resolved", async () => {

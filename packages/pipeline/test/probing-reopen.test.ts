@@ -25,7 +25,7 @@ const recorded = JSON.parse(
 
 // Main's verification input carries its wave's judgement in `reused`, so it asks no model again.
 it.each([
-	["melian.lenses", 5, 6, true],
+	["melian.lenses", 5, 7, true],
 	["melian.verification", 3, 4, false],
 ] as const)(
 	"reopens main's %s task from version %s under version %s, with no probing invented",
