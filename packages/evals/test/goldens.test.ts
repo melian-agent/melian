@@ -397,18 +397,8 @@ describe("a golden's standards and policy", () => {
 			(entry) => entry.name === "melian.golden.yaml" && ofLensCorpus(entry),
 		);
 		expect(copies.length).toBeGreaterThan(0);
-		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones. A probing
-		// golden measures trust-boundary's level that probes alone, so its policy switches every other lens off.
-		const exempt = [
-			"guardrails-bare-issue-reference",
-			"guardrails-overlong-sentence",
-			"trust-boundary-probe-claim-lost-release",
-			"trust-boundary-probe-claim-lost-release-clean",
-			"trust-boundary-probe-round-environ-leak",
-			"trust-boundary-probe-round-environ-leak-clean",
-			"trust-boundary-probe-syntax-check-outside-text",
-			"trust-boundary-probe-syntax-check-outside-text-clean",
-		];
+		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.
+		const exempt = ["guardrails-bare-issue-reference", "guardrails-overlong-sentence"];
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
 		expect(copies.length - tiered.length).toBe(exempt.length);
@@ -1213,6 +1203,10 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 					testing.fauxAssistantMessage("Planned no attacks."),
 				],
 			},
+			...["correctness", "contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+				match: `You are the ${lens} reviewer`,
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			})),
 		]);
 		const ref = fake.ref();
 		await runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });

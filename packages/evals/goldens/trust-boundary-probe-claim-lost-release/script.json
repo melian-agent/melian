@@ -66,5 +66,35 @@
     {
       "text": "Reported 1 finding."
     }
+  ],
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "design": [
+    {
+      "text": "Reported 0 findings."
+    }
   ]
 }
