@@ -25,6 +25,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -83,7 +84,7 @@ async function review(store: MemoryRecordStore, given: typeof checks = checks) {
 		{ match: contracts, replies: [answer, answer, answer] },
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
-	await reviewChangeset({
+	const result = await reviewChangeset({
 		harness,
 		changeset,
 		config,
@@ -93,7 +94,7 @@ async function review(store: MemoryRecordStore, given: typeof checks = checks) {
 		checks: given,
 		records: store,
 	});
-	return { changeset, stored: await store.list(changeset.id) };
+	return { changeset, verdict: result.verdict, stored: await store.list(changeset.id) };
 }
 
 describe("a review that names a record store", () => {
@@ -158,6 +159,30 @@ describe("a review that names a record store", () => {
 				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
 		)!.payload as { result: { notes: string[] } };
 		expect(biome.result.notes).toEqual([]);
+	});
+
+	it("names another host's blocking round as replaced, which leaves what blocks unchanged", async () => {
+		const plain = await review(new MemoryRecordStore({ payloads: reviewPayloads }));
+		await harness?.close(context);
+		harness = undefined;
+
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const records = ReviewRecords.of(plain.changeset.id, plain.changeset.revision);
+		const failed = records.check(
+			"another host's run",
+			{ name: "guardrails", status: "failed", reason: "toolFailed", error: "guardrails could not run" },
+			[],
+		);
+		const foreign = records.round([failed], undefined, [], []);
+		await store.add([failed.toJSON(), foreign.toJSON()]);
+		const { verdict, stored } = await review(store);
+
+		const own = stored.filter(({ kind }) => kind === "round").find(({ key }) => key !== foreign.key)!;
+		expect((own.payload as { replaces: string[] }).replaces).toEqual([foreign.id]);
+		expect(verdict.status).toBe(plain.verdict.status);
+		expect(verdict.blocking).toBe(plain.verdict.blocking);
+		expect(verdict.all().map(({ id }) => id)).toEqual(plain.verdict.all().map(({ id }) => id));
+		expect(verdict.findings.block.map(({ id }) => id)).toEqual(plain.verdict.findings.block.map(({ id }) => id));
 	});
 
 	it("adds the same bytes when the same head is reviewed again", async () => {
