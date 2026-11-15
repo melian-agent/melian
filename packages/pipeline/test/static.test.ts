@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -11,7 +12,7 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Run, staticToolSource } from "../src/static.ts";
+import { Run, staticToolSource, staticToolVersion } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
@@ -30,6 +31,35 @@ afterEach(() => {
 
 it("keeps Enola provisioning out of checkout binary discovery", () => {
 	expect(staticToolSource(repo, "enola")).toEqual({ from: "missing" });
+});
+
+describe("staticToolVersion", () => {
+	const own = (version: unknown) =>
+		writeFiles(repo, {
+			"node_modules/.bin/biome": "#!/bin/sh\n",
+			"node_modules/@biomejs/biome/package.json": JSON.stringify({ name: "@biomejs/biome", version }),
+		});
+
+	it("reads the version of the checkout's own install, which is the one a run starts", () => {
+		own("9.8.7");
+		expect(staticToolSource(repo, "biome").from).toBe("checkout");
+		expect(staticToolVersion(repo, "biome")).toBe("9.8.7");
+	});
+
+	it("reads Melian's own copy when the checkout has none", () => {
+		const carried = JSON.parse(
+			readFileSync(createRequire(import.meta.url).resolve("typescript/package.json"), "utf8"),
+		) as { version: string };
+		expect(staticToolSource(repo, "tsc").from).toBe("melian");
+		expect(staticToolVersion(repo, "tsc")).toBe(carried.version);
+	});
+
+	it("says unavailable for a manifest that names no version, or cannot be read", () => {
+		own(7);
+		expect(staticToolVersion(repo, "biome")).toBe("unavailable");
+		writeFiles(repo, { "node_modules/@biomejs/biome/package.json": "{" });
+		expect(staticToolVersion(repo, "biome")).toBe("unavailable");
+	});
 });
 
 it("uses the created scratch path when canonicalisation fails", { timeout: 60_000 }, async () => {

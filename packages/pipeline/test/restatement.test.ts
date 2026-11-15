@@ -18,6 +18,7 @@ import {
 	readFindings,
 	recordDismissal,
 	reviewChangeset,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -32,6 +33,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FindingsDocument, findingsVersion } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -939,14 +941,18 @@ describe("a dismissal carrying to a restatement", () => {
 		const verification = async () => {
 			const owner = (await harness.root(context)).id;
 			const index = await harness.snapshot(ReviewIndex, owner, context);
-			return index!.reviews[Revision.key(await revision())]!.verification!.input;
+			const entry = index!.reviews[Revision.key(await revision())]!.verification!;
+			const input = (await harness.getTask(entry.task as unknown as TaskId<string>, context))!
+				.input as unknown as VerificationInput;
+			expect(entry.input).toBe(verificationRequest(input).key);
+			return input.candidates[0]!;
 		};
 		const root = await dismissedRoot();
-		expect(await verification()).not.toContain('"dismissed"');
+		expect("dismissed" in (await verification())).toBe(false);
 		pushElsewhere("other");
 		script([restatement]);
 		await review();
-		expect(await verification()).toContain(`"dismissed":[{"id":"${root}"`);
+		expect((await verification()).dismissed?.map(({ id }) => id)).toEqual([root]);
 	});
 
 	it("links nothing when the verifier did not finish, though one candidate was judged the same", async () => {

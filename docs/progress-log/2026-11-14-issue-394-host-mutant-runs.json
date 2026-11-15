@@ -1,0 +1,140 @@
+{
+	"head": "12e1a0d8",
+	"runs": [
+		{
+			"id": "663c6d114ac06978f78cd7a945f39c8508c1d21ac12bac9e52ab39ed9e2ac4fe",
+			"at": "packages/core/src/host.ts:20:67",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "712b51f2518ef4ab7ec5e2fc34f6fa77b9a14f1cc8796f83ea23350eec335de0",
+			"at": "packages/core/src/host.ts:21:8",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "f5da5111e7d77b36ca7ad8e6ef2e0d4289e6ab26c59325eee48d7ec2403490c5",
+			"at": "packages/core/src/host.ts:30:47",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "d854c2e241328c0c04a7199b019c3d885f1db47f18d25f091dd747e6eb4478d4",
+			"at": "packages/core/src/host.ts:32:5",
+			"mutator": "ConditionalExpression",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "d86aa97aa430835983837bccfe73b9e9b4e00da3572857c3e8cdcbf6b74bb724",
+			"at": "packages/core/src/host.ts:32:5",
+			"mutator": "EqualityOperator",
+			"replacement": "known === undefined",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "f370b6242ae509a834333bb1fa78a45d235bdd41e820a6ab1fd06047b3081159",
+			"at": "packages/core/src/host.ts:34:5",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "be04236555e88ad17b71499617ca2c586869c0b464ac759ad335d7e59f5fd41f",
+			"at": "packages/core/src/host.ts:39:11",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "a12409117bffa6908dd9e85ecd8817b5b72c1d781658cf019a9af76acb930acf",
+			"at": "packages/core/src/host.ts:40:16",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "1107439d1bb02ffdb38c1304ce431b1289a61b8eb0eda0be522678aef97416ec",
+			"at": "packages/core/src/host.ts:40:29",
+			"mutator": "BooleanLiteral",
+			"replacement": "false",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		}
+	]
+}

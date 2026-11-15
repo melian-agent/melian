@@ -1,0 +1,107 @@
+[
+  {
+    "id": "packages/pipeline/src/verification.ts:352:Hand: final commit compares the raw version:input.version",
+    "at": "packages/pipeline/src/verification.ts:352:5",
+    "mutator": "Hand: final commit compares the raw version",
+    "replacement": "input.version",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/verification.ts:474:Hand: wave start compares the raw version:input.version",
+    "at": "packages/pipeline/src/verification.ts:474:5",
+    "mutator": "Hand: wave start compares the raw version",
+    "replacement": "input.version",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/verification.ts:506:Hand: wave records the raw version:input.version",
+    "at": "packages/pipeline/src/verification.ts:506:12",
+    "mutator": "Hand: wave records the raw version",
+    "replacement": "input.version",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/review.ts:2430:Hand: reuse compares the raw version:verifierVersion",
+    "at": "packages/pipeline/src/review.ts:2430:5",
+    "mutator": "Hand: reuse compares the raw version",
+    "replacement": "verifierVersion",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/verification.ts:421:ObjectLiteral:{ version }",
+    "at": "packages/pipeline/src/verification.ts:421:20",
+    "mutator": "ObjectLiteral",
+    "replacement": "{ version }",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/verification.ts:421:ObjectLiteral:{ text: verifierText() }",
+    "at": "packages/pipeline/src/verification.ts:421:20",
+    "mutator": "ObjectLiteral",
+    "replacement": "{ text: verifierText() }",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/verification.ts:421:ObjectLiteral:{}",
+    "at": "packages/pipeline/src/verification.ts:421:20",
+    "mutator": "ObjectLiteral",
+    "replacement": "{}",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  }
+]

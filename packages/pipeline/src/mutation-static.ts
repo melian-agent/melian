@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -118,9 +118,52 @@ export function strykerVersion(repoRoot: string): string {
 	return "unavailable";
 }
 
-// The lockfiles of every package manager whose install Node runs Stryker from. Bun's two formats are here because Melian
-// runs Stryker under Node whichever tool installed node_modules.
-const mutationLockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"] as const;
+// Each package manager's lockfile, and the files it writes to record what it installed, which an install of one package
+// changes without touching the lockfile. Real installs by npm 11, pnpm 9, Yarn 1 and Yarn 4 established each record.
+// Bun writes none, so its lockfiles alone are keyed.
+const managers = [
+	{ lockfiles: ["package-lock.json"], records: ["node_modules/.package-lock.json"] },
+	{ lockfiles: ["pnpm-lock.yaml"], records: ["node_modules/.pnpm/lock.yaml"] },
+	{
+		lockfiles: ["yarn.lock"],
+		records: ["node_modules/.yarn-integrity", "node_modules/.yarn-state.yml", ".yarn/install-state.gz", ".pnp.cjs"],
+	},
+	{ lockfiles: ["bun.lock", "bun.lockb"], records: [] },
+] as const;
+
+/** A digest of each install file, and whether they identify the install a tool resolves from. */
+export type InstallDigests = { readonly digests: Readonly<Record<string, string>>; readonly identified: boolean };
+
+function digestOf(path: string): string {
+	try {
+		return createHash("sha256").update(readFileSync(path)).digest("hex");
+	} catch (error) {
+		return ["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "") ? "unavailable" : "unreadable";
+	}
+}
+
+// A digest of each lockfile and install record at `repoRoot`, `unavailable` for one the checkout lacks and `unreadable`
+// for one it cannot read. A file that cannot be read, a lockfile none of whose manager's records is present, or a
+// node_modules with no manager's record and no Bun lockfile leaves the install unidentified, since a missing record
+// would read as an unchanged install.
+export function installDigests(repoRoot: string): InstallDigests {
+	const digests: Record<string, string> = Object.fromEntries(
+		managers
+			.flatMap(({ lockfiles, records }) => [...lockfiles, ...records])
+			.map((name) => [name, digestOf(posix.join(repoRoot, name))]),
+	);
+	const present = (name: string) => digests[name] !== "unavailable";
+	const recorded = managers.some(({ lockfiles, records }) =>
+		(records.length === 0 ? lockfiles : records).some(present),
+	);
+	const identified =
+		!Object.values(digests).includes("unreadable") &&
+		(recorded || !existsSync(posix.join(repoRoot, "node_modules"))) &&
+		managers.every(
+			({ lockfiles, records }) => records.length === 0 || !lockfiles.some(present) || records.some(present),
+		);
+	return { digests, identified };
+}
 
 export function mutationInstallation(repoRoot: string): string {
 	const require = createRequire(posix.join(repoRoot, "package.json"));
@@ -135,25 +178,10 @@ export function mutationInstallation(repoRoot: string): string {
 		}
 		return "unavailable";
 	});
-	const lockfiles = Object.fromEntries(
-		mutationLockfiles.map((name) => {
-			try {
-				return [
-					name,
-					createHash("sha256")
-						.update(readFileSync(posix.join(repoRoot, name)))
-						.digest("hex"),
-				];
-			} catch {
-				// A checkout without this lockfile cannot share a partition with one that has it.
-				return [name, "unavailable"];
-			}
-		}),
-	);
 	return createHash("sha256")
 		.update(
 			JSON.stringify({
-				lockfiles,
+				lockfiles: installDigests(repoRoot).digests,
 				versions,
 				node: process.versions.node,
 				selectionVersion: mutationSelectionVersion,

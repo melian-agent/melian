@@ -1,0 +1,20 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "7ea1e50b08f235950ad2511d775bf69689f4baa1",
+    "head": "b888477bacd1d4eda7f467d987088b63f18dd331"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+  "mutants": [],
+  "total": 0,
+  "omitted": 0,
+  "unmutated": []
+}

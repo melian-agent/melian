@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { vi } from "vitest";
@@ -66,9 +66,14 @@ export function commit(root: string, files: Record<string, string>, remove: stri
 	return gitIn(root, "rev-parse", "HEAD");
 }
 
-/** Installs a fake tool as the checkout's `node_modules/.bin/<name>`, a shell script. */
+/**
+ * Installs a fake tool as the checkout's `node_modules/.bin/<name>`, a shell script, with npm's record of the install
+ * beside it, as a real install writes, so a check run under it can be reused.
+ */
 export function fakeTool(root: string, name: string, script: string): void {
 	const path = join(root, "node_modules", ".bin", name);
 	writeFiles(root, { [`node_modules/.bin/${name}`]: `#!/bin/sh\n${script}\n` });
 	chmodSync(path, 0o755);
+	if (!existsSync(join(root, "node_modules", ".package-lock.json")))
+		writeFiles(root, { "node_modules/.package-lock.json": "{}" });
 }

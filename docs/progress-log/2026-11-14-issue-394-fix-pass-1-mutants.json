@@ -1,0 +1,339 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "5f50053b4c6ade0e5fd2a8fbd758fa311c7b1944",
+		"head": "f2448ae881c2412f045f2491bc9662b6f0924525"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/check-request.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "d398a6582704ce1bf3dcba14b4c2355afd5c24debb04da07b2a0b8415c7ee96b",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 35,
+			"column": 68,
+			"endLine": 41,
+			"endColumn": 1,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a646d017b1af76312e077ef20b5454f39da526cd6c43f9c3ebfaddeb6156fe30",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the version of Melian's own code for every check it runs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 52,
+			"column": 57,
+			"endLine": 54,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e2ff04da3db16f3a6d11ca509a23e99795ce252b9694255d3e196ca8edbed752",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 53,
+			"column": 8,
+			"endLine": 53,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2a8b2a305b9dc68c2e872565df40fe825a32c3dffcb79928f160e6ebbcf4e679",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys a run the same from another checkout or preference file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 53,
+			"column": 8,
+			"endLine": 53,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b9995bd8ec37774b91517577b23198b236653163c15147b7f0a55c1ed5c8ff59",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 53,
+			"column": 8,
+			"endLine": 53,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.kind !== \"revision\"",
+			"status": "generated",
+			"id": "6ccdc25e075c3d37f2e618d53fa5b6c3cf1188d9ea0786b251663657676aa135",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 53,
+			"column": 24,
+			"endLine": 53,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b3a4ae7699c33bf770b268e0ca4d289f6e766972b21d2d9c102b869a49674a23"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 53,
+			"column": 46,
+			"endLine": 53,
+			"endColumn": 67,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9627c6cfac3a5cf930131ce0d4bd0ab706fb2338d9dc31049b659f88db7a091c",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Only a worktree source reaches this branch, since RepositorySource has two kinds, so {} names it as uniquely as { kind: \"worktree\" } does."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 60,
+			"column": 56,
+			"endLine": 62,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "29d98544fc949fd14ba9f28e07769c08c5aaaf7dd50a40add06464e09bc2e416",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys a run without mutation testing apart from one with it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 61,
+			"column": 8,
+			"endLine": 61,
+			"endColumn": 79,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1e61ce7be1fe52464f8e4a53914eacce82b902043385abbc5267efe5041a4f50",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 61,
+			"column": 32,
+			"endLine": 61,
+			"endColumn": 77,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1a435ce29656ae651cd77325d1318dad68a7505636dbf473c1da6bff1b9daf8a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 61,
+			"column": 54,
+			"endLine": 61,
+			"endColumn": 75,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "10cd5741b64bb8b6fe42d5054998159a0700f31b2fa37b0e8c5a33546d3e92c0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 78,
+			"column": 7,
+			"endLine": 78,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2b0ed6d733a37d4b0da1de2c382142e2c241e75adb7457c913a510ea5763046c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys a run without mutation testing apart from one with it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 78,
+			"column": 7,
+			"endLine": 78,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5d1ba45c918ea538059aa6e81ce5d58bb1bdc60302eaf5d462534e2e7edb5819",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys a run without mutation testing apart from one with it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 78,
+			"column": 7,
+			"endLine": 78,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "input.mutation !== undefined",
+			"status": "generated",
+			"id": "03121104724a7ead304962cc276d345e9b8c6a9a3fefc4a370d2c2d27ebaebcc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 78,
+			"column": 43,
+			"endLine": 78,
+			"endColumn": 84,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f40921a0f9d276addce53f9f5050d8d380691ea3efa8babb319ba13519dae249",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys every input but the display-only configuration and the paths that name the host"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 15,
+	"omitted": 0,
+	"unmutated": []
+}

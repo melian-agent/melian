@@ -1,0 +1,1356 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "e50d0bae56d7b5be03f13e709e3f46cc9a2f0a09",
+		"head": "70b39d247d15e7c9c0c58d82d3599a6b48425319"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/verification.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 175,
+			"column": 36,
+			"endLine": 175,
+			"endColumn": 76,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "108718a2a72d43cb6989140dee15dfb95675225fb5550b0bea0d83eacadc4cb9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"merges two rules before asking one conversation to judge both claims inside boundaries"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 176,
+			"column": 10,
+			"endLine": 176,
+			"endColumn": 35,
+			"mutatorName": "LogicalOperator",
+			"replacement": "candidate.dismissed && []",
+			"status": "generated",
+			"id": "8d859428d36811786925a002558735a3082539c0f18fcf8059012b528bf914e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 176,
+			"column": 33,
+			"endLine": 176,
+			"endColumn": 35,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "909f0b69162ed60d88fccb20594745e907cdf67100cb77d1dd633381daea5595",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"merges two rules before asking one conversation to judge both claims inside boundaries"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 176,
+			"column": 41,
+			"endLine": 176,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a3891fafe54ec5debc01789241042790cdc45b425c4acdd3d1380ceeb395e538",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 388,
+			"column": 10,
+			"endLine": 403,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1f0e45076bad738c3f5e91d1f2175a3900df66d66e634ee941b523ab78a3603c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 389,
+			"column": 8,
+			"endLine": 402,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "ad71c87900b299431e252a83ba2677db4471a807bc02432389e2639f8c221454",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 391,
+			"column": 6,
+			"endLine": 391,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ed7f2fc254f06b8687a004a66001a4772af01eede480e2048cfed3f40f7e3268",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 391,
+			"column": 6,
+			"endLine": 391,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "94485b78cd77356c1cb7a3c537aebdf22cf61bc6d475124cfa0e0543fd8aec6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for correctness claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 391,
+			"column": 6,
+			"endLine": 391,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "decisionsAtBase !== undefined",
+			"status": "generated",
+			"id": "86861886ffb89c7604850f85569bc2144ad0a70d0c642d6b42c0d43bc7649d06",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 392,
+			"column": 5,
+			"endLine": 392,
+			"endColumn": 7,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "bdd57c326f2c4d08c1f00eba5cdd968a7125b2abf8e4fb1725a15340dc485aba",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for correctness claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 393,
+			"column": 5,
+			"endLine": 393,
+			"endColumn": 83,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4bb4e43b5b15a1033a765b5b8c6a2ae456250257e8340a9d155e58a424cf7a0a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 393,
+			"column": 6,
+			"endLine": 393,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c2b059830423edfef17733ad529fa0dee17de8951a4b78aef8ecc59f23c07449",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 393,
+			"column": 46,
+			"endLine": 393,
+			"endColumn": 55,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "69c1eccb7d208f70063b7c4ae03107d1b172cc6efc77a4a4ebbf6ead9ee4547b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for design claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 394,
+			"column": 6,
+			"endLine": 394,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b26ceca3a361fe407727c412e4f8cd3ea853d5674ef6fbe5f971f930e48ea811",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 394,
+			"column": 6,
+			"endLine": 394,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "337719575c7b050b1954017ede9d0617aa20a7608ff3da620297bf1d892099b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for correctness claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 394,
+			"column": 6,
+			"endLine": 394,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "designAtBase !== undefined",
+			"status": "generated",
+			"id": "bf7f2f6ae820365461bd0bfa01cd1cf9479e9fca2d686b41666751b7c736094d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 395,
+			"column": 5,
+			"endLine": 395,
+			"endColumn": 7,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "c34583015e27a0cb32680dbc14fdf01e702f8f71e6fe485675e577cfdf84d018",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for correctness claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 396,
+			"column": 5,
+			"endLine": 399,
+			"endColumn": 5,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9a80beb76b8fa8c160141364d81549598d4bcf2e1eb03ebe10e9a853883223e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 397,
+			"column": 5,
+			"endLine": 397,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e3c9d1ef52d1df4cfaa759985bc557e62824280b3d17f5162d6f07ba184026ef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 397,
+			"column": 51,
+			"endLine": 397,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0c5ca40bb1b816c6f3df539755dd1eec4d75976d2693ef034b9d26fe07527180",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for design claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 398,
+			"column": 5,
+			"endLine": 398,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5290ed2a10de728aeef6d7c9b7d4eeca0cebc2bc19ec397f61e56cec68fbf9f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 398,
+			"column": 48,
+			"endLine": 398,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7279b0e62ada096b1457902be0e74a79dc3310bc7101351125d0c95ffb01e37a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"passes base decisions for design claims under wrong-result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 400,
+			"column": 16,
+			"endLine": 400,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "de8791f15bbb497b25bb28702e4ab072ec9b13778d1ffc28ec100541758c1e90",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 401,
+			"column": 19,
+			"endLine": 401,
+			"endColumn": 62,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a43026a629bb875c3722fb596796dbf669fdde46c4714e3dae4158ff870a8b93",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 402,
+			"column": 8,
+			"endLine": 402,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eda7373021b7e5675ee38f453e5a6e564703f00cc0bcdadc2fb97ce701fb9f66",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 405,
+			"column": 105,
+			"endLine": 414,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3407cef145752775639d4d1c8da30438511214340627b4ece1b07c3f63c5cdbe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 407,
+			"column": 7,
+			"endLine": 407,
+			"endColumn": 107,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "b1e4b61c3394caa1c441a3845347916b0e6a7e62fdc5af9d63a5bd50d3b2b60e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 407,
+			"column": 25,
+			"endLine": 407,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b17ab3dcfd0b45bd4c00978c337ae50354c56f74c74913e03b77b8fb67ec2c8e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 407,
+			"column": 35,
+			"endLine": 407,
+			"endColumn": 44,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "index - 1",
+			"status": "generated",
+			"id": "971a73d67eebc104b164a6a03a407424ebb4884918bdbc4ff95999733b4f168a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 407,
+			"column": 64,
+			"endLine": 407,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "68cc96862bcf3b629c1f4b8bef3ee5d6b9e7b6a0670c2eba24102cec9359c3e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"merges two rules before asking one conversation to judge both claims inside boundaries"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 410,
+			"column": 4,
+			"endLine": 410,
+			"endColumn": 108,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0bef0935e086e691f0886ed3fc0fd7a1c1b9139e4615227ddace658ce8a66099",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 410,
+			"column": 22,
+			"endLine": 410,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "12fab064df01115f077b0b0c2a1e6192a3b30211fd07af881dcf64a804716cd5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 410,
+			"column": 36,
+			"endLine": 410,
+			"endColumn": 45,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "index - 1",
+			"status": "generated",
+			"id": "f963c29a92c2c2b86ad5b25d9b1c97d80751768bf1933c0f29de4d00aaa1f412",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 410,
+			"column": 65,
+			"endLine": 410,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a9950009a25daf400e2fdeb7f4ac85270228bb3ae4e62bd67b226e478c80f11f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 413,
+			"column": 8,
+			"endLine": 413,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f993b0b330e7740865a1ea9ae7992731e059ce8ff5812ab501385cbf20aa99c2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 428,
+			"column": 3,
+			"endLine": 428,
+			"endColumn": 97,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "acd65d81f17c2ad9983c2096b357dddf229db5dbd136fa94f41b4fbcecc868dc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 428,
+			"column": 22,
+			"endLine": 428,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "10a3a64c8c468710a7fbc627adb63ffc1e10a2e30bfb65154a571f4b848b6a68",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A placeholder is one fixed value for every request: changing its text moves every key alike, so no two requests that differ come to share a key, and none that match come to differ."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 428,
+			"column": 51,
+			"endLine": 428,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6fcc0a0ba3e16242096576dcd4e0e2cbd3fb58e9842226e72086d5c1d209f3f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 428,
+			"column": 63,
+			"endLine": 428,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8a8ac8c0457fa89ce697092e0175896adb5ad09356d6a00259006bff051431fa",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A placeholder is one fixed value for every request: changing its text moves every key alike, so no two requests that differ come to share a key, and none that match come to differ."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 428,
+			"column": 84,
+			"endLine": 428,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "76ca4e9cb6f374770cf305fbe0e7a6d2a1943a341fe74176102cda8ec026cb49",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A placeholder is one fixed value for every request: changing its text moves every key alike, so no two requests that differ come to share a key, and none that match come to differ."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 429,
+			"column": 3,
+			"endLine": 432,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "ce6a53a40fd4b97b374c422a15bbceb2cfa4d1d44413567ef22b79a505b249c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 430,
+			"column": 4,
+			"endLine": 430,
+			"endColumn": 47,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a33f107f1dc3313a2a4864396ee34868c483808ab75b5dd176925c9582fda8f6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 430,
+			"column": 13,
+			"endLine": 430,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e57887187e1a50e0d00aaa4c23faa698215c97e0deed0eef3a31f7b36d00cfdb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 430,
+			"column": 23,
+			"endLine": 430,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9861dfe0cbf58fbefe1fcc1461883924a06bb19a76388c743aa6ae37f3a7b226",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 430,
+			"column": 41,
+			"endLine": 430,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "99da0cbd7d11a9b2312939ff5ec060c4b69f79a660849f0ae68c5456fa0d1c98",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 431,
+			"column": 4,
+			"endLine": 431,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "368fe66fc9a6b07172a22587e5489a9134d83cb31a9ddbeb9f56520a8bae79d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 431,
+			"column": 13,
+			"endLine": 431,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3bd481a5d23f83f24c6245bd241d577f31b5b7706ab6fecee59c17a6ae297814",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 431,
+			"column": 23,
+			"endLine": 431,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "acad5044b02e5544f6d72f2f0fd851355e46b3d2c4de3e5bd527d87fe89557a3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 433,
+			"column": 3,
+			"endLine": 433,
+			"endColumn": 32,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "49805d4e7459a92d3ddda7065c413c6f58a4673dad0c6f32d713e9db512154b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 433,
+			"column": 4,
+			"endLine": 433,
+			"endColumn": 31,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4f9977606bfd97d24bba16772eed66dcf12d42064ebdd738c88fb5119d3cd8f0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 433,
+			"column": 13,
+			"endLine": 433,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3cfaa0620cf474517a092bf5734091a28374f327348ac63fa3a80831b4088c04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 433,
+			"column": 23,
+			"endLine": 433,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "76f0ed10d2578b51a9448082d2d71d316e01cc0501b0878ea8511680a5d47a27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the tools and the prompt the verifier is given"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 436,
+			"column": 23,
+			"endLine": 436,
+			"endColumn": 34,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "848aa2b9c6447ad658d42ea1574ce86c172699fcb001bd476347c07f3fd95d47",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 436,
+			"column": 24,
+			"endLine": 436,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a73bcb2b44702123f3d3cdf119d2eb9ea534a23ecfe2355dbc92b1dc13a963d7",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A placeholder is one fixed value for every request: changing its text moves every key alike, so no two requests that differ come to share a key, and none that match come to differ."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 436,
+			"column": 36,
+			"endLine": 436,
+			"endColumn": 51,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4087022fc4259af26754151b68089f9fe2acec2e772d908bf1a959a9c94e4793",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification-request.test.ts",
+					"path": [
+						"verificationRequest",
+						"keys the headings and body prefixes the verifier is shown"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 436,
+			"column": 37,
+			"endLine": 436,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b09c889d001737829ea0ff6cbee076d326a55db6d4bf440d088b1da6016a8565",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A placeholder is one fixed value for every request: changing its text moves every key alike, so no two requests that differ come to share a key, and none that match come to differ."
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 56,
+	"omitted": 0,
+	"unmutated": []
+}

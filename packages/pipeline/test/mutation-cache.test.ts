@@ -728,7 +728,19 @@ it("changes the installation identity that the durable run key hashes after sele
 			(JSON.parse(readFileSync(require.resolve(`${name}/package.json`), "utf8")) as { version: string }).version,
 	);
 	const lockfiles = Object.fromEntries(
-		["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"].map((name) => [
+		[
+			"package-lock.json",
+			"node_modules/.package-lock.json",
+			"pnpm-lock.yaml",
+			"node_modules/.pnpm/lock.yaml",
+			"yarn.lock",
+			"node_modules/.yarn-integrity",
+			"node_modules/.yarn-state.yml",
+			".yarn/install-state.gz",
+			".pnp.cjs",
+			"bun.lock",
+			"bun.lockb",
+		].map((name) => [
 			name,
 			existsSync(join(checkout, name))
 				? createHash("sha256")

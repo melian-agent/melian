@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, posix } from "node:path";
 import {
@@ -131,11 +131,11 @@ function git(repoRoot: string, args: string): string {
 // Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
 // for the tests Stryker runs.
 const toolBinaries: Readonly<
-	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian?: () => string }>
+	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly pkg: string; readonly melian?: () => string }>
 > = {
-	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
-	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
-	mutation: { bin: "stryker" },
+	biome: { bin: "biome", pkg: "@biomejs/biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
+	tsc: { bin: "tsc", pkg: "typescript", melian: () => melianBinary("typescript", "bin/tsc") },
+	mutation: { bin: "stryker", pkg: "@stryker-mutator/core" },
 };
 
 function melianBinary(packageName: string, bin: string): string {
@@ -488,6 +488,29 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 		return { from: "melian", path: melian!() };
 	} catch {
 		return { from: "missing" };
+	}
+}
+
+/**
+ * The version of the `tool` {@link staticToolSource} names for the checkout at `repoRoot`, read from its package's
+ * `package.json` before any run, so a key can name it as an input: the checkout's install, or Melian's own. It is
+ * `unavailable` when there is no tool, or its manifest names no version.
+ */
+export function staticToolVersion(repoRoot: string, tool: Exclude<StaticTool, "enola" | "mutation">): string {
+	const source = staticToolSource(repoRoot, tool);
+	const { pkg } = toolBinaries[tool];
+	try {
+		const manifest =
+			source.from === "checkout"
+				? posix.join(repoRoot, "node_modules", pkg, "package.json")
+				: source.from === "melian"
+					? createRequire(import.meta.url).resolve(`${pkg}/package.json`)
+					: undefined;
+		if (manifest === undefined) return "unavailable";
+		const { version } = JSON.parse(readFileSync(manifest, "utf8")) as { version?: unknown };
+		return typeof version === "string" ? version : "unavailable";
+	} catch {
+		return "unavailable";
 	}
 }
 

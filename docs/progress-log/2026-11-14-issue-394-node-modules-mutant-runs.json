@@ -1,0 +1,307 @@
+{
+  "head": "aea383e8",
+  "thisCommit": [
+    {
+      "id": "f1be084919121ae3fc8bdd97d9cdada63845f71c7e7151e75a0675a755dc193c",
+      "at": "packages/pipeline/src/mutation-static.ts:156:18",
+      "mutator": "MethodExpression",
+      "replacement": "managers.every(({\n  lockfiles,\n  records\n}) => (records.length === 0 ? lockfiles : records).some(present))",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "e5e20961995bd12b71e5e614bedd1d644a4f2899466e6f660255bfeaf9ada317",
+      "at": "packages/pipeline/src/mutation-static.ts:156:32",
+      "mutator": "ArrowFunction",
+      "replacement": "() => undefined",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "2c2ce316f45a37197bf792c5377024ff8fdaa72b2c508fe198aa79b311c5da69",
+      "at": "packages/pipeline/src/mutation-static.ts:157:2",
+      "mutator": "MethodExpression",
+      "replacement": "(records.length === 0 ? lockfiles : records).every(present)",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "f4d8a92db82b1836e61b1a1c8412e084ba773d2763361adef9b1344f3e54e52b",
+      "at": "packages/pipeline/src/mutation-static.ts:157:3",
+      "mutator": "ConditionalExpression",
+      "replacement": "true",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "4e03663f0b26711dd98239e7710b7b8aa05f448248a101e54ec422cd1a7ca668",
+      "at": "packages/pipeline/src/mutation-static.ts:157:3",
+      "mutator": "ConditionalExpression",
+      "replacement": "false",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "cc4115d1e36a3d8cc7ef9a4dba50bfe4fd99fa1d4a1b00459d93d074cf56b066",
+      "at": "packages/pipeline/src/mutation-static.ts:157:3",
+      "mutator": "EqualityOperator",
+      "replacement": "records.length !== 0",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "9cc69296b4c120d7c155d4eb9ec897d02d5c94797ee7f28ec2e70772b364f33b",
+      "at": "packages/pipeline/src/mutation-static.ts:161:3",
+      "mutator": "ConditionalExpression",
+      "replacement": "true",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "11d73d35968f7d5c24419ff9acf22cfca89399abeaddd91b984edd8b7777f40e",
+      "at": "packages/pipeline/src/mutation-static.ts:161:3",
+      "mutator": "LogicalOperator",
+      "replacement": "recorded && !existsSync(posix.join(repoRoot, \"node_modules\"))",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "2f332497c8b76ab4ce60fe8d5081d41a8e7753adee1c3171691c6772ccf0cd34",
+      "at": "packages/pipeline/src/mutation-static.ts:161:15",
+      "mutator": "BooleanLiteral",
+      "replacement": "existsSync(posix.join(repoRoot, \"node_modules\"))",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    }
+  ],
+  "renamedBunTestReruns": [
+    {
+      "id": "a4d5e9dd45620f4f9f568ce4444141bc5544fb45f1332325f8c4dd5ed0eb5429",
+      "at": "packages/pipeline/src/mutation-static.ts:160:2",
+      "mutator": "ConditionalExpression",
+      "replacement": "false",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "15c18609416b3265af83301ac0c43820b8d324ad9d7ef4076d4cd6eafa1c0dcf",
+      "at": "packages/pipeline/src/mutation-static.ts:160:2",
+      "mutator": "BooleanLiteral",
+      "replacement": "Object.values(digests).includes(\"unreadable\")",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "ffe028a5f9246ba684f8669a979d14bc2221f9a589ba33d267fa4fedab87277a",
+      "at": "packages/pipeline/src/mutation-static.ts:163:3",
+      "mutator": "ArrowFunction",
+      "replacement": "() => undefined",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "bfd71dc961fe9d77e1db28bfbe73d75dd6c83047b8f71b1d3da7c0958f57e382",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "ConditionalExpression",
+      "replacement": "false",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "31493769c465325b63ed06312e6900d48a484b3c6d823d380040db5e9fbb4720",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "LogicalOperator",
+      "replacement": "(records.length === 0 || !lockfiles.some(present)) && records.some(present)",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "45365efee7d16ad6f7f68d0c9e20c93ea48005ead452f8d75ae79da34f9dfe3b",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "ConditionalExpression",
+      "replacement": "false",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "896c58890f9dfa65421be96cde438030f42f68d8bde82ffdf9dda4a30e3b5f48",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "LogicalOperator",
+      "replacement": "records.length === 0 && !lockfiles.some(present)",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "3c649126ddeffe5feb07ba3294199a1e29ad916ac45f0680364e4bd3bb58ee45",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "ConditionalExpression",
+      "replacement": "false",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "a8afadeedf891758995c0851a555af05d476293ec9bb178f245aac1cc69bc375",
+      "at": "packages/pipeline/src/mutation-static.ts:163:31",
+      "mutator": "EqualityOperator",
+      "replacement": "records.length !== 0",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "6b92139d4e79fd230f2f9e703ccd222ba1711c758cf04a52388d446d0f81f898",
+      "at": "packages/pipeline/src/mutation-static.ts:163:55",
+      "mutator": "BooleanLiteral",
+      "replacement": "lockfiles.some(present)",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    },
+    {
+      "id": "hand-bun-record",
+      "at": "packages/pipeline/src/mutation-static.ts:131:41",
+      "mutator": "Hand",
+      "replacement": "records: [\"node_modules/.bun\"]",
+      "baseline": {
+        "collected": 1,
+        "passed": 1
+      },
+      "result": {
+        "collected": 1,
+        "passed": 0
+      },
+      "killed": true
+    }
+  ]
+}

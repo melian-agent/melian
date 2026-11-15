@@ -500,7 +500,7 @@ function printed(output: string): string {
  */
 export function renderProbeEvidence(
 	label: string,
-	claim: ClaimProbe,
+	claim: Omit<ClaimProbe, "environment">,
 	again: ProbeRun | undefined,
 	nonce: string,
 ): string {

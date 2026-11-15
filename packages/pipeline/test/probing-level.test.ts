@@ -2648,7 +2648,7 @@ describe("a level that probes", () => {
 		expect(judged[0]).toBe("faux-1");
 	});
 
-	it("attaches a repeat review to a verification stored before reruns joined its key, for a level without probes", async () => {
+	it("attaches a repeat review of a level without probes to its stored verification, asking the verifier nothing", async () => {
 		const fake = createFakeModels();
 		let judged = 0;
 		const judge: ScriptedReply = (messages) => {
@@ -2667,18 +2667,12 @@ describe("a level that probes", () => {
 		const first = await review(scripts, { fake, lens: (lens) => lens });
 		expect((await first.run).verdict.counted()).toHaveLength(1);
 		expect(judged).toBe(2);
-		// The key as the build before reruns joined it wrote it: the same fields, in the same order, without reruns.
 		const root = await harness!.harness.root(backgroundContext);
 		const verification = async () =>
 			(await harness!.harness.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[
 				Revision.key(first.changeset.revision)
 			]!.verification!.task;
 		const stored = await verification();
-		await root.commit(async (tx) => {
-			const entry = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(first.changeset.revision)]!;
-			const { reruns: __, ...older } = JSON.parse(entry.verification!.input) as Record<string, unknown>;
-			entry.verification = { ...entry.verification!, input: JSON.stringify(older) };
-		}, backgroundContext);
 		const again = await review(scripts, { fake, lens: (lens) => lens });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(judged).toBe(2);
