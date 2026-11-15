@@ -13,6 +13,14 @@ export function running(pid: number): boolean {
 	}
 }
 
+export function scratchName(name: string): boolean {
+	return (
+		/^\.(?:fetch|graph|prune)-/.test(name) ||
+		/^\..+-[0-9a-f-]{36}\.json$/.test(name) ||
+		/\.[0-9a-f-]{36}\.tmp$/.test(name)
+	);
+}
+
 export class CacheScratch {
 	readonly root: string;
 	private constructor(root: string) {
@@ -54,11 +62,7 @@ export class CacheScratch {
 				if (!running(Number(pid))) await this.#remove(path);
 				continue;
 			}
-			if (
-				/^\.(?:fetch|graph|prune)-/.test(entry.name) ||
-				/^\..+-[0-9a-f-]{36}\.json$/.test(entry.name) ||
-				/\.[0-9a-f-]{36}\.tmp$/.test(entry.name)
-			) {
+			if (scratchName(entry.name)) {
 				try {
 					if ((await lstat(path)).mtimeMs < Date.now() - 86_400_000) await this.#remove(path);
 				} catch {}
