@@ -123,7 +123,11 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 	const task = await harness.getTask(entry.task as Parameters<Harness["getTask"]>[0], context);
 	const input = task!.input as { reused?: Record<string, unknown> };
 	const copied = "reused" in input ? Object.keys(input.reused ?? {}).map((key) => key.split("@")[0]) : "none";
-	return { review: result, asked: [...asked].sort(), lensStages, copied };
+	const outcome = task!.state.outcome as { result: Record<string, { conversation?: string }> };
+	const conversations = Object.fromEntries(
+		Object.entries(outcome.result).map(([key, { conversation }]) => [key.split("@")[0], conversation]),
+	);
+	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations };
 }
 
 describe("a repeat review copies each lens run whose request is unchanged", () => {
@@ -139,6 +143,9 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 
 		expect(second.asked).toEqual(["correctness"]);
 		expect(second.copied).toEqual(["contracts"]);
+		expect(first.conversations.contracts).toBeDefined();
+		expect(second.conversations.contracts).toBe(first.conversations.contracts);
+		expect(second.conversations.correctness).not.toBe(first.conversations.correctness);
 		expect(second.review.findings.map(({ id }) => id)).toEqual(first.review.findings.map(({ id }) => id));
 		expect(
 			(second.review.verdict.ran ?? []).filter(({ name }) => name.startsWith("lens.")).map(({ name }) => name),
