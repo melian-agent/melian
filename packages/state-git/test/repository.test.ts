@@ -281,6 +281,17 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		expect(await calls()).toBe(1);
 	});
 
+	it("leaves core's other git errors as they are, such as a git that cannot start", async () => {
+		const repository = await opened();
+		const empty = join(remote.root, "no-git");
+		await mkdir(empty, { recursive: true });
+		vi.stubEnv("PATH", empty);
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toMatchObject({
+			name: "ChangesetError",
+			code: "gitUnavailable",
+		});
+	});
+
 	it("fails as unreachable, and never retries, when deleting its ref names a held lock and then floods", async () => {
 		const { repository } = await fetched();
 		const calls = await floodOn("update-ref -d", "fatal: cannot lock ref 'refs/melian/fetch/x': File exists\n");
@@ -422,6 +433,16 @@ describe("pushing", { timeout: 60_000 }, () => {
 		const { repository, tip } = await fetched();
 		const commit = await repository.commit(tip, [], time());
 		expect(await repository.push(remote.url, remote.branch, commit, tip, oneMillisecond())).toBe("stopped");
+	});
+
+	it("fails as unreachable, and never answers stopped, when its deadline has passed before git starts", async () => {
+		const { repository, tip } = await fetched();
+		const commit = await repository.commit(tip, [], time());
+		const passed = Deadline.after({ now: () => 0, sleep: async () => {} }, 0);
+		await expect(repository.push(remote.url, remote.branch, commit, tip, passed)).rejects.toSatisfy(
+			unreachable(/^git push in \S+ ran past its deadline$/),
+		);
+		expect(remote.tip()).toBe(tip);
 	});
 
 	it("answers stopped when the remote floods standard error after the push lands, and the remote holds the commit", async () => {
