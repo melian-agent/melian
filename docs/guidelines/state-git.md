@@ -14,7 +14,7 @@
 
 ## Rules
 
-- Run git only through `RecordRepository.run`. It checks the repository's configuration bytes and passes `overrides`, the settings that would run a program or start background work. A new setting with that power goes on that list with a one-line reason, and a test proves it holds with the configuration check mocked out, as `test/overrides.test.ts` does.
+- Run git only through `RecordRepository.run`. It checks the repository's configuration bytes and passes `overrides`, the settings that would run a program or start background work. A new setting with that power goes on that list with a one-line reason, and a test proves it holds with the configuration check mocked out, as `test/overrides.test.ts` does. Its environment turns off replacement refs and the graft file, since either in `records.git` would make a read or the landed check see objects the remote never sent; `test/repository.test.ts` plants each.
 - Pass `--end-of-options` before the remote, or any other argument a caller supplies. A remote spelled as an option, such as `--upload-pack=<program>`, otherwise makes git run that program on the host.
 - Name the remote in a message through `shown`, which removes a URL's user and password. A remote may carry a token, as `https://<token>@github.com/...` does, and `melian doctor` prints the message. Git's own messages already leave them out.
 - Never read a stray entry's bytes into a record, and never rewrite or remove one. A commit carries it along by its object ID.

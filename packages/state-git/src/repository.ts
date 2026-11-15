@@ -25,6 +25,11 @@ const environment = {
 	GIT_AUTHOR_EMAIL: "melian@invalid",
 	GIT_COMMITTER_NAME: "Melian",
 	GIT_COMMITTER_EMAIL: "melian@invalid",
+	// A local writer's `refs/replace/<commit>` would make every read and commit see an object the remote never sent.
+	GIT_NO_REPLACE_OBJECTS: "1",
+	// So would `info/grafts` for a commit's parents, which the landed check reads; the setting above leaves it on. No file
+	// can sit under `/dev/null`, and git warns on every command when the graft file exists, even empty.
+	GIT_GRAFT_FILE: "/dev/null/none",
 };
 
 // Another process's ref update on this repository holds these locks for a moment.

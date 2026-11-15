@@ -238,6 +238,31 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("reading the objects themselves", { timeout: 60_000 }, () => {
+	const emptyTree = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+	// A commit records.git holds that no remote ever had, as a local writer could make.
+	function forged(repository: RecordRepository): string {
+		return remote.git(["--git-dir", repository.path, "commit-tree", "-m", "forged", emptyTree], remote.root);
+	}
+
+	it("lists the fetched tip's own tree when records.git holds a replacement for it", async () => {
+		const { repository, tip } = await fetched();
+		const genuine = await repository.entries(tip, time(), listingLimit);
+		remote.git(["--git-dir", repository.path, "update-ref", `refs/replace/${tip}`, forged(repository)], remote.root);
+		expect(await repository.entries(tip, time(), listingLimit)).toEqual(genuine);
+	});
+
+	it("answers ancestry from the commits themselves when records.git holds a grafts file", async () => {
+		const { repository, tip } = await fetched();
+		const stranger = forged(repository);
+		expect((await repository.run(["rev-list", tip], time())).stderr).toBe("");
+		await mkdir(join(repository.path, "info"), { recursive: true });
+		await writeFile(join(repository.path, "info", "grafts"), `${tip} ${stranger}\n`);
+		expect(await repository.isAncestor(stranger, tip, time())).toBe(false);
+	});
+});
+
 describe("naming the remote", { timeout: 60_000 }, () => {
 	const named = /https:\/\/127\.0\.0\.1:9\/x\.git/;
 	const hidden = /melian:|FAKESECRET/;
