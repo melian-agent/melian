@@ -172,18 +172,21 @@ export class StateTree {
 		before: boolean,
 	): Promise<{ entries: TreeEntry[]; small: Map<string, number> }> {
 		const [holds, lists] = before ? ["would hold", "would list"] : ["holds", "lists"];
-		const remedy = (what: string) =>
-			before ? `nothing was pushed, and ${what} makes room` : `${what} brings it under`;
+		// Past a limit every call fails, dispose included, so only git can bring the tip back under.
+		const remedy = (strays: boolean) =>
+			before
+				? `nothing was pushed, and disposing changesets${strays ? " or removing strays" : ""} makes room`
+				: `every call fails, dispose included, until a writer removes changesets${strays ? " or strays" : ""} from the branch with git`;
 		const entries = await repository.entries(commit, deadline, listingLimit);
 		if (entries === undefined)
 			throw new RecordError(
 				"unreachable",
-				`${branch} ${lists} more than ${listingLimit} bytes of entries at its tip, past the store's limit; ${remedy("disposing changesets or removing strays")}`,
+				`${branch} ${lists} more than ${listingLimit} bytes of entries at its tip, past the store's limit; ${remedy(true)}`,
 			);
 		if (entries.length > entryLimit)
 			throw new RecordError(
 				"unreachable",
-				`${branch} ${holds} ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; ${remedy("disposing changesets or removing strays")}`,
+				`${branch} ${holds} ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; ${remedy(true)}`,
 			);
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const sizes = await repository.sizes(readable, deadline);
@@ -201,7 +204,7 @@ export class StateTree {
 		if (total > tipLimit)
 			throw new RecordError(
 				"unreachable",
-				`${branch} ${holds} ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; ${remedy("disposing changesets")}`,
+				`${branch} ${holds} ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; ${remedy(false)}`,
 			);
 		return { entries, small };
 	}

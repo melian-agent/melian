@@ -115,9 +115,18 @@ describe("the entries a tip may hold", { timeout: 300_000 }, () => {
 		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
 		await expect(store.strays()).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state holds ${limit + 1} entries at its tip, past the store's limit of ${limit}; disposing changesets or removing strays brings it under`,
+			message: `melian/state holds ${limit + 1} entries at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets or strays from the branch with git`,
 		});
 		expect(sizes).not.toHaveBeenCalled();
+	});
+
+	it("fails a dispose one entry past the limit, as it fails every call", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit + 1));
+		await expect(store.dispose(changeset)).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state holds ${limit + 1} entries at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets or strays from the branch with git`,
+		});
 	});
 
 	it("lists a tip whose listing is exactly its cap", async () => {
@@ -132,7 +141,7 @@ describe("the entries a tip may hold", { timeout: 300_000 }, () => {
 		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
 		await expect(store.strays()).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state lists more than ${listingLimit} bytes of entries at its tip, past the store's limit; disposing changesets or removing strays brings it under`,
+			message: `melian/state lists more than ${listingLimit} bytes of entries at its tip, past the store's limit; every call fails, dispose included, until a writer removes changesets or strays from the branch with git`,
 		});
 		expect(sizes).not.toHaveBeenCalled();
 	});
@@ -231,7 +240,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await expect(store.list(changeset)).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state holds ${limit + 1} bytes of records and cells at its tip, past the store's limit of ${limit}; disposing changesets brings it under`,
+			message: `melian/state holds ${limit + 1} bytes of records and cells at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets from the branch with git`,
 		});
 		expect(blobs).not.toHaveBeenCalled();
 	});
@@ -290,7 +299,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await expect(store.strays()).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state holds ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; disposing changesets brings it under`,
+			message: `melian/state holds ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets from the branch with git`,
 		});
 		expect(blobs).not.toHaveBeenCalled();
 	});
