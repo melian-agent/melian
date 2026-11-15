@@ -260,8 +260,8 @@ export class Miss {
 			return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
 		const lens = (await Lens.load(this.repo, { kind: "revision", commit: target.base }, [this.file])).find(
 			(each) => each.name === probingLens,
-		);
-		if (!lens?.rules.some(({ id }) => id === this.rule))
+		)!;
+		if (!lens.rules.some(({ id }) => id === this.rule))
 			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
 		if (this.lines === undefined) return undefined;
 		const source = await openSource(this.repo, { kind: "revision", commit: target.head });

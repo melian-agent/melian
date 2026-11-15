@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
 	defaultConfig,
 	Finding,
@@ -1245,6 +1245,49 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(refused.range).not.toHaveBeenCalled();
 			const using = runners();
 			expect((await measure({ ...settings, MELIAN_EVAL_MISSES: missesFile([valid]) }, using)).status).toBe(0);
+			expect(using.range).toHaveBeenCalledTimes(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("accepts a miss whose rule only its own folder's lens declares, in a range that changes other files too", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const file = defect[0]!.properties.path!;
+			const commit = (message: string) =>
+				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
+			git(repo, "checkout", "--quiet", "-b", "nested", base);
+			const lens = join(repo, ".github/.melian/lenses/trust-boundary/LENS.md");
+			mkdirSync(dirname(lens), { recursive: true });
+			writeFileSync(
+				lens,
+				"---\nname: trust-boundary\nextends: trust-boundary\nrules:\n  - id: nested-only\n    description: A rule only this folder declares.\n---\n",
+			);
+			git(repo, "add", "--all");
+			commit("nested lens");
+			const nested = git(repo, "rev-parse", "HEAD");
+			git(repo, "checkout", "--quiet", "feature", "--", file);
+			writeFileSync(join(repo, "other.txt"), "another changed file\n");
+			git(repo, "add", "--all");
+			commit("wider head");
+			const wider = git(repo, "rev-parse", "HEAD");
+			const using = runners();
+			const { status, errors } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "nested", repo, base: nested, head: wider, file, rule: "nested-only" },
+					]),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${nested},${wider}`,
+				},
+				using,
+			);
+			expect(errors).toEqual([]);
+			expect(status).toBe(0);
 			expect(using.range).toHaveBeenCalledTimes(1);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
