@@ -1,10 +1,11 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ChangesetError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkGitVersion, git, gitOutput, requireGitVersion, stderrLimit } from "../src/git.ts";
+import { type ProcessControl, ProcessTable } from "../src/process-tree.ts";
 import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -24,17 +25,41 @@ afterEach(() => {
 // group, and only with signal 0, which tests whether it exists.
 async function expectEnded(pid: number): Promise<void> {
 	expect(Number.isSafeInteger(pid) && pid > 1).toBe(true);
+	// An orphan that has exited stays a zombie until pid 1 reaps it, and a cloud container's pid 1 can leave it unreaped.
 	const alive = () => {
 		try {
 			process.kill(pid, 0);
-			return true;
 		} catch {
 			return false;
 		}
+		return !spawnSync("/bin/ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" })
+			.stdout.trim()
+			.startsWith("Z");
 	};
 	for (let wait = 0; wait < 40 && alive(); wait++) await new Promise((resolve) => setTimeout(resolve, 50));
 	expect(alive()).toBe(false);
 }
+
+// A process table that reads the real one and records each signal without sending it.
+class RecordingTable implements ProcessControl {
+	kills: [number, string][] = [];
+	list() {
+		return new ProcessTable().list();
+	}
+	kill(pid: number, signal: "SIGTERM" | "SIGKILL") {
+		this.kills.push([pid, signal]);
+	}
+}
+
+// A process table that cannot be read, as with no ps or a sandbox that refuses it.
+const unreadable: ProcessControl = {
+	list: () => {
+		throw new Error("ps failed");
+	},
+	kill: () => {
+		throw new Error("nothing may be signalled without a table");
+	},
+};
 
 describe("checkGitVersion", () => {
 	it.each(["git version 2.40.0", "git version 2.50.1 (Apple Git-155)", "git version 3.0.0.windows.1"])(
@@ -120,6 +145,34 @@ describe("git with a deadline", () => {
 		expect(Date.now() - start).toBeLessThan(5000);
 	});
 
+	it("reads the process table while git runs, and signals git and its transport by pid", async () => {
+		const recorded = join(repo, "pids");
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, `echo "$(ps -o ppid= -p $PPID | tr -d ' ') $$" > ${recorded}\nexec sleep 10\n`);
+		const processes = new RecordingTable();
+		const result = await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], {
+			deadlineMs: 500,
+			processes,
+		});
+		expect(result).toMatchObject({ code: -1, timedOut: true });
+		expect(result.childrenLeft).toBeUndefined();
+		const [gitPid, transportPid] = readFileSync(recorded, "utf8").trim().split(" ").map(Number);
+		expect(processes.kills[0]).toEqual([gitPid, "SIGTERM"]);
+		expect(processes.kills).toContainEqual([transportPid, "SIGTERM"]);
+	});
+
+	it("stops git alone, and says the programs it started were not stopped, when the process table cannot be read", async () => {
+		const recorded = join(repo, "git-pid");
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, `ps -o ppid= -p $PPID | tr -d ' ' > ${recorded}\nexec sleep 10\n`);
+		const result = await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], {
+			deadlineMs: 500,
+			processes: unreadable,
+		});
+		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+		await expectEnded(Number(readFileSync(recorded, "utf8")));
+	});
+
 	it("stops the git process itself, not only the wait for it", async () => {
 		// The transport's parent is git's remote helper, whose parent is the git process the deadline must stop; the
 		// transport records that pid, and exits on its own later.
@@ -129,6 +182,15 @@ describe("git with a deadline", () => {
 		await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], { deadlineMs: 500 });
 		await expectEnded(Number(readFileSync(recorded, "utf8")));
 	});
+
+	it("stops the transport git started, which would outlive git", async () => {
+		// The transport records its own pid and waits, as ssh does at a passphrase prompt; it exits on its own later.
+		const recorded = join(repo, "transport-pid");
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, `echo $$ > ${recorded}\nexec sleep 10\n`);
+		await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], { deadlineMs: 500 });
+		await expectEnded(Number(readFileSync(recorded, "utf8")));
+	}, 20_000);
 
 	it("lets the process exit once the deadline passes, though git's transport holds its output open", () => {
 		// The transport keeps the output git gave it for ten seconds; the process must not wait for it.
@@ -173,6 +235,28 @@ describe("git with a standard error past its limit", () => {
 		expect(error.code).toBe("gitOutputTooLarge");
 		expect(error.message).toBe(
 			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it`,
+		);
+	});
+
+	it("stops git's tree on a flood, through the process table it is given", async () => {
+		const processes = new RecordingTable();
+		const error = await rejection(
+			git(repo, ["fetch"], { env: standIn(writes(stderrLimit + 1)), processes }),
+			ChangesetError,
+		);
+		expect(error.message).toBe(
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it`,
+		);
+		expect(processes.kills.map(([, signal]) => signal)).toContain("SIGTERM");
+	});
+
+	it("says the programs git started were not stopped on a flood, when the process table cannot be read", async () => {
+		const error = await rejection(
+			git(repo, ["fetch"], { env: standIn(writes(stderrLimit + 1)), processes: unreadable }),
+			ChangesetError,
+		);
+		expect(error.message).toBe(
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read, so the programs git started were not stopped`,
 		);
 	});
 

@@ -491,6 +491,7 @@ export {
 	ProcessTable,
 	parseProcesses,
 	type RecordedProcess,
+	stopTree,
 	terminateRecorded,
 } from "./process-tree.ts";
 export {

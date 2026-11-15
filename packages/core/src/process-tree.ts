@@ -54,6 +54,47 @@ export async function terminateRecorded(
 	signal("SIGKILL");
 }
 
+/**
+ * Stops `root` and every process below it, as one read of the process table shows them, by recorded pid: SIGTERM, then
+ * SIGKILL. The read comes before any signal, because a child whose parent has ended is re-parented and no longer reads
+ * as below `root`. This process and its ancestors are never signalled. Returns the stop's completion, or `undefined`,
+ * having signalled nothing, when the table cannot be read or `root` is not a pid above 1.
+ */
+export function stopTree(
+	root: number,
+	control: ProcessControl,
+	sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
+		new Promise((resolve) => setTimeout(resolve, milliseconds)),
+): Promise<void> | undefined {
+	// Pid 1 and pid 0 are the parents of every process, so a tree rooted at either would take in the whole machine.
+	if (!Number.isSafeInteger(root) || root <= 1) return undefined;
+	let table: ProcessEntry[];
+	try {
+		table = control.list();
+	} catch {
+		return undefined;
+	}
+	const parents = new Map(table.map((entry) => [entry.pid, entry.ppid]));
+	const kept: number[] = [];
+	for (let pid: number | undefined = process.pid; pid !== undefined && !kept.includes(pid); pid = parents.get(pid))
+		kept.push(pid);
+	const recorded = new Map<number, string>();
+	const queue: number[] = [];
+	for (const entry of table)
+		if (entry.pid === root) {
+			recorded.set(entry.pid, entry.start);
+			queue.push(entry.pid);
+		}
+	for (let next = queue.shift(); next !== undefined; next = queue.shift())
+		for (const entry of table)
+			if (entry.ppid === next && !recorded.has(entry.pid)) {
+				recorded.set(entry.pid, entry.start);
+				queue.push(entry.pid);
+			}
+	const records = [...recorded].map(([pid, start]) => ({ pid, start }));
+	return terminateRecorded(records, control, sleep, kept);
+}
+
 export class ProcessTable implements ProcessControl {
 	list(): ProcessEntry[] {
 		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart="], { encoding: "utf8" });
