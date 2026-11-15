@@ -179,9 +179,10 @@ export class RecordRepository {
 		}
 	}
 
-	// Every file of `commit`'s tree, by its raw path.
-	async entries(commit: string, deadline: Deadline): Promise<TreeEntry[]> {
-		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit], deadline);
+	// Every file of `commit`'s tree, by its raw path, or undefined when the listing runs past `maxBytes`.
+	async entries(commit: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
+		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit], deadline, { maxBytes });
+		if (result.truncated) return undefined;
 		if (result.code !== 0) throw unreachable(`listing ${commit} failed in ${this.path}`, result);
 		const entries: TreeEntry[] = [];
 		const bytes = result.stdoutBytes;

@@ -80,6 +80,52 @@ describe("reading the tree", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("the entries a tip may hold", { timeout: 300_000 }, () => {
+	const limit = 65_536;
+	const listingLimit = 64 * 1024 * 1024;
+	// Strays, which `strays()` lists and never refuses, each a path of `length` bytes holding an empty file.
+	const strays = (count: number, length = 0) =>
+		Object.fromEntries(
+			Array.from({ length: count }, (_, n) => [`noise/${n}`.padEnd(length, "x"), { bytes: "" }] as const),
+		);
+	// The length of the path that makes one line of `git ls-tree -r -z` a KiB: mode, type, object ID, tab and NUL.
+	const kibPath = 1024 - "100644 blob ".length - 40 - 2;
+
+	it("lists a tip of exactly the limit's entries", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit));
+		expect(await store.strays()).toHaveLength(limit);
+	});
+
+	it("fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit + 1));
+		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
+		await expect(store.strays()).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state holds ${limit + 1} entries at its tip, past the store's limit of ${limit}; disposing changesets or removing strays brings it under`,
+		});
+		expect(sizes).not.toHaveBeenCalled();
+	});
+
+	it("lists a tip whose listing is exactly its cap", async () => {
+		const store = await remote.open();
+		remote.plant(strays(limit, kibPath));
+		expect(await store.strays()).toHaveLength(limit);
+	});
+
+	it("fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes", async () => {
+		const store = await remote.open();
+		remote.plant({ ...strays(limit - 1, kibPath), [`long/`.padEnd(kibPath + 1, "x")]: { bytes: "" } });
+		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
+		await expect(store.strays()).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state lists more than ${listingLimit} bytes of entries at its tip, past the store's limit; disposing changesets or removing strays brings it under`,
+		});
+		expect(sizes).not.toHaveBeenCalled();
+	});
+});
+
 describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 	const limit = 256 * 1024 * 1024;
 	const fileLimit = 4 * 1024 * 1024;

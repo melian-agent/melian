@@ -4,6 +4,7 @@ import { RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Deadline, systemClock } from "../src/deadline.ts";
 import { RecordRepository } from "../src/repository.ts";
+import { listingLimit } from "../src/state-tree.ts";
 import { check, Remote } from "./fixtures/remote.ts";
 
 let remote: Remote;
@@ -143,7 +144,7 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 describe("reading objects", { timeout: 60_000 }, () => {
 	it("fails as unreachable on a commit it does not hold", async () => {
 		const { repository } = await fetched();
-		await expect(repository.entries(absent, time())).rejects.toSatisfy(unreachable(/^listing /));
+		await expect(repository.entries(absent, time(), listingLimit)).rejects.toSatisfy(unreachable(/^listing /));
 		await expect(repository.depth(absent, time())).rejects.toSatisfy(unreachable(/^git rev-list failed/));
 		await expect(repository.isAncestor(absent, absent, time())).rejects.toSatisfy(unreachable(/^comparing /));
 	});
@@ -159,7 +160,7 @@ describe("reading objects", { timeout: 60_000 }, () => {
 
 	it("fails as unreachable when git cannot read the blobs", async () => {
 		const { repository, tip } = await fetched();
-		const [entry] = await repository.entries(tip, time());
+		const [entry] = (await repository.entries(tip, time(), listingLimit))!;
 		const run = RecordRepository.prototype.run;
 		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
 			const result = await run.apply(this, args);

@@ -9,6 +9,11 @@ export const fileLimit = 4 * 1024 * 1024;
 // that does not hold the whole tip replaces it.
 export const tipLimit = 256 * 1024 * 1024;
 
+// The most entries a tip may hold, since a call holds every one, and the most bytes their listing may run to, a KiB a
+// line on average, so the listing stays bounded before it is counted.
+export const entryLimit = 65_536;
+export const listingLimit = entryLimit * 1024;
+
 const cellName = "cell.json";
 const version = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -132,7 +137,17 @@ export class StateTree {
 		judged: Map<string, Judged>,
 		deadline: Deadline,
 	): Promise<StateTree> {
-		const entries = await repository.entries(commit, deadline);
+		const entries = await repository.entries(commit, deadline, listingLimit);
+		if (entries === undefined)
+			throw new RecordError(
+				"unreachable",
+				`${branch} lists more than ${listingLimit} bytes of entries at its tip, past the store's limit; disposing changesets or removing strays brings it under`,
+			);
+		if (entries.length > entryLimit)
+			throw new RecordError(
+				"unreachable",
+				`${branch} holds ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; disposing changesets or removing strays brings it under`,
+			);
 		// Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
 		const keyOf = (entry: TreeEntry) => JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];

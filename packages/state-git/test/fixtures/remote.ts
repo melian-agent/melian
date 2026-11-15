@@ -89,11 +89,18 @@ export class Remote {
 		const env = { GIT_INDEX_FILE: index };
 		const parent = this.tip(branch);
 		this.git(parent === undefined ? ["read-tree", "--empty"] : ["read-tree", parent], this.path, { env });
+		// Each distinct content is hashed once, so a tree of many entries of one file plants quickly.
+		const hashed = new Map<string, string>();
+		const oidOf = (bytes: string | Buffer) => {
+			const key = Buffer.from(bytes).toString("hex");
+			const known = hashed.get(key);
+			if (known !== undefined) return known;
+			const oid = this.git(["hash-object", "-w", "--no-filters", "--stdin"], this.path, { input: bytes });
+			hashed.set(key, oid);
+			return oid;
+		};
 		const lines = entries.map(([path, entry]) => {
-			const line =
-				entry === null
-					? `0 ${"0".repeat(40)}\t`
-					: `${entry.mode ?? "100644"} ${this.git(["hash-object", "-w", "--no-filters", "--stdin"], this.path, { input: entry.bytes })}\t`;
+			const line = entry === null ? `0 ${"0".repeat(40)}\t` : `${entry.mode ?? "100644"} ${oidOf(entry.bytes)}\t`;
 			return Buffer.concat([Buffer.from(line), path, Buffer.from("\0")]);
 		});
 		this.git(["update-index", "-z", "--index-info"], this.path, { env, input: Buffer.concat(lines) });
