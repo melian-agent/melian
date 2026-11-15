@@ -382,18 +382,20 @@ it("counts only names core gives a changeset as changesets, and lists every othe
 });
 
 it.each(["graphs", "coverage", "mutation"])(
-	"lists a dotted name under %s that CacheScratch does not sweep as not recognised",
+	"lists a dotted name, or one that holds a scratch name, under %s that CacheScratch does not sweep as not recognised",
 	async (folder) => {
 		await mkdir(join(state, folder, ".future-cache"), { recursive: true });
 		await writeFile(join(state, folder, ".future-cache", "data"), "x");
-		await writeFile(join(state, folder, ".fetch"), "x");
-		const nearScratch = `.entry-${crypto.randomUUID()}.jsonx`;
-		await writeFile(join(state, folder, nearScratch), "x");
+		const near = [
+			".fetch",
+			"x.fetch-1",
+			`.entry-${crypto.randomUUID()}.jsonx`,
+			`x.entry-${crypto.randomUUID()}.json`,
+		];
+		for (const name of near) await writeFile(join(state, folder, name), "x");
 		const prune = await plan();
 		expect(prune.entries).toEqual([]);
-		expect([...prune.kept].sort()).toEqual(
-			[`${folder}/.fetch`, `${folder}/.future-cache`, `${folder}/${nearScratch}`].sort(),
-		);
+		expect([...prune.kept].sort()).toEqual([".future-cache", ...near].map((name) => `${folder}/${name}`).sort());
 	},
 );
 
