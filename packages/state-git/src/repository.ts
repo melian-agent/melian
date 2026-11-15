@@ -31,11 +31,11 @@ const environment = {
 const contention =
 	/shallow\.lock|shallow file has changed since we read it|cannot lock ref|Unable to create '.*\.lock'/;
 
-// A refusal because the branch moved: the client saw a newer tip than its lease, or the remote's ref moved, or was
-// locked by another push, between its advertisement and the update. Anything else, such as a hook that declined, is
-// no race and no retry clears it.
+// A refusal because the branch moved: the client saw a newer tip than its lease, or the remote's ref moved, was created,
+// or was locked by another push, between its advertisement and the update. Anything else, such as a hook that declined,
+// is no race and no retry clears it.
 const lostRace =
-	/\t\[rejected\] \((stale info|fetch first|non-fast-forward|already exists)\)|\t\[remote rejected\] \((failed to update ref|cannot lock ref|incorrect old value)/;
+	/\t\[rejected\] \((stale info|fetch first|non-fast-forward|already exists)\)|\t\[remote rejected\] \((failed to update ref|cannot lock ref|incorrect old value|reference already exists)/;
 
 // One entry of a commit's tree, as `ls-tree -r -z` gives it.
 export type TreeEntry = { readonly mode: string; readonly type: string; readonly oid: string; readonly path: Buffer };

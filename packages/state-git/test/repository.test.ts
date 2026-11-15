@@ -311,6 +311,7 @@ describe("pushing", { timeout: 60_000 }, () => {
 		"[remote rejected] (failed to update ref)",
 		"[remote rejected] (cannot lock ref 'refs/heads/melian/state': is at 0123 but expected 4567)",
 		"[remote rejected] (incorrect old value provided)",
+		"[remote rejected] (reference already exists)",
 	])
 		it(`answers stale for a race the push reports as ${race}`, async () => {
 			const { repository, tip } = await fetched();
