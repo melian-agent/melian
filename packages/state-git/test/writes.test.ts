@@ -85,8 +85,11 @@ describe("concurrent writers", { timeout: 120_000 }, () => {
 		await store.add([check("first")]);
 		const before = remote.tip();
 		const push = loseRaces(1);
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
 		await store.add([check("second")]);
 		expect(push).toHaveBeenCalledTimes(2);
+		// One read of the tip for each attempt: a push a newer tip refused needs no check of whether it landed.
+		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(push.mock.calls[0]![3]).toBe(before);
 		expect(push.mock.calls[1]![3]).not.toBe(before);
 		expect(keys(await store.list(changeset))).toEqual(["first", "second"]);
