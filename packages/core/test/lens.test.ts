@@ -250,7 +250,7 @@ describe("built-in lenses", () => {
 			contracts: "ac79e2affc42",
 			conventions: "e5f0c8075927",
 			correctness: "2ada4940e253",
-			design: "b4d0cff4d3d6",
+			design: "0f2e72de3c2d",
 			durability: "2d013afa303b",
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
@@ -342,7 +342,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 8, tokens: 5_000_000, tools: 400 },
+				budget: { findings: 16, tokens: 5_000_000, tools: 400 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);
