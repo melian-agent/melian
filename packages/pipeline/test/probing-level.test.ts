@@ -954,6 +954,8 @@ describe("a level that probes", () => {
 		const { run, changeset } = await review({
 			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
 			prober: [
+				// An attack skipped and then probed was probed, as the run's own record counts it.
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
 				call("run_probe", { attack: 2, script: passing }),
 				call("run_probe", { attack: 1, script: failing }),
 				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
