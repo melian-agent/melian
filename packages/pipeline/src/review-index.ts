@@ -58,6 +58,18 @@ export const ReviewIndex = defineDoc<ReviewIndexState>({
 	},
 });
 
+// Whether a review still owns its revision's entry: the entry names the lens task the review ran, when it ran one, and
+// the verification task it relied on, when it relied on one. Every commit that writes from a task's outcome asks it, so
+// a review a later one replaced writes nothing.
+export function stillOwns(
+	entry: ReviewIndexState["reviews"][string] | undefined,
+	lensTask: number | undefined,
+	verification?: number,
+): boolean {
+	if (lensTask !== undefined && entry?.task !== lensTask) return false;
+	return verification === undefined || entry?.verification?.task === verification;
+}
+
 // Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
 export const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
 

@@ -1,0 +1,47 @@
+{
+ "total": 2,
+ "omitted": 0,
+ "base": "a92eae59",
+ "head": "19d1c24d",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000",
+ "note": "Fix pass 5 of pull request #296: the mutants of the fix for Codex's sixth review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/core/src/lens.ts",
+   "line": 79,
+   "column": 1,
+   "endLine": 79,
+   "endColumn": 114,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/core/test/lens.test.ts > repository lenses from the worktree > takes a probe timeout of ten minutes, the longest a probe may run",
+   "survivorClasses": [],
+   "run": {
+    "head": "19d1c24d",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/core/src/lens.ts",
+   "line": 79,
+   "column": 78,
+   "endLine": 79,
+   "endColumn": 110,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/core/test/lens.test.ts > repository lenses from the worktree > refuses an unknown probe field, a prober outside the tiers, and a timeout below a millisecond or past ten minutes",
+   "survivorClasses": [],
+   "run": {
+    "head": "19d1c24d",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 2
+ }
+}

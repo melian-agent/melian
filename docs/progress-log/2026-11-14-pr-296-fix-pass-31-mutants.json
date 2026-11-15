@@ -1,0 +1,316 @@
+{
+	"total": 18,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "809ce65a",
+	"head": "e20215ab",
+	"command": "node scripts/enumerate-mutants.mjs 809ce65a...e20215ab --json --limit 10000",
+	"note": "Fix pass 31 of pull request #296: the probing reuse key's platform and sandbox, which the Actions round at 28ae9b20 raised and the coordinator chose to fix. Each claim was run at e20215ab against its named test alone; the merge of main that follows changed none of the mutated files. Six ignored literals are left out.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 275,
+			"column": 14,
+			"endLine": 275,
+			"endColumn": 38,
+			"mutatorName": "LogicalOperator",
+			"replacement": "sandbox && Probe.sandbox",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 5,
+			"endLine": 276,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 5,
+			"endLine": 276,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another platform than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 5,
+			"endLine": 276,
+			"endColumn": 80,
+			"mutatorName": "LogicalOperator",
+			"replacement": "environment.platform !== runs.platform && environment.sandbox !== runs.kind",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another platform than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 5,
+			"endLine": 276,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another platform than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 5,
+			"endLine": 276,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "environment.platform === runs.platform",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 47,
+			"endLine": 276,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another sandbox than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 276,
+			"column": 47,
+			"endLine": 276,
+			"endColumn": 80,
+			"mutatorName": "EqualityOperator",
+			"replacement": "environment.sandbox === runs.kind",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 277,
+			"column": 2,
+			"endLine": 279,
+			"endColumn": 4,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing.test.ts > a head's bound > refuses a probe planned under another platform than the one it would run under, and runs nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 594,
+			"column": 15,
+			"endLine": 600,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's environment changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 595,
+			"column": 11,
+			"endLine": 595,
+			"endColumn": 44,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's environment changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 595,
+			"column": 22,
+			"endLine": 595,
+			"endColumn": 26,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's environment changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 596,
+			"column": 17,
+			"endLine": 596,
+			"endColumn": 21,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's environment changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 597,
+			"column": 9,
+			"endLine": 597,
+			"endColumn": 25,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "equivalent",
+			"evidence": "renderProbeEvidence, renderedPlan and outcome never read a claim's environment, so the rendering sample's environment changes no rendering.",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "survived"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1335,
+			"column": 62,
+			"endLine": 1337,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1336,
+			"column": 8,
+			"endLine": 1336,
+			"endColumn": 110,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined) && Probe.sandbox",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1355,
+			"column": 2,
+			"endLine": 1361,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-hosts.test.ts > a probing run's reuse across hosts > runs a probing level again on a host whose platform differs",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1358,
+			"column": 9,
+			"endLine": 1358,
+			"endColumn": 31,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a level without probes when the base policy's probe.read leads out of the checkout",
+			"survivorClasses": [],
+			"run": {
+				"head": "e20215ab",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 13,
+		"equivalent": 5
+	}
+}

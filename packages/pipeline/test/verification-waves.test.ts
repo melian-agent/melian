@@ -27,6 +27,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
+import { ProbeReruns } from "../src/probing.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { candidateIdentity, startVerification, startWave, type VerificationInput } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
@@ -220,10 +221,37 @@ describe("verification as each lens ends", () => {
 				],
 			},
 		]);
-		await review();
+		await expect(review()).rejects.toMatchObject({ code: "superseded" });
 		const root = await harness.root(context);
 		const entry = (await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[key];
 		expect(entry?.ended).toEqual({});
+	});
+
+	it("keeps another lens task's waves when the index names it before a review starts watching its lenses", async () => {
+		lenses = [lens("correctness")];
+		const key = Revision.key(changeset.revision);
+		scriptConversations(fake, [
+			{ match: lens("correctness").instructions, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const other = { lensTask: 999_999, ended: {}, waves: [] };
+		let moved = false;
+		const getTask = harness.getTask.bind(harness);
+		harness.getTask = (async (...args: Parameters<typeof getTask>) => {
+			// The watcher reads the lens task just before it opens the waves; another review has replaced it by then.
+			if (!moved && new Error().stack?.includes("verifyAsLensesEnd")) {
+				moved = true;
+				const root = await harness.root(context);
+				await root.commit(async (tx) => {
+					(await tx.doc(ReviewIndex, root.id)).reviews[key]!.task = other.lensTask;
+					(await tx.doc(VerificationWavesDocument, root.id)).reviews[key] = structuredClone(other);
+				}, context);
+			}
+			return getTask(...args);
+		}) as typeof harness.getTask;
+		await expect(review()).rejects.toMatchObject({ code: "superseded" });
+		expect(moved).toBe(true);
+		const root = await harness.root(context);
+		expect((await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[key]).toEqual(other);
 	});
 
 	it("starts no wave for a revision the index holds nothing for", async () => {
@@ -922,6 +950,52 @@ describe("verification as each lens ends", () => {
 		};
 		expect(await startVerification(harness, other, entry.lenses, false, context)).toBeDefined();
 		expect(await startVerification(harness, final, entry.lenses, false, context)).toBeUndefined();
+	});
+
+	it("records no verdict for a review whose reused wave another review's final verification retired", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		let other: number | undefined;
+		const snapshot = harness.snapshot.bind(harness);
+		harness.snapshot = (async (...args: Parameters<typeof snapshot>) => {
+			// The reruns read opens this review's final verification, after it chose to reuse the wave.
+			if (
+				other === undefined &&
+				Object.is(args[0], ProbeReruns) &&
+				new Error().stack?.includes("startVerification")
+			) {
+				other = -1;
+				const entry = (await snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+				const [wave] = (await snapshot(VerificationWavesDocument, root.id, context))!.reviews[revision]!.waves;
+				const input = (await harness.getTask(wave!.task as TaskId, context))!.input as unknown as VerificationInput;
+				// Another review sharing the lens task forms the claim's candidate differently, and its final task retires the wave.
+				other = await startVerification(
+					harness,
+					{
+						...input,
+						candidates: input.candidates.map((candidate) => ({
+							...candidate,
+							budget: { ...candidate.budget, tools: candidate.budget.tools + 1 },
+						})),
+					},
+					entry.lenses,
+					false,
+					context,
+				);
+			}
+			return snapshot(...args);
+		}) as typeof harness.snapshot;
+		const outcome = await review().then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+		expect(other).toBeGreaterThan(0);
+		const entry = (await snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		expect(entry.verification?.task).toBe(other);
+		expect(entry.adjudication).toBeUndefined();
+		expect(outcome).toMatchObject({ code: "superseded" });
 	});
 
 	it("leaves a wave still pending when the final verification starts no authority to verify", async () => {
