@@ -1,0 +1,5 @@
+# Issue 430: the tool cache reads a download whole before writing it
+
+[Issue #430](https://github.com/melian-agent/melian/issues/430): every Melian round in a cloud session crashed within seconds, while the tool cache downloaded Enola through the session's proxy. The download awaited a file write per chunk, so Node's bundled undici paused its parser, and when the server closed the connection the parser's `assert(!this.paused)` ended the process ([nodejs/undici#5360](https://github.com/nodejs/undici/issues/5360), fixed in undici 8.4.1; Node 22.23.4 bundles 6.29.1 and Node 24.22.1 bundles 7.30.1). `ToolCache`'s download now gathers the body in memory under its 128 MiB bound, checks the SHA-256, and writes the archive once. A digest mismatch now writes nothing.
+
+Two tests pin it: a body pulled in 64 chunks is read whole before any archive file exists, and a mismatched digest opens and writes no archive. Both failed on `d127d7bc` for the reported reason and pass after. The test that counts file handles after a binary stat refusal now counts two, since the download opens none.

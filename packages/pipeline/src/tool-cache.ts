@@ -264,21 +264,19 @@ export class ToolCache {
 	async #download(response: Response, target: string, expected: string): Promise<void> {
 		if (!response.ok || !response.body)
 			throw new ToolCacheError("toolFailed", `Download failed: HTTP ${response.status}`);
-		const file = await open(target, "wx", 0o600);
+		// Nothing is awaited between chunks: Node 22's and 24's undici crashes when a connection closes on a paused body.
+		const chunks: Uint8Array[] = [];
 		const hash = createHash("sha256");
 		let size = 0;
-		try {
-			for await (const chunk of response.body) {
-				size += chunk.byteLength;
-				if (size > archiveLimit) throw new ToolCacheError("outputTooLarge", "Tool archive exceeds 128 MiB");
-				hash.update(chunk);
-				await file.writeFile(chunk);
-			}
-		} finally {
-			await file.close();
+		for await (const chunk of response.body) {
+			size += chunk.byteLength;
+			if (size > archiveLimit) throw new ToolCacheError("outputTooLarge", "Tool archive exceeds 128 MiB");
+			hash.update(chunk);
+			chunks.push(chunk);
 		}
 		if (hash.digest("hex") !== expected)
 			throw new ToolCacheError("invalidOutput", "Tool archive SHA-256 mismatch; nothing extracted");
+		await writeFile(target, Buffer.concat(chunks, size), { flag: "wx", mode: 0o600 });
 	}
 
 	#extract(compressed: Buffer, wanted: string): Buffer {
