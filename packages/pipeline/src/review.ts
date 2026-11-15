@@ -1609,6 +1609,38 @@ function selectionOf(lenses: readonly LensRun[]): string[] {
 	return lenses.map((lens) => `${lens.key} request ${lens.request ?? "none"}`).sort();
 }
 
+// The lenses of `lenses` a new lens task copies from `previous`, the task the review's index entry names, when it
+// completed.
+function copiesFrom(
+	previous:
+		| {
+				readonly id: number;
+				readonly input: unknown;
+				readonly state: {
+					readonly status: string;
+					readonly outcome?: { readonly status: string; readonly result?: unknown };
+				};
+		  }
+		| undefined,
+	lenses: readonly LensRun[],
+	refused: (key: string, model: string) => boolean,
+): Record<string, LensCopy<LensResult[string]>> {
+	const { outcome } = previous?.state ?? {};
+	if (previous?.state.status !== "terminal" || outcome?.status !== "completed") return {};
+	const earlier = previous.input as StoredLensTaskInput;
+	return lensCopies(
+		{
+			task: previous.id,
+			nonce: earlier.revision.nonce,
+			lenses: earlier.lenses,
+			result: outcome.result as LensResult,
+			reused: earlier.reused,
+		},
+		lenses,
+		refused,
+	);
+}
+
 // Every run of `lenses`: each first run, and the run a quick one escalates to.
 function runsOf(lenses: readonly LensRun[]): LensRun[] {
 	return lenses.flatMap((lens) => [lens, ...(lens.escalation?.next === undefined ? [] : [lens.escalation.next])]);
@@ -1644,9 +1676,10 @@ async function runLenses(
 			record !== undefined &&
 			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
+		const copied = attaches ? {} : copiesFrom(record, input.lenses, refused);
 		if (!attaches)
 			await unlockModels(
-				runsOf(input.lenses).flatMap((run) =>
+				runsOf(input.lenses.filter((lens) => copied[lens.key] === undefined)).flatMap((run) =>
 					[...run.route, ...(run.probe?.route ?? [])].map((model) => model.provider),
 				),
 			);
@@ -1664,22 +1697,11 @@ async function runLenses(
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
-		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		let reused: Record<string, LensCopy<LensResult[string]>> = {};
-		if (previous?.state.status === "terminal" && previous.state.outcome.status === "completed") {
-			const earlier = previous.input as unknown as StoredLensTaskInput;
-			reused = lensCopies(
-				{
-					task: previous.id,
-					nonce: earlier.revision.nonce,
-					lenses: earlier.lenses,
-					result: previous.state.outcome.result as LensResult,
-					reused: earlier.reused,
-				},
-				input.lenses,
-				refused,
-			);
-		}
+		const reused = copiesFrom(
+			known?.task === undefined ? undefined : await tx.task(known.task as TaskId),
+			input.lenses,
+			refused,
+		);
 		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
 		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
 		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.

@@ -92,7 +92,11 @@ function changed(name: string, change: (lens: Lens) => Partial<ReturnType<Lens["
 }
 
 // Reviews the change once, and says which lenses this review asked a model.
-async function review(reviewed: readonly Lens[], standards: Standards | [] = []) {
+async function review(
+	reviewed: readonly Lens[],
+	standards: Standards | [] = [],
+	extra: { readonly unlockModels?: (providers: readonly string[]) => Promise<void> } = {},
+) {
 	const asked = new Set<string>();
 	const answer = (name: string) => (messages: readonly Message[]) => {
 		asked.add(name);
@@ -119,6 +123,7 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 			{ name: "static.tsc", status: "ran" },
 			{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
 		],
+		...extra,
 	});
 	const run = (await TelemetryReader.open(storage).read(Revision.key(changeset.revision))).runDetails();
 	const lensStages = Object.fromEntries(
@@ -168,6 +173,21 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(second.usage.correctness).toBeDefined();
 		expect(second.lensStages.correctness?.outcome).toBe("ran");
 		expect(second.lensStages.correctness?.tokens).toBeGreaterThan(0);
+	});
+
+	it("unlocks the providers of only the lenses it asks, since a copied lens asks no model", async () => {
+		const unlocked: string[][] = [];
+		const unlockModels = async (providers: readonly string[]) => {
+			unlocked.push([...providers]);
+		};
+		await review(lenses, [], { unlockModels });
+		await review(
+			changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
+			[],
+			{ unlockModels },
+		);
+		// Each review unlocks its lens runs, then the verifier's wave: the repeat review's lens call names one run.
+		expect(unlocked).toEqual([["faux", "faux"], ["faux"], ["faux"], ["faux"]]);
 	});
 
 	it("attaches to the first review's lens task when the same lenses come in another order", async () => {
