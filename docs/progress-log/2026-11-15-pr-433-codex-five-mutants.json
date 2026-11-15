@@ -9,7 +9,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -38,7 +41,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -49,7 +55,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -60,7 +69,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -71,7 +83,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -100,7 +115,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"Stryker was here!\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -111,7 +129,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -122,7 +143,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/state-tree.ts",
@@ -179,11 +203,16 @@
 				"collected": 1,
 				"failed": true
 			}
-		},
+		}
+	],
+	"total": 13,
+	"omitted": 0,
+	"unmutated": [],
+	"byHand": [
 		{
 			"file": "packages/state-git/src/repository.ts",
 			"line": 143,
-			"column": 6,
+			"column": 5,
 			"endLine": 143,
 			"endColumn": 24,
 			"mutatorName": "hand (array element removal, which Stryker does not generate)",
@@ -198,8 +227,5 @@
 				"failed": true
 			}
 		}
-	],
-	"total": 13,
-	"omitted": 0,
-	"unmutated": []
+	]
 }

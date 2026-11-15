@@ -5179,14 +5179,15 @@
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
    "claim": "killed",
-   "evidence": "packages/state-git/test/configuration.test.ts > the repository's configuration > opens one repository when many handles open it at once",
+   "evidence": "packages/state-git/test/deadline.test.ts > a step the deadline cannot start late > starts creating the repository with a millisecond left, and refuses, creating nothing, with none",
    "survivorClasses": [],
    "run": {
-    "head": "01e3a013",
-    "test": "packages/state-git/test/configuration.test.ts > the repository's configuration > opens one repository when many handles open it at once",
+    "head": "30d30aec",
+    "test": "packages/state-git/test/deadline.test.ts > a step the deadline cannot start late > starts creating the repository with a millisecond left, and refuses, creating nothing, with none",
     "collected": 1,
     "failed": true
-   }
+   },
+   "note": "The first run, at 01e3a013, failed its test only when two creations collided on an index lock, so it proved nothing. At 30d30aec the call sits at lines 109 to 112; the mutant drops the deadline, git init outlives the millisecond left, and the open fails at a later step."
   },
   {
    "file": "packages/state-git/src/repository.ts",

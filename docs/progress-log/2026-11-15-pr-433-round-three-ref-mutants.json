@@ -63,7 +63,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -74,7 +77,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -85,7 +91,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -96,7 +105,10 @@
 			"mutatorName": "StringLiteral",
 			"replacement": "``",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-			"status": "Ignored"
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/repository.ts",
@@ -115,13 +127,18 @@
 				"collected": 1,
 				"failed": true
 			}
-		},
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": [],
+	"byHand": [
 		{
 			"file": "packages/state-git/src/repository.ts",
 			"line": 159,
-			"column": 4,
+			"column": 3,
 			"endLine": 159,
-			"endColumn": 58,
+			"endColumn": 56,
 			"mutatorName": "hand (the swallow of a failed deletion removed, which Stryker does not generate)",
 			"replacement": "await this.#deleteRef(ref, deadline);",
 			"claim": "new-test",
@@ -137,9 +154,9 @@
 		{
 			"file": "packages/state-git/src/repository.ts",
 			"line": 159,
-			"column": 4,
+			"column": 3,
 			"endLine": 159,
-			"endColumn": 58,
+			"endColumn": 56,
 			"mutatorName": "hand (the deletion on a failed read removed, which Stryker does not generate)",
 			"replacement": "",
 			"claim": "new-test",
@@ -155,9 +172,9 @@
 		{
 			"file": "packages/state-git/src/repository.ts",
 			"line": 162,
-			"column": 3,
+			"column": 2,
 			"endLine": 163,
-			"endColumn": 36,
+			"endColumn": 38,
 			"mutatorName": "hand (the deletion moved after the hint, as before, which Stryker does not generate)",
 			"replacement": "await this.#keepLast(tip, deadline);\n\t\tawait this.#deleteRef(ref, deadline);",
 			"claim": "new-test",
@@ -170,8 +187,5 @@
 				"failed": true
 			}
 		}
-	],
-	"total": 8,
-	"omitted": 0,
-	"unmutated": []
+	]
 }

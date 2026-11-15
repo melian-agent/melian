@@ -395,7 +395,12 @@
         "collected": 1,
         "failed": true
       }
-    },
+    }
+  ],
+  "total": 22,
+  "omitted": 0,
+  "unmutated": [],
+  "byHand": [
     {
       "file": "packages/state-git/src/state-tree.ts",
       "line": 14,
@@ -476,8 +481,5 @@
         "failed": true
       }
     }
-  ],
-  "total": 22,
-  "omitted": 0,
-  "unmutated": []
+  ]
 }
