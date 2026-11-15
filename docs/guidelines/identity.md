@@ -46,7 +46,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | --- | --- | --- | --- |
 | Finding ID, `findingId` | `core/src/findings.ts` | treats two reports as one finding, so its dismissal and lifecycle carry | Line numbers, so an edit above keeps it. Failure scenario and evidence, so rewording keeps a dismissal. An Enola result's span past its first line, so an edit inside a symbol's body keeps it |
 | `snippetHash` | `core/src/findings.ts` | keeps a dismissed finding dismissed | Whitespace, as the normaliser defines it |
-| `Verdict.fingerprint` | `core/src/adjudication.ts` | skips posting a review it already posted | Dismissal reasons, past dismissals, which file decided, the guardrail match, check caveats |
+| `Verdict.fingerprint` | `core/src/adjudication.ts` | skips posting a review it already posted | Dismissal reasons, an inherited dismissal's root ([the decision](../decisions/2026-11-15-inheritance-and-the-verdict-fingerprint.md)), past dismissals, which file decided, the guardrail match, check caveats |
 | `dismissalVersion` | `core/src/publication.ts` | takes a dismissal's reply as given | The root, for a person's dismissal, so older versions still match |
 | `replyKey` | `core/src/publication.ts` | takes a thread reply as posted | Nothing |
 | Pull-request changeset ID | `core/src/changeset.ts` | gives every push of a pull request one changeset | Nothing; owner and name are lower-cased |
