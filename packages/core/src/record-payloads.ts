@@ -1,4 +1,4 @@
-import Type, { type Static, type TSchema } from "typebox";
+import Type, { type Static, type TLiteral, type TSchema, type TUnion } from "typebox";
 import Value from "typebox/value";
 import { severitySchema } from "./config.ts";
 import { FindingError } from "./errors.ts";
@@ -14,7 +14,11 @@ const findingId = Type.String({ pattern: "^[0-9a-f]{16}$" });
 const recordId = Type.String({ pattern: "^[0-9a-f]{64}$" });
 const objectId = "(?:[0-9a-f]{40}|[0-9a-f]{64})";
 const revision = Type.String({ pattern: `^${objectId}\\.\\.${objectId}$` });
-const level = Type.Union(scrutinyLevels.map((each) => Type.Literal(each)));
+// TypeBox types a union built by `map` as `never`, since it reads literals only from a tuple; the cast names the tuple.
+type Literals<T extends readonly string[]> = { -readonly [K in keyof T]: TLiteral<T[K] & string> };
+const literals = <const T extends readonly string[]>(values: T) =>
+	Type.Union(values.map((each) => Type.Literal(each))) as unknown as TUnion<Literals<T>>;
+const level = literals(scrutinyLevels);
 const nullable = <T extends TSchema>(schema: T) => Type.Union([schema, Type.Null()]);
 // A sighting is checked by `Finding.parse`, the authority on what a finding is, after the shape.
 const sightings = Type.Array(Type.Unknown());
@@ -49,11 +53,7 @@ export const checkResultSchema = Type.Union([
 			name,
 			status: Type.Literal("skipped"),
 			reason: text,
-			cause: nullable(
-				Type.Union(
-					["noProductionLines", "headNotAllowed", "timeout", "unmutated"].map((each) => Type.Literal(each)),
-				),
-			),
+			cause: nullable(literals(["noProductionLines", "headNotAllowed", "timeout", "unmutated"])),
 		},
 		strict,
 	),
