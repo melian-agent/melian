@@ -702,7 +702,7 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 	{ timeout: 60_000 },
 	(_, golden) => {
 		it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
-			const run = await runGolden(golden, { kind: "scripted" });
+			const run = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 
 			expect(run.toolMismatches).toEqual([]);
 			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
@@ -1267,7 +1267,7 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		onTestFinished(() => {
 			availability.mockRestore();
 		});
-		const scripted = await runGolden(golden, { kind: "scripted" });
+		const scripted = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 		expect(scripted.findings.map((finding) => finding.ruleId)).toEqual(["fail-open"]);
 		expect(scripted.ran.find((check) => check.name === "lens.trust-boundary")?.reason).toMatch(
 			/^it planned 1 attack and ran 1 probe in \d+\.\d s$/,
@@ -1294,6 +1294,25 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
 		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
 		await expect(live).rejects.toThrow(
+			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
+		);
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const run = runGolden(golden, { kind: "scripted" });
+		await expect(run).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(run).rejects.toThrow(
 			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
 		);
 		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
@@ -1443,7 +1462,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 			...golden.script,
 			correctness: [{ calls: many }, { calls: [{ name: "list_files", arguments: {} }] }, { text: "Never asked." }],
 		};
-		await expect(runGolden({ ...golden, script }, { kind: "scripted" })).rejects.toThrow(
+		await expect(runGolden({ ...golden, script }, { kind: "scripted", probes: "unconfined" })).rejects.toThrow(
 			/^Not reviewed: .*lens\.correctness ended /,
 		);
 	});

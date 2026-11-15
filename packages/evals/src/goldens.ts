@@ -295,7 +295,15 @@ export function commitGoldenTree(repo: string, tree: string, message: string): s
 
 /** How a golden is run: on canned replies from its `script.json`, or on real models. */
 export type GoldenMode =
-	| { readonly kind: "scripted" }
+	| {
+			readonly kind: "scripted";
+			/**
+			 * `"unconfined"` runs a probing golden's probes outside any sandbox. Pass it only for the committed corpus, whose
+			 * probes are reviewed scripts. Without it, they run in the host's sandbox. A live run's probes come from a model,
+			 * so a live mode has no such field.
+			 */
+			readonly probes?: "unconfined";
+	  }
 	| {
 			readonly kind: "live";
 			readonly models: ReviewModels;
@@ -399,10 +407,9 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
 		);
 		const storage = createMemoryStorage();
-		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
 		const reviewHarness = await openReviewHarness(storage, models, {
 			retry: mode.kind !== "scripted",
-			...(mode.kind === "scripted" ? { probeSandbox: unconfinedSandbox() } : {}),
+			...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
 		});
 		try {
 			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
