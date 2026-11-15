@@ -1086,7 +1086,7 @@ describe("publication planning recovery", () => {
 		it("posts a review and recounts the status when one of two live findings inherits", async () => {
 			const other = Finding.from({
 				...lensFinding().toJSON(),
-				properties: { ...lensFinding().properties, id: "fedcba9876543211", snippet: "old", rule: "other" },
+				properties: { ...lensFinding().properties, id: "fedcba9876543211" },
 			});
 			const live = await decide(lensFinding(), other);
 			await publish();
