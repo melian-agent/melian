@@ -34,6 +34,7 @@ import {
 	reviewChangeset,
 	type StageTelemetry,
 	TelemetryReader,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import { createFakeModels, scriptLenses, unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
@@ -312,12 +313,34 @@ export type GoldenMode =
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
 			readonly thinking?: EvalThinking;
+			/** One combination of a probing measurement, applied after `thinking`. */
+			readonly probing?: ProbingRoute;
 	  };
 
-/** A golden's review: the findings, and the terminal rendering an author would see. */
-export interface GoldenRun {
+/** A live golden mode, the only kind that can review a range outside the corpus. */
+export type LiveGoldenMode = Extract<GoldenMode, { kind: "live" }>;
+
+/** Re-routes a run's policy and lenses for one combination a probing measurement runs. */
+export interface ProbingRoute {
+	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] };
+}
+
+/** A range of a clone to review as a golden is reviewed: its base commit, the range, and whose code its head is. */
+export interface ReviewTarget {
+	readonly repo: string;
+	readonly base: string;
+	readonly range: string;
+	readonly writer: WriterTrust;
+	/** Narrows the base's policy and lenses before the mode routes them. */
+	readonly scope?: (
+		config: MelianConfig,
+		lenses: readonly Lens[],
+	) => { config: MelianConfig; lenses: readonly Lens[] };
+}
+
+/** A range's review: the findings, the terminal rendering an author would see, and what each lens ran on. */
+export interface RangeRun {
 	readonly telemetry: StageTelemetry;
-	readonly golden: Golden;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
@@ -327,6 +350,13 @@ export interface GoldenRun {
 	 * planned and probed.
 	 */
 	readonly notes: readonly { readonly reason: string; readonly checks: readonly string[] }[];
+	/** The tier each lens that ran was routed by, by check name. A lens on its own route has none. */
+	readonly tiers: Readonly<Record<string, LensTier>>;
+}
+
+/** A golden's review. */
+export interface GoldenRun extends RangeRun {
+	readonly golden: Golden;
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -372,90 +402,129 @@ async function guardrailFindings(
 export async function runGolden(golden: Golden, mode: GoldenMode): Promise<GoldenRun> {
 	const { repo, base } = buildGoldenRepository(golden);
 	try {
-		const source: RepositorySource = { kind: "revision", commit: base };
-		const changeset = await Changeset.resolve(repo, "main...feature");
-		const paths = changeset.revision.paths();
-		const lenses = await Lens.load(repo, source, paths);
-		const standards = await Standards.load(repo, source, paths);
-		const { config: loaded } = await loadConfig(repo, source, ".");
-		let models: ReviewModels;
-		let config: MelianConfig;
-		const toolMismatches: string[] = [];
-		if (mode.kind === "scripted") {
-			const fake = createFakeModels({ models: [{ id: "scripted" }] });
-			const ref = fake.ref("scripted");
-			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
-			config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
-			models = fake.review;
-			scriptLenses(fake, lenses, { ...golden.script, verifier: golden.verifier ?? {} }, toolMismatches);
-		} else {
-			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
-			const verifier = mode.verifierModel ?? mode.model;
-			if (verifier !== undefined)
-				config = {
-					...config,
-					models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
-				};
-			models = mode.models;
-		}
-		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
-		// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
-		// golden's own allowSkip could excuse the lens it measures.
-		const tier = config.stages["pull-request"] ?? "full";
-		const hostChecks = checksOfTier(config, tier).filter((name) =>
-			(deterministicChecks as readonly string[]).includes(name),
-		);
-		config = { ...config, checks: { allowSkip: hostChecks } };
-		const checks = hostChecks.map(
-			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
-		);
-		const storage = createMemoryStorage();
-		const reviewHarness = await openReviewHarness(storage, models, {
-			retry: mode.kind !== "scripted",
-			...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
-		});
-		try {
-			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
-			const writer = { trusted: true, by: "reviewer" } as const;
-			const review = {
-				harness: reviewHarness,
-				changeset,
-				config,
-				lenses,
-				standards,
-				models,
-				policy: source,
-				writer,
-				tier,
-				checks,
-			};
-			const reviewed = await reviewChangeset(review);
-			const status = reviewed.verdict.reviewStatus();
-			if (status.state === "error") throw new Error(status.description);
-			// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
-			const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
-			if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
-			const findings = [
-				...Object.values(reviewed.verdict.findings).flat(),
-				...(await guardrailFindings(golden, repo, changeset, source)),
-			];
-			const rendered = FindingsLog.of(findings).render();
-			return {
-				golden,
-				findings,
-				rendered,
-				toolMismatches,
-				notes: reviewed.verdict.lensNotes(),
-				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
-			};
-		} catch (error) {
-			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
-		} finally {
-			await reviewHarness.close(backgroundContext);
-		}
+		// The golden's repository is built here from the corpus, so its head is the reviewer's own.
+		const target = { repo, base, range: "main...feature", writer: { trusted: true, by: "reviewer" } } as const;
+		return { golden, ...(await reviewTarget(target, mode, golden)) };
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
 	}
+}
+
+/**
+ * Reviews `target` live as {@link runGolden} reviews a golden: policy, standards, and lenses from its base, the checks a
+ * host runs without a model skipped, and no score for a review that is not reviewed or whose probes did not run.
+ */
+export function runRange(target: ReviewTarget, mode: LiveGoldenMode): Promise<RangeRun> {
+	return reviewTarget(target, mode, undefined);
+}
+
+async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Golden | undefined): Promise<RangeRun> {
+	const { repo, base } = target;
+	const source: RepositorySource = { kind: "revision", commit: base };
+	const changeset = await Changeset.resolve(repo, target.range);
+	const paths = changeset.revision.paths();
+	const standards = await Standards.load(repo, source, paths);
+	const scoped = {
+		config: (await loadConfig(repo, source, ".")).config,
+		lenses: await Lens.load(repo, source, paths),
+	};
+	const { config: loaded, lenses: loadedLenses } = target.scope?.(scoped.config, scoped.lenses) ?? scoped;
+	let lenses = [...loadedLenses];
+	let models: ReviewModels;
+	let config: MelianConfig;
+	const toolMismatches: string[] = [];
+	if (mode.kind === "scripted") {
+		const fake = createFakeModels({ models: [{ id: "scripted" }] });
+		const ref = fake.ref("scripted");
+		config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
+		config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
+		models = fake.review;
+		scriptLenses(fake, lenses, { ...golden!.script, verifier: golden!.verifier ?? {} }, toolMismatches);
+	} else {
+		config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
+		const verifier = mode.verifierModel ?? mode.model;
+		if (verifier !== undefined)
+			config = {
+				...config,
+				models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
+			};
+		models = mode.models;
+		if (mode.thinking !== undefined) config = mode.thinking.apply(config);
+		if (mode.probing !== undefined) {
+			const routed = mode.probing.routed(config, lenses);
+			config = routed.config;
+			lenses = [...routed.lenses];
+		}
+	}
+	// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
+	// golden's own allowSkip could excuse the lens it measures.
+	const tier = config.stages["pull-request"] ?? "full";
+	const hostChecks = checksOfTier(config, tier).filter((name) =>
+		(deterministicChecks as readonly string[]).includes(name),
+	);
+	config = { ...config, checks: { allowSkip: hostChecks } };
+	const checks = hostChecks.map(
+		(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
+	);
+	const storage = createMemoryStorage();
+	const reviewHarness = await openReviewHarness(storage, models, {
+		retry: mode.kind !== "scripted",
+		...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
+	});
+	try {
+		const review = {
+			harness: reviewHarness,
+			changeset,
+			config,
+			lenses,
+			standards,
+			models,
+			policy: source,
+			writer: target.writer,
+			tier,
+			checks,
+		};
+		const reviewed = await reviewChangeset(review);
+		const status = reviewed.verdict.reviewStatus();
+		if (status.state === "error") throw new Error(status.description);
+		// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
+		const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
+		if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
+		const findings = [
+			...Object.values(reviewed.verdict.findings).flat(),
+			...(golden === undefined ? [] : await guardrailFindings(golden, repo, changeset, source)),
+		];
+		return {
+			findings,
+			rendered: FindingsLog.of(findings).render(),
+			toolMismatches,
+			notes: reviewed.verdict.lensNotes(),
+			tiers: tiersRun(reviewed.verdict.ran ?? [], lenses, config),
+			telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
+		};
+	} catch (error) {
+		throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
+	} finally {
+		await reviewHarness.close(backgroundContext);
+	}
+}
+
+// The tier routes a lens's level as the review routes it without a plan: none for a lens with its own route, else the
+// level's tier once configuration has tuned the lens.
+function tiersRun(
+	ran: readonly CheckRecord[],
+	lenses: readonly Lens[],
+	config: MelianConfig,
+): Record<string, LensTier> {
+	const tiers: Record<string, LensTier> = {};
+	for (const record of ran) {
+		const lens = lenses.find((each) => `lens.${each.name}` === record.name);
+		if (lens === undefined || record.level === undefined) continue;
+		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
+		if (settings?.route !== undefined) continue;
+		tiers[record.name] = lens.configured(settings).level(record.level).tier;
+	}
+	return tiers;
 }
 
 /**
