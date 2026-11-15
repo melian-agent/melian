@@ -162,6 +162,8 @@ export {
 	ModelRoutingError,
 	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
+	RecordError,
+	type RecordErrorCode,
 	RevisionError,
 	type RevisionErrorCode,
 	StandardsError,
@@ -254,6 +256,7 @@ export {
 	type LensLevel,
 	type LensLevels,
 	type LensNeighbour,
+	type LensProbing,
 	type LensReads,
 	type LensRule,
 	type LensSelection,
@@ -416,6 +419,7 @@ export {
 	TestCoverage,
 	type TestCoverageState,
 } from "./coverage-artifacts.ts";
+export { DirectoryRecordStore } from "./directory-record-store.ts";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
 export {
 	type EnolaFact,
@@ -486,6 +490,25 @@ export {
 	type PullRequestRoundHeads,
 	type RoundMembership,
 } from "./pull-request-rounds.ts";
+export {
+	canonicalJson,
+	everyRecordCounts,
+	type NamedRecord,
+	type PayloadCheck,
+	type PayloadChecks,
+	type RecordEnvelope,
+	type RecordJson,
+	RecordSet,
+	type RoundManifest,
+	SharedRecord,
+} from "./record.ts";
+export {
+	disposalMark,
+	MemoryRecordSpace,
+	MemoryRecordStore,
+	type RecordCell,
+	type RecordStore,
+} from "./record-store.ts";
 export {
 	costText,
 	durationText,

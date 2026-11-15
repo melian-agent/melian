@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { openSource, visibleText } from "@melian-agent/core";
-import { DecisionFile, DecisionFiles, decisionIndexLimits } from "@melian-agent/decisions";
+import { DecisionFile, DecisionFiles, decisionIndexWarning } from "@melian-agent/decisions";
 import { describe, expect, it, vi } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
 
@@ -30,7 +30,9 @@ async function expectRepositoryIndex(repo: string): Promise<void> {
 		const row = rendered.split("\n").find((line) => line.endsWith(ending));
 		expect(row).toMatch(/^\[ACTIVE(?:; amended by .+)?\] /);
 	}
-	expect(Buffer.byteLength(rendered)).toBeLessThan(56 * 1024);
+	// The index may grow past 64 KiB; past it, the review warns rather than refusing.
+	const index = await DecisionFiles.load(repo, commit);
+	expect(index.warning() === undefined).toBe(Buffer.byteLength(rendered) <= decisionIndexWarning.bytes);
 }
 
 const declarationCases: [
@@ -1030,25 +1032,53 @@ describe("written decisions", () => {
 		expect(DecisionFiles.from([]).render()).not.toContain("[and");
 	});
 
-	it("pins the byte bound and refuses one byte past it without shortening a title", () => {
-		expect(decisionIndexLimits).toEqual({ bytes: 65536 });
+	it("renders the index whole at any size, and warns only past 64 KiB", () => {
+		expect(decisionIndexWarning).toEqual({ bytes: 65536 });
 		const prefix = `[ACTIVE] ${a} — `;
 		const title = "x".repeat(65536 - Buffer.byteLength(prefix));
-		expect(DecisionFiles.from([parse(a, `# ${title}`)]).render()).toBe(prefix + title);
-		expect(() => DecisionFiles.from([parse(a, `# ${title}x`)]).render()).toThrow(
-			"1 decisions omitted; review refused",
+		const atBound = DecisionFiles.from([parse(a, `# ${title}`)]);
+		expect(atBound.render()).toBe(prefix + title);
+		expect(atBound.warning()).toBeUndefined();
+		const past = DecisionFiles.from([parse(a, `# ${title}x`)]);
+		expect(past.render()).toBe(`${prefix}${title}x`);
+		expect(past.warning()).toBe(
+			"The decision log is long: its index is 65537 bytes for 1 decision, past 64 KiB. The design lens and its verifier read the index whole, so it costs tokens and can dilute a reviewer's attention. Compact the decision log: fold amendments into the decisions they amend, merge decisions that belong together, and delete superseded decisions with the Supersedes lines that name them; git history keeps what you delete. Superseding a decision does not shorten the index, since inactive decisions are still listed. See https://github.com/melian-agent/melian/blob/main/docs/guidelines/decisions.md#compacting-the-decision-log.",
 		);
-		expect(() => DecisionFiles.from([parse(a, `# ${title.slice(1)}é`)]).render()).toThrow(
-			"1 decisions omitted; review refused",
-		);
+		const wide = DecisionFiles.from([parse(a, `# ${title.slice(1)}é`)]);
+		expect(wide.render()).toBe(`${prefix}${title.slice(1)}é`);
+		expect(wide.warning()).toContain("65537 bytes for 1 decision,");
 		expect(DecisionFiles.from([parse(a, "# hidden\ttitle")]).render()).toContain("hidden\\u0009title");
 	});
-	it("names every omitted decision when the complete index cannot fit", () => {
+
+	it("renders every decision of an index past the warning, and counts them in it", () => {
 		const files = [parse(a, `# ${"x".repeat(65536)}`), parse(b, "# B")];
-		expect(() => DecisionFiles.from(files).render()).toThrow("2 decisions omitted; review refused");
+		const index = DecisionFiles.from(files);
+		expect(index.render().split("\n")).toEqual([`[ACTIVE] ${a} — ${"x".repeat(65536)}`, `[ACTIVE] ${b} — B`]);
+		expect(index.warning()).toContain("for 2 decisions, past 64 KiB");
 	});
 
-	it("lists every active path and full title at the commit under test with headroom", async () => {
+	it("shortens the index by the steps the warning advises, and lengthens it by superseding alone", () => {
+		const path = (n: number) => `docs/decisions/2026-10-01-d${n}.md`;
+		const log = Array.from({ length: 10 }, (_, n) =>
+			parse(path(n), n === 1 ? `# Decision ${n}\nAmends: 2026-10-01-d0.md, scope.\n` : `# Decision ${n}`),
+		);
+		const before = Buffer.byteLength(DecisionFiles.from(log).render());
+		// Superseding five decisions with one new file keeps every old row and lengthens each.
+		const superseding = parse(
+			"docs/decisions/2026-10-02-merged.md",
+			"# Merged\nSupersedes: 2026-10-01-d5.md, 2026-10-01-d6.md, 2026-10-01-d7.md, 2026-10-01-d8.md, 2026-10-01-d9.md\n",
+		);
+		expect(Buffer.byteLength(DecisionFiles.from([...log, superseding]).render())).toBeGreaterThan(before);
+		// Folding the amendment into its decision, merging five decisions into one, and deleting the superseded files.
+		const compacted = [
+			parse(path(0), "# Decision 0"),
+			...log.slice(2, 5),
+			parse("docs/decisions/2026-10-02-merged.md", "# Merged"),
+		];
+		expect(Buffer.byteLength(DecisionFiles.from(compacted).render())).toBeLessThan(before);
+	});
+
+	it("lists every active path and full title at the commit under test, and warns exactly when it is long", async () => {
 		await expectRepositoryIndex(fileURLToPath(new URL("../../../", import.meta.url)));
 	}, 60_000);
 

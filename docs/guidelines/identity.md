@@ -60,6 +60,11 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Mutant `identityHash` | `core/src/mutation-inventory.ts` | treats two inventory rows as one mutant | Nothing |
 | Coverage artefact IDs | `core/src/coverage-artifacts.ts`, `core/src/graph-coverage.ts` | names an artefact by its content | Nothing |
 | Claim identity | `core/src/verification.ts`, `core/src/adjudication.ts`, `core/src/findings.ts` | counts one claim per sighting | Nothing |
+| Record ID, `SharedRecord.id` | `core/src/record.ts` | treats two records as one fact, so `add` keeps one, and lets `supersedes` and a round's `replaces` name it | Nothing: the SHA-256 of the whole envelope's canonical bytes, `signature` included |
+| Canonical bytes, `canonicalJson` | `core/src/record.ts` | gives a record its ID and a signature its bytes | Nothing. RFC 8785 with keys sorted by UTF-16 code units; a missing field is left out, never `null`, and a number is a safe integer or refused |
+| Record key hash, `SharedRecord.keyHash` | `core/src/record.ts` | files a record in its slot's directory | Nothing |
+| Record slot, `SharedRecord.sharesSlot` | `core/src/record.ts` | lets one record supersede another | The revision and the payload, by rule 4 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) |
+| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: random on every write in memory, a number never reused in a directory, and never a hash of the value, so a value that came back never matches a version read before it left |
 
 ### Pipeline
 
@@ -67,7 +72,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | --- | --- | --- | --- |
 | Lens run key | `pipeline/src/review.ts` | reuses a run's conversation and request IDs | Scope, which reaches it through the lens version |
 | `instructionFingerprint` | `pipeline/src/review.ts` | keeps the lens task a review attaches to | The real nonce. The callers listing and enclosing functions, which are best effort |
-| `selectionOf` | `pipeline/src/review.ts` | attaches a review to its existing lens task | Who set the route, and the credential, by [the run identity decision](../decisions/2026-11-08-lens-run-identity.md) |
+| `selectionOf` | `pipeline/src/review.ts` | attaches a review to its existing lens task, and, for a selection that holds a probing run, only while that task is live | Who set the route, and the credential, by [the run identity decision](../decisions/2026-11-08-lens-run-identity.md). A probing run's environment names its host by one value, `probingHost`: the sandbox's platform and kind, and the CPU architecture and version of the Node that runs the probe. Left out of that value on purpose: the operating system's release, since the platform names the system; the CPU's model, since the architecture names the instruction set Node runs; the sandbox's own version, which ships with Melian's lockfile and confines a probe without changing what it computes; and the host's locale and clock, which no probe should hang on. No probing fingerprint: a finished probing run is never reused, so what Melian's probe runner gives a probe, the prompts' wording and what the read paths hold decide no reuse, by [the decision of 2026-11-14](../decisions/2026-11-14-probing-runs-not-reused.md) |
 | Adjudication attach key | `pipeline/src/review.ts` | attaches to an existing adjudication task | Run details, which publication projects |
 | Triage decision key | `pipeline/src/review.ts` | attaches to a recorded triage decision | The state, which carries the nonce |
 | `candidateIdentity` | `pipeline/src/verification.ts` | lets an earlier wave's outcome stand for a candidate | `dismissals`, stored verdicts and the speaker's body |
@@ -96,7 +101,7 @@ Each is a defect by rule 10, listed so nobody adds a third. Fixing one is a stor
 
 - **Claim identity.** Core hashes `JSON.stringify([id, check, version])`. The pipeline's `claimKey` writes `<id> <check>@<version or "">`. A missing version reads `null` in one and `""` in the other.
 - **Dismissal identity.** Core's `dismissalVersion` covers reason, dismisser and time. The pipeline's `identityOf` also covers severity, sighting and trigger, in another order. One versions replies and the other gates inheritance.
-- **Canonical bytes.** `checks.ts` sorts keys. Every other JSON-hashed key relies on the order its fields are declared.
+- **Canonical bytes.** `checks.ts` sorts keys, and a shared record uses `canonicalJson`, RFC 8785. Every other JSON-hashed key relies on the order its fields are declared.
 - **Length.** Keys are cut to 12, 16 or all 64 hex digits, with no rule for which.
 
 ## What is planned

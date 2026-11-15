@@ -1,0 +1,179 @@
+{
+	"total": 9,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "8ac56a0c",
+	"head": "5325e237",
+	"command": "node scripts/enumerate-mutants.mjs 8ac56a0c...0b38f74e --json --limit 10000",
+	"note": "Fix pass 37 of pull request #296. The changed line is adjudication's ownership check in startAdjudication, which decides which verdict a revision keeps, so every mutant is owed. Each ran against its named test alone, with exactly one test collected. On the first fix, a mutant that dropped the selection comparison survived: the lens-task check implies it, so the second commit removed it. Four claims then needed tests of their own: three for a review that runs no lens after a lens review, and the optional chain for an index entry that is gone. The third commit adds both.",
+	"counts": {
+		"killed": 5,
+		"new-test": 4,
+		"equivalent": 0
+	},
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "0b38f74e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose finished probing run a repeat review replaced before it verified",
+			"survivorClasses": [],
+			"run": {
+				"head": "0b38f74e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 54,
+			"mutatorName": "LogicalOperator",
+			"replacement": "selection.length > 0 || known?.task !== lensTask",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > decides a review that runs no lens after a review of the head whose lenses ran",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "5325e237",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > decides a review that runs no lens after a review of the head whose lenses ran",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "5325e237",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "selection.length >= 0",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > decides a review that runs no lens after a review of the head whose lenses ran",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"head": "5325e237",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 6,
+			"endLine": 1786,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "selection.length <= 0",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose finished probing run a repeat review replaced before it verified",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"head": "0b38f74e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 30,
+			"endLine": 1786,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "0b38f74e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 30,
+			"endLine": 1786,
+			"endColumn": 54,
+			"mutatorName": "EqualityOperator",
+			"replacement": "known?.task === lensTask",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-repeat.test.ts > a repeat review of a level that probes > plans and probes again rather than reuse the first review's finished probing run",
+			"survivorClasses": [],
+			"run": {
+				"head": "0b38f74e",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1786,
+			"column": 30,
+			"endLine": 1786,
+			"endColumn": 41,
+			"mutatorName": "OptionalChaining",
+			"replacement": "known.task",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose revision left the index once its lenses finished",
+			"survivorClasses": [
+				"optional-chain"
+			],
+			"run": {
+				"head": "5325e237",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	]
+}

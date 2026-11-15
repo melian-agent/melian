@@ -1,0 +1,65 @@
+{
+	"total": 3,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "3d2c408a",
+	"head": "b7f77a87",
+	"command": "node scripts/enumerate-mutants.mjs 3d2c408a...b7f77a87 --json --limit 10000",
+	"note": "Fix pass 26 of pull request #296: what Codex's adversarial review at 3d2c408a found. Each claim was run at b7f77a87 against its named test alone.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1490,
+			"column": 8,
+			"endLine": 1490,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies",
+			"survivorClasses": [],
+			"run": {
+				"head": "b7f77a87",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1490,
+			"column": 8,
+			"endLine": 1490,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "b7f77a87",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1490,
+			"column": 8,
+			"endLine": 1490,
+			"endColumn": 87,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await harness.snapshot(ProbeReruns, root, context))!.tasks![at]!.task !== task",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+			"survivorClasses": [],
+			"run": {
+				"head": "b7f77a87",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	],
+	"counts": {
+		"killed": 3
+	}
+}
