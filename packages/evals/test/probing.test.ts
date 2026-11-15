@@ -117,7 +117,7 @@ function git(cwd: string, ...args: string[]): string {
 	}).trim();
 }
 
-function missesFile(misses: readonly Record<string, string>[]): string {
+function missesFile(misses: readonly Record<string, unknown>[]): string {
 	const path = join(scratch, "misses.json");
 	writeFileSync(path, JSON.stringify(misses));
 	return path;
@@ -235,6 +235,16 @@ describe("Miss", () => {
 			expect(() => Miss.load(missesFile([{ ...fields, [field]: "" }])), field).toThrow(
 				/must be a JSON array of misses/,
 			);
+		const located = { ...fields, fix: "f", lines: [3, 3] };
+		expect(Miss.load(missesFile([located])).map((miss) => ({ ...miss }))).toEqual([located]);
+		expect(() => Miss.load(missesFile([{ ...fields, fix: "" }]))).toThrow(
+			/must be a JSON array of misses, each \{ name, repo, base, head, file, rule, fix\?, lines\? \}/,
+		);
+		for (const lines of [[0, 3], [4, 3], [1.5, 3], [3], [3, 4, 5], ["3", 4]])
+			expect(() => Miss.load(missesFile([{ ...fields, lines }])), JSON.stringify(lines)).toThrow(
+				/must be a JSON array of misses/,
+			);
+		expect(Miss.load(missesFile([{ ...fields, lines: [1, 1] }]))[0]!.lines).toEqual([1, 1]);
 	});
 
 	it("vouches for a head by the commit it resolves to, and keeps trust-boundary alone at its deep level", async () => {
@@ -270,28 +280,137 @@ describe("Miss", () => {
 	});
 
 	it("finds a miss only at its file, under its rule, from trust-boundary, and unrefuted", async () => {
-		const found = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
-		const finding = found.findings[0]!;
+		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
+		const finding = reviewed.findings[0]!;
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
-		expect(miss.found([finding])).toBe(true);
-		expect(miss.found([])).toBe(false);
+		const loose = { by: "file and rule" } as const;
+		const found = (findings: readonly Finding[], which = miss) => which.match(findings, loose).hits.length > 0;
+		expect(found([finding])).toBe(true);
+		expect(found([])).toBe(false);
 		const changed = (properties: object) => [
 			Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, ...properties } }),
 		];
-		expect(miss.found(changed({ path: "other.ts" }))).toBe(false);
+		expect(found(changed({ path: "other.ts" }))).toBe(false);
 		const security = { ...finding.properties.source!, check: "lens.security" };
-		expect(miss.found(changed({ source: security, reportedBy: [security] }))).toBe(false);
-		expect(miss.found(changed({ source: security }))).toBe(true);
-		expect(miss.found(changed({ verification: { verdict: "refuted", reason: "no" } }))).toBe(false);
-		expect(miss.found(changed({ verification: undefined }))).toBe(true);
-		expect(miss.found(changed({ source: undefined, reportedBy: undefined }))).toBe(false);
+		expect(found(changed({ source: security, reportedBy: [security] }))).toBe(false);
+		expect(found(changed({ source: security }))).toBe(true);
+		expect(found(changed({ verification: { verdict: "refuted", reason: "no" } }))).toBe(false);
+		expect(found(changed({ verification: undefined }))).toBe(true);
+		expect(found(changed({ source: undefined, reportedBy: undefined }))).toBe(false);
 		const claim = { ruleId: finding.ruleId, source: finding.properties.source!, failureScenario: "s", evidence: [] };
 		const merged = { source: { check: "lens.security", version: "v" }, otherClaims: [claim] };
-		expect(miss.found(changed(merged))).toBe(true);
+		expect(found(changed(merged))).toBe(true);
 		const refuted = { ...claim, id: finding.id, verification: { verdict: "refuted", reason: "no" } };
-		expect(miss.found(changed({ otherClaims: [refuted] }))).toBe(false);
+		expect(found(changed({ otherClaims: [refuted] }))).toBe(false);
 		const other = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: "other-rule" }]))[0]!;
-		expect(other.found([finding])).toBe(false);
+		expect(found([finding], other)).toBe(false);
+	});
+
+	it("counts a finding only where it overlaps the miss's lines, and records the ones beside them", async () => {
+		const found = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
+		const finding = found.findings[0]!;
+		const [start, end] = finding.lines();
+		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
+		const at = (first: number, last: number, id: string) => {
+			const stored = finding.toJSON();
+			const [location] = stored.locations;
+			const region = { ...location!.physicalLocation.region, startLine: first, endLine: last };
+			return Finding.from({
+				...stored,
+				locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
+				properties: { ...finding.properties, id },
+			});
+		};
+		const near = at(end + 5, end + 6, "near");
+		const shown = (each: Finding) => ({
+			id: each.id,
+			lines: each.lines(),
+			headline: each.headline().headline,
+			failureScenario: each.properties.failureScenario,
+		});
+		expect(
+			miss.match([finding, near], {
+				by: "lines",
+				ranges: [
+					[end + 1, end + 4],
+					[start, start],
+				],
+			}),
+		).toEqual({
+			matched: "lines",
+			hits: [shown(finding)],
+			near: [shown(near)],
+		});
+		expect(miss.match([finding, near], { by: "lines", ranges: [[end + 1, end + 4]] })).toEqual({
+			matched: "lines",
+			hits: [],
+			near: [shown(finding), shown(near)],
+		});
+		expect(miss.match([near], { by: "lines", ranges: [[end + 6, end + 9]] }).hits).toEqual([shown(near)]);
+		expect(miss.match([near], { by: "lines", ranges: [[end - 9, end + 5]] }).hits).toEqual([shown(near)]);
+		expect(miss.match([finding, near], { by: "file and rule" })).toEqual({
+			matched: "file and rule",
+			hits: [shown(finding), shown(near)],
+			near: [],
+		});
+		const elsewhere = Finding.from({ ...near.toJSON(), properties: { ...near.properties, path: "other.ts" } });
+		expect(miss.match([elsewhere], { by: "lines", ranges: [[1, 1_000_000]] })).toEqual({
+			matched: "lines",
+			hits: [],
+			near: [],
+		});
+	});
+
+	it("takes a miss's lines from its fix's diff, as its hunks' old side, unless it names its own", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const commit = (message: string) =>
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					message,
+				);
+			const write = (lines: readonly string[]) => writeFileSync(join(repo, "f.ts"), `${lines.join("\n")}\n`);
+			const original = Array.from({ length: 12 }, (_, index) => `line ${index + 1}`);
+			git(repo, "checkout", "--quiet", "feature");
+			write(original);
+			git(repo, "add", "f.ts");
+			commit("the head");
+			const changed = [...original];
+			changed.splice(2, 2, "fixed 3", "fixed 4");
+			changed.splice(7, 0, "inserted after 7");
+			changed.splice(0, 0, "inserted first");
+			write(changed);
+			commit("the fix");
+			writeFileSync(join(repo, "g.ts"), "elsewhere\n");
+			git(repo, "add", "g.ts");
+			commit("a change to another file");
+			const load = (extra: object) =>
+				Miss.load(missesFile([{ ...fields, repo, base, head: "feature~2", ...extra }]))[0]!;
+			expect(await load({}).locate()).toEqual({ by: "file and rule" });
+			expect(await load({ fix: "feature~1" }).locate()).toEqual({
+				by: "fix",
+				fixCommit: git(repo, "rev-parse", "feature~1"),
+				ranges: [
+					[1, 1],
+					[3, 4],
+					[7, 8],
+				],
+			});
+			expect(await load({ fix: "feature~1", lines: [5, 6] }).locate()).toEqual({ by: "lines", ranges: [[5, 6]] });
+			await expect(load({ head: "feature~1", fix: "feature" }).locate()).rejects.toThrow(
+				`m: its fix ${git(repo, "rev-parse", "feature")} changes nothing in f.ts`,
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -487,21 +606,27 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const [start, end] = defect[0]!.lines();
 			const misses = missesFile([
-				{ name: "hit", repo, base, head, file: defect[0]!.properties.path!, rule: defect[0]!.ruleId },
+				{ name: "hit", repo, base, head, ...at, lines: [start, end] },
+				{ name: "beside", repo, base, head, ...at, lines: [end + 1, end + 2] },
 				{ name: "miss", repo, base, head: "feature", file: "other.ts", rule: "fail-open" },
+				{ name: "loose", repo, base, head, ...at },
 			]);
 			const settings = { ...env, MELIAN_EVAL_MISSES: misses, MELIAN_EVAL_PROBE_SET: "misses" };
 			const refused = runners();
 			expect(await measure(settings, refused)).toMatchObject({
 				status: 2,
-				errors: ["MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of hit, miss, so their probes cannot run"],
+				errors: [
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the heads of hit, beside, miss, loose, so their probes cannot run",
+				],
 			});
 			expect(refused.models).not.toHaveBeenCalled();
 			const unprobed = runners({ range: vi.fn(async () => ran(defect)) });
 			expect((await measure({ ...settings, MELIAN_EVAL_PROBE_ROUTES: "off=a/plan" }, unprobed)).status).toBe(0);
 			expect(vi.mocked(unprobed.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
-				Array(6).fill(false),
+				Array(12).fill(false),
 			);
 			const using = runners({ range: vi.fn(async () => ran(defect)) });
 			const out = join(scratch, "misses-results.json");
@@ -511,21 +636,35 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(status).toBe(0);
 			expect(using.golden).not.toHaveBeenCalled();
-			expect(using.range).toHaveBeenCalledTimes(6);
+			expect(using.range).toHaveBeenCalledTimes(12);
 			expect(vi.mocked(using.range).mock.calls.map(([target]) => target.writer.trusted)).toEqual(
-				Array(6).fill(true),
+				Array(12).fill(true),
 			);
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 hit: found, 14 tokens/));
+			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 beside: missed, 14 tokens/));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 miss: missed, 14 tokens/));
-			expect(lines).toContain("pair: worst miss recall 0.50; mean miss recall 0.50; 84 tokens, $6");
+			expect(lines).toContainEqual(
+				expect.stringMatching(
+					/^pair pass 1 loose: found, unadjudicated: matched by file and rule alone, 14 tokens/,
+				),
+			);
+			expect(lines).toContain("pair: worst miss recall 0.50; mean miss recall 0.50; 168 tokens, $12");
 			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
 			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
+			const shown = {
+				id: defect[0]!.id,
+				lines: [start, end],
+				headline: defect[0]!.headline().headline,
+				failureScenario: defect[0]!.properties.failureScenario,
+			};
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
-				misses: { found: 1, total: 2 },
+				misses: { found: 2, total: 4 },
 				failed: [],
 				reviews: [
-					{ name: "hit", found: true, ...review },
-					{ name: "miss", found: false, ...review },
+					{ name: "hit", found: true, matched: "lines", hits: [shown], near: [], ...review },
+					{ name: "beside", found: false, matched: "lines", hits: [], near: [shown], ...review },
+					{ name: "miss", found: false, matched: "file and rule", hits: [], near: [], ...review },
+					{ name: "loose", found: true, matched: "file and rule", hits: [shown], near: [], ...review },
 				],
 			});
 		} finally {
@@ -566,6 +705,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect((await measure(settings, using)).status).toBe(1);
 			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
 			const scored = { notes: [], sharedProberTier: [], ...spent };
+			const unmatched = { found: false, matched: "file and rule", hits: [], near: [] };
 			const [first, second] = JSON.parse(readFileSync(out, "utf8")).results[0].passes;
 			expect(first).toStrictEqual({
 				misses: { found: 0, total: 2 },
@@ -573,8 +713,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				reviews: [
 					{ name: lost.name, kind: "golden", error: "no review", notes: [], sharedProberTier: [] },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
-					{ name: "hit", kind: "miss", found: false, ...scored },
-					{ name: "next", kind: "miss", found: false, ...scored },
+					{ name: "hit", kind: "miss", ...unmatched, ...scored },
+					{ name: "next", kind: "miss", ...unmatched, ...scored },
 				],
 			});
 			expect(second).toStrictEqual({
@@ -583,7 +723,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				reviews: [
 					{ name: lost.name, kind: "golden", score: { ...scoreGolden(lost, []) }, ...scored },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
-					{ name: "hit", kind: "miss", found: false, ...scored },
+					{ name: "hit", kind: "miss", ...unmatched, ...scored },
 					{ name: "next", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
 				],
 			});
@@ -598,7 +738,9 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const head = git(repo, "rev-parse", "feature");
 			git(repo, "branch", "moving-base", base);
 			const fields = { file: "other.ts", rule: "fail-open" };
-			const misses = missesFile([{ name: "named", repo, base: "moving-base", head: "feature", ...fields }]);
+			const misses = missesFile([
+				{ name: "named", repo, base: "moving-base", head: "feature", ...fields, lines: [2, 3] },
+			]);
 			const using = runners();
 			const out = join(scratch, "provenance.json");
 			const settings = {
@@ -627,8 +769,10 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 						base: "moving-base",
 						head: "feature",
 						...fields,
+						lines: [2, 3],
 						baseCommit: base,
 						headCommit: head,
+						location: { by: "lines", ranges: [[2, 3]] },
 					},
 				],
 			});

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
+	Changeset,
 	type Finding,
 	Lens,
 	type LensLevels,
@@ -11,7 +12,7 @@ import {
 	visibleText,
 } from "@melian-agent/core";
 import { type ProbeAvailability, type ReviewModels, StageTelemetry, type WriterTrust } from "@melian-agent/pipeline";
-import Type from "typebox";
+import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import {
 	answers,
@@ -129,10 +130,36 @@ const missSchema = Type.Object(
 		head: Type.String({ minLength: 1 }),
 		file: Type.String({ minLength: 1 }),
 		rule: Type.String({ minLength: 1 }),
+		fix: Type.Optional(Type.String({ minLength: 1 })),
+		lines: Type.Optional(Type.Tuple([Type.Integer({ minimum: 1 }), Type.Integer({ minimum: 1 })])),
 	},
 	{ additionalProperties: false },
 );
 const missesSchema = Type.Array(missSchema, { minItems: 1 });
+
+/**
+ * Where a miss's defect sits, which decides whether a finding answers it: the lines a misses file names, the lines its
+ * fix changed, or only its file and rule, which leaves a hit for the reader to adjudicate.
+ */
+export type MissLocation =
+	| { readonly by: "lines"; readonly ranges: readonly (readonly [number, number])[] }
+	| { readonly by: "fix"; readonly fixCommit: string; readonly ranges: readonly (readonly [number, number])[] }
+	| { readonly by: "file and rule" };
+
+/** A finding a miss's review reported at its file under its rule, as the results file shows it for adjudication. */
+export interface MissFinding {
+	readonly id: string;
+	readonly lines: readonly [number, number];
+	readonly headline: string;
+	readonly failureScenario?: string;
+}
+
+/** What a review found of a miss: the findings that answer it, and those at its file under its rule beside its lines. */
+export interface MissMatch {
+	readonly matched: "lines" | "file and rule";
+	readonly hits: readonly MissFinding[];
+	readonly near: readonly MissFinding[];
+}
 
 /** A `needs-execution` miss: a finding a review missed in a range of a clone, which only running code would catch. */
 export class Miss {
@@ -142,22 +169,50 @@ export class Miss {
 	readonly head: string;
 	readonly file: string;
 	readonly rule: string;
+	readonly fix?: string;
+	readonly lines?: readonly [number, number];
 
-	private constructor(fields: { name: string; repo: string; base: string; head: string; file: string; rule: string }) {
+	private constructor(fields: Static<typeof missSchema>) {
 		this.name = fields.name;
 		this.repo = fields.repo;
 		this.base = fields.base;
 		this.head = fields.head;
 		this.file = fields.file;
 		this.rule = fields.rule;
+		this.fix = fields.fix;
+		this.lines = fields.lines;
 	}
 
-	/** Reads a misses file: a JSON array of `{ name, repo, base, head, file, rule }`. */
+	/**
+	 * Reads a misses file: a JSON array of `{ name, repo, base, head, file, rule, fix?, lines? }`, where `fix` names the
+	 * commit that fixed the miss and `lines` is the first and last line of its defect at the head.
+	 */
 	static load(path: string): Miss[] {
 		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-		if (!Value.Check(missesSchema, parsed))
-			throw new Error(`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule }`);
+		if (!Value.Check(missesSchema, parsed) || parsed.some(({ lines }) => lines !== undefined && lines[0] > lines[1]))
+			throw new Error(
+				`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule, fix?, lines? }`,
+			);
 		return parsed.map((fields) => new Miss(fields));
+	}
+
+	/**
+	 * Where the miss's defect sits: its own `lines`, or else the old side of each hunk its fix's diff from the head makes
+	 * in its file, a pure insertion widened to the lines around it. Throws when the fix changes nothing in the file.
+	 */
+	async locate(): Promise<MissLocation> {
+		if (this.lines !== undefined) return { by: "lines", ranges: [this.lines] };
+		if (this.fix === undefined) return { by: "file and rule" };
+		const fixCommit = this.commit(this.fix);
+		const { revision } = await Changeset.resolve(this.repo, `${this.headCommit()}..${fixCommit}`);
+		const hunks = revision.files
+			.filter((file) => (file.oldPath ?? file.path) === this.file)
+			.flatMap((file) => file.hunks);
+		if (hunks.length === 0) throw new Error(`${this.name}: its fix ${fixCommit} changes nothing in ${this.file}`);
+		const ranges = hunks.map(({ oldStart, oldLines }): [number, number] =>
+			oldLines === 0 ? [Math.max(oldStart, 1), oldStart + 1] : [oldStart, oldStart + oldLines - 1],
+		);
+		return { by: "fix", fixCommit, ranges };
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -205,9 +260,30 @@ export class Miss {
 		};
 	}
 
-	/** Whether a review found the miss: an unrefuted `trust-boundary` claim at its file under its rule, merged or not. */
-	found(findings: readonly Finding[]): boolean {
-		return findings.some((finding) => answers({ file: this.file, rule: this.rule, source: probingCheck }, finding));
+	/**
+	 * What a review found of the miss. A finding answers it when it is an unrefuted `trust-boundary` claim at its file
+	 * under its rule, merged or not, and overlaps its lines; with no lines, file and rule alone decide.
+	 */
+	match(findings: readonly Finding[], location: MissLocation): MissMatch {
+		const shown = (finding: Finding): MissFinding => ({
+			id: finding.id,
+			lines: finding.lines(),
+			headline: finding.headline().headline,
+			failureScenario: finding.properties.failureScenario,
+		});
+		const claims = findings.filter((finding) =>
+			answers({ file: this.file, rule: this.rule, source: probingCheck }, finding),
+		);
+		if (location.by === "file and rule") return { matched: "file and rule", hits: claims.map(shown), near: [] };
+		const overlaps = (finding: Finding) => {
+			const [start, end] = finding.lines();
+			return location.ranges.some(([first, last]) => first <= end && start <= last);
+		};
+		return {
+			matched: "lines",
+			hits: claims.filter(overlaps).map(shown),
+			near: claims.filter((finding) => !overlaps(finding)).map(shown),
+		};
 	}
 }
 
@@ -348,6 +424,9 @@ export interface ProbingReview {
 	readonly kind: "golden" | "miss";
 	readonly score?: GoldenScore;
 	readonly found?: boolean;
+	readonly matched?: MissMatch["matched"];
+	readonly hits?: MissMatch["hits"];
+	readonly near?: MissMatch["near"];
 	readonly error?: string;
 	readonly notes: RangeRun["notes"];
 	readonly sharedProberTier: readonly string[];
@@ -428,7 +507,7 @@ export async function measureProbing(
 ): Promise<0 | 1 | 2> {
 	let settings: ProbingSettings;
 	let goldens: Golden[];
-	let misses: { miss: Miss; target: ReviewTarget & { readonly head: string } }[];
+	let misses: { miss: Miss; target: ReviewTarget & { readonly head: string }; location: MissLocation }[];
 	let save: (complete: boolean, results: readonly ProbingCombinationResult[]) => void;
 	try {
 		settings = ProbingSettings.parse(env);
@@ -437,7 +516,13 @@ export async function measureProbing(
 		misses =
 			settings.set === "goldens"
 				? []
-				: Miss.load(settings.misses!).map((miss) => ({ miss, target: miss.target(settings.trust) }));
+				: await Promise.all(
+						Miss.load(settings.misses!).map(async (miss) => ({
+							miss,
+							target: miss.target(settings.trust),
+							location: await miss.locate(),
+						})),
+					);
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
 			throw new Error(
@@ -455,15 +540,18 @@ export async function measureProbing(
 			clean: checkout("status", "--porcelain") === "",
 			verifier: settings.verifierModel,
 			passes: settings.passes,
-			misses: misses.map(({ miss, target }) => ({
+			misses: misses.map(({ miss, target, location }) => ({
 				name: miss.name,
 				repo: miss.repo,
 				base: miss.base,
 				head: miss.head,
 				file: miss.file,
 				rule: miss.rule,
+				fix: miss.fix,
+				lines: miss.lines,
 				baseCommit: target.base,
 				headCommit: target.head,
+				location,
 			})),
 		};
 		// Written whole through a rename after each pass, so a cut run leaves the passes it finished, never a torn file.
@@ -514,7 +602,7 @@ export async function measureProbing(
 			const record = (
 				run: RangeRun,
 				line: string,
-				review: Pick<ProbingReview, "name" | "kind" | "score" | "found">,
+				review: Pick<ProbingReview, "name" | "kind" | "score" | "found" | "matched" | "hits" | "near">,
 			) => {
 				telemetry.push(run.telemetry);
 				const sharing = Object.entries(run.tiers)
@@ -562,15 +650,22 @@ export async function measureProbing(
 				);
 			}
 			let found = 0;
-			for (const { miss, target } of misses) {
+			for (const { miss, target, location } of misses) {
 				const run = await tried(miss.name, "miss", () => runners.range(target, mode));
 				if (run === undefined) continue;
-				const hit = miss.found(run.findings);
+				const match = miss.match(run.findings, location);
+				const hit = match.hits.length > 0;
 				if (hit) found += 1;
-				record(run, `${combination.label} pass ${pass} ${miss.name}: ${hit ? "found" : "missed"}`, {
+				const said = !hit
+					? "missed"
+					: match.matched === "lines"
+						? "found"
+						: "found, unadjudicated: matched by file and rule alone";
+				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
 					found: hit,
+					...match,
 				});
 			}
 			passes.push({
