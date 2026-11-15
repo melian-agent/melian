@@ -601,6 +601,34 @@ describe("walkthrough summaries", () => {
 		expect(written(doc, revision)?.summary).toBe("Changes a value.");
 		expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
 	});
+	it("stores the failure note, and runs no second credential command, when its commit fails for another reason", async () => {
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const revision = Revision.key(changeset.revision);
+		const root = harness.root.bind(harness);
+		// The walkthrough's commit fails as a full disk would make it fail, which asks for no unlock.
+		vi.spyOn(harness, "root").mockImplementationOnce(async (...args) => {
+			const conversation = await root(...args);
+			let failed = false;
+			return new Proxy(conversation, {
+				get(target, property) {
+					if (property === "commit" && !failed) {
+						failed = true;
+						return async () => {
+							throw new Error("disk full");
+						};
+					}
+					const value = Reflect.get(target, property, target);
+					return typeof value === "function" ? value.bind(target) : value;
+				},
+			});
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const doc = await summarize({ unlockModels: unlock });
+		expect(written(doc, revision)).toBeUndefined();
+		expect(doc?.walkthroughNotes?.[revision]).toBe("No walkthrough available. The summariser failed.");
+		expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
+		expect(captured["You write Melian's walkthrough"] ?? []).toHaveLength(0);
+	});
 	it("counts a finished task the index has not counted before deciding to run a credential command", async () => {
 		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
 		const captured = scriptConversations(models, [
