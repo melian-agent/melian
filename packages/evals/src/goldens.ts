@@ -402,6 +402,23 @@ async function guardrailFindings(
 	return findings.map((finding) => finding.resolved(policyFor(finding.properties.path, finding.ruleId)));
 }
 
+// One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
+export async function sightingsAt(
+	reader: Parameters<typeof readFindings>[0],
+	root: Parameters<typeof readFindings>[1],
+	revision: string,
+	check: string,
+): Promise<readonly Finding[]> {
+	const read = (version?: string) =>
+		readFindings(reader, root, revision, backgroundContext, { producers: [{ check, version }], asReported: true });
+	const versions = new Set(
+		(await read()).flatMap((merged) =>
+			(merged.properties.reportedBy ?? [merged.properties.source]).map((source) => source.version),
+		),
+	);
+	return (await Promise.all([...versions].map(read))).flat();
+}
+
 /**
  * Reviews a golden's change the way the CLI will: policy, standards, and lenses from the base commit, the range
  * `main...feature`, and every lens the change selects. Scripted runs answer each lens from `script.json` on the fake
@@ -507,12 +524,11 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			sightingsOf === undefined
 				? {}
 				: {
-						sightings: await readFindings(
+						sightings: await sightingsAt(
 							reviewHarness.harness,
 							(await reviewHarness.harness.root(backgroundContext)).id,
 							Revision.key(changeset.revision),
-							backgroundContext,
-							{ producers: [{ check: sightingsOf }], asReported: true },
+							sightingsOf,
 						),
 					};
 		return {

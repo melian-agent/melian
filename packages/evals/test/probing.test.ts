@@ -2,8 +2,16 @@ import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, Finding, Lens, type MelianConfig } from "@melian-agent/core";
-import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
+import { defaultConfig, Finding, type FindingInput, Lens, type MelianConfig } from "@melian-agent/core";
+import {
+	backgroundContext,
+	createMemoryStorage,
+	createRegistry,
+	openHarness,
+	StageTelemetry,
+	TokenUsage,
+	upsertFinding,
+} from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -21,6 +29,7 @@ import {
 	runGolden,
 	runRange,
 	scoreGolden,
+	sightingsAt,
 } from "../src/goldens.ts";
 import {
 	Miss,
@@ -320,8 +329,82 @@ describe("Miss", () => {
 			claim,
 			{ ...claim, source: { ...claim.source, version: "w" }, verification: refuted.verification },
 		];
-		expect(found([changed({ ...speaker, otherClaims: twice })], [finding])).toBe(true);
-		expect(found([changed({ ...speaker, otherClaims: twice.toReversed() })], [finding])).toBe(true);
+		const atW = changed({ source: twice[1]!.source });
+		expect(found([changed({ ...speaker, otherClaims: twice })], [finding, atW])).toBe(true);
+		expect(found([changed({ ...speaker, otherClaims: twice.toReversed() })], [atW, finding])).toBe(true);
+	});
+
+	it("pairs each claim with its own level's sighting, so a refuted level's lines score nothing where another level's claim of that ID stands", async () => {
+		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
+		const finding = reviewed.findings[0]!;
+		const [start, end] = finding.lines();
+		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
+		const verification = (verdict: "confirmed" | "refuted") => ({
+			verdict,
+			reason: `the probe ${verdict} it`,
+			executor: "llm" as const,
+			model: "fake/judge",
+			version: "1",
+		});
+		// Quick and careful sight one ID, since an ID excludes lines; the verifier refutes quick's and upholds careful's.
+		const level = (version: string, first: number, last: number, verdict: "confirmed" | "refuted") => {
+			const stored = finding.toJSON();
+			const [location] = stored.locations;
+			const region = { ...location!.physicalLocation.region, startLine: first, endLine: last };
+			return Finding.from({
+				...stored,
+				locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
+				properties: {
+					...finding.properties,
+					source: { check: "lens.trust-boundary", version },
+					reportedBy: undefined,
+					otherClaims: undefined,
+					verification: verification(verdict),
+				},
+			});
+		};
+		const quick = level("quick1", start, start, "refuted");
+		const careful = level("careful1", end + 5, end + 6, "confirmed");
+		const verdict = Finding.from({
+			...careful.toJSON(),
+			properties: { ...careful.properties, otherClaims: [...careful.claims(), ...quick.claims()] },
+		});
+		const shown = (each: Finding) => ({
+			id: each.id,
+			lines: each.lines(),
+			headline: each.headline().headline,
+			failureScenario: each.properties.failureScenario,
+			sightedBy: each.properties.source,
+			evidence: each.properties.evidence,
+			verification: each.properties.verification,
+		});
+		expect(
+			miss.match({ findings: [verdict], sightings: [quick, careful] }, { by: "lines", ranges: [[start, start]] }),
+		).toEqual({
+			matched: "lines",
+			hits: [],
+			near: [shown(careful)],
+		});
+		expect(
+			miss.match(
+				{ findings: [verdict], sightings: [quick, careful] },
+				{ by: "lines", ranges: [[end + 5, end + 5]] },
+			),
+		).toEqual({ matched: "lines", hits: [shown(careful)], near: [] });
+		expect(() =>
+			miss.match({ findings: [verdict], sightings: [quick] }, { by: "lines", ranges: [[start, start]] }),
+		).toThrow(
+			`m: the verdict holds a lens.trust-boundary claim ${finding.id} from careful1 that the lens never sighted`,
+		);
+		expect(() =>
+			miss.match({ findings: [quick], sightings: [quick, careful] }, { by: "lines", ranges: [[start, start]] }),
+		).toThrow(`m: lens.trust-boundary sighted ${finding.id} at careful1, which the verdict holds no claim for`);
+		expect(() =>
+			miss.match(
+				{ findings: [careful, verdict], sightings: [quick, careful] },
+				{ by: "lines", ranges: [[start, start]] },
+			),
+		).toThrow(`m: the verdict holds the lens.trust-boundary claim ${finding.id} from careful1 twice`);
 	});
 
 	it("gives a miss no score when the verdict and the lens's sightings disagree on which claims it made", async () => {
@@ -333,10 +416,10 @@ describe("Miss", () => {
 			"m: its review returned no lens.trust-boundary sightings to score",
 		);
 		expect(() => miss.match({ findings: [], sightings: [finding] }, loose)).toThrow(
-			`m: lens.trust-boundary sighted ${finding.id}, which the verdict holds no claim for`,
+			`m: lens.trust-boundary sighted ${finding.id} at ${finding.properties.source.version}, which the verdict holds no claim for`,
 		);
 		expect(() => miss.match({ findings: [finding], sightings: [] }, loose)).toThrow(
-			`m: the verdict holds a lens.trust-boundary claim ${finding.id} that the lens never sighted`,
+			`m: the verdict holds a lens.trust-boundary claim ${finding.id} from ${finding.properties.source.version} that the lens never sighted`,
 		);
 		const security = { check: "lens.security", version: "v" };
 		const elsewhere = Finding.from({
@@ -372,6 +455,8 @@ describe("Miss", () => {
 			headline: each.headline().headline,
 			failureScenario: each.properties.failureScenario,
 			sightedBy: each.properties.source,
+			evidence: each.properties.evidence,
+			verification: each.properties.verification,
 		});
 		const both = (sightings: readonly Finding[]) => ({ findings: sightings, sightings });
 		expect(
@@ -828,6 +913,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				headline: defect[0]!.headline().headline,
 				failureScenario: defect[0]!.properties.failureScenario,
 				sightedBy: defect[0]!.properties.source,
+				evidence: defect[0]!.properties.evidence,
+				verification: defect[0]!.properties.verification,
 			};
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
 				failed: ["two hunks", "loose"],
@@ -923,7 +1010,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					{
 						name: "hit",
 						kind: "miss",
-						error: `hit: the verdict holds a lens.trust-boundary claim ${defect[0]!.id} that the lens never sighted`,
+						error: `hit: the verdict holds a lens.trust-boundary claim ${defect[0]!.id} from ${defect[0]!.properties.source.version} that the lens never sighted`,
 						...scored,
 					},
 					{ name: "next", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
@@ -1107,6 +1194,62 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(await runGolden(failOpen, { kind: "scripted" })).not.toHaveProperty("sightings");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reads each level's own sighting of a check's findings, though two levels share an ID, and no other check's", async () => {
+		const fakes = createFakeModels();
+		const harness = await openHarness(createMemoryStorage(), { models: fakes.models, registry: createRegistry() });
+		try {
+			const root = await harness.root(backgroundContext, { agent: { model: fakes.ref() } });
+			const reported: FindingInput = {
+				rule: "fail-open",
+				message: "fails open",
+				file: "src/scan.ts",
+				startLine: 12,
+				snippet: "return true",
+				occurrence: 0,
+				cause: "introduced",
+				severity: "P1",
+				resolution: "block",
+				explanation: { what: "w", whyHere: "y", whatToDo: "d" },
+				source: { check: "lens.trust-boundary", version: "quick1" },
+			};
+			const quick = Finding.create(reported);
+			const careful = Finding.create({
+				...reported,
+				startLine: 40,
+				endLine: 44,
+				severity: "P2",
+				source: { check: "lens.trust-boundary", version: "careful1" },
+			});
+			const deep = Finding.create({
+				...reported,
+				snippet: "return false",
+				source: { check: "lens.trust-boundary", version: "deep1" },
+			});
+			const security = Finding.create({
+				...reported,
+				snippet: "allow",
+				source: { check: "lens.security", version: "s1" },
+			});
+			expect(careful.id).toBe(quick.id);
+			for (const each of [quick, careful, deep, security])
+				await root.commit((tx) => upsertFinding(tx, root.id, each, "rev"), backgroundContext);
+			const read = await sightingsAt(harness, root.id, "rev", "lens.trust-boundary");
+			expect(
+				read
+					.map((each) => [each.id, each.properties.source.version, each.lines()])
+					.toSorted((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+			).toEqual(
+				[
+					[quick.id, "quick1", [12, 12]],
+					[quick.id, "careful1", [40, 44]],
+					[deep.id, "deep1", [12, 12]],
+				].toSorted((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+			);
+		} finally {
+			await harness.close(backgroundContext);
 		}
 	});
 

@@ -3,13 +3,16 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
 	Changeset,
 	type Finding,
+	type FindingEvidence,
 	type FindingSource,
 	Lens,
 	type LensLevels,
 	type LensTier,
 	lensTierSchema,
 	type MelianConfig,
+	type MemberClaim,
 	parseModelReference,
+	type Verification,
 	VerificationState,
 	visibleText,
 } from "@melian-agent/core";
@@ -149,7 +152,8 @@ export type MissLocation =
 
 /**
  * A `trust-boundary` sighting at a miss's file under its rule, as the results file shows it for adjudication: its lines
- * and words are the ones `sightedBy`, that lens at one of its levels, reported, whichever claim speaks for its defect.
+ * and words are the ones `sightedBy`, that lens at one of its levels, reported, beside the verdict's claim from that
+ * level. The claim names no probe, so the review's telemetry holds each probe's outcome without saying which it shows.
  */
 export interface MissFinding {
 	readonly id: string;
@@ -157,6 +161,10 @@ export interface MissFinding {
 	readonly headline: string;
 	readonly failureScenario?: string;
 	readonly sightedBy: FindingSource;
+	/** The locations the claim rests on, as the verdict carries them. */
+	readonly evidence?: FindingEvidence;
+	/** The verifier's verdict on the claim and its reason, which the score follows whether or not a probe was sound. */
+	readonly verification?: Verification;
 	/** For a hit on a fix of several hunks in the miss's file, the hunks it overlaps, for the reader to adjudicate. */
 	readonly hunks?: readonly (readonly [number, number])[];
 }
@@ -288,40 +296,55 @@ export class Miss {
 
 	/**
 	 * What a review found of the miss, scored on `trust-boundary`'s own sightings, since a merged finding keeps only its
-	 * speaker's lines. A sighting answers the miss when the verdict holds its claim, by ID, unrefuted, and it sits at the
-	 * miss's file under its rule and overlaps its lines; with no lines, file and rule alone decide. Throws when the
-	 * sightings and the verdict's claims disagree, which leaves the miss unscored rather than missed.
+	 * speaker's lines. A sighting answers the miss when the verdict holds its claim unrefuted, by its ID and the level
+	 * that sighted it, and it sits at the miss's file under its rule and overlaps its lines; with no lines, file and rule
+	 * alone decide. Throws when the sightings and the verdict's claims disagree, which leaves the miss unscored rather
+	 * than missed.
 	 */
 	match(run: Pick<RangeRun, "findings" | "sightings">, location: MissLocation): MissMatch {
 		const { sightings } = run;
 		if (sightings === undefined)
 			throw new Error(`${this.name}: its review returned no ${probingCheck} sightings to score`);
-		const unrefuted = new Map<string, boolean>();
+		// An ID excludes lines, so two levels of the lens can sight one ID at different lines with different verdicts.
+		const identity = (id: string, source: FindingSource) => `${id} ${source.version}`;
+		const held = new Map<string, MemberClaim>();
 		for (const finding of run.findings)
-			for (const claim of VerificationState.from(finding).claims)
-				if (claim.source.check === probingCheck)
-					unrefuted.set(claim.id, unrefuted.get(claim.id) === true || claim.verification?.verdict !== "refuted");
+			for (const claim of VerificationState.from(finding).claims) {
+				if (claim.source.check !== probingCheck) continue;
+				const key = identity(claim.id, claim.source);
+				if (held.has(key))
+					throw new Error(
+						`${this.name}: the verdict holds the ${probingCheck} claim ${claim.id} from ${claim.source.version} twice`,
+					);
+				held.set(key, claim);
+			}
 		for (const sighting of sightings)
-			if (!unrefuted.has(sighting.id))
+			if (!held.has(identity(sighting.id, sighting.properties.source)))
 				throw new Error(
-					`${this.name}: ${probingCheck} sighted ${sighting.id}, which the verdict holds no claim for`,
+					`${this.name}: ${probingCheck} sighted ${sighting.id} at ${sighting.properties.source.version}, which the verdict holds no claim for`,
 				);
-		const sighted = new Set(sightings.map((sighting) => sighting.id));
-		for (const id of unrefuted.keys())
-			if (!sighted.has(id))
+		const sighted = new Set(sightings.map((sighting) => identity(sighting.id, sighting.properties.source)));
+		for (const [key, claim] of held)
+			if (!sighted.has(key))
 				throw new Error(
-					`${this.name}: the verdict holds a ${probingCheck} claim ${id} that the lens never sighted`,
+					`${this.name}: the verdict holds a ${probingCheck} claim ${claim.id} from ${claim.source.version} that the lens never sighted`,
 				);
-		const shown = (sighting: Finding): MissFinding => ({
-			id: sighting.id,
-			lines: sighting.lines(),
-			headline: sighting.headline().headline,
-			failureScenario: sighting.properties.failureScenario,
-			sightedBy: sighting.properties.source,
-		});
+		const claimOf = (sighting: Finding) => held.get(identity(sighting.id, sighting.properties.source))!;
+		const shown = (sighting: Finding): MissFinding => {
+			const { evidence, verification } = claimOf(sighting);
+			return {
+				id: sighting.id,
+				lines: sighting.lines(),
+				headline: sighting.headline().headline,
+				failureScenario: sighting.properties.failureScenario,
+				sightedBy: sighting.properties.source,
+				...(evidence === undefined ? {} : { evidence }),
+				...(verification === undefined ? {} : { verification }),
+			};
+		};
 		const claims = sightings.filter(
 			(sighting) =>
-				unrefuted.get(sighting.id) === true &&
+				claimOf(sighting).verification?.verdict !== "refuted" &&
 				sighting.ruleId === this.rule &&
 				(sighting.properties.path ?? sighting.locations[0]!.physicalLocation.artifactLocation.uri) === this.file,
 		);
