@@ -16,6 +16,7 @@ import Value from "typebox/value";
 import {
 	type Golden,
 	type GoldenRun,
+	type GoldenScore,
 	type LiveGoldenMode,
 	type ProbingRoute,
 	type RangeRun,
@@ -337,11 +338,29 @@ export class ProbingSettings {
 	}
 }
 
+/**
+ * One review of one pass: its golden's score or whether it found its miss, or why it had neither; the notes its lenses
+ * recorded; the other lens checks that ran on the prober's tier; and its telemetry, whose prober stages hold the attacks
+ * planned, each probe's outcome and the skips. A review that failed has telemetry only when it got as far as a review.
+ */
+export interface ProbingReview {
+	readonly name: string;
+	readonly kind: "golden" | "miss";
+	readonly score?: GoldenScore;
+	readonly found?: boolean;
+	readonly error?: string;
+	readonly notes: RangeRun["notes"];
+	readonly sharedProberTier: readonly string[];
+	readonly spend?: string;
+	readonly telemetry?: ReturnType<StageTelemetry["toJSON"]>;
+}
+
 /** What one pass of one combination scored. A score is absent when a review of its corpus had none. */
 export interface ProbingPass {
 	readonly goldens?: { readonly precision: number; readonly recall: number };
 	readonly misses?: { readonly found: number; readonly total: number };
 	readonly failed: readonly string[];
+	readonly reviews: readonly ProbingReview[];
 }
 
 /** What one combination scored over every pass. Its worst and mean are absent unless every review had a score. */
@@ -445,47 +464,71 @@ export async function measureProbing(
 		const telemetry: StageTelemetry[] = [];
 		const shared = new Set<string>();
 		const passes: ProbingPass[] = [];
-		const record = (run: RangeRun, line: string) => {
-			telemetry.push(run.telemetry);
-			for (const [check, tier] of Object.entries(run.tiers))
-				if (combination.prober !== undefined && check !== probingCheck && tier === combination.proberTier)
-					shared.add(check);
-			print(visibleText(`${line}, ${run.telemetry.spend()}`));
-			for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
-			for (const shown of shownOutput(run.rendered, env)) print(shown);
-		};
-		const tried = async <Run>(name: string, run: () => Promise<Run>) =>
-			attempt(name, run, print, (error) => {
-				if (error instanceof GoldenRunError) telemetry.push(error.telemetry);
-			});
 		for (let pass = 1; pass <= settings.passes; pass += 1) {
 			const failed: string[] = [];
 			const scores = [];
+			const reviews: ProbingReview[] = [];
+			const record = (
+				run: RangeRun,
+				line: string,
+				review: Pick<ProbingReview, "name" | "kind" | "score" | "found">,
+			) => {
+				telemetry.push(run.telemetry);
+				const sharing = Object.entries(run.tiers)
+					.filter(
+						([check, tier]) =>
+							combination.prober !== undefined && check !== probingCheck && tier === combination.proberTier,
+					)
+					.map(([check]) => check)
+					.sort();
+				for (const check of sharing) shared.add(check);
+				reviews.push({
+					...review,
+					notes: run.notes,
+					sharedProberTier: sharing,
+					spend: run.telemetry.spend(),
+					telemetry: run.telemetry.toJSON(),
+				});
+				print(visibleText(`${line}, ${run.telemetry.spend()}`));
+				for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
+				for (const shown of shownOutput(run.rendered, env)) print(shown);
+			};
+			const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
+				attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
+					const ran = error instanceof GoldenRunError ? error.telemetry : undefined;
+					if (ran !== undefined) telemetry.push(ran);
+					failed.push(name);
+					reviews.push({
+						name,
+						kind,
+						error: error instanceof Error ? error.message : String(error),
+						notes: [],
+						sharedProberTier: [],
+						...(ran === undefined ? {} : { spend: ran.spend(), telemetry: ran.toJSON() }),
+					});
+				});
 			for (const golden of goldens) {
-				const name = `${combination.label} pass ${pass} ${golden.name}`;
-				const run = await tried(name, () => runners.golden(golden, mode));
-				if (run === undefined) {
-					failed.push(golden.name);
-					continue;
-				}
+				const run = await tried(golden.name, "golden", () => runners.golden(golden, mode));
+				if (run === undefined) continue;
 				const score = scoreGolden(golden, run.findings);
 				scores.push(score);
 				record(
 					run,
-					`${name}: precision ${fixed(score.precision)}, recall ${fixed(score.recall)} (${score.reported} reported, ${score.expected} expected)`,
+					`${combination.label} pass ${pass} ${golden.name}: precision ${fixed(score.precision)}, recall ${fixed(score.recall)} (${score.reported} reported, ${score.expected} expected)`,
+					{ name: golden.name, kind: "golden", score },
 				);
 			}
 			let found = 0;
 			for (const { miss, target } of misses) {
-				const name = `${combination.label} pass ${pass} ${miss.name}`;
-				const run = await tried(name, () => runners.range(target, mode));
-				if (run === undefined) {
-					failed.push(miss.name);
-					continue;
-				}
+				const run = await tried(miss.name, "miss", () => runners.range(target, mode));
+				if (run === undefined) continue;
 				const hit = miss.found(run.findings);
 				if (hit) found += 1;
-				record(run, `${name}: ${hit ? "found" : "missed"}`);
+				record(run, `${combination.label} pass ${pass} ${miss.name}: ${hit ? "found" : "missed"}`, {
+					name: miss.name,
+					kind: "miss",
+					found: hit,
+				});
 			}
 			passes.push({
 				...(goldens.length === 0 || failed.some((name) => goldens.some((golden) => golden.name === name))
@@ -495,6 +538,7 @@ export async function measureProbing(
 					? {}
 					: { misses: { found, total: misses.length } }),
 				failed,
+				reviews,
 			});
 		}
 		const complete = passes.every((pass) => pass.failed.length === 0);

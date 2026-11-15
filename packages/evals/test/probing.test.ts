@@ -19,6 +19,7 @@ import {
 	type RangeRun,
 	runGolden,
 	runRange,
+	scoreGolden,
 } from "../src/goldens.ts";
 import {
 	Miss,
@@ -348,7 +349,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					golden: each,
 					...ran(each === lost && call !== 3 ? defect : [], {
 						notes: [{ reason: "it planned 1 attack and ran 1 probe in 0.3 s", checks: ["lens.trust-boundary"] }],
-						tiers: { "lens.trust-boundary": "heavy", "lens.tests": "medium", "lens.design": "light" },
+						tiers:
+							each === lost
+								? {
+										"lens.trust-boundary": "medium",
+										"lens.tests": "medium",
+										"lens.design": "light",
+										"lens.conventions": "medium",
+									}
+								: { "lens.correctness": "medium" },
 					}),
 				};
 			}),
@@ -376,7 +385,9 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(lines).toContain(
 			"pair: worst precision 1.00, recall 0.00; mean precision 1.00, recall 0.67; 84 tokens, $6",
 		);
-		expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+		expect(lines).toContain(
+			"pair: other lens checks on the prober's medium tier: lens.conventions, lens.correctness, lens.tests",
+		);
 		expect(lines).toContainEqual(
 			expect.stringMatching(
 				/^off pass 1 trust-boundary-probe-claim-lost-release: no score \(provider down\), 14 tokens/,
@@ -393,13 +404,46 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		]);
 		expect(results.results[0]).toMatchObject({
 			worst: { precision: 1, recall: 0 },
-			sharedProberTier: ["lens.tests"],
+			sharedProberTier: ["lens.conventions", "lens.correctness", "lens.tests"],
 			spend: expect.stringMatching(/^84 tokens/),
 		});
+		const notes = [{ reason: "it planned 1 attack and ran 1 probe in 0.3 s", checks: ["lens.trust-boundary"] }];
+		const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+		expect(results.results[0].passes[0].reviews).toEqual([
+			{
+				name: lost.name,
+				kind: "golden",
+				score: { ...scoreGolden(lost, defect) },
+				notes,
+				sharedProberTier: ["lens.conventions", "lens.tests"],
+				...spent,
+			},
+			{
+				name: clean.name,
+				kind: "golden",
+				score: { ...scoreGolden(clean, []) },
+				notes,
+				sharedProberTier: ["lens.correctness"],
+				...spent,
+			},
+		]);
 		expect(results.results[0].mean.recall).toBeCloseTo(2 / 3);
 		expect(results.results[1]).not.toHaveProperty("worst");
-		expect(results.results[1].passes[0]).toEqual({ failed: ["trust-boundary-probe-claim-lost-release"] });
-		expect(results.results[1].passes[1]).toEqual({ goldens: { precision: 1, recall: 1 }, failed: [] });
+		expect(results.results[1].passes[0]).toEqual({
+			failed: [lost.name],
+			reviews: [
+				{ name: lost.name, kind: "golden", error: "provider down", notes: [], sharedProberTier: [], ...spent },
+				{
+					name: clean.name,
+					kind: "golden",
+					score: { ...scoreGolden(clean, []) },
+					notes,
+					sharedProberTier: [],
+					...spent,
+				},
+			],
+		});
+		expect(results.results[1].passes[1]).toMatchObject({ goldens: { precision: 1, recall: 1 }, failed: [] });
 	});
 
 	it("prints the rendered review under MELIAN_EVAL_SHOW=1, and runs one pass for one golden", async () => {
@@ -449,9 +493,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 hit: found, 14 tokens/));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 miss: missed, 14 tokens/));
 			expect(lines).toContain("pair: worst miss recall 0.50; mean miss recall 0.50; 84 tokens, $6");
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
 				misses: { found: 1, total: 2 },
 				failed: [],
+				reviews: [
+					{ name: "hit", found: true, ...review },
+					{ name: "miss", found: false, ...review },
+				],
 			});
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
