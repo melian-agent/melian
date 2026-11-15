@@ -427,14 +427,17 @@ it.each(["graphs", "coverage", "mutation"])(
 	},
 );
 
-it("lists a link with a scratch name, which CacheScratch never sweeps", async () => {
-	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
-	outside.push(elsewhere);
-	await mkdir(join(state, "graphs"), { recursive: true });
-	await symlink(elsewhere, join(state, "graphs", `.graph-${process.pid}-linked`));
-	const prune = await plan();
-	expect(prune.kept).toEqual([`graphs/.graph-${process.pid}-linked`]);
-});
+it.each(["graphs", "coverage", "mutation"])(
+	"lists a link with a scratch name under %s, which CacheScratch never sweeps",
+	async (folder) => {
+		const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+		outside.push(elsewhere);
+		await mkdir(join(state, folder), { recursive: true });
+		await symlink(elsewhere, join(state, folder, `.graph-${process.pid}-linked`));
+		const prune = await plan();
+		expect(prune.kept).toEqual([`${folder}/.graph-${process.pid}-linked`]);
+	},
+);
 
 it("lists a directory with a changeset file's name, and leaves it out of the changeset count", async () => {
 	const name = "pull-0123456789abcdef.sqlite";
