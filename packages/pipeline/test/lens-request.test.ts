@@ -2,7 +2,7 @@ import type { LensToolName, Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
-import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
+import { lensListedTools, lensToolLimits, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
 import { probingWording } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
@@ -70,10 +70,24 @@ function build(input: Sample) {
 	});
 }
 
-const specOf = ({ name, description, parameters }: { name: string; description: string; parameters: unknown }) => ({
+const specOf = ({
 	name,
 	description,
 	parameters,
+	outputLimits,
+	argumentBytes,
+}: {
+	name: string;
+	description: string;
+	parameters: unknown;
+	outputLimits?: unknown;
+	argumentBytes?: number;
+}) => ({
+	name,
+	description,
+	parameters,
+	...(outputLimits === undefined ? {} : { outputLimits }),
+	...(argumentBytes === undefined ? {} : { argumentBytes }),
 });
 
 describe("lensRequest", () => {
@@ -111,6 +125,26 @@ describe("lensRequest", () => {
 		expect(request.probing).toEqual({
 			tools: [lensListedTools.read_file, lensListedTools.search, reportFinding, runProbe, skipAttack].map(specOf),
 		});
+	});
+
+	it("keys each offered tool's output limits and argument bound, and the bounds every tool cuts what it shows to", () => {
+		const { request } = build(sample);
+		expect(request.limits).toEqual(lensToolLimits);
+		const read = request.tools.find(({ name }) => name === "read_file") as Record<string, unknown>;
+		expect(read.outputLimits).toEqual(lensListedTools.read_file.outputLimits);
+		expect(read.argumentBytes).toBe(8192);
+		const plan = request.tools.find(({ name }) => name === "record_plan") as Record<string, unknown>;
+		expect(plan.argumentBytes).toBe(recordPlan.argumentBytes);
+		const before = build(sample).key;
+		const tool = lensListedTools.read_file as { outputLimits?: { maxBytes?: number; maxLines?: number } };
+		const original = tool.outputLimits;
+		try {
+			tool.outputLimits = { ...original, maxBytes: 1024 };
+			expect(build(sample).key).not.toBe(before);
+		} finally {
+			tool.outputLimits = original;
+		}
+		expect(build(sample).key).toBe(before);
 	});
 
 	it("offers a run that does not probe no planner tool, and keys no probing text", () => {

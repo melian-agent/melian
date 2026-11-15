@@ -230,29 +230,36 @@ const maxReadLines = 2000;
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
 
+/** The bounds every lens tool cuts what it shows to, below Pi's output limits, which a lens run's key holds. */
+export const lensToolLimits = Object.freeze({ shownBytes: maxShownBytes, readLines: maxReadLines });
+
+// `argumentBytes` rides on the registration as data, beside `outputLimits`, so a lens run's key can hold it.
 function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>, limit = 8192) {
-	return defineTool({
-		...tool,
-		prepareArguments: (args: unknown) => {
-			// 8 KiB caps input work. Pi's validation error names the first failing path, then echoes the arguments, which
-			// carry model text outside the untrusted boundary and can grow past outputLimits, so the echo goes. What remains
-			// is one line bounded by the input limit: https://github.com/melian-agent/melian/issues/248.
-			if (Buffer.byteLength(JSON.stringify(args)) > limit)
-				throw new Error(`Tool arguments are too large: keep them under ${limit / 1024} KiB.`);
-			try {
-				return validateToolArguments(tool, {
-					type: "toolCall",
-					id: "",
-					name: tool.name,
-					arguments: args as ToolCall["arguments"],
-				});
-			} catch (error) {
-				throw new Error(
-					(error instanceof Error ? error.message : String(error)).split("\n\nReceived arguments:")[0],
-				);
-			}
-		},
-	});
+	return Object.assign(
+		defineTool({
+			...tool,
+			prepareArguments: (args: unknown) => {
+				// 8 KiB caps input work. Pi's validation error names the first failing path, then echoes the arguments, which
+				// carry model text outside the untrusted boundary and can grow past outputLimits, so the echo goes. What remains
+				// is one line bounded by the input limit: https://github.com/melian-agent/melian/issues/248.
+				if (Buffer.byteLength(JSON.stringify(args)) > limit)
+					throw new Error(`Tool arguments are too large: keep them under ${limit / 1024} KiB.`);
+				try {
+					return validateToolArguments(tool, {
+						type: "toolCall",
+						id: "",
+						name: tool.name,
+						arguments: args as ToolCall["arguments"],
+					});
+				} catch (error) {
+					throw new Error(
+						(error instanceof Error ? error.message : String(error)).split("\n\nReceived arguments:")[0],
+					);
+				}
+			},
+		}),
+		{ argumentBytes: limit },
+	);
 }
 
 function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean } {

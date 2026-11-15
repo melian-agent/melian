@@ -1,5 +1,5 @@
 import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
-import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "./lens-tools.ts";
+import { lensListedTools, lensToolLimits, recordPlan, reportFinding, runProbe, skipAttack } from "./lens-tools.ts";
 import { probingWording } from "./probing.ts";
 import { identityNonce, injectionPolicy } from "./untrusted.ts";
 
@@ -31,12 +31,19 @@ export type LensRequestInput<Run extends LensRequestRun> = {
 	readonly standards: unknown;
 };
 
-type ToolSpec = { name: string; description: string; parameters: unknown };
+type ToolSpec = {
+	name: string;
+	description: string;
+	parameters: unknown;
+	outputLimits?: { readonly maxBytes?: number; readonly maxLines?: number };
+	argumentBytes?: number;
+};
 
 type LensRequestBody = {
 	run: RecordJson;
 	policy: string;
 	tools: ToolSpec[];
+	limits: typeof lensToolLimits;
 	continue: string;
 	probing?: { tools: ToolSpec[] };
 	base: string;
@@ -47,7 +54,14 @@ type LensRequestBody = {
 	standards: RecordJson;
 };
 
-const specOf = ({ name, description, parameters }: ToolSpec): ToolSpec => ({ name, description, parameters });
+// What a tool shows a lens: its name, description and schema, and the limits on what it takes and returns.
+const specOf = ({ name, description, parameters, outputLimits, argumentBytes }: ToolSpec): ToolSpec => ({
+	name,
+	description,
+	parameters,
+	...(outputLimits === undefined ? {} : { outputLimits: { ...outputLimits } }),
+	...(argumentBytes === undefined ? {} : { argumentBytes }),
+});
 
 /**
  * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the injection policy
@@ -70,6 +84,7 @@ export function lensRequest<Run extends LensRequestRun>(
 			run: requestJson(keyed),
 			policy: injectionPolicy(identityNonce),
 			tools: [...read, reportFinding, ...(probes ? [recordPlan] : [])].map(specOf),
+			limits: lensToolLimits,
 			continue: continuePrompt,
 			...(probes
 				? {
