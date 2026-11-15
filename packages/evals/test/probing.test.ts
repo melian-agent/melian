@@ -100,7 +100,10 @@ async function measure(settings: NodeJS.ProcessEnv, using: ProbingRunners = runn
 	const status = await measureProbing(
 		settings,
 		using,
-		(line) => lines.push(line),
+		(line) => {
+			// A pass loop that never ends awaits only microtasks, so no test timeout would fire.
+			if (lines.push(line) > 10_000) throw new Error("the run printed without end");
+		},
 		(line) => errors.push(line),
 	);
 	return { status, lines, errors };
@@ -141,6 +144,8 @@ describe("ProbingCombination", () => {
 		expect(() => ProbingCombination.parse("X=a/b", "medium")).toThrow(/invalid entry/);
 		expect(() => ProbingCombination.parse("=a/b", "medium")).toThrow(/invalid entry/);
 		expect(() => ProbingCombination.parse("x=", "medium")).toThrow(/invalid entry/);
+		expect(() => ProbingCombination.parse("!x=a/b", "medium")).toThrow(/invalid entry/);
+		expect(() => ProbingCombination.parse("x=a/b\ny=c/d", "medium")).toThrow(/invalid entry/);
 	});
 
 	const config: MelianConfig = {
@@ -175,7 +180,7 @@ describe("ProbingCombination", () => {
 		const others = (lensSet: readonly Lens[]) => lensSet.filter((lens) => lens.name !== "trust-boundary");
 		expect(others(routed.lenses)).toEqual(others(loaded));
 		const light = ProbingCombination.parse("pair=a/plan>b/probe", "light").routed(config, loaded);
-		expect(light.config.models.light).toEqual({ model: "b/probe" });
+		expect(light.config.models.light).toStrictEqual({ model: "b/probe" });
 		expect(light.config.models.medium).toEqual(config.models.medium);
 	});
 
@@ -197,7 +202,7 @@ describe("ProbingCombination", () => {
 			await lenses(),
 		);
 		expect(routed.config.models).toEqual({ medium: { model: "m/medium" } });
-		expect(routed.config.lenses["trust-boundary"]).toEqual({ route: { model: "a/plan" } });
+		expect(routed.config.lenses["trust-boundary"]).toStrictEqual({ route: { model: "a/plan" } });
 		const boundary = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(Object.values(boundary.levels).map((level) => level?.probe)).toEqual([undefined, undefined, undefined]);
 	});
@@ -226,6 +231,10 @@ describe("Miss", () => {
 		expect(() => Miss.load(missesFile([missing]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([{ ...fields, extra: "x" }]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([]))).toThrow(/must be a JSON array of misses/);
+		for (const field of Object.keys(fields))
+			expect(() => Miss.load(missesFile([{ ...fields, [field]: "" }])), field).toThrow(
+				/must be a JSON array of misses/,
+			);
 	});
 
 	it("vouches for a head by the commit it resolves to, and keeps trust-boundary alone at its deep level", async () => {
@@ -272,6 +281,8 @@ describe("Miss", () => {
 		expect(miss.found(changed({ path: "other.ts" }))).toBe(false);
 		expect(miss.found(changed({ source: { ...finding.properties.source, check: "lens.security" } }))).toBe(false);
 		expect(miss.found(changed({ verification: { verdict: "refuted", reason: "no" } }))).toBe(false);
+		expect(miss.found(changed({ verification: undefined }))).toBe(true);
+		expect(miss.found(changed({ source: undefined }))).toBe(false);
 		const other = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: "other-rule" }]))[0]!;
 		expect(other.found([finding])).toBe(false);
 	});
@@ -308,6 +319,12 @@ describe("ProbingSettings", () => {
 			"light",
 		);
 		expect(ProbingSettings.parse(env).combinations[0]!.proberTier).toBe("medium");
+		expect(
+			ProbingSettings.parse({
+				...env,
+				MELIAN_EVAL_PROBE_ROUTES: "pair=a/plan>b/probe; ;off=a/plan;",
+			}).combinations.map(({ label }) => label),
+		).toEqual(["pair", "off"]);
 	});
 
 	it.each([
@@ -394,6 +411,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			),
 		);
 		expect(lines).toContainEqual(expect.stringMatching(/^off: no score, 1 reviews had none, 84 tokens, \$6/));
+		expect(lines).toContain("off: a/plan, without probes");
 		expect(lines.filter((line) => line.startsWith("off: other lens"))).toEqual([]);
 		const results = JSON.parse(readFileSync(out, "utf8"));
 		expect(results.verifier).toBe("c/verify");
@@ -501,6 +519,60 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				reviews: [
 					{ name: "hit", found: true, ...review },
 					{ name: "miss", found: false, ...review },
+				],
+			});
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const misses = missesFile([{ name: "hit", repo, base, head, file: "other.ts", rule: "fail-open" }]);
+			let goldenCall = 0;
+			let missCall = 0;
+			const using = runners({
+				golden: vi.fn(async (each: Golden) => {
+					goldenCall += 1;
+					if (goldenCall === 1) throw new Error("no review");
+					return { golden: each, ...ran([]) } as GoldenRun;
+				}),
+				range: vi.fn(async () => {
+					missCall += 1;
+					if (missCall === 2) throw new Error("clone gone");
+					return ran([]);
+				}),
+			});
+			const out = join(scratch, "failures.json");
+			const settings = {
+				...env,
+				MELIAN_EVAL_MISSES: misses,
+				MELIAN_EVAL_PROBE_PASSES: "2",
+				MELIAN_EVAL_PROBE_TRUST: head,
+				MELIAN_EVAL_PROBE_OUT: out,
+			};
+			expect((await measure(settings, using)).status).toBe(1);
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const scored = { notes: [], sharedProberTier: [], ...spent };
+			const [first, second] = JSON.parse(readFileSync(out, "utf8")).results[0].passes;
+			expect(first).toStrictEqual({
+				misses: { found: 0, total: 1 },
+				failed: [lost.name],
+				reviews: [
+					{ name: lost.name, kind: "golden", error: "no review", notes: [], sharedProberTier: [] },
+					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
+					{ name: "hit", kind: "miss", found: false, ...scored },
+				],
+			});
+			expect(second).toStrictEqual({
+				goldens: { precision: 1, recall: 0 },
+				failed: ["hit"],
+				reviews: [
+					{ name: lost.name, kind: "golden", score: { ...scoreGolden(lost, []) }, ...scored },
+					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
+					{ name: "hit", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
 				],
 			});
 		} finally {
