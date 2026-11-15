@@ -57,7 +57,9 @@ describe("reading the branch", { timeout: 60_000 }, () => {
 		expect(existsSync(join(clone, ".git", "FETCH_HEAD"))).toBe(false);
 		expect(remote.git(["for-each-ref"], clone)).toBe(refs);
 		const records = join(clone, ".git", "melian", "records.git");
-		expect(remote.git(["--git-dir", records, "rev-list", "--all", "--count"], records)).toBe("0");
+		expect(remote.git(["--git-dir", records, "for-each-ref", "--format=%(refname) %(objectname)"], records)).toBe(
+			`refs/melian/last ${remote.tip()}`,
+		);
 		expect(remote.git(["--git-dir", records, "rev-list", "--count", remote.tip()!], records)).toBe("1");
 		expect(remote.git(["rev-list", "--count", remote.tip()!])).toBe("3");
 	});

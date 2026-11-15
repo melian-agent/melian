@@ -106,7 +106,7 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		const lock = join(repository.path, "packed-refs.lock");
 		let deletions = 0;
 		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
-			if (args[0][0] !== "update-ref") return run.apply(this, args);
+			if (args[0][0] !== "update-ref" || args[0][1] !== "-d") return run.apply(this, args);
 			if (deletions === 0) await writeFile(lock, "");
 			const result = await run.apply(this, args);
 			if (++deletions === failures) await rm(lock, { force: true });
@@ -119,7 +119,7 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		holdRefLock(repository, 3);
 		expect(await repository.fetch(remote.url, remote.branch, time())).toBe(remote.tip());
 		vi.restoreAllMocks();
-		expect((await repository.run(["for-each-ref", "refs/melian"], time())).stdout).toBe("");
+		expect((await repository.run(["for-each-ref", "refs/melian/fetch"], time())).stdout).toBe("");
 	});
 
 	it("fails as unreachable once a lock outlasts its retries", async () => {

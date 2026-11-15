@@ -146,8 +146,20 @@ export class RecordRepository {
 		const tip = (
 			await this.#succeed(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], deadline)
 		).trim();
+		await this.#keepLast(tip, deadline);
 		await this.#deleteRef(ref, deadline);
 		return tip;
+	}
+
+	// Points `refs/melian/last` at the tip, so the next fetch tells the remote what this repository holds and receives
+	// only what is new; a fetch with `--depth` always asks the remote, and with no ref it is sent the whole tip again. It is
+	// a hint: nothing reads it to answer a call, so a lost update costs one larger fetch, and a held lock is given up.
+	async #keepLast(tip: string, deadline: Deadline): Promise<void> {
+		for (let attempt = 1; ; attempt++) {
+			const result = await this.run(["update-ref", "refs/melian/last", tip], deadline);
+			if (result.code === 0 || attempt === 20) return;
+			await deadline.sleep(10);
+		}
 	}
 
 	async #deleteRef(ref: string, deadline: Deadline): Promise<void> {
