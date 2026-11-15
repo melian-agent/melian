@@ -45,7 +45,7 @@ describe("reading the branch", { timeout: 60_000 }, () => {
 		expect(remote.tip()).toBeUndefined();
 	});
 
-	it("fetches the tip alone into its own repository, and never touches the clone", async () => {
+	it("fetches the whole history into its own repository, and never touches the clone", async () => {
 		const writer = await remote.open();
 		for (const key of ["a", "b", "c"]) await writer.add([check(key)]);
 		const clone = join(remote.root, "clone");
@@ -60,8 +60,7 @@ describe("reading the branch", { timeout: 60_000 }, () => {
 		expect(remote.git(["--git-dir", records, "for-each-ref", "--format=%(refname) %(objectname)"], records)).toBe(
 			`refs/melian/last ${remote.tip()}`,
 		);
-		expect(remote.git(["--git-dir", records, "rev-list", "--count", remote.tip()!], records)).toBe("1");
-		expect(remote.git(["rev-list", "--count", remote.tip()!])).toBe("3");
+		expect(remote.git(["--git-dir", records, "rev-list", "--count", remote.tip()!], records)).toBe("3");
 	});
 
 	it("answers each call from the tip as it is then, on any handle", async () => {

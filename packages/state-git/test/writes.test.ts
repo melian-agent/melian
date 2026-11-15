@@ -227,7 +227,27 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		expect(remote.git(["rev-list", "--count", "refs/heads/melian/state"])).toBe("1");
 	});
 
-	it("counts as landed when later commits sit on top of it, deepening the fetch to find it", async () => {
+	it("counts a cell write as landed when another handle sharing its repository fetches before each check", async () => {
+		const directory = remote.host();
+		const store = await remote.open({ directory });
+		const other = await remote.open({ directory });
+		expect(await store.writeCell(changeset, undefined, `"first"`)).toBe(true);
+		const { version } = await store.readCell(changeset);
+		stopPush(true, () => {
+			for (let n = 0; n < 5; n++) remote.plant({ [`changesets/later-${n}/cell.json`]: null });
+		});
+		const isAncestor = RecordRepository.prototype.isAncestor;
+		vi.spyOn(RecordRepository.prototype, "isAncestor").mockImplementation(async function (
+			this: RecordRepository,
+			...args
+		) {
+			await other.list(changeset);
+			return isAncestor.apply(this, args);
+		});
+		expect(await store.writeCell(changeset, version, `"second"`)).toBe(true);
+	});
+
+	it("counts as landed when later commits sit on top of it, in one fetch", async () => {
 		const store = await remote.open();
 		await store.add([check("first")]);
 		const push = stopPush(true, () => {
@@ -236,7 +256,7 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
 		await store.add([check("landed")]);
 		expect(push).toHaveBeenCalledTimes(1);
-		expect(fetch.mock.calls.map((call) => call[3] ?? 1)).toEqual([1, 1, 2, 4, 8]);
+		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(keys(await store.list(changeset))).toEqual(["first", "landed"]);
 	});
 
@@ -331,7 +351,7 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		expect((await store.readCell(changeset)).value).toBe(`"second"`);
 	});
 
-	it("fails as unreachable, saying it may have landed, without deepening, when the tip is still the one it was built on", async () => {
+	it("fails as unreachable, saying it may have landed, when the tip is still the one it was built on", async () => {
 		const store = await remote.open();
 		await store.add([check("first")]);
 		await store.add([check("second")]);
@@ -342,6 +362,6 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 			message: expect.stringContaining("may have landed"),
 		});
 		expect(push).toHaveBeenCalledTimes(1);
-		expect(fetch.mock.calls.map((call) => call[3] ?? 1)).toEqual([1, 1]);
+		expect(fetch).toHaveBeenCalledTimes(2);
 	});
 });

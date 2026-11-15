@@ -95,6 +95,30 @@ describe("opening the repository", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("refuses a repository an earlier build fetched one commit deep, and opens one that holds the whole history", async () => {
+		const store = await remote.open();
+		await store.add([check("a")]);
+		await store.add([check("b")]);
+		const whole = await opened();
+		await whole.fetch(remote.url, remote.branch, time());
+		await expect(RecordRepository.open(whole.path, time())).resolves.toBeInstanceOf(RecordRepository);
+		const shallow = await opened();
+		remote.git([
+			"--git-dir",
+			shallow.path,
+			"fetch",
+			"--quiet",
+			"--depth=1",
+			remote.url,
+			`+refs/heads/${remote.branch}:refs/old`,
+		]);
+		await expect(RecordRepository.open(shallow.path, time())).rejects.toSatisfy(
+			unreachable(
+				/records\.git holds a shallow history an earlier Melian fetched; delete it, and the next call fetches the whole branch$/,
+			),
+		);
+	});
+
 	it("fails as unreadable, naming the file, when its configuration is gone", async () => {
 		const repository = await opened();
 		const config = join(repository.path, "config");
@@ -108,17 +132,6 @@ describe("opening the repository", { timeout: 60_000 }, () => {
 });
 
 describe("fetching the tip", { timeout: 60_000 }, () => {
-	it("gives up at its deadline while another process holds the shallow file's lock", async () => {
-		await (await remote.open()).add([check("a")]);
-		const repository = await opened();
-		await writeFile(join(repository.path, "shallow.lock"), "");
-		const started = Date.now();
-		await expect(repository.fetch(remote.url, remote.branch, within(500))).rejects.toSatisfy(
-			unreachable(/ran past its deadline$/),
-		);
-		expect(Date.now() - started).toBeLessThan(10_000);
-	});
-
 	it("runs no program a remote spelled as an option names, and fails as unreachable", async () => {
 		const { program, ran } = await marker();
 		const repository = await opened();
@@ -229,7 +242,6 @@ describe("reading objects", { timeout: 60_000 }, () => {
 	it("fails as unreachable on a commit it does not hold", async () => {
 		const { repository } = await fetched();
 		await expect(repository.entries(absent, time(), listingLimit)).rejects.toSatisfy(unreachable(/^listing /));
-		await expect(repository.depth(absent, time())).rejects.toSatisfy(unreachable(/^git rev-list failed/));
 		await expect(repository.isAncestor(absent, absent, time())).rejects.toSatisfy(unreachable(/^comparing /));
 	});
 

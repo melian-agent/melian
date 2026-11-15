@@ -121,21 +121,15 @@ export class GitRecordStore implements RecordStore {
 		}
 	}
 
-	// Whether a push stopped at its deadline landed: its commit is the tip or an ancestor of it. The tip alone may not
-	// reach back to it, so the fetch deepens until the history holds the commit, or holds the tip it was built on
-	// without it, or ends, within the call's deadline. Only a tip that has moved without it proves it lost; an unmoved
-	// tip leaves the call unsure.
+	// Whether a push stopped at its deadline landed: its commit is the tip or an ancestor of it, in the whole history the
+	// fetch brought. Only a tip that has moved without it proves it lost; an unmoved tip leaves the call unsure.
 	async #landed(commit: string, parent: string | undefined, deadline: Deadline): Promise<boolean> {
 		try {
-			for (let depth = 1; ; depth *= 2) {
-				const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline, depth);
-				// The lease still holds, so a push whose transport outlived git, such as ssh, can land yet.
-				if (tip === parent) throw new Error(`${this.#branch} has not moved since the push`);
-				if (tip === undefined) return false;
-				if (await this.#repository.isAncestor(commit, tip, deadline)) return true;
-				if (parent !== undefined && (await this.#repository.isAncestor(parent, tip, deadline))) return false;
-				if ((await this.#repository.depth(tip, deadline)) < depth) return false;
-			}
+			const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+			// The lease still holds, so a push whose transport outlived git, such as ssh, can land yet.
+			if (tip === parent) throw new Error(`${this.#branch} has not moved since the push`);
+			if (tip === undefined) return false;
+			return await this.#repository.isAncestor(commit, tip, deadline);
 		} catch (cause) {
 			throw new RecordError(
 				"unreachable",

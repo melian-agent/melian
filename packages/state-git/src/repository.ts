@@ -27,9 +27,8 @@ const environment = {
 	GIT_COMMITTER_EMAIL: "melian@invalid",
 };
 
-// Another process's fetch or ref update on this repository holds these locks for a moment.
-const contention =
-	/shallow\.lock|shallow file has changed since we read it|cannot lock ref|Unable to create '.*\.lock'/;
+// Another process's ref update on this repository holds these locks for a moment.
+const contention = /cannot lock ref|Unable to create '.*\.lock'/;
 
 // A refusal because the branch moved: the client saw a newer tip than its lease, or the remote's ref moved, was created,
 // or was locked by another push, between its advertisement and the update. Anything else, such as a hook that declined,
@@ -72,6 +71,12 @@ export class RecordRepository {
 		else if (!found.isDirectory()) throw unreachable(`${path} is not a directory`);
 		const repository = new RecordRepository(path);
 		await checkConfiguration(path);
+		// An earlier build fetched one commit deep, and a plain fetch keeps that history shallow, so a landed push could
+		// read as lost.
+		if ((await repository.#succeed(["rev-parse", "--is-shallow-repository"], deadline)).trim() !== "false")
+			throw unreachable(
+				`${path} holds a shallow history an earlier Melian fetched; delete it, and the next call fetches the whole branch`,
+			);
 		return repository;
 	}
 
@@ -126,30 +131,28 @@ export class RecordRepository {
 		return result.stdout;
 	}
 
-	// Fetches `branch`'s tip from `url`, `depth` commits deep, and returns its object ID, or `undefined` when the branch
-	// does not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
-	async fetch(url: string, branch: string, deadline: Deadline, depth = 1): Promise<string | undefined> {
+	// Fetches `branch` from `url`, its whole history, and returns its tip's object ID, or `undefined` when the branch does
+	// not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
+	async fetch(url: string, branch: string, deadline: Deadline): Promise<string | undefined> {
 		const ref = `refs/melian/fetch/${randomUUID()}`;
-		for (;;) {
-			const result = await this.run(
-				[
-					"fetch",
-					"--quiet",
-					"--no-tags",
-					"--no-write-fetch-head",
-					"--no-auto-gc",
-					"--no-auto-maintenance",
-					`--depth=${depth}`,
-					"--end-of-options",
-					url,
-					`+refs/heads/${branch}:${ref}`,
-				],
-				deadline,
-			);
-			if (result.timedOut) throw unreachable(`fetching ${branch} from ${url} ran past its deadline`);
-			if (result.code === 0) break;
+		const result = await this.run(
+			[
+				"fetch",
+				"--quiet",
+				"--no-tags",
+				"--no-write-fetch-head",
+				"--no-auto-gc",
+				"--no-auto-maintenance",
+				"--end-of-options",
+				url,
+				`+refs/heads/${branch}:${ref}`,
+			],
+			deadline,
+		);
+		if (result.timedOut) throw unreachable(`fetching ${branch} from ${url} ran past its deadline`);
+		if (result.code !== 0) {
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
-			if (!contention.test(result.stderr)) throw unreachable(`fetching ${branch} from ${url} failed`, result);
+			throw unreachable(`fetching ${branch} from ${url} failed`, result);
 		}
 		let tip: string;
 		try {
@@ -165,8 +168,8 @@ export class RecordRepository {
 	}
 
 	// Points `refs/melian/last` at the tip, so the next fetch tells the remote what this repository holds and receives
-	// only what is new; a fetch with `--depth` always asks the remote, and with no ref it is sent the whole tip again. It is
-	// a hint: nothing reads it to answer a call, so a lost update costs one larger fetch, and a held lock is given up.
+	// only what is new; with no ref, it is sent the whole history again. It is a hint: nothing reads it to answer a call,
+	// so a lost update costs one larger fetch, and a held lock is given up.
 	async #keepLast(tip: string, deadline: Deadline): Promise<void> {
 		for (let attempt = 1; ; attempt++) {
 			const result = await this.run(["update-ref", "refs/melian/last", tip], deadline);
@@ -311,10 +314,5 @@ export class RecordRepository {
 		if (result.code === 0) return true;
 		if (result.code === 1) return false;
 		throw unreachable(`comparing ${ancestor} with ${descendant} failed in ${this.path}`, result);
-	}
-
-	// How many commits this repository holds in `commit`'s history, itself included.
-	async depth(commit: string, deadline: Deadline): Promise<number> {
-		return Number((await this.#succeed(["rev-list", "--count", commit], deadline)).trim());
 	}
 }
