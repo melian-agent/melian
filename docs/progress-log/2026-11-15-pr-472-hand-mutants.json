@@ -317,6 +317,336 @@
 				"name": "git with a deadline > stops the git process itself, not only the wait for it"
 			},
 			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 35,
+			"endLine": 135,
+			"endColumn": 106,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 36,
+			"endLine": 135,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 42,
+			"endLine": 135,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand, not the value of -C"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 48,
+			"endLine": 135,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand, not the value of --git-dir"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 61,
+			"endLine": 135,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand, not the value of --work-tree"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 76,
+			"endLine": 135,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand, not the value of --namespace"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 135,
+			"column": 91,
+			"endLine": 135,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand, not the value of --config-env"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 138,
+			"column": 54,
+			"endLine": 144,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 139,
+			"column": 18,
+			"endLine": 139,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 139,
+			"column": 18,
+			"endLine": 139,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "i <= args.length",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names no subcommand when every argument is one of git's own options"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 139,
+			"column": 18,
+			"endLine": 139,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "i >= args.length",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 139,
+			"column": 35,
+			"endLine": 139,
+			"endColumn": 38,
+			"mutatorName": "UpdateOperator",
+			"replacement": "i--",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed by timeout: the named test hung alone past 60 s, and its recorded processes were stopped"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 139,
+			"column": 40,
+			"endLine": 142,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 140,
+			"column": 7,
+			"endLine": 140,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 140,
+			"column": 7,
+			"endLine": 140,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 140,
+			"column": 40,
+			"endLine": 140,
+			"endColumn": 43,
+			"mutatorName": "UpdateOperator",
+			"replacement": "i--",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed by timeout: the named test hung alone past 60 s, and its recorded processes were stopped"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 141,
+			"column": 12,
+			"endLine": 141,
+			"endColumn": 37,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "args[i]!.startsWith(\"-\")",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 141,
+			"column": 12,
+			"endLine": 141,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names no subcommand when every argument is one of git's own options"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 141,
+			"column": 12,
+			"endLine": 141,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 141,
+			"column": 13,
+			"endLine": 141,
+			"endColumn": 37,
+			"mutatorName": "MethodExpression",
+			"replacement": "args[i]!.endsWith(\"-\")",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names no subcommand when every argument is one of git's own options"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 141,
+			"column": 33,
+			"endLine": 141,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names the subcommand that failed, not the first option"
+			},
+			"result": "killed"
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 143,
+			"column": 9,
+			"endLine": 143,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"ranAt": "b86c096d32524d7c22b5630b46f7e47d3778166b",
+			"test": {
+				"file": "packages/core/test/git.test.ts",
+				"name": "gitOutput > names no subcommand when every argument is one of git's own options"
+			},
+			"result": "killed"
 		}
 	]
 }
