@@ -5,7 +5,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	Changeset,
+	type CheckRecord,
 	causeSchema,
+	checksOfTier,
+	deterministicChecks,
 	evaluateGuardrails,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
@@ -292,7 +295,15 @@ export function commitGoldenTree(repo: string, tree: string, message: string): s
 
 /** How a golden is run: on canned replies from its `script.json`, or on real models. */
 export type GoldenMode =
-	| { readonly kind: "scripted" }
+	| {
+			readonly kind: "scripted";
+			/**
+			 * `"unconfined"` runs a probing golden's probes outside any sandbox. Pass it only for the committed corpus, whose
+			 * probes are reviewed scripts. Without it, they run in the host's sandbox. A live run's probes come from a model,
+			 * so a live mode has no such field.
+			 */
+			readonly probes?: "unconfined";
+	  }
 	| {
 			readonly kind: "live";
 			readonly models: ReviewModels;
@@ -311,6 +322,11 @@ export interface GoldenRun {
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
 	readonly toolMismatches: readonly string[];
+	/**
+	 * Each distinct note the review's lenses recorded, with the lenses that carry it, such as the attacks a probing lens
+	 * planned and probed.
+	 */
+	readonly notes: readonly { readonly reason: string; readonly checks: readonly string[] }[];
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -383,11 +399,20 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
+		// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
+		// golden's own allowSkip could excuse the lens it measures.
+		const tier = config.stages["pull-request"] ?? "full";
+		const hostChecks = checksOfTier(config, tier).filter((name) =>
+			(deterministicChecks as readonly string[]).includes(name),
+		);
+		config = { ...config, checks: { allowSkip: hostChecks } };
+		const checks = hostChecks.map(
+			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
+		);
 		const storage = createMemoryStorage();
-		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
 		const reviewHarness = await openReviewHarness(storage, models, {
 			retry: mode.kind !== "scripted",
-			...(mode.kind === "scripted" ? { probeSandbox: unconfinedSandbox() } : {}),
+			...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
 		});
 		try {
 			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
@@ -401,12 +426,14 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				models,
 				policy: source,
 				writer,
+				tier,
+				checks,
 			};
 			const reviewed = await reviewChangeset(review);
+			const status = reviewed.verdict.reviewStatus();
+			if (status.state === "error") throw new Error(status.description);
 			// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
-			const unprobed = [...(reviewed.verdict.ran ?? []), ...reviewed.verdict.notRun].find(({ reason }) =>
-				reason?.includes(" ran without probes"),
-			);
+			const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
 			if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),
@@ -418,6 +445,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				findings,
 				rendered,
 				toolMismatches,
+				notes: reviewed.verdict.lensNotes(),
 				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
 			};
 		} catch (error) {

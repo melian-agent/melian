@@ -48,6 +48,7 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	await Promise.all(opened.map((harness) => harness.close(context)));
 	removeRepository(repo);
 });
@@ -397,6 +398,33 @@ describe("runChecks", () => {
 		const moved = await runChecks(harness, input, context);
 		expect(moved.identity.policy).not.toBe(first.identity.policy);
 		expect(moved.identity.task).not.toBe(first.identity.task);
+	});
+
+	it("attaches to a mutation run only under the LANG it ran with, and to any other run under any LANG", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		vi.stubEnv("LANG", "en_AU.UTF-8");
+		const { harness, input, run: plain } = await checks(base, head);
+		vi.stubEnv("LANG", "C.UTF-8");
+		expect((await runChecks(harness, input, context)).identity).toEqual(plain.identity);
+
+		// A mutation run takes the revision's authority and retires the plain one, so it is compared with itself alone.
+		vi.stubEnv("LANG", "en_AU.UTF-8");
+		const mutation = { ...input.config.static.mutation, enabled: true };
+		const mutating = { ...input, config: { ...input.config, static: { ...input.config.static, mutation } } };
+		const first = await runChecks(harness, mutating, context);
+		expect(first.identity.policy).not.toBe(plain.identity.policy);
+		expect((await runChecks(harness, mutating, context)).identity).toEqual(first.identity);
+		vi.stubEnv("LANG", "C.UTF-8");
+		const other = await runChecks(harness, mutating, context);
+		expect(other.identity.policy).not.toBe(first.identity.policy);
+		expect(other.identity.task).not.toBe(first.identity.task);
+		vi.stubEnv("LANG", undefined);
+		const none = await runChecks(harness, mutating, context);
+		expect(new Set([first.identity.policy, other.identity.policy, none.identity.policy]).size).toBe(3);
+		expect(new Set([first.identity.task, other.identity.task, none.identity.task]).size).toBe(3);
 	});
 
 	// Issue #281: a run from before Biome and tsc text was withheld stored that text in its findings, so a build that
