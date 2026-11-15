@@ -26,7 +26,6 @@ export class Deadline {
 		return new Deadline(this.#clock, Math.min(this.#end, this.#clock.now() + ms));
 	}
 
-	// Waits `ms`, or what is left when that is less; with nothing left, it does not wait.
 	async sleep(ms: number): Promise<void> {
 		const left = this.left();
 		if (left > 0) await this.#clock.sleep(Math.min(ms, left));

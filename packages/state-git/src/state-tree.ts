@@ -129,7 +129,6 @@ export class StateTree {
 		}
 	}
 
-	// The branch holds nothing yet.
 	static empty(): StateTree {
 		return new StateTree([]);
 	}
