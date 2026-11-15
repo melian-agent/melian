@@ -1,0 +1,10 @@
+{
+	"recordedBy": "21765e50",
+	"root": 1,
+	"revision": "1d9591590581e225b521926cb2cd27127e1a5ea8..139b99ee4339b6731ccf63a807f7712107312b4a",
+	"repoRoot": "/tmp/melian-review-Bsr9ry",
+	"verification": {
+		"task": 46,
+		"input": "{\"root\":1,\"revision\":{\"repoRoot\":\"/tmp/melian-review-Bsr9ry\",\"base\":\"1d9591590581e225b521926cb2cd27127e1a5ea8\",\"head\":\"139b99ee4339b6731ccf63a807f7712107312b4a\",\"files\":[{\"path\":\"src/user.ts\",\"status\":\"modified\",\"binary\":false,\"hunks\":[{\"file\":\"src/user.ts\",\"index\":0,\"oldStart\":7,\"oldLines\":1,\"newStart\":7,\"newLines\":1,\"added\":\"\\treturn user.manager.name;\",\"changes\":\"-\\treturn user.manager?.name ?? \\\"none\\\";\\n+\\treturn user.manager.name;\"}]}]},\"version\":\"a19ab2f7fcb43ecc\",\"candidates\":[{\"key\":\"64f813a9f8e50dfe\",\"state\":{\"speaker\":\"64f813a9f8e50dfe\",\"claims\":[{\"id\":\"64f813a9f8e50dfe\",\"ruleId\":\"null-dereference\",\"source\":{\"check\":\"lens.correctness\",\"version\":\"18c49f913df8@careful\"},\"failureScenario\":\"managerName({ name: \\\"Ada\\\" }) throws a TypeError reading name of undefined.\",\"evidence\":[{\"file\":\"src/user.ts\",\"startLine\":7,\"role\":\"cause\",\"revision\":\"head\",\"proves\":true,\"snippet\":\"\\treturn user.manager.name;\"}]}]},\"finder\":\"faux/finder\",\"route\":[{\"provider\":\"faux\",\"modelId\":\"judge\"}],\"budget\":{\"tokens\":300000,\"tools\":60},\"fence\":{\"coReported\":false,\"silent\":[\"nit\"]}}]}"
+	}
+}
