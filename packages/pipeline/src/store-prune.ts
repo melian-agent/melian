@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { running } from "./cache-scratch.ts";
+import { running, scratchName } from "./cache-scratch.ts";
 import { GraphCache } from "./graph-cache.ts";
 
 const day = 86_400_000;
@@ -73,7 +73,7 @@ async function liveTrees(repoRoot: string, env: NodeJS.ProcessEnv, heads: readon
 	return new Set((await git(repoRoot, env, ["cat-file", "--batch-check=%(objectname)"], commits)).split("\n"));
 }
 
-type Node = { name: string; path: string; directory: boolean; link: boolean };
+type Node = { name: string; path: string; directory: boolean; file: boolean; link: boolean };
 
 async function children(path: string): Promise<Node[]> {
 	try {
@@ -88,6 +88,7 @@ async function children(path: string): Promise<Node[]> {
 			name: entry.name,
 			path: join(path, entry.name),
 			directory: entry.isDirectory(),
+			file: entry.isFile(),
 			link: entry.isSymbolicLink(),
 		}));
 }
@@ -112,18 +113,13 @@ async function measure(path: string): Promise<{ bytes: number; newest: number }>
 	return { bytes, newest };
 }
 
-// A scratch name CacheScratch sweeps, which prune leaves to it.
-function scratch(name: string): boolean {
-	return name.startsWith(".") || /\.[0-9a-f-]{36}\.tmp$/.test(name);
-}
-
 /** A plan to remove one state directory's rebuildable cache, read without changing anything. */
 export class StorePrune {
 	readonly root: string;
 	readonly entries: readonly PruneEntry[];
 	/** Names, relative to the state directory, that prune does not recognise and so keeps. */
 	readonly kept: readonly string[];
-	/** The changeset files prune always keeps: each `.sqlite` file with its `-wal` and `-shm`. */
+	/** The changeset files prune always keeps: each `pull-` or `range-` ID's `.sqlite` file, with its `-wal` and `-shm`. */
 	readonly changesets: { files: number; bytes: number };
 	/** Live static runs; while any holds a lock, apply removes nothing. */
 	readonly live: readonly LiveRun[];
@@ -177,7 +173,7 @@ export class StorePrune {
 			const top = await children(root);
 			const coverageLinked = top.some((node) => node.name === "coverage" && node.link);
 			for (const node of top) {
-				if (/\.sqlite(?:-wal|-shm)?$/.test(node.name) && !node.link) {
+				if (/^(?:pull|range)-[0-9a-f]{16}\.sqlite(?:-wal|-shm)?$/.test(node.name) && node.file) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
 				} else if (
@@ -190,7 +186,8 @@ export class StorePrune {
 			const graphs = new Set<string>();
 			const cache = GraphCache.openReadOnly(root);
 			for (const node of await children(join(root, "graphs"))) {
-				if (scratch(node.name)) continue;
+				// CacheScratch never sweeps a link, so a link with a scratch name is listed as not recognised.
+				if (!node.link && scratchName(node.name)) continue;
 				if (node.link || !node.directory || !key.test(node.name)) {
 					kept.push(relative(node.path));
 					continue;
@@ -217,13 +214,13 @@ export class StorePrune {
 				} else graphs.add(node.name);
 			}
 			for (const node of await children(join(root, "coverage"))) {
-				if (scratch(node.name)) continue;
+				if (!node.link && scratchName(node.name)) continue;
 				if (node.link || !node.directory || !key.test(node.name)) kept.push(relative(node.path));
 				else if (!graphs.has(node.name) && !entries.some((entry) => entry.paths.includes(`coverage/${node.name}`)))
 					await add("orphan coverage", [`coverage/${node.name}`]);
 			}
 			for (const node of await children(join(root, "mutation"))) {
-				if (scratch(node.name)) continue;
+				if (!node.link && scratchName(node.name)) continue;
 				if (node.link || !node.directory || !key.test(node.name)) kept.push(relative(node.path));
 				else if (now - (await measure(node.path)).newest > mutationAgeDays * day)
 					await add("mutation partition", [`mutation/${node.name}`]);

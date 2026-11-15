@@ -56,8 +56,8 @@ async function write(path: string, text: string, ageMs = 0): Promise<void> {
 
 async function seed(): Promise<{ pinned: string }> {
 	const hex = (digit: string) => digit.repeat(64);
-	await write("pull-1.sqlite", "changeset");
-	await write("pull-1.sqlite-wal", "wal");
+	await write("pull-1111111111111111.sqlite", "changeset");
+	await write("pull-1111111111111111.sqlite-wal", "wal");
 	await write(`graphs/${hex("a")}/partial`, "x", 2 * day);
 	await write(`coverage/${hex("b")}/index.json`, "0123456789");
 	await write(`mutation/${hex("c")}/report.json`, "old", 15 * day);
@@ -109,8 +109,8 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		for (const path of [`graphs/${"a".repeat(64)}`, `coverage/${"b".repeat(64)}`, `mutation/${"c".repeat(64)}`])
 			expect(await exists(path)).toBe(false);
 		expect(await readFile(join(state, "tools/gone/1.0.0/linux-x64/file"), "utf8")).toBe("tool");
-		expect(await readFile(join(state, "pull-1.sqlite"), "utf8")).toBe("changeset");
-		expect(await readFile(join(state, "pull-1.sqlite-wal"), "utf8")).toBe("wal");
+		expect(await readFile(join(state, "pull-1111111111111111.sqlite"), "utf8")).toBe("changeset");
+		expect(await readFile(join(state, "pull-1111111111111111.sqlite-wal"), "utf8")).toBe("wal");
 		expect(await readFile(join(state, pinned), "utf8")).toBe("pinned");
 		expect(await readFile(join(state, "notes.txt"), "utf8")).toBe("mine");
 		const again = output();
@@ -119,8 +119,8 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 	});
 
 	it("counts one entry and many changeset files, lists every path an entry takes, and omits an empty kept line", async () => {
-		await write("pull-1.sqlite", "one");
-		await write("pull-2.sqlite", "two");
+		await write("pull-1111111111111111.sqlite", "one");
+		await write("pull-2222222222222222.sqlite", "two");
 		const snapshot = GraphSnapshot.create(
 			{ tree: "e".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) },
 			{
@@ -255,7 +255,7 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(await main(["store", "prune", "--apply"], io)).toBe(0);
 		expect(io.lines.join("")).toContain(`State directory: ${moved}\nRemoved 3 entries, freeing 14 B.\n`);
 		expect(io.lines.join("")).toContain("Kept 1 changeset file, 12 B, and scripted/.\n");
-		expect(await readFile(join(moved, "pull-1.sqlite"), "utf8")).toBe("changeset");
+		expect(await readFile(join(moved, "pull-1111111111111111.sqlite"), "utf8")).toBe("changeset");
 	});
 
 	it.each([
