@@ -1,6 +1,6 @@
 # Issue #457: a golden whose review is not reviewed gets no score
 
-Builder agent: for [issue #457](https://github.com/melian-agent/melian/issues/457), `runGolden` now asks the verdict whether the review was reviewed, and a live golden's report prints each note a check that ran recorded.
+Builder agent: for [issue #457](https://github.com/melian-agent/melian/issues/457), `runGolden` now asks the verdict whether the review was reviewed, and a live golden's report can print each note a check that ran recorded. [A later entry](2026-11-15-issue-457-lens-notes.md) prints each note once, and only under `MELIAN_EVAL_SHOW=1`.
 
 ## The defect
 
