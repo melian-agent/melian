@@ -45,4 +45,24 @@ Melian writes that repository's configuration when it creates it, and checks the
 
 - A stray entry inside one changeset's folder is carried in every later commit until a writer removes it.
 - The adapter's repository is a second copy of the branch on disk. It keeps every object it has fetched, so it grows with the branch's history. The maintainer accepted that on 2026-11-15, until [issue #451](https://github.com/melian-agent/melian/issues/451) collects old objects.
-- A call holds the whole tip in memory. A tip whose records and cells total more than 256 MiB fails every call as `unreachable` until writers dispose of changesets. The limit is provisional, on the coordinator's answer of 2026-11-15; [issue #455](https://github.com/melian-agent/melian/issues/455) designs a read that does not hold the whole tip.
+- A call holds the whole tip in memory. A tip whose records and cells total more than 256 MiB, or that holds more than 65,536 entries, fails every call as `unreachable` until writers dispose of changesets. The byte limit is provisional, on the coordinator's answer of 2026-11-15; [issue #455](https://github.com/melian-agent/melian/issues/455) designs a read that does not hold the whole tip.
+
+## What one call uses, and what bounds it
+
+The maintainer ruled on 2026-11-15, in the coordinator's session, that the entry limit is built now, that a handle's cache of judged entries waits for [issue #455](https://github.com/melian-agent/melian/issues/455), and that what a killed process leaves behind waits for [issue #460](https://github.com/melian-agent/melian/issues/460). The table lists every resource a call takes, and what bounds it or who accepted it unbounded.
+
+| Resource | What bounds it, or who accepted it | Test or issue |
+| --- | --- | --- |
+| Memory for records and cells | 256 MiB of readable blobs at the tip, `tipLimit`, from the sizes git reports, and the read stops at those sizes | `store.test.ts`, "the bytes a tip may hold"; [issue #455](https://github.com/melian-agent/melian/issues/455) |
+| Memory for the entries | 65,536 entries, `entryLimit`, checked before any size is read | `store.test.ts`, "the entries a tip may hold" |
+| Memory for the listing of entries | 64 MiB, `listingLimit`, a KiB a line on average; git is stopped there, so the list never grows past it | `store.test.ts`, at the cap and one byte past it |
+| Memory for the sizes | One line per distinct readable blob, so the entry limit bounds it | the entry limit's tests |
+| Memory for git's other output | Not bounded: core's `git` keeps a command's stderr whole, and a fetch's or push's stderr carries what the remote sends | none; it is core's, and holds for every caller of `git` |
+| A handle's cache of judged entries | Not bounded across calls. Accepted by the maintainer on 2026-11-15 until [issue #455](https://github.com/melian-agent/melian/issues/455): no process holds a handle open across many tips yet | [issue #455](https://github.com/melian-agent/melian/issues/455) |
+| Disk in `records.git` | Not bounded: it keeps every object it fetched. Accepted by the maintainer on 2026-11-15 until [issue #451](https://github.com/melian-agent/melian/issues/451) | [issue #451](https://github.com/melian-agent/melian/issues/451) |
+| The temporary index, the half-made repository folder and the fetch ref, on a call that returns or throws | Removed before the call returns | `repository.test.ts`, "leaves no index behind" and "retries deleting its ref …, and leaves no ref"; `create.test.ts`, "fails as unreachable, keeping the cause, when the rename fails" |
+| The same, left by a process killed mid-call | Not removed. Accepted by the maintainer on 2026-11-15 until [issue #460](https://github.com/melian-agent/melian/issues/460), which sweeps them when the store opens. A leftover is provably stale only when no live call can own it: its name must record its owner, a pid with that process's start time, so a sweep removes only those whose process has gone. An age alone proves nothing until the store caps the deadline a caller may set | [issue #460](https://github.com/melian-agent/melian/issues/460) |
+| Time | One deadline for the whole call, two minutes unless given; no git command starts once none is left | `deadline.test.ts` |
+| Child processes | One git at a time, stopped at the deadline. A transport git started, such as ssh, can outlive it, by core's design; it ends on its own | `deadline.test.ts` |
+| Refs | One fetch ref per call, deleted before it returns, and `refs/melian/last` | `repository.test.ts`, "retries deleting its ref …, and leaves no ref" |
+| Retries | A lost race retries until the deadline; deleting a ref and updating the hint each give up after twenty tries | `writes.test.ts`, the lost-race tests; `repository.test.ts`, "fails as unreachable once a lock outlasts its retries" |

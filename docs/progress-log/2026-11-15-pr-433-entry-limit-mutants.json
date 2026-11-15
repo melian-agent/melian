@@ -1,0 +1,483 @@
+{
+  "mutants": [
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 32,
+      "endLine": 184,
+      "endColumn": 78,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 33,
+      "endLine": 184,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 44,
+      "endLine": 184,
+      "endColumn": 48,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 50,
+      "endLine": 184,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 56,
+      "endLine": 184,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 90,
+      "endLine": 184,
+      "endColumn": 102,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 185,
+      "column": 6,
+      "endLine": 185,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 185,
+      "column": 6,
+      "endLine": 185,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 15,
+      "column": 28,
+      "endLine": 15,
+      "endColumn": 45,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "entryLimit / 1024",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip whose listing is exactly its cap",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip whose listing is exactly its cap",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "entries !== undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 142,
+      "column": 3,
+      "endLine": 145,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 4,
+      "endLine": 143,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 144,
+      "column": 4,
+      "endLine": 144,
+      "endColumn": 156,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 6,
+      "endLine": 146,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 6,
+      "endLine": 146,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 6,
+      "endLine": 146,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "entries.length >= entryLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 6,
+      "endLine": 146,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "entries.length <= entryLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 147,
+      "column": 3,
+      "endLine": 150,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 148,
+      "column": 4,
+      "endLine": 148,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 149,
+      "column": 4,
+      "endLine": 149,
+      "endColumn": 156,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+      "survivorClasses": [],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 14,
+      "column": 26,
+      "endLine": 14,
+      "endColumn": 32,
+      "mutatorName": "hand (numeric literal, which Stryker does not mutate)",
+      "replacement": "65_535",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip of exactly the limit's entries",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 14,
+      "column": 26,
+      "endLine": 14,
+      "endColumn": 32,
+      "mutatorName": "hand (numeric literal, which Stryker does not mutate)",
+      "replacement": "65_537",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable one entry past the limit, naming the branch, the count and the limit, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 15,
+      "column": 41,
+      "endLine": 15,
+      "endColumn": 45,
+      "mutatorName": "hand (numeric literal, which Stryker does not mutate)",
+      "replacement": "1023",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip whose listing is exactly its cap",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > lists a tip whose listing is exactly its cap",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 15,
+      "column": 41,
+      "endLine": 15,
+      "endColumn": 45,
+      "mutatorName": "hand (numeric literal, which Stryker does not mutate)",
+      "replacement": "1025",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "run": {
+        "head": "a0a42409",
+        "test": "packages/state-git/test/store.test.ts > the entries a tip may hold > fails as unreachable when the listing runs one byte past its cap, naming the branch and the cap, and reads no sizes",
+        "collected": 1,
+        "failed": true
+      }
+    }
+  ],
+  "total": 22,
+  "omitted": 0,
+  "unmutated": []
+}
