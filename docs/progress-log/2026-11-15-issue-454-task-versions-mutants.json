@@ -1,0 +1,295 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "149b32f73d69f999bcf10ebe9eba66db4a072cdb",
+    "head": "20450f52ca30246c6eff540c3e227fdbbf503269"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/checks.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 370,
+      "column": 4,
+      "endLine": 370,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c7fed42a8ee431d65b7caf08fad637e2ec0661ad6eab63f8d58b73e243b13da0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-task-reopen.test.ts",
+          "path": [
+            "reopens a version-1 check with its input intact and no invented timing start"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 370,
+      "column": 4,
+      "endLine": 370,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cdaa7726430922e8e7d41a67a4cd8852c7b31d2b91cbaef308bc4936898b4c2c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "is the process's for a check main stored before its input carried one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 370,
+      "column": 4,
+      "endLine": 370,
+      "endColumn": 14,
+      "mutatorName": "EqualityOperator",
+      "replacement": "from !== 3",
+      "status": "generated",
+      "id": "8dd5fb0755b81cd8e4d6f937ffd2376eb0ed6a599784dce4657bcbe42d78c9f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "is the process's for a check main stored before its input carried one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 370,
+      "column": 52,
+      "endLine": 370,
+      "endColumn": 111,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7a516b9663ed48b0d6438ffbdef456ac3ae6e04fa43e9c630c56ef753dfae371",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-task-reopen.test.ts",
+          "path": [
+            "reopens a version-1 check with its input intact and no invented timing start"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 370,
+      "column": 105,
+      "endLine": 370,
+      "endColumn": 109,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "42f31783e8fddbaeb379898eae0194f1fbc53618d450eac0f0b966b0644cf469",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-task-reopen.test.ts",
+          "path": [
+            "reopens a version-1 check with its input intact and no invented timing start"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 516,
+      "column": 39,
+      "endLine": 519,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4dfc7406312b4a71c5552d35a492b9796d16252d8aa2edc63275be7360a15f68",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 517,
+      "column": 6,
+      "endLine": 517,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4d3aab276480a0dcc8d47f9967e2602626dd2433fc5b760a10bf8d7f3354c410",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 517,
+      "column": 6,
+      "endLine": 517,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c4569225e3b74f229da8d9208292e91b1925267a5027a95f13cd5abb67966d12",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 517,
+      "column": 6,
+      "endLine": 517,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "from === 2",
+      "status": "generated",
+      "id": "00ff010e53f6ccee3de93635354881b29a1e817cea83ec99ee58ca5c16a4a80d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 517,
+      "column": 18,
+      "endLine": 517,
+      "endColumn": 88,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "8dabeef75b3d322b9e8d670761307f6e090005896774b1729be646c67a861f81",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 517,
+      "column": 34,
+      "endLine": 517,
+      "endColumn": 86,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ac187d320b414d2e91e7f3b47e330949f57b59aa6815fce592931bf0eb014103",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 518,
+      "column": 9,
+      "endLine": 518,
+      "endColumn": 101,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "da17fb1e0d93ba200387e82eff244fe24975db27f09855737e78429a01d13e90",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/check-lang.test.ts",
+          "path": [
+            "the LANG a check's tools run with",
+            "leaves a tier from before version 2 refused, as it was"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    }
+  ],
+  "total": 12,
+  "omitted": 0,
+  "unmutated": []
+}

@@ -1,0 +1,143 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "088aa41f1da8eb250aefcaf28ae930f69a9a5bee",
+		"head": "16d178dcf116f77c6809f1877c7860c84bcc0da0"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/check-request.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 102,
+			"column": 7,
+			"endLine": 102,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "98a4903328c041d737781b2f4eef7bf9982cbee2e9111bdbaa6c83a67c706d64",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the tools' locale only when mutation runs the head's tests"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 102,
+			"column": 7,
+			"endLine": 102,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c8a2ea51822d965452baf6a8c80404ca6efe9f3cad34dbe3ee506c1ec8e8496d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the tools' locale only when mutation runs the head's tests"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 102,
+			"column": 7,
+			"endLine": 102,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "input.mutation !== undefined",
+			"status": "generated",
+			"id": "ef9afa242132eacda8b0b198acfe0e9c136ff40586196aaf11ec7dd450fc1cf4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the tools' locale only when mutation runs the head's tests"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 102,
+			"column": 43,
+			"endLine": 102,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "af978e41e981af4be6aec33a9d1d98c8a820b4ca80b679af8abf4bcdeff01ccc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the tools' locale only when mutation runs the head's tests"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 102,
+			"column": 55,
+			"endLine": 102,
+			"endColumn": 107,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b547edb8b020f85254318a34ff41c97eef69d085e83a7d00657dffd5dc0e951b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"keys the tools' locale only when mutation runs the head's tests"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

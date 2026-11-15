@@ -66,6 +66,11 @@ export interface StaticRunInput {
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */
 	readonly holdsAuthority?: () => Promise<boolean>;
+	/**
+	 * The `LANG` the tools run with, as the check run's key read it, or null for none. Without it, the Melian process's,
+	 * as for a task an earlier build stored.
+	 */
+	readonly lang?: string | null;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
@@ -110,13 +115,18 @@ const gitVariables = [
 // or key from the Melian process, even on a maintainer's own machine.
 const passedVariables = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
 
-function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
+// A resumed task passes the `LANG` its key read, so a crash and a shell with another locale cannot run it under that one.
+function toolEnvironment(lang?: string | null): { env: Record<string, string>; inheritEnv: false } {
 	const env: Record<string, string> = {};
 	for (const name of passedVariables) {
-		const value = process.env[name];
-		if (value !== undefined) env[name] = value;
+		const value = name === "LANG" && lang !== undefined ? lang : process.env[name];
+		if (value !== undefined && value !== null) env[name] = value;
 	}
 	return { env, inheritEnv: false };
+}
+
+export function toolLocale(): string | null {
+	return toolEnvironment().env.LANG ?? null;
 }
 
 function quote(value: string): string {
@@ -172,7 +182,7 @@ export class Run {
 		const result = await this.input.env.exec(
 			command,
 			{
-				...toolEnvironment(),
+				...toolEnvironment(this.input.lang),
 				timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
