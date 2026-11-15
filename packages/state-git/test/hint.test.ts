@@ -118,6 +118,14 @@ describe("the last tip a handle fetched", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("updates it once for each fetch when nothing holds its lock", async () => {
+		const handle = await reader();
+		await (await remote.open()).add([check("a")]);
+		const run = vi.spyOn(RecordRepository.prototype, "run");
+		expect(await handle.list()).toEqual(["a"]);
+		expect(run.mock.calls.filter(([args]) => args[0] === "update-ref" && args[1] === hint)).toHaveLength(1);
+	});
+
 	it("gives up updating it after twenty tries at a held lock, and the call still answers", async () => {
 		const handle = await reader();
 		await (await remote.open()).add([check("a")]);
