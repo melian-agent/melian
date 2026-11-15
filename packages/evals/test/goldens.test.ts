@@ -1405,6 +1405,21 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 		await expect(live).rejects.toThrow(/^Not reviewed: .*lens\.correctness ended \(.*tool calls/);
 	});
 
+	it("fails a scripted run whose policy disables a lens its tier names", async () => {
+		const golden = loadGoldens().find((each) => each.name === "clean-rename")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-disabled-lens-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(join(copy, "melian.golden.yaml"), "lenses:\n  conventions:\n    enabled: false\n");
+			await expect(runGolden({ ...golden, directory: copy }, { kind: "scripted" })).rejects.toThrow(
+				/^Not reviewed: .*lens\.conventions skipped \(lenses\.conventions\.enabled is false\)/,
+			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it("fails a scripted run whose lens ends at its budget", async () => {
 		const golden = claim();
 		const many = Array.from({ length: 200 }, () => ({ name: "list_files", arguments: {} }));
