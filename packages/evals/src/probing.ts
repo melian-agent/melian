@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
 	type Finding,
 	Lens,
@@ -161,28 +161,31 @@ export class Miss {
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
 	headCommit(): string {
-		return execFileSync(
-			"git",
-			["-C", this.repo, "rev-parse", "--verify", "--end-of-options", `${this.head}^{commit}`],
-			{
-				encoding: "utf8",
-			},
-		).trim();
+		return this.commit(this.head);
+	}
+
+	private commit(name: string): string {
+		return execFileSync("git", ["-C", this.repo, "rev-parse", "--verify", "--end-of-options", `${name}^{commit}`], {
+			encoding: "utf8",
+		}).trim();
 	}
 
 	/**
-	 * The range to review: `trust-boundary` alone, every level its `deep`, under the base's policy. Its head is the
-	 * reviewer's own only when `trust` vouches for the commit it resolves to.
+	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code:
+	 * `trust-boundary` alone, every level its `deep`, under the base's policy. Its head is the reviewer's own only when
+	 * `trust` vouches for its commit.
 	 */
-	target(trust: ProbeTrust): ReviewTarget {
+	target(trust: ProbeTrust): ReviewTarget & { readonly head: string } {
+		const base = this.commit(this.base);
 		const head = this.headCommit();
 		const writer: WriterTrust = trust.vouches(head)
 			? { trusted: true, by: "reviewer" }
 			: { trusted: false, detail: `this invocation does not vouch for ${head}` };
 		return {
 			repo: this.repo,
-			base: this.base,
-			range: `${this.base}...${head}`,
+			base,
+			head,
+			range: `${base}...${head}`,
 			writer,
 			scope: (config, lenses) => ({
 				config: {
@@ -428,7 +431,8 @@ export async function measureProbing(
 ): Promise<0 | 1 | 2> {
 	let settings: ProbingSettings;
 	let goldens: Golden[];
-	let misses: { miss: Miss; target: ReviewTarget }[];
+	let misses: { miss: Miss; target: ReviewTarget & { readonly head: string } }[];
+	let save: (complete: boolean, results: readonly ProbingCombinationResult[]) => void;
 	try {
 		settings = ProbingSettings.parse(env);
 		const probing = runners.goldens().filter((golden) => golden.name.startsWith(probingGoldenPrefix) && golden.live);
@@ -446,6 +450,33 @@ export async function measureProbing(
 			const availability = await runners.availability();
 			if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
 		}
+		const checkout = (...args: string[]) =>
+			execFileSync("git", ["-C", import.meta.dirname, ...args], { encoding: "utf8" }).trim();
+		const measured = {
+			version: 1,
+			commit: checkout("rev-parse", "HEAD"),
+			clean: checkout("status", "--porcelain") === "",
+			verifier: settings.verifierModel,
+			passes: settings.passes,
+			misses: misses.map(({ miss, target }) => ({
+				name: miss.name,
+				repo: miss.repo,
+				base: miss.base,
+				head: miss.head,
+				file: miss.file,
+				rule: miss.rule,
+				baseCommit: target.base,
+				headCommit: target.head,
+			})),
+		};
+		// Written whole through a rename after each pass, so a cut run leaves the passes it finished, never a torn file.
+		save = (complete, results) => {
+			if (settings.out === undefined) return;
+			const written = `${settings.out}.${process.pid}.tmp`;
+			writeFileSync(written, `${JSON.stringify({ ...measured, complete, results }, null, 2)}\n`);
+			renameSync(written, settings.out);
+		};
+		save(false, []);
 	} catch (error) {
 		printError(visibleText(error instanceof Error ? error.message : String(error)));
 		return 2;
@@ -464,6 +495,21 @@ export async function measureProbing(
 		const telemetry: StageTelemetry[] = [];
 		const shared = new Set<string>();
 		const passes: ProbingPass[] = [];
+		const summarised = (): ProbingCombinationResult => ({
+			combination: combination.toJSON(),
+			passes: [...passes],
+			...(passes.length === settings.passes && passes.every((pass) => pass.failed.length === 0)
+				? {
+						worst: summary(passes, (values) => Math.min(...values)),
+						mean: summary(passes, (values) => values.reduce((sum, value) => sum + value, 0) / values.length),
+					}
+				: {}),
+			spend: new StageTelemetry(
+				combination.label,
+				telemetry.flatMap(({ stages }) => stages),
+			).spend(),
+			sharedProberTier: [...shared].sort(),
+		});
 		for (let pass = 1; pass <= settings.passes; pass += 1) {
 			const failed: string[] = [];
 			const scores = [];
@@ -540,23 +586,9 @@ export async function measureProbing(
 				failed,
 				reviews,
 			});
+			save(false, [...results, summarised()]);
 		}
-		const complete = passes.every((pass) => pass.failed.length === 0);
-		const result: ProbingCombinationResult = {
-			combination: combination.toJSON(),
-			passes,
-			...(complete
-				? {
-						worst: summary(passes, (values) => Math.min(...values)),
-						mean: summary(passes, (values) => values.reduce((sum, value) => sum + value, 0) / values.length),
-					}
-				: {}),
-			spend: new StageTelemetry(
-				combination.label,
-				telemetry.flatMap(({ stages }) => stages),
-			).spend(),
-			sharedProberTier: [...shared].sort(),
-		};
+		const result = summarised();
 		results.push(result);
 		print(
 			visibleText(
@@ -572,10 +604,6 @@ export async function measureProbing(
 				),
 			);
 	}
-	if (settings.out !== undefined)
-		writeFileSync(
-			settings.out,
-			`${JSON.stringify({ verifier: settings.verifierModel, passes: settings.passes, results }, null, 2)}\n`,
-		);
+	save(true, results);
 	return results.every((result) => result.worst !== undefined) ? 0 : 1;
 }

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultConfig, Finding, Lens, type MelianConfig } from "@melian-agent/core";
@@ -506,6 +506,89 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
+	});
+
+	it("records what it measured: the checkout's commit, and each miss's names and the commits they resolve to", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			git(repo, "branch", "moving-base", base);
+			const fields = { file: "other.ts", rule: "fail-open" };
+			const misses = missesFile([{ name: "named", repo, base: "moving-base", head: "feature", ...fields }]);
+			const using = runners();
+			const out = join(scratch, "provenance.json");
+			const settings = {
+				...env,
+				MELIAN_EVAL_MISSES: misses,
+				MELIAN_EVAL_PROBE_SET: "misses",
+				MELIAN_EVAL_PROBE_PASSES: "1",
+				MELIAN_EVAL_PROBE_TRUST: head,
+				MELIAN_EVAL_PROBE_OUT: out,
+			};
+			expect((await measure(settings, using)).status).toBe(0);
+			expect(vi.mocked(using.range).mock.calls[0]![0]).toMatchObject({ base, range: `${base}...${head}` });
+			const checkout = import.meta.dirname;
+			const { results: _, ...provenance } = JSON.parse(readFileSync(out, "utf8"));
+			expect(provenance).toEqual({
+				version: 1,
+				commit: git(checkout, "rev-parse", "HEAD"),
+				clean: git(checkout, "status", "--porcelain") === "",
+				complete: true,
+				verifier: "c/verify",
+				passes: 1,
+				misses: [
+					{
+						name: "named",
+						repo,
+						base: "moving-base",
+						head: "feature",
+						...fields,
+						baseCommit: base,
+						headCommit: head,
+					},
+				],
+			});
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a results file it cannot write before any provider", async () => {
+		const using = runners();
+		const out = join(scratch, "missing", "results.json");
+		const { status, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_OUT: out }, using);
+		expect(status).toBe(2);
+		expect(errors).toEqual([
+			expect.stringMatching(/^ENOENT: no such file or directory, open '.*results\.json\.[0-9]+\.tmp'$/),
+		]);
+		expect(using.models).not.toHaveBeenCalled();
+		expect(using.golden).not.toHaveBeenCalled();
+	});
+
+	it("replaces the results file whole after each pass, so a cut run keeps the passes it finished", async () => {
+		const out = join(scratch, "results.json");
+		writeFileSync(out, "an earlier run's record\n");
+		const seen: unknown[] = [];
+		const using = runners({
+			golden: vi.fn(async (each: Golden) => {
+				seen.push(JSON.parse(readFileSync(out, "utf8")));
+				return { golden: each, ...ran([]) } as GoldenRun;
+			}),
+		});
+		expect((await measure({ ...env, MELIAN_EVAL_PROBE_PASSES: "2", MELIAN_EVAL_PROBE_OUT: out }, using)).status).toBe(
+			0,
+		);
+		expect(seen.map((file) => (file as { complete: boolean }).complete)).toEqual([false, false, false, false]);
+		expect((seen[0] as { results: unknown[] }).results).toEqual([]);
+		const cut = seen[2] as { results: { passes: unknown[] }[] };
+		expect(cut.results).toHaveLength(1);
+		expect(cut.results[0]!.passes).toHaveLength(1);
+		expect(cut.results[0]).not.toHaveProperty("worst");
+		const last = JSON.parse(readFileSync(out, "utf8"));
+		expect(last.complete).toBe(true);
+		expect(last.results[0].passes).toHaveLength(2);
+		expect(last.results[0].worst).toEqual({ precision: 1, recall: 0 });
+		expect(readdirSync(scratch)).toEqual(["results.json"]);
 	});
 
 	it("fails before any provider when probes cannot run on the host, and asks nothing of a run without probes", async () => {
