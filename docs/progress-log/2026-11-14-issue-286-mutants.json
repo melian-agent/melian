@@ -1402,7 +1402,7 @@
 	},
 	"hand": {
 		"note": "Hand mutants of the AGENTS.md check and the workflow record step, which the enumerator does not cover. Each replaces one exact text once and runs its named test alone.",
-		"head": "640fbfa7c439398dd276159aaba8bd1aeff2f10c",
+		"head": "14968999d5f6a906baa923a986dbdd88eaf0f364",
 		"baselines": {
 			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record set by any account but melian-status-bot's": {
 				"code": 0,
@@ -1444,7 +1444,7 @@
 				"collected": 1,
 				"failed": 0
 			},
-			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an argument that is not a number before it asks GitHub anything": {
+			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an argument that is not a number, or no body file, before it asks GitHub anything": {
 				"code": 0,
 				"collected": 1,
 				"failed": 0
@@ -1475,6 +1475,16 @@
 				"failed": 0
 			},
 			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record whose description carries a newline, so no description can add a record line": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0
+			},
+			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0
+			},
+			"scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > writes the body it hashed, from its one request for the comment, though a second request would read an edit": {
 				"code": 0,
 				"collected": 1,
 				"failed": 0
@@ -1674,10 +1684,10 @@
 			{
 				"id": "H13",
 				"file": "AGENTS.md",
-				"from": "  [[ \"$comment\" =~ ^[1-9][0-9]*$ && \"$id\" =~ ^[1-9][0-9]*$ && \"$pull\" =~ ^[1-9][0-9]*$ ]] || { echo \"usage: <comment ID> <run ID> <pull request number>\"; exit 1; }\n",
+				"from": "  [[ \"$comment\" =~ ^[1-9][0-9]*$ && \"$id\" =~ ^[1-9][0-9]*$ && \"$pull\" =~ ^[1-9][0-9]*$ && -n \"$out\" ]] || { echo \"usage: <comment ID> <run ID> <pull request number> <body file>\"; exit 1; }\n",
 				"to": "",
 				"claim": "killed",
-				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an argument that is not a number before it asks GitHub anything",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an argument that is not a number, or no body file, before it asks GitHub anything",
 				"survivorClasses": [],
 				"run": {
 					"code": 1,
@@ -1792,6 +1802,174 @@
 				"to": null,
 				"claim": "killed",
 				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a record whose description carries a newline, so no description can add a record line",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H21",
+				"file": "AGENTS.md",
+				"from": "  [ -z \"$out\" ] || rm -f -- \"$out\" || exit 1\n",
+				"to": "",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H22",
+				"file": "AGENTS.md",
+				"from": " && -n \"$out\" ]]",
+				"to": " ]]",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses an argument that is not a number, or no body file, before it asks GitHub anything",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H23",
+				"file": "AGENTS.md",
+				"from": "  trap 'rm -f -- \"$tmp\"' EXIT\n",
+				"to": "",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H24",
+				"file": "AGENTS.md",
+				"from": "      require(\"node:fs\").writeFileSync(tmp, comment.body, \"utf8\");\n",
+				"to": "",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > writes the body it hashed, from its one request for the comment, though a second request would read an edit",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H25",
+				"file": "AGENTS.md",
+				"from": "  mv -- \"$tmp\" \"$out\" || exit 1\n",
+				"to": "  gh api \"repos/$repo/issues/comments/$comment\" | node -e 'let t = \"\"; process.stdin.on(\"data\", (c) => { t += c; }).on(\"end\", () => process.stdout.write(JSON.parse(t).body))' > \"$out\" || exit 1\n",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > writes the body it hashed, from its one request for the comment, though a second request would read an edit",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H26",
+				"file": "AGENTS.md",
+				"from": [
+					[
+						"  mv -- \"$tmp\" \"$out\" || exit 1\n",
+						""
+					],
+					[
+						"\"$repo\" \"$id\" \"$pull\" \"$tmp\") || { echo \"comment $comment is not melian-status-bot's comment for run $id on pull request $pull\"; exit 1; }\n",
+						"\"$repo\" \"$id\" \"$pull\" \"$tmp\") || { echo \"comment $comment is not melian-status-bot's comment for run $id on pull request $pull\"; exit 1; }\n  mv -- \"$tmp\" \"$out\" || exit 1\n"
+					]
+				],
+				"to": null,
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H27",
+				"file": "AGENTS.md",
+				"from": "  mv -- \"$tmp\" \"$out\" || exit 1\n",
+				"to": "",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > reads a comment melian-status-bot posted, whose body its run recorded",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H28",
+				"file": "AGENTS.md",
+				"from": "\"$repo\" \"$id\" \"$pull\" \"$tmp\")",
+				"to": "\"$repo\" \"$id\" \"$pull\" \"$out\")",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H29",
+				"file": "AGENTS.md",
+				"from": "[ -z \"$out\" ] || rm",
+				"to": "[ -n \"$out\" ] || rm",
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				}
+			},
+			{
+				"id": "H30",
+				"file": "AGENTS.md",
+				"from": [
+					[
+						"  [ -z \"$out\" ] || rm -f -- \"$out\" || exit 1\n",
+						""
+					],
+					[
+						"<body file>\"; exit 1; }\n",
+						"<body file>\"; exit 1; }\n  [ -z \"$out\" ] || rm -f -- \"$out\" || exit 1\n"
+					]
+				],
+				"to": null,
+				"claim": "killed",
+				"evidence": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > removes a file already at that path when it refuses, and leaves none of its own",
 				"survivorClasses": [],
 				"run": {
 					"code": 1,
