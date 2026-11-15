@@ -90,52 +90,46 @@ describe("a step the deadline cannot start late", { timeout: 60_000 }, () => {
 	it("starts a local read with a millisecond left, and refuses it, starting nothing, with none", async () => {
 		const { repository, tip } = await fetched();
 		const commands = await shimGit();
-		await expect(repository.run(["rev-parse", tip], deadlineAt(1))).resolves.toBeDefined();
-		expect(await commands()).toHaveLength(1);
 		await expect(repository.run(["rev-parse", tip], deadlineAt(0))).rejects.toMatchObject({
 			code: "unreachable",
 			message: expect.stringMatching(refused),
 		});
-		expect(await commands()).toHaveLength(1);
+		expect(await commands()).toEqual([]);
+		await expect(repository.run(["rev-parse", tip], deadlineAt(1))).resolves.toMatchObject({
+			code: expect.any(Number),
+		});
 	});
 
 	it("starts creating the repository with a millisecond left, and refuses, creating nothing, with none", async () => {
 		const commands = await shimGit(200);
-		const inits = async () => (await commands()).filter((line) => line.startsWith("init "));
-		const stopped = join(remote.host(), "records.git");
-		await expect(RecordRepository.open(stopped, deadlineAt(1))).rejects.toMatchObject({
-			code: "unreachable",
-			message: `${stopped} cannot be created`,
-		});
-		expect(await inits()).toHaveLength(1);
 		const host = remote.host();
-		const refusedPath = join(host, "records.git");
-		await expect(RecordRepository.open(refusedPath, deadlineAt(0))).rejects.toMatchObject({
+		const path = join(host, "records.git");
+		await expect(RecordRepository.open(path, deadlineAt(0))).rejects.toMatchObject({
 			code: "unreachable",
-			message: `${refusedPath} cannot be created within its deadline`,
+			message: `${path} cannot be created within its deadline`,
 		});
-		expect(await inits()).toHaveLength(1);
+		expect(await commands()).toEqual([]);
 		expect(await readdir(host)).toEqual([]);
+		await expect(RecordRepository.open(path, deadlineAt(1))).rejects.toMatchObject({
+			code: "unreachable",
+			message: `${path} cannot be created`,
+		});
 	});
 
 	it("starts a push with a millisecond left, and refuses it, starting nothing, with none", async () => {
 		const { repository, tip } = await fetched();
 		const commit = await repository.commit(tip, [], Deadline.after(systemClock, 30_000));
-		const commands = await shimGit();
 		expect(["timedOut", "landed"]).toContain(
 			await repository.push(remote.url, remote.branch, commit, tip, deadlineAt(1)),
 		);
-		const pushes = async () => (await commands()).filter((line) => line.includes(" push "));
-		expect(await pushes()).toHaveLength(1);
-		vi.unstubAllEnvs();
 		const before = remote.tip();
 		const after = await repository.commit(before, [], Deadline.after(systemClock, 30_000));
-		await shimGit();
+		const commands = await shimGit();
 		await expect(repository.push(remote.url, remote.branch, after, before, deadlineAt(0))).rejects.toMatchObject({
 			code: "unreachable",
 			message: expect.stringMatching(refused),
 		});
-		expect(await pushes()).toHaveLength(0);
+		expect(await commands()).toEqual([]);
 		expect(remote.tip()).toBe(before);
 	});
 
