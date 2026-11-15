@@ -345,6 +345,12 @@ export async function copyReads(
 			new ProbeError("invalidProbe", `probe.read's copy of ${entry} passes its limit of ${limit}`);
 		const filter = async (source: string) => {
 			const stats = await lstat(source);
+			// Node's cp refuses a FIFO or a socket with an error the probe would blame on the head, and copies a device empty.
+			if (!stats.isFile() && !stats.isDirectory() && !stats.isSymbolicLink())
+				throw new ProbeError(
+					"invalidProbe",
+					`probe.read's copy of ${entry} meets ${source}, which is not a file, directory or link`,
+				);
 			if (now() > deadline) throw past(`${limits.time} milliseconds`);
 			entries += 1;
 			if (entries > limits.entries) throw past(`${limits.entries} entries`);

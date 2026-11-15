@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -13,6 +14,7 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -852,6 +854,38 @@ describe("copyReads", () => {
 		await expect(copy({ bytes: 7 }, undefined, ["d", "e"])).rejects.toEqual(
 			new ProbeError("invalidProbe", "probe.read's copy of e passes its limit of 7 bytes"),
 		);
+	});
+
+	it("copies files, directories and links", async () => {
+		symlinkSync("a", join(source, "d", "link"));
+		await copy({});
+		expect(copied()).toEqual(["a", "b", "link"]);
+		expect(readlinkSync(join(tree, "d", "link"))).toBe("a");
+	});
+
+	it("refuses a FIFO in probe.read, naming the reviewer's path", async () => {
+		execFileSync("mkfifo", [join(source, "d", "pipe")]);
+		await expect(copy({})).rejects.toEqual(
+			new ProbeError(
+				"invalidProbe",
+				`probe.read's copy of d meets ${join(source, "d", "pipe")}, which is not a file, directory or link`,
+			),
+		);
+	});
+
+	it("refuses a socket in probe.read", async () => {
+		const server = createServer();
+		await new Promise<void>((done) => server.listen(join(source, "d", "socket"), done));
+		try {
+			await expect(copy({})).rejects.toEqual(
+				new ProbeError(
+					"invalidProbe",
+					`probe.read's copy of d meets ${join(source, "d", "socket")}, which is not a file, directory or link`,
+				),
+			);
+		} finally {
+			await new Promise((done) => server.close(done));
+		}
 	});
 
 	// The clock reads the start until the copy has begun, so the deadline falls part-way.
