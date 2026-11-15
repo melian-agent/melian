@@ -1,0 +1,152 @@
+{
+ "total": 11,
+ "omitted": 0,
+ "base": "35137076",
+ "head": "8ec798c1",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000",
+ "note": "Fix pass 12 of pull request #296: the changed line's mutants. The new part, the read paths, is a joined literal the enumerator ignores; its removal is the defect the new test failed on.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 8,
+   "endLine": 1335,
+   "endColumn": 253,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 41,
+   "endLine": 1335,
+   "endColumn": 43,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 46,
+   "endLine": 1335,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 70,
+   "endLine": 1335,
+   "endColumn": 108,
+   "mutatorName": "LogicalOperator",
+   "replacement": "timeout && probeLimits.timeout.default",
+   "claim": "equivalent",
+   "evidence": "The instruction fingerprint already holds the prober's route, thinking and time limit, so the selection differs for each of them without this part of the line; carried from the pull request's first inventory, rerun at 8ec798c1 and survived as before.",
+   "survivorClasses": [],
+   "run": {
+    "head": "8ec798c1",
+    "result": "survived",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 132,
+   "endLine": 1335,
+   "endColumn": 136,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 178,
+   "endLine": 1335,
+   "endColumn": 182,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 186,
+   "endLine": 1335,
+   "endColumn": 214,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "The instruction fingerprint already holds the prober's route, thinking and time limit, so the selection differs for each of them without this part of the line; carried from the pull request's first inventory, rerun at 8ec798c1 and survived as before.",
+   "survivorClasses": [],
+   "run": {
+    "head": "8ec798c1",
+    "result": "survived",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 186,
+   "endLine": 1335,
+   "endColumn": 214,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "The instruction fingerprint already holds the prober's route, thinking and time limit, so the selection differs for each of them without this part of the line; carried from the pull request's first inventory, rerun at 8ec798c1 and survived as before.",
+   "survivorClasses": [],
+   "run": {
+    "head": "8ec798c1",
+    "result": "survived",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 186,
+   "endLine": 1335,
+   "endColumn": 214,
+   "mutatorName": "EqualityOperator",
+   "replacement": "probe.thinking !== undefined",
+   "claim": "equivalent",
+   "evidence": "The instruction fingerprint already holds the prober's route, thinking and time limit, so the selection differs for each of them without this part of the line; carried from the pull request's first inventory, rerun at 8ec798c1 and survived as before.",
+   "survivorClasses": [],
+   "run": {
+    "head": "8ec798c1",
+    "result": "survived",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 217,
+   "endLine": 1335,
+   "endColumn": 219,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1335,
+   "column": 222,
+   "endLine": 1335,
+   "endColumn": 251,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  }
+ ],
+ "counts": {
+  "equivalent": 4,
+  "ignored": 7
+ }
+}

@@ -1,0 +1,1250 @@
+{
+	"total": 74,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "10046215",
+	"head": "271e8f06",
+	"command": "node scripts/enumerate-mutants.mjs 10046215...271e8f06 --json --limit 10000",
+	"note": "Fix pass 38 of pull request #296. Every changed line decides whether a review that another replaced may still write to the review index, its verification, its restatement links or its verdict, so every mutant is owed. Each killed or new-test claim ran against its named test alone, with exactly one test collected, and its test failed. The six equivalent claims did not run; each gives its reason. On the first run, mutant 49 named the retired-wave test, which expects superseded and so passed with the throw forced on; it was run again against a review that verifies and completes, and that test failed.",
+	"counts": {
+		"killed": 24,
+		"new-test": 44,
+		"equivalent": 6
+	},
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 68,
+			"column": 11,
+			"endLine": 71,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 5,
+			"endLine": 69,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 5,
+			"endLine": 69,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 5,
+			"endLine": 69,
+			"endColumn": 55,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lensTask !== undefined || entry?.task !== lensTask",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 5,
+			"endLine": 69,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > decides a review that runs no lens after a review of the head whose lenses ran",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 5,
+			"endLine": 69,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lensTask === undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 31,
+			"endLine": 69,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 31,
+			"endLine": 69,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry?.task === lensTask",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 31,
+			"endLine": 69,
+			"endColumn": 42,
+			"mutatorName": "OptionalChaining",
+			"replacement": "entry.task",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose revision left the index once its lenses finished",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 69,
+			"column": 64,
+			"endLine": 69,
+			"endColumn": 69,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose verification a review sharing its lens task replaced before it adjudicates",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 80,
+			"mutatorName": "LogicalOperator",
+			"replacement": "verification === undefined && entry?.verification?.task === verification",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose verification a review sharing its lens task replaced before it links",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "verification !== undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose verification a review sharing its lens task replaced before it adjudicates",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 38,
+			"endLine": 70,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 38,
+			"endLine": 70,
+			"endColumn": 80,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry?.verification?.task !== verification",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 38,
+			"endLine": 70,
+			"endColumn": 63,
+			"mutatorName": "OptionalChaining",
+			"replacement": "entry?.verification.task",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/review-index.test.ts > stillOwns > answers for an entry with no verification, for a review that relied on one",
+			"survivorClasses": [
+				"optional-chain"
+			],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review-index.ts",
+			"line": 70,
+			"column": 38,
+			"endLine": 70,
+			"endColumn": 57,
+			"mutatorName": "OptionalChaining",
+			"replacement": "entry.verification",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/review-index.test.ts > stillOwns > answers for no entry, for a review that ran no lens but relied on a verification",
+			"survivorClasses": [
+				"optional-chain"
+			],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1504,
+			"column": 6,
+			"endLine": 1504,
+			"endColumn": 73,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns((await tx.doc(ReviewIndex, root)).reviews[at], lensTask)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1504,
+			"column": 6,
+			"endLine": 1504,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1504,
+			"column": 6,
+			"endLine": 1504,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > starts no rerun and no verifier for a review whose lens task another review has replaced",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 6,
+			"endLine": 1760,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > never stores a replaced lens task's caller record on the task that replaced it",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 6,
+			"endLine": 1760,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > never stores a replaced lens task's caller record on the task that replaced it",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 6,
+			"endLine": 1760,
+			"endColumn": 52,
+			"mutatorName": "LogicalOperator",
+			"replacement": "entry === undefined && !stillOwns(entry, task)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > never stores a replaced lens task's caller record on the task that replaced it",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 6,
+			"endLine": 1760,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "`entry === undefined` forced false at the callers record: `!stillOwns(undefined, task)` is true for any lens task, so the commit returns `fresh` either way.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 6,
+			"endLine": 1760,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > never stores a replaced lens task's caller record on the task that replaced it",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1760,
+			"column": 29,
+			"endLine": 1760,
+			"endColumn": 52,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(entry, task)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > never stores a replaced lens task's caller record on the task that replaced it",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1789,
+			"column": 6,
+			"endLine": 1789,
+			"endColumn": 47,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(known, lensTask, verification)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1789,
+			"column": 6,
+			"endLine": 1789,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1789,
+			"column": 6,
+			"endLine": 1789,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose verification a review sharing its lens task replaced before it adjudicates",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2799,
+			"column": 7,
+			"endLine": 2799,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > keeps another lens task's waves when the index names it before a review starts watching its lenses",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2799,
+			"column": 7,
+			"endLine": 2799,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3005,
+			"column": 18,
+			"endLine": 3010,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3007,
+			"column": 3,
+			"endLine": 3007,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3008,
+			"column": 3,
+			"endLine": 3008,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3009,
+			"column": 3,
+			"endLine": 3009,
+			"endColumn": 46,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose finished probing run a repeat review replaced before it verified",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3009,
+			"column": 24,
+			"endLine": 3009,
+			"endColumn": 43,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose finished probing run a repeat review replaced before it verified",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3021,
+			"column": 8,
+			"endLine": 3021,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(entry, lensTask)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/restatement.test.ts > a dismissal carrying to a restatement > clears the links when a later round on the head selects no lens",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3021,
+			"column": 8,
+			"endLine": 3021,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/restatement.test.ts > a dismissal carrying to a restatement > clears the links when a later round on the head selects no lens",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3021,
+			"column": 8,
+			"endLine": 3021,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's verification when a review it replaced finds nothing to verify",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3021,
+			"column": 44,
+			"endLine": 3021,
+			"endColumn": 49,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "equivalent",
+			"evidence": "The detach commit's `return false` made `true`: the link commit's own `stillOwns` check then ends the review superseded, and nothing is written between the two; abortReplacedRuns, the only step between, aborts only runs the index no longer names, as any review's does.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3023,
+			"column": 11,
+			"endLine": 3023,
+			"endColumn": 15,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/restatement.test.ts > a dismissal carrying to a restatement > clears the links when a later round on the head selects no lens",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3025,
+			"column": 7,
+			"endLine": 3025,
+			"endColumn": 12,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "owns",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/restatement.test.ts > a dismissal carrying to a restatement > clears the links when a later round on the head selects no lens",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3025,
+			"column": 7,
+			"endLine": 3025,
+			"endColumn": 12,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/restatement.test.ts > a dismissal carrying to a restatement > clears the links when a later round on the head selects no lens",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3025,
+			"column": 7,
+			"endLine": 3025,
+			"endColumn": 12,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "The detach commit's `if (!owns) throw` forced false: the link commit's own `stillOwns` check then ends the review superseded, and nothing is written between the two; abortReplacedRuns, the only step between, aborts only runs the index no longer names, as any review's does.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3042,
+			"column": 7,
+			"endLine": 3042,
+			"endColumn": 80,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "await rerunProbes(harness, root, state, candidates, lensTask, context)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3042,
+			"column": 7,
+			"endLine": 3042,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3042,
+			"column": 7,
+			"endLine": 3042,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > stops a review that another replaces while its probe runs again, before it verifies: its reruns alone, as a review attached to its lens task with other probes can",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3106,
+			"column": 7,
+			"endLine": 3106,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3106,
+			"column": 7,
+			"endLine": 3106,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > records no verdict for a review whose reused wave another review's final verification retired",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3106,
+			"column": 7,
+			"endLine": 3106,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "verifying !== undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > records no verdict for a review whose reused wave another review's final verification retired",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3165,
+			"column": 6,
+			"endLine": 3165,
+			"endColumn": 90,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns((await tx.doc(ReviewIndex, root)).reviews[reviewed], lensTask, verifying)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3165,
+			"column": 6,
+			"endLine": 3165,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3165,
+			"column": 6,
+			"endLine": 3165,
+			"endColumn": 90,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's restatement link when a review it replaced, with no verifier, reaches the link commit",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3165,
+			"column": 99,
+			"endLine": 3165,
+			"endColumn": 104,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "equivalent",
+			"evidence": "The link commit's `return false` made `true`: startAdjudication's own `stillOwns` check returns undefined and the review throws the same `replaced()`; between the two there is only a findingsVersion read and pure input building.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3173,
+			"column": 9,
+			"endLine": 3173,
+			"endColumn": 13,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3175,
+			"column": 5,
+			"endLine": 3175,
+			"endColumn": 12,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "linked",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3175,
+			"column": 5,
+			"endLine": 3175,
+			"endColumn": 12,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3175,
+			"column": 5,
+			"endLine": 3175,
+			"endColumn": 12,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": "The link commit's `if (!linked) throw` forced false: startAdjudication's own `stillOwns` check returns undefined and the review throws the same `replaced()`; between the two there is only a findingsVersion read and pure input building.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3246,
+			"column": 5,
+			"endLine": 3246,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3246,
+			"column": 5,
+			"endLine": 3246,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > records no verdict for a review whose verification a review sharing its lens task replaced before it adjudicates",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3246,
+			"column": 5,
+			"endLine": 3246,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "adjudication !== undefined",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 361,
+			"column": 6,
+			"endLine": 361,
+			"endColumn": 33,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(known, lensTask)",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 361,
+			"column": 6,
+			"endLine": 361,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 361,
+			"column": 6,
+			"endLine": 361,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps a repeat review's confirmed finding blocking when a review it replaced starts its verifier late",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 6,
+			"endLine": 447,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 6,
+			"endLine": 447,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave for a lens task the index does not name",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 6,
+			"endLine": 447,
+			"endColumn": 74,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!stillOwns(indexed, lensTask) && indexed?.verification !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 6,
+			"endLine": 447,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stillOwns(indexed, lensTask)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 39,
+			"endLine": 447,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave beside a running one, even for a candidate no wave holds",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 39,
+			"endLine": 447,
+			"endColumn": 74,
+			"mutatorName": "EqualityOperator",
+			"replacement": "indexed?.verification === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 39,
+			"endLine": 447,
+			"endColumn": 60,
+			"mutatorName": "OptionalChaining",
+			"replacement": "indexed.verification",
+			"claim": "equivalent",
+			"evidence": "`indexed?.verification` made `indexed.verification` in startWave: `lensTask` is a number there, so an absent `indexed` makes `!stillOwns(...)` true and the `||` short-circuits before the second operand reads it.",
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/verification.ts",
+			"line": 447,
+			"column": 83,
+			"endLine": 447,
+			"endColumn": 85,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/verification-waves.test.ts > verification as each lens ends > starts no wave for a lens task the index does not name",
+			"survivorClasses": [],
+			"run": {
+				"head": "271e8f06",
+				"result": "killed",
+				"tests": 1
+			}
+		}
+	]
+}

@@ -1,0 +1,976 @@
+{
+ "total": 57,
+ "omitted": 0,
+ "base": "b46c243e",
+ "head": "09acbe69",
+ "command": "node scripts/enumerate-mutants.mjs b46c243e...HEAD --json --limit 10000",
+ "note": "Fix pass 17 of pull request #296: a revision's probe reruns in a durable task. Each claim was run at 09acbe69 against its named test alone. The listing's ignored literals are left out.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 818,
+   "column": 9,
+   "endLine": 818,
+   "endColumn": 80,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1366,
+   "column": 55,
+   "endLine": 1410,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1367,
+   "column": 77,
+   "endLine": 1409,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1370,
+   "column": 11,
+   "endLine": 1370,
+   "endColumn": 35,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1370,
+   "column": 18,
+   "endLine": 1370,
+   "endColumn": 34,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1371,
+   "column": 10,
+   "endLine": 1405,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1372,
+   "column": 42,
+   "endLine": 1404,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1376,
+   "column": 32,
+   "endLine": 1394,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1377,
+   "column": 20,
+   "endLine": 1377,
+   "endColumn": 95,
+   "mutatorName": "OptionalChaining",
+   "replacement": "(await runtime.snapshot(ProbeReruns, root, context))!.runs[at][probe.key]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a claim's probe again once, and a repeat review reads the stored run",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 85,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stored !== undefined && \"result\" in stored || probeConclusive(stored.result)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 51,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 51,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stored !== undefined || \"result\" in stored",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1378,
+   "column": 9,
+   "endLine": 1378,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stored === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1380,
+   "column": 6,
+   "endLine": 1380,
+   "endColumn": 50,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1385,
+   "column": 20,
+   "endLine": 1385,
+   "endColumn": 25,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "The commit's closure always assigns replaced before it is read, so its first value is never read.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1386,
+   "column": 40,
+   "endLine": 1392,
+   "endColumn": 6,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1388,
+   "column": 17,
+   "endLine": 1388,
+   "endColumn": 61,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1388,
+   "column": 17,
+   "endLine": 1388,
+   "endColumn": 61,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > writes nothing from a rerun task another review took the revision from: runs no more probes once another review takes the revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1388,
+   "column": 17,
+   "endLine": 1388,
+   "endColumn": 61,
+   "mutatorName": "EqualityOperator",
+   "replacement": "document.tasks![at]!.task === runtime.taskId",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1389,
+   "column": 10,
+   "endLine": 1389,
+   "endColumn": 18,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1389,
+   "column": 10,
+   "endLine": 1389,
+   "endColumn": 18,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > writes nothing from a rerun task another review took the revision from: runs no more probes once another review takes the revision",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1390,
+   "column": 22,
+   "endLine": 1390,
+   "endColumn": 92,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1390,
+   "column": 48,
+   "endLine": 1390,
+   "endColumn": 90,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1393,
+   "column": 9,
+   "endLine": 1393,
+   "endColumn": 17,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1393,
+   "column": 9,
+   "endLine": 1393,
+   "endColumn": 17,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "After the commit that ends the task, Pi Durable refuses the phase's next read, so the loop stops there with or without the return: the two-probe test ran one probe under the mutant too.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1396,
+   "column": 39,
+   "endLine": 1403,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1398,
+   "column": 9,
+   "endLine": 1398,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1398,
+   "column": 9,
+   "endLine": 1398,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > writes nothing from a rerun task another review took the revision from: prunes nothing when every probe it holds already stands",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1398,
+   "column": 9,
+   "endLine": 1398,
+   "endColumn": 53,
+   "mutatorName": "EqualityOperator",
+   "replacement": "document.tasks![at]!.task === runtime.taskId",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1399,
+   "column": 40,
+   "endLine": 1399,
+   "endColumn": 60,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1400,
+   "column": 18,
+   "endLine": 1400,
+   "endColumn": 93,
+   "mutatorName": "MethodExpression",
+   "replacement": "Object.entries(document.runs[at] ?? {})",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > keeps only the reruns the revision's current claims rest on, however often a failed prober is run again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1400,
+   "column": 33,
+   "endLine": 1400,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "document.runs[at] && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1400,
+   "column": 65,
+   "endLine": 1400,
+   "endColumn": 92,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1401,
+   "column": 21,
+   "endLine": 1401,
+   "endColumn": 73,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1406,
+   "column": 44,
+   "endLine": 1408,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "No review aborts a rerun task: abortReplacedRuns sweeps lens, verification, decision and adjudication tasks. The handler is the one every Melian task carries, as the verification task's is.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1407,
+   "column": 24,
+   "endLine": 1407,
+   "endColumn": 86,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "equivalent",
+   "evidence": "No review aborts a rerun task: abortReplacedRuns sweeps lens, verification, decision and adjudication tasks. The handler is the one every Melian task carries, as the verification task's is.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1407,
+   "column": 31,
+   "endLine": 1407,
+   "endColumn": 85,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "No review aborts a rerun task: abortReplacedRuns sweeps lens, verification, decision and adjudication tasks. The handler is the one every Melian task carries, as the verification task's is.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1407,
+   "column": 62,
+   "endLine": 1407,
+   "endColumn": 83,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "No review aborts a rerun task: abortReplacedRuns sweeps lens, verification, decision and adjudication tasks. The handler is the one every Melian task carries, as the verification task's is.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1430,
+   "column": 19,
+   "endLine": 1435,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1437,
+   "column": 32,
+   "endLine": 1437,
+   "endColumn": 80,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1437,
+   "column": 58,
+   "endLine": 1437,
+   "endColumn": 78,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1441,
+   "column": 16,
+   "endLine": 1441,
+   "endColumn": 36,
+   "mutatorName": "OptionalChaining",
+   "replacement": "document.tasks[at]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 94,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 94,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probe again once when two reviews of one head verify at once",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 94,
+   "mutatorName": "LogicalOperator",
+   "replacement": "known?.key === key || (await tx.task(known.task as TaskId))!.state.status !== \"terminal\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "known?.key !== key",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 6,
+   "endLine": 1442,
+   "endColumn": 16,
+   "mutatorName": "OptionalChaining",
+   "replacement": "known.key",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 28,
+   "endLine": 1442,
+   "endColumn": 94,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probe again on a repeat review when its stored rerun timed out",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1442,
+   "column": 28,
+   "endLine": 1442,
+   "endColumn": 94,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(await tx.task(known.task as TaskId))!.state.status === \"terminal\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > runs a probe again once when two reviews of one head verify at once",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1444,
+   "column": 61,
+   "endLine": 1444,
+   "endColumn": 100,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1444,
+   "column": 74,
+   "endLine": 1444,
+   "endColumn": 98,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "equivalent",
+   "evidence": "tx.createTask defaults a task created in a conversation's commit to that conversation, which is what the option names.",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "survived"
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1445,
+   "column": 19,
+   "endLine": 1445,
+   "endColumn": 70,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 1445,
+   "column": 46,
+   "endLine": 1445,
+   "endColumn": 68,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > reports a finding only with a probe that failed, and the verifier judges the probe it ran again",
+   "survivorClasses": [],
+   "run": {
+    "head": "09acbe69",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 50,
+  "equivalent": 7
+ }
+}

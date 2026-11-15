@@ -1,0 +1,181 @@
+{
+ "total": 11,
+ "omitted": 0,
+ "base": "2b9ab30a",
+ "head": "7b5ca994",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~2...HEAD --json --limit 10000",
+ "note": "Fix pass 4 of pull request #296: the mutants of the two fixes for Codex's fifth review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/lens-tools.ts",
+   "line": 1226,
+   "column": 17,
+   "endLine": 1226,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "Ignored",
+   "note": "the executionMode literal; the plan-order test fails without the field, run by hand at 7b5ca994"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 140,
+   "column": 6,
+   "endLine": 140,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 140,
+   "column": 6,
+   "endLine": 140,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose processes could not be stopped, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 140,
+   "column": 6,
+   "endLine": 140,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "result.error === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose processes could not be stopped, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 141,
+   "column": 10,
+   "endLine": 141,
+   "endColumn": 85,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose processes could not be stopped, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 141,
+   "column": 21,
+   "endLine": 141,
+   "endColumn": 83,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 142,
+   "column": 6,
+   "endLine": 142,
+   "endColumn": 22,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "cleanup.removed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose scratch could not be removed, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 142,
+   "column": 6,
+   "endLine": 142,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > runs a probe in a tree of the head, and removes the tree",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 142,
+   "column": 6,
+   "endLine": 142,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose scratch could not be removed, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 142,
+   "column": 31,
+   "endLine": 142,
+   "endColumn": 105,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > runHeadProbe > refuses a run whose scratch could not be removed, so it is no evidence",
+   "survivorClasses": [],
+   "run": {
+    "head": "7b5ca994",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 142,
+   "column": 42,
+   "endLine": 142,
+   "endColumn": 103,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "Ignored"
+  }
+ ],
+ "counts": {
+  "killed": 8,
+  "ignored": 3
+ }
+}

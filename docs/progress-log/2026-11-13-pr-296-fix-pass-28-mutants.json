@@ -1,0 +1,11 @@
+{
+	"total": 0,
+	"omitted": 0,
+	"unmutated": [],
+	"base": "27a27a6f",
+	"head": "ae622b9e",
+	"command": "node scripts/enumerate-mutants.mjs 27a27a6f...ae622b9e --json --limit 10000",
+	"note": "Fix pass 28 of pull request #296: what the Actions round at 965afc56 found. Its one mutant is a literal Stryker's configuration ignores, which is left out.",
+	"mutants": [],
+	"counts": {}
+}

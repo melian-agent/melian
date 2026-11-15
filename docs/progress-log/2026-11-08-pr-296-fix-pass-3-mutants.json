@@ -1,0 +1,67 @@
+{
+ "total": 3,
+ "omitted": 0,
+ "base": "44b98aee",
+ "head": "2975dc71",
+ "command": "node scripts/enumerate-mutants.mjs HEAD~1...HEAD --json --limit 10000",
+ "note": "Fix pass 3 of pull request #296: the mutants of the fix for Codex's fourth review, each run against its named test alone.",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 273,
+   "column": 16,
+   "endLine": 273,
+   "endColumn": 116,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(await harness.snapshot(ProbeReruns, input.root, context))?.runs[Revision.key(input.revision)] && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it",
+   "survivorClasses": [],
+   "run": {
+    "head": "2975dc71",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 273,
+   "column": 16,
+   "endLine": 273,
+   "endColumn": 80,
+   "mutatorName": "OptionalChaining",
+   "replacement": "(await harness.snapshot(ProbeReruns, input.root, context)).runs",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/verification.test.ts > the verifier > merges two rules before asking one conversation to judge both claims inside boundaries",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "run": {
+    "head": "2975dc71",
+    "result": "killed",
+    "tests": 1
+   }
+  },
+  {
+   "file": "packages/pipeline/src/verification.ts",
+   "line": 274,
+   "column": 28,
+   "endLine": 274,
+   "endColumn": 102,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it",
+   "survivorClasses": [],
+   "run": {
+    "head": "2975dc71",
+    "result": "killed",
+    "tests": 1
+   }
+  }
+ ],
+ "counts": {
+  "killed": 3,
+  "ignored": 0
+ }
+}
