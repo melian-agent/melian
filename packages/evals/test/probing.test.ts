@@ -247,6 +247,9 @@ describe("Miss", () => {
 				/must be a JSON array of misses/,
 			);
 		expect(Miss.load(missesFile([{ ...fields, lines: [1, 1] }]))[0]!.lines).toEqual([1, 1]);
+		expect(() => Miss.load(missesFile([fields, { ...fields, lines: [4, 3] }]))).toThrow(
+			/must be a JSON array of misses/,
+		);
 	});
 
 	it("vouches for a head by the commit it resolves to, and keeps trust-boundary alone at its deep level", async () => {
@@ -445,7 +448,7 @@ describe("Miss", () => {
 			git(repo, "add", "f.ts");
 			commit("the head");
 			const changed = [...original];
-			changed.splice(2, 2, "fixed 3", "fixed 4");
+			changed.splice(2, 3, "fixed 3", "fixed 4", "fixed 5");
 			changed.splice(7, 0, "inserted after 7");
 			changed.splice(0, 0, "inserted first");
 			write(changed);
@@ -461,7 +464,7 @@ describe("Miss", () => {
 				fixCommit: git(repo, "rev-parse", "feature~1"),
 				ranges: [
 					[1, 1],
-					[3, 4],
+					[3, 5],
 					[7, 8],
 				],
 			});
