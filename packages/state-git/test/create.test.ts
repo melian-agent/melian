@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type * as Core from "@melian-agent/core";
 import { git, RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Deadline, systemClock } from "../src/deadline.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
@@ -37,7 +38,7 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 	it("fails as unreachable, quoting git, when git init fails", async () => {
 		const path = join(remote.host(), "records.git");
 		vi.mocked(git).mockResolvedValueOnce({ code: 128, stdout: "", stdoutBytes: Buffer.alloc(0), stderr: "boom\n" });
-		await expect(RecordRepository.open(path)).rejects.toMatchObject({
+		await expect(RecordRepository.open(path, Deadline.after(systemClock, 30_000))).rejects.toMatchObject({
 			code: "unreachable",
 			message: `${path} cannot be created: boom`,
 		});
@@ -47,7 +48,9 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 		const host = remote.host();
 		const path = join(host, "records.git");
 		vi.mocked(rename).mockRejectedValueOnce(failure("EXDEV"));
-		const error = await RecordRepository.open(path).catch((caught: unknown) => caught);
+		const error = await RecordRepository.open(path, Deadline.after(systemClock, 30_000)).catch(
+			(caught: unknown) => caught,
+		);
 		expect(error).toBeInstanceOf(RecordError);
 		expect(error).toMatchObject({ code: "unreachable", message: `${path} cannot be created` });
 		expect(((error as RecordError).cause as NodeJS.ErrnoException).code).toBe("EXDEV");
@@ -63,7 +66,7 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 				await actual(from, to);
 				throw failure(code);
 			});
-			expect((await RecordRepository.open(path)).path).toBe(path);
+			expect((await RecordRepository.open(path, Deadline.after(systemClock, 30_000))).path).toBe(path);
 			expect(await readdir(host)).toEqual(["records.git"]);
 		});
 });

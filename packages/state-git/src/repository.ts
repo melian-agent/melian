@@ -3,6 +3,7 @@ import { lstat, mkdir, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { type GitResult, git, RecordError } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
+import type { Deadline } from "./deadline.ts";
 
 // Settings that would run a program, set on every command so that no configuration of the user's or this repository's
 // turns them back on. The configuration check covers the keys a command line cannot clear, such as a credential helper
@@ -62,12 +63,12 @@ export class RecordRepository {
 	}
 
 	/** Opens the repository at `path`, creating it with Melian's configuration when it is not there. */
-	static async open(path: string): Promise<RecordRepository> {
+	static async open(path: string, deadline: Deadline): Promise<RecordRepository> {
 		const found = await lstat(path).catch((cause: unknown) => {
 			if ((cause as NodeJS.ErrnoException).code !== "ENOENT")
 				throw unreachable(`${path} cannot be read`, undefined, cause);
 		});
-		if (found === undefined) await RecordRepository.#create(path);
+		if (found === undefined) await RecordRepository.#create(path, deadline);
 		else if (!found.isDirectory()) throw unreachable(`${path} is not a directory`);
 		const repository = new RecordRepository(path);
 		await checkConfiguration(path);
@@ -75,11 +76,16 @@ export class RecordRepository {
 	}
 
 	// Built under a name of its own and renamed, so two processes opening at once never share a half-made repository.
-	static async #create(path: string): Promise<void> {
+	static async #create(path: string, deadline: Deadline): Promise<void> {
 		const building = `${path}.${randomUUID()}`;
 		try {
 			await mkdir(dirname(path), { recursive: true });
-			const made = await git(dirname(path), ["init", "--bare", "--quiet", building], { env: environment });
+			const left = deadline.left();
+			if (left <= 0) throw unreachable(`${path} cannot be created within its deadline`);
+			const made = await git(dirname(path), ["init", "--bare", "--quiet", building], {
+				env: environment,
+				deadlineMs: left,
+			});
 			if (made.code !== 0) throw unreachable(`${path} cannot be created`, made);
 			await writeConfiguration(building);
 			await rename(building, path).catch(async (cause: unknown) => {
@@ -94,17 +100,23 @@ export class RecordRepository {
 		}
 	}
 
-	async run(args: readonly string[], options: { input?: string; deadlineMs?: number; index?: string } = {}) {
+	async run(args: readonly string[], deadline: Deadline, options: { input?: string; index?: string } = {}) {
 		await checkConfiguration(this.path);
+		const left = deadline.left();
+		if (left <= 0) throw unreachable(`git ${args[0]} in ${this.path} ran past its deadline`);
 		return git(this.path, ["--git-dir", this.path, ...overrides, ...args], {
 			...(options.input === undefined ? {} : { input: options.input }),
-			...(options.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
+			deadlineMs: left,
 			env: { ...environment, ...(options.index === undefined ? {} : { GIT_INDEX_FILE: options.index }) },
 		});
 	}
 
-	async #succeed(args: readonly string[], options: { input?: string; index?: string } = {}): Promise<string> {
-		const result = await this.run(args, options);
+	async #succeed(
+		args: readonly string[],
+		deadline: Deadline,
+		options: { input?: string; index?: string } = {},
+	): Promise<string> {
+		const result = await this.run(args, deadline, options);
 		if (result.code !== 0) throw unreachable(`git ${args[0]} failed in ${this.path}`, result);
 		return result.stdout;
 	}
@@ -113,12 +125,9 @@ export class RecordRepository {
 	 * Fetches `branch`'s tip from `url`, `depth` commits deep, and returns its object ID, or `undefined` when the branch
 	 * does not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
 	 */
-	async fetch(url: string, branch: string, deadlineMs: number, depth = 1): Promise<string | undefined> {
+	async fetch(url: string, branch: string, deadline: Deadline, depth = 1): Promise<string | undefined> {
 		const ref = `refs/melian/fetch/${randomUUID()}`;
-		const started = Date.now();
 		for (;;) {
-			const left = deadlineMs - (Date.now() - started);
-			if (left <= 0) throw unreachable(`fetching ${branch} from ${url} ran past its deadline`);
 			const result = await this.run(
 				[
 					"fetch",
@@ -131,31 +140,33 @@ export class RecordRepository {
 					url,
 					`+refs/heads/${branch}:${ref}`,
 				],
-				{ deadlineMs: left },
+				deadline,
 			);
 			if (result.timedOut) throw unreachable(`fetching ${branch} from ${url} ran past its deadline`);
 			if (result.code === 0) break;
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
 			if (!contention.test(result.stderr)) throw unreachable(`fetching ${branch} from ${url} failed`, result);
 		}
-		const tip = (await this.#succeed(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])).trim();
-		await this.#deleteRef(ref);
+		const tip = (
+			await this.#succeed(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], deadline)
+		).trim();
+		await this.#deleteRef(ref, deadline);
 		return tip;
 	}
 
-	async #deleteRef(ref: string): Promise<void> {
+	async #deleteRef(ref: string, deadline: Deadline): Promise<void> {
 		for (let attempt = 0; ; attempt++) {
-			const result = await this.run(["update-ref", "-d", ref]);
+			const result = await this.run(["update-ref", "-d", ref], deadline);
 			if (result.code === 0) return;
 			if (!contention.test(result.stderr) || attempt === 20)
 				throw unreachable(`deleting ${ref} failed in ${this.path}`, result);
-			await new Promise((done) => setTimeout(done, 10));
+			await deadline.sleep(10);
 		}
 	}
 
 	/** Every file of `commit`'s tree, by its raw path. */
-	async entries(commit: string): Promise<TreeEntry[]> {
-		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit]);
+	async entries(commit: string, deadline: Deadline): Promise<TreeEntry[]> {
+		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit], deadline);
 		if (result.code !== 0) throw unreachable(`listing ${commit} failed in ${this.path}`, result);
 		const entries: TreeEntry[] = [];
 		const bytes = result.stdoutBytes;
@@ -171,10 +182,10 @@ export class RecordRepository {
 	}
 
 	/** The sizes of the blobs `oids` name. */
-	async sizes(oids: readonly string[]): Promise<Map<string, number>> {
+	async sizes(oids: readonly string[], deadline: Deadline): Promise<Map<string, number>> {
 		const sizes = new Map<string, number>();
 		if (oids.length === 0) return sizes;
-		const output = await this.#succeed(["cat-file", "--batch-check=%(objectname) %(objectsize)"], {
+		const output = await this.#succeed(["cat-file", "--batch-check=%(objectname) %(objectsize)"], deadline, {
 			input: `${oids.join("\n")}\n`,
 		});
 		for (const line of output.split("\n")) {
@@ -185,10 +196,10 @@ export class RecordRepository {
 	}
 
 	/** The bytes of the blobs `oids` name. */
-	async blobs(oids: readonly string[]): Promise<Map<string, Buffer>> {
+	async blobs(oids: readonly string[], deadline: Deadline): Promise<Map<string, Buffer>> {
 		const blobs = new Map<string, Buffer>();
 		if (oids.length === 0) return blobs;
-		const result = await this.run(["cat-file", "--batch"], { input: `${oids.join("\n")}\n` });
+		const result = await this.run(["cat-file", "--batch"], deadline, { input: `${oids.join("\n")}\n` });
 		if (result.code !== 0) throw unreachable(`reading blobs failed in ${this.path}`, result);
 		const bytes = result.stdoutBytes;
 		for (let at = 0; at < bytes.length; ) {
@@ -204,10 +215,12 @@ export class RecordRepository {
 	}
 
 	/** Builds one commit on `parent`, or a root commit, that applies `changes` to its tree, and returns its object ID. */
-	async commit(parent: string | undefined, changes: readonly TreeChange[]): Promise<string> {
+	async commit(parent: string | undefined, changes: readonly TreeChange[], deadline: Deadline): Promise<string> {
 		const index = join(this.path, `melian-index-${randomUUID()}`);
 		try {
-			await this.#succeed(parent === undefined ? ["read-tree", "--empty"] : ["read-tree", parent], { index });
+			await this.#succeed(parent === undefined ? ["read-tree", "--empty"] : ["read-tree", parent], deadline, {
+				index,
+			});
 			const lines: string[] = [];
 			for (const change of changes) {
 				if (change.bytes === null) {
@@ -215,17 +228,19 @@ export class RecordRepository {
 					continue;
 				}
 				const oid = (
-					await this.#succeed(["hash-object", "-w", "--no-filters", "--stdin"], { input: change.bytes })
+					await this.#succeed(["hash-object", "-w", "--no-filters", "--stdin"], deadline, {
+						input: change.bytes,
+					})
 				).trim();
 				lines.push(`100644 ${oid}\t${change.path}`);
 			}
-			await this.#succeed(["update-index", "-z", "--index-info"], {
+			await this.#succeed(["update-index", "-z", "--index-info"], deadline, {
 				input: lines.map((line) => `${line}\0`).join(""),
 				index,
 			});
-			const tree = (await this.#succeed(["write-tree"], { index })).trim();
+			const tree = (await this.#succeed(["write-tree"], deadline, { index })).trim();
 			const args = ["commit-tree", tree, ...(parent === undefined ? [] : ["-p", parent]), "-m", "melian: records"];
-			return (await this.#succeed(args)).trim();
+			return (await this.#succeed(args, deadline)).trim();
 		} finally {
 			await rm(index, { force: true });
 			await rm(`${index}.lock`, { force: true });
@@ -234,19 +249,19 @@ export class RecordRepository {
 
 	/**
 	 * Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push
-	 * a newer tip refused is `stale`; one stopped at `deadlineMs` is `timedOut`, and may have landed.
+	 * a newer tip refused is `stale`; one stopped at `deadline` is `timedOut`, and may have landed.
 	 */
 	async push(
 		url: string,
 		branch: string,
 		commit: string,
 		expected: string | undefined,
-		deadlineMs: number,
+		deadline: Deadline,
 	): Promise<PushOutcome> {
 		const ref = `refs/heads/${branch}`;
 		const result = await this.run(
 			["push", "--porcelain", "--quiet", `--force-with-lease=${ref}:${expected ?? ""}`, url, `${commit}:${ref}`],
-			{ deadlineMs },
+			deadline,
 		);
 		if (result.timedOut) return "timedOut";
 		if (result.code === 0) return "landed";
@@ -259,15 +274,15 @@ export class RecordRepository {
 	}
 
 	/** Whether `ancestor` is `descendant` or an ancestor of it, in the history this repository holds. */
-	async isAncestor(ancestor: string, descendant: string): Promise<boolean> {
-		const result = await this.run(["merge-base", "--is-ancestor", ancestor, descendant]);
+	async isAncestor(ancestor: string, descendant: string, deadline: Deadline): Promise<boolean> {
+		const result = await this.run(["merge-base", "--is-ancestor", ancestor, descendant], deadline);
 		if (result.code === 0) return true;
 		if (result.code === 1) return false;
 		throw unreachable(`comparing ${ancestor} with ${descendant} failed in ${this.path}`, result);
 	}
 
 	/** How many commits this repository holds in `commit`'s history, itself included. */
-	async depth(commit: string): Promise<number> {
-		return Number((await this.#succeed(["rev-list", "--count", commit])).trim());
+	async depth(commit: string, deadline: Deadline): Promise<number> {
+		return Number((await this.#succeed(["rev-list", "--count", commit], deadline)).trim());
 	}
 }

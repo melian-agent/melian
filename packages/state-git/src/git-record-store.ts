@@ -12,11 +12,9 @@ import {
 	type RecordStore,
 	SharedRecord,
 } from "@melian-agent/core";
+import { type Clock, Deadline, systemClock } from "./deadline.ts";
 import { RecordRepository, type TreeChange } from "./repository.ts";
 import { type Cell, cellBytes, cellPath, fileLimit, type Judged, StateTree } from "./state-tree.ts";
-
-/** The time a store reads and waits by; tests pass their own to reach a deadline without waiting for it. */
-export type Clock = { now(): number; sleep(ms: number): Promise<void> };
 
 /** Where a {@link GitRecordStore} keeps its repository and which branch of which remote it holds. */
 export type GitRecordStoreOptions = {
@@ -33,10 +31,9 @@ export type GitRecordStoreOptions = {
 	readonly clock?: Clock;
 };
 
-const systemClock: Clock = { now: () => Date.now(), sleep: (ms) => new Promise((done) => setTimeout(done, ms)) };
-
 // A lost race waits a random time below this bound, which doubles from the first to the last, past one push's time.
 const firstBackoffMs = 50;
+const defaultDeadlineMs = 120_000;
 const lastBackoffMs = 8_000;
 
 type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
@@ -65,13 +62,14 @@ export class GitRecordStore implements RecordStore {
 		this.#remote = options.remote;
 		this.#branch = options.branch ?? "melian/state";
 		this.#payloads = options.payloads ?? {};
-		this.#deadlineMs = options.deadlineMs ?? 120_000;
+		this.#deadlineMs = options.deadlineMs ?? defaultDeadlineMs;
 		this.#clock = options.clock ?? systemClock;
 	}
 
 	/** Opens the store, creating its repository in `options.directory` when it is not there. Reaches no remote. */
 	static async open(options: GitRecordStoreOptions): Promise<GitRecordStore> {
-		return new GitRecordStore(await RecordRepository.open(join(options.directory, "records.git")), options);
+		const deadline = Deadline.after(options.clock ?? systemClock, options.deadlineMs ?? defaultDeadlineMs);
+		return new GitRecordStore(await RecordRepository.open(join(options.directory, "records.git"), deadline), options);
 	}
 
 	#check(changeset: string): void {
@@ -79,11 +77,16 @@ export class GitRecordStore implements RecordStore {
 		checkChangeset(changeset);
 	}
 
-	async #tree(deadlineMs: number): Promise<{ tip: string | undefined; tree: StateTree }> {
-		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadlineMs);
+	#deadline(): Deadline {
+		return Deadline.after(this.#clock, this.#deadlineMs);
+	}
+
+	async #tree(deadline: Deadline): Promise<{ tip: string | undefined; tree: StateTree }> {
+		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
 		return {
 			tip,
-			tree: tip === undefined ? StateTree.empty() : await StateTree.read(this.#repository, tip, this.#judged),
+			tree:
+				tip === undefined ? StateTree.empty() : await StateTree.read(this.#repository, tip, this.#judged, deadline),
 		};
 	}
 
@@ -93,40 +96,39 @@ export class GitRecordStore implements RecordStore {
 	 */
 	async strays(): Promise<string[]> {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
-		return (await this.#tree(this.#deadlineMs)).tree.strays;
+		return (await this.#tree(this.#deadline())).tree.strays;
 	}
 
 	// Reads the tip, lets `decide` say what to change, and pushes one commit, until it lands or the deadline passes.
 	async #write<T>(decide: (tree: StateTree) => Write<T>): Promise<T> {
-		const start = this.#clock.now();
-		const left = () => start + this.#deadlineMs - this.#clock.now();
+		const deadline = this.#deadline();
 		for (let bound = firstBackoffMs; ; bound = Math.min(bound * 2, lastBackoffMs)) {
-			if (left() <= 0)
+			if (deadline.left() <= 0)
 				throw new RecordError("unreachable", `no write to ${this.#branch} landed within its deadline`);
-			const { tip, tree } = await this.#tree(left());
+			const { tip, tree } = await this.#tree(deadline);
 			const { changes, value } = decide(tree);
 			if (changes.length === 0) return value;
-			const commit = await this.#repository.commit(tip, changes);
-			// A push leaves a quarter of the time for the landed check, whose first fetch is the tip-alone read this write began with.
-			const pushMs = Math.max(Math.floor((left() * 3) / 4), 1);
-			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, pushMs);
+			const commit = await this.#repository.commit(tip, changes, deadline);
+			// A push ends by three quarters of what is left, inside the call's deadline, so the landed check keeps the rest.
+			const push = deadline.within((deadline.left() * 3) / 4);
+			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, push);
 			if (outcome === "landed") return value;
-			if (outcome === "timedOut" && (await this.#landed(commit, tip, left))) return value;
-			await this.#clock.sleep(Math.random() * bound);
+			if (outcome === "timedOut" && (await this.#landed(commit, tip, deadline))) return value;
+			await deadline.sleep(Math.random() * bound);
 		}
 	}
 
 	// Whether a push stopped at its deadline landed: its commit is the tip or an ancestor of it. The tip alone may not
 	// reach back to it, so the fetch deepens until the history holds the commit, or holds the tip it was built on
-	// without it, or ends, each fetch within what is `left` of the call's deadline.
-	async #landed(commit: string, parent: string | undefined, left: () => number): Promise<boolean> {
+	// without it, or ends, within the call's deadline.
+	async #landed(commit: string, parent: string | undefined, deadline: Deadline): Promise<boolean> {
 		try {
 			for (let depth = 1; ; depth *= 2) {
-				const tip = await this.#repository.fetch(this.#remote, this.#branch, left(), depth);
+				const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline, depth);
 				if (tip === undefined) return false;
-				if (await this.#repository.isAncestor(commit, tip)) return true;
-				if (parent !== undefined && (await this.#repository.isAncestor(parent, tip))) return false;
-				if ((await this.#repository.depth(tip)) < depth) return false;
+				if (await this.#repository.isAncestor(commit, tip, deadline)) return true;
+				if (parent !== undefined && (await this.#repository.isAncestor(parent, tip, deadline))) return false;
+				if ((await this.#repository.depth(tip, deadline)) < depth) return false;
 			}
 		} catch (cause) {
 			throw new RecordError(
@@ -158,7 +160,7 @@ export class GitRecordStore implements RecordStore {
 
 	async list(changeset: string): Promise<RecordEnvelope[]> {
 		this.#check(changeset);
-		const { tree } = await this.#tree(this.#deadlineMs);
+		const { tree } = await this.#tree(this.#deadline());
 		tree.refuse(changeset);
 		if (tree.disposed(changeset)) return [];
 		return tree.records(changeset).map((record) => record.toJSON());
@@ -166,7 +168,7 @@ export class GitRecordStore implements RecordStore {
 
 	async readCell(changeset: string): Promise<RecordCell> {
 		this.#check(changeset);
-		const { tree } = await this.#tree(this.#deadlineMs);
+		const { tree } = await this.#tree(this.#deadline());
 		tree.refuse(changeset);
 		const cell = tree.cell(changeset);
 		return cell === undefined ? {} : { value: cell.value, version: cell.version };

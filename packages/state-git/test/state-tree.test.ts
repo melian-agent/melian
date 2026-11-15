@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Deadline, systemClock } from "../src/deadline.ts";
 import type { RecordRepository, TreeEntry } from "../src/repository.ts";
 import { cellPath, type Judged, StateTree } from "../src/state-tree.ts";
 
@@ -30,8 +31,13 @@ describe("the judgement a handle keeps", () => {
 	for (const field of Object.keys(entry) as (keyof TreeEntry)[])
 		it(`is judged again when only its ${field} changes`, async () => {
 			const judged = new Map<string, Judged>();
-			await StateTree.read(listing([entry]), "tip", judged);
-			await StateTree.read(listing([{ ...entry, [field]: changed[field] }]), "tip", judged);
+			await StateTree.read(listing([entry]), "tip", judged, Deadline.after(systemClock, 30_000));
+			await StateTree.read(
+				listing([{ ...entry, [field]: changed[field] }]),
+				"tip",
+				judged,
+				Deadline.after(systemClock, 30_000),
+			);
 			expect(judged.size).toBe(2);
 		});
 
@@ -41,8 +47,13 @@ describe("the judgement a handle keeps", () => {
 
 	it("is kept when nothing changes", async () => {
 		const judged = new Map<string, Judged>();
-		await StateTree.read(listing([entry]), "tip", judged);
-		await StateTree.read(listing([{ ...entry, path: Buffer.from(entry.path) }]), "tip", judged);
+		await StateTree.read(listing([entry]), "tip", judged, Deadline.after(systemClock, 30_000));
+		await StateTree.read(
+			listing([{ ...entry, path: Buffer.from(entry.path) }]),
+			"tip",
+			judged,
+			Deadline.after(systemClock, 30_000),
+		);
 		expect(judged.size).toBe(1);
 	});
 });

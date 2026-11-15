@@ -1,5 +1,6 @@
 import { RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Deadline } from "../src/deadline.ts";
 import type { Clock } from "../src/index.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { changeset, check, keys, Remote } from "./fixtures/remote.ts";
@@ -27,6 +28,20 @@ function steppedClock(after: (slept: number) => number): Clock & { slept: number
 			now = after(slept.length);
 		},
 	};
+}
+
+// The time left on the deadline at `index` of each call to `method`, read as the call starts.
+function leftAtCall(method: "fetch" | "push", index: 2 | 4): number[] {
+	const real = RecordRepository.prototype[method] as (...args: unknown[]) => Promise<unknown>;
+	const left: number[] = [];
+	vi.spyOn(RecordRepository.prototype, method).mockImplementation(async function (
+		this: RecordRepository,
+		...args: unknown[]
+	) {
+		left.push((args[index] as Deadline).left());
+		return real.apply(this, args);
+	} as never);
+	return left;
 }
 
 // Makes the next `count` pushes lose a race for real: another writer's commit lands just before each.
@@ -97,36 +112,34 @@ describe("concurrent writers", { timeout: 120_000 }, () => {
 
 describe("the retry deadline", { timeout: 120_000 }, () => {
 	// After one lost race the clock reads `after`; the store reads the tip again only while time is left.
-	async function retriesAt(after: number, deadlineMs?: number): Promise<number> {
+	async function retriesAt(after: number, deadlineMs?: number): Promise<number[]> {
 		const store = await remote.open({ clock: steppedClock(() => after), ...(deadlineMs ? { deadlineMs } : {}) });
 		loseRaces(1);
-		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+		const fetches = leftAtCall("fetch", 2);
 		await expect(store.add([check("late")])).rejects.toMatchObject({ code: "unreachable" });
-		return fetch.mock.calls.length;
+		return fetches;
 	}
 
 	it("reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in", async () => {
-		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		expect(await retriesAt(119_999)).toBe(2);
-		expect(fetch.mock.calls[1]![2]).toBe(1);
+		expect(await retriesAt(119_999)).toEqual([120_000, 1]);
 	});
 
 	it("fails without reading again once the default two minutes have passed", async () => {
-		expect(await retriesAt(120_000)).toBe(1);
+		expect(await retriesAt(120_000)).toEqual([120_000]);
 	});
 
 	it("takes a deadline it is given, at the bound and one past it", async () => {
-		expect(await retriesAt(4_999, 5_000)).toBe(2);
+		expect(await retriesAt(4_999, 5_000)).toEqual([5_000, 1]);
 		vi.restoreAllMocks();
-		expect(await retriesAt(5_000, 5_000)).toBe(1);
+		expect(await retriesAt(5_000, 5_000)).toEqual([5_000]);
 	});
 
 	it("gives each read the time left before the deadline, and a push three quarters of it", async () => {
 		let now = 1_000;
 		const clock: Clock = { now: () => now, sleep: async () => {} };
 		const store = await remote.open({ clock, deadlineMs: 10_000 });
-		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		const push = vi.spyOn(RecordRepository.prototype, "push");
+		const fetches = leftAtCall("fetch", 2);
+		const pushes = leftAtCall("push", 4);
 		const commit = RecordRepository.prototype.commit;
 		vi.spyOn(RecordRepository.prototype, "commit").mockImplementation(async function (
 			this: RecordRepository,
@@ -136,15 +149,12 @@ describe("the retry deadline", { timeout: 120_000 }, () => {
 			return commit.apply(this, args);
 		});
 		await store.add([check("timed")]);
-		expect(fetch.mock.calls[0]![2]).toBe(10_000);
-		expect(push.mock.calls[0]![4]).toBe(5_250);
+		expect(fetches).toEqual([10_000]);
+		expect(pushes).toEqual([5_250]);
 	});
 
-	it("ends a timed-out push's landed check at the call's deadline, and fails it a tick past", async () => {
-		for (const [late, lands] of [
-			[0, true],
-			[1, false],
-		] as const) {
+	it("gives a timed-out push's landed check what is left of the call's deadline, and fails once that runs out", async () => {
+		for (const stalls of [false, true]) {
 			vi.restoreAllMocks();
 			let now = 0;
 			const clock: Clock = { now: () => now, sleep: () => Promise.reject(new Error("no second push")) };
@@ -157,30 +167,30 @@ describe("the retry deadline", { timeout: 120_000 }, () => {
 				...args
 			) {
 				expect(await push.apply(this, args)).toBe("landed");
-				now += args[4];
+				now += args[4].left();
 				pushed = true;
 				return "timedOut";
 			});
-			// After the push, a fetch needs the time left to the deadline, and `late` more; it stops at the time it is given.
+			// After the push, a fetch takes a second, or stalls until the time it is given runs out.
 			const given: number[] = [];
 			vi.spyOn(RecordRepository.prototype, "fetch").mockImplementation(async function (
 				this: RecordRepository,
 				...args
 			) {
 				if (!pushed) return fetch.apply(this, args);
-				given.push(args[2]);
-				const needs = 10_000 - now + late;
-				if (needs > args[2]) {
-					now += args[2];
+				given.push(args[2].left());
+				if (stalls) {
+					now += args[2].left();
 					throw new RecordError("unreachable", "the remote stalled");
 				}
-				now += needs;
-				return fetch.apply(this, args);
+				const tip = await fetch.apply(this, args);
+				now += 1_000;
+				return tip;
 			});
-			const write = store.add([check(`bounded-${late}`)]);
-			if (lands) await write;
-			else await expect(write).rejects.toThrow("may have landed");
-			expect(now).toBe(10_000);
+			const write = store.add([check(`bounded-${stalls}`)]);
+			if (stalls) await expect(write).rejects.toThrow("may have landed");
+			else await write;
+			expect(now).toBe(stalls ? 10_000 : 8_500);
 			expect(given).toEqual([2_500]);
 		}
 	});
