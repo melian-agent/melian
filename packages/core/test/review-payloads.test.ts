@@ -216,10 +216,39 @@ function without(value: RecordJson, path: readonly string[]): RecordJson {
 	return copy;
 }
 
+function at(value: RecordJson, path: readonly string[], replacement: RecordJson): RecordJson {
+	const copy = structuredClone(value) as Record<string, RecordJson>;
+	let parent = copy as RecordJson;
+	for (const key of path.slice(0, -1)) parent = (parent as Record<string, RecordJson>)[key] as RecordJson;
+	(parent as Record<string, RecordJson>)[path.at(-1) as string] = replacement;
+	return copy;
+}
+
+// One value past each bound a field's schema sets, in the first sample of its kind.
+const bounds: readonly [string, string, RecordJson][] = [
+	["check", "result/name", ""],
+	["check", "result/findings", -1],
+	["lens", "level", "loud"],
+	["lens", "outcome/escalation/carried/0", "0123456789abcdeg"],
+	["dismissal", "rounds/0", "c".repeat(63)],
+	["dismissal", "sighting/revision", `${"a".repeat(40)}.${head}`],
+	["dismissal", "head", "x"],
+];
+
+// Each other value an enumerated field takes, so every one the schema lists is accepted.
+const variants: readonly [string, string, RecordJson][] = [
+	["lens", "outcome/budgetEnded/budget", "tools"],
+	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tokens" }],
+	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tools" }],
+	["verification", "outcomes/2/outcome", { status: "exhausted", reason: "every model failed" }],
+	["telemetry", "stages/0/ended", "tokens"],
+	["telemetry", "stages/0/ended", null],
+];
+
 const check = (kind: string, payload: RecordJson) => reviewPayloads[kind]?.(payload);
 
 describe("review payload checks", () => {
-	it.each(samples)("accepts a whole %s payload", (kind, payload) => {
+	it.each(samples)("accepts a whole %s payload, sample %#", (kind, payload) => {
 		expect(check(kind, payload)).toBeUndefined();
 	});
 
@@ -233,16 +262,39 @@ describe("review payload checks", () => {
 		samples.flatMap(([kind, payload]) =>
 			fields(payload).map((path) => [kind, path.join("/"), payload, path] as const),
 		),
-	)("refuses a %s payload without %s", (kind, _name, payload, path) => {
+	)("refuses a %s payload without %s, case %#", (kind, _name, payload, path) => {
 		expect(check(kind, without(payload, path))).toMatch(/schema/);
 	});
 
-	it.each(samples)("refuses a %s payload with a field more", (kind, payload) => {
+	it.each(samples)("refuses a %s payload with a field more, sample %#", (kind, payload) => {
 		expect(check(kind, { ...(payload as Record<string, RecordJson>), extra: 1 })).toMatch(/schema/);
 	});
 
-	it.each(samples)("refuses a %s payload of another version", (kind, payload) => {
+	it.each(samples)("refuses a %s payload of another version, sample %#", (kind, payload) => {
 		expect(check(kind, { ...(payload as Record<string, RecordJson>), v: 2 })).toMatch(/schema/);
+	});
+
+	it.each(bounds)("refuses a %s payload whose %s is %j", (kind, path, value) => {
+		const [, payload] = samples.find(([each]) => each === kind) as [string, RecordJson];
+		expect(check(kind, at(payload, path.split("/"), value))).toMatch(/schema/);
+	});
+
+	it.each(variants)("accepts a %s payload whose %s is %j", (kind, path, value) => {
+		const [, payload] = samples.find(([each]) => each === kind) as [string, RecordJson];
+		expect(check(kind, at(payload, path.split("/"), value))).toBeUndefined();
+	});
+
+	it.each([null, "noProductionLines", "headNotAllowed", "timeout", "unmutated"])(
+		"accepts a skipped check whose cause is %j",
+		(cause) => {
+			const result = { name: "static.mutation", status: "skipped", reason: "a fork", cause };
+			expect(check("check", { v: 1, result, sightings: [] })).toBeUndefined();
+		},
+	);
+
+	it("refuses a skipped check whose cause is none of those", () => {
+		const result = { name: "static.mutation", status: "skipped", reason: "a fork", cause: "bored" };
+		expect(check("check", { v: 1, result, sightings: [] })).toMatch(/schema/);
 	});
 
 	it("refuses a float, since a record holds integers", () => {
@@ -263,6 +315,33 @@ describe("review payload checks", () => {
 		);
 	});
 
+	it("names a sighting with no version against a check with one", () => {
+		const payload = samples[0]?.[1] as Record<string, RecordJson>;
+		expect(check("check", { ...payload, sightings: [finding("static.biome", undefined)] })).toBe(
+			"holds a sighting at /sightings/0 from static.biome@, not static.biome@2.0.0",
+		);
+	});
+
+	it("names where a payload breaks its schema", () => {
+		const payload = samples[0]?.[1] as { result: Record<string, RecordJson> };
+		expect(check("check", { ...payload, result: { ...payload.result, findings: "one" } })).toMatch(
+			/^does not match its schema at \/result\/findings: /,
+		);
+		expect(check("walkthrough", {})).toMatch(/^does not match its schema at \(top level\): /);
+	});
+
+	it("lets a fault inside the finding authority through, rather than call it a refusal", () => {
+		const payload = samples[0]?.[1] as Record<string, RecordJson>;
+		const faulty = {
+			get ruleId(): string {
+				throw new Error("the authority broke");
+			},
+		};
+		expect(() => check("check", { ...payload, sightings: [faulty as unknown as RecordJson] })).toThrow(
+			"the authority broke",
+		);
+	});
+
 	it("matches a check with no version to a sighting with none", () => {
 		const payload = samples[0]?.[1] as { result: Record<string, RecordJson> };
 		const unversioned = {
@@ -276,14 +355,15 @@ describe("review payload checks", () => {
 		);
 	});
 
-	it.each(["skipped", "failed"])("refuses a check that %s and still holds sightings", (status) => {
+	it.each([
+		["skipped", "holds sightings for a check that was skipped"],
+		["failed", "holds sightings for a check that failed"],
+	])("refuses a check that %s and still holds sightings", (status, refusal) => {
 		const [, payload] = samples.find(
 			([kind, each]) => kind === "check" && (each as { result: { status: string } }).result.status === status,
 		) as [string, Record<string, RecordJson>];
 		const name = (payload.result as { name: string }).name;
-		expect(check("check", { ...payload, sightings: [finding(name, undefined)] })).toMatch(
-			/^holds sightings for a check/,
-		);
+		expect(check("check", { ...payload, sightings: [finding(name, undefined)] })).toBe(refusal);
 	});
 
 	it("accepts a ran or provisional check holding no sightings", () => {
