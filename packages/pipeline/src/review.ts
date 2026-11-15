@@ -529,8 +529,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// Version 5 lets the input's callers name a caveat; an older input names none. Version 6 lets a run probe, with the
 	// prober's conversation in the checkpoint under `<key>/prober` and what it did in the outcome's `probing`; an older
 	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
-	// `reused`, with each copied outcome naming the task that asked it; an older task's runs have no request key, so no
-	// later task copies them, and it copies none.
+	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
+	// runs have no request key, so no later task copies them, and it copies none.
 	version: 7,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
@@ -1665,18 +1665,21 @@ async function runLenses(
 		await recordRevision(tx, root.id, revision);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused =
-			previous?.state.status === "terminal" && previous.state.outcome.status === "completed"
-				? lensCopies(
-						{
-							task: previous.id,
-							lenses: (previous.input as unknown as StoredLensTaskInput).lenses,
-							result: previous.state.outcome.result as LensResult,
-						},
-						input.lenses,
-						refused,
-					)
-				: {};
+		let reused: Record<string, LensCopy<LensResult[string]>> = {};
+		if (previous?.state.status === "terminal" && previous.state.outcome.status === "completed") {
+			const earlier = previous.input as unknown as StoredLensTaskInput;
+			reused = lensCopies(
+				{
+					task: previous.id,
+					nonce: earlier.revision.nonce,
+					lenses: earlier.lenses,
+					result: previous.state.outcome.result as LensResult,
+					reused: earlier.reused,
+				},
+				input.lenses,
+				refused,
+			);
+		}
 		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
 		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
 		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
@@ -2955,7 +2958,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					),
 					lenses: ran.lenses.flatMap((lens) => {
 						const next = lens.escalation?.next;
-						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
+						const nonce = ran.reused?.[lens.key]?.nonce;
+						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])].map((run) =>
+							nonce === undefined ? run : { ...run, nonce },
+						);
 					}),
 					files: revision.files,
 					nonce: ran.revision.nonce,

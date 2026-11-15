@@ -1,17 +1,24 @@
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
 	Changeset,
 	defaultConfig,
+	GraphSnapshot,
 	Lens,
 	type LensToolName,
 	type MelianConfig,
+	ReviewCoverage,
 	Revision,
 	Standards,
 } from "@melian-agent/core";
 import {
+	CallerContext,
+	CoverageCache,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	GraphCache,
 	type Harness,
 	type Message,
 	openHarness,
@@ -206,5 +213,68 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		await review(lenses, await Standards.load(repo, { kind: "worktree" }, paths));
 		const again = await review(lenses, []);
 		expect(again.asked).toEqual(["contracts", "correctness"]);
+	});
+
+	it("keeps a copied lens's reads in the coverage the repeat review records", async () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-reuse-coverage-"));
+		try {
+			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+			await (await GraphCache.open(root)).store(
+				GraphSnapshot.create(parts, {
+					"facts.jsonl": "",
+					"insights.json": "[]",
+					"receipt.json": JSON.stringify({
+						format_version: 1,
+						enola_version: parts.version,
+						snapshot_id: `sha256:${"d".repeat(64)}`,
+					}),
+				}),
+			);
+			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+			const reads = async (reviewed: readonly Lens[]) => {
+				const reader = (messages: readonly Message[]) =>
+					messages.some((message) => message.role === "toolResult")
+						? fauxAssistantMessage("No findings.")
+						: fauxAssistantMessage(fauxToolCall("read_file", { path: "src/a.ts" }), { stopReason: "toolUse" });
+				scriptConversations(fake, [
+					{ match: correctness, replies: [reader, reader] },
+					{ match: contracts, replies: [reader, reader] },
+				]);
+				const result = await reviewChangeset({
+					harness,
+					changeset: await Changeset.resolve(repo, "main...feature"),
+					config: enabled,
+					lenses: reviewed,
+					standards: [],
+					models: fake.review,
+					callers: CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+					checks: [
+						{ name: "guardrails", status: "ran" },
+						{ name: "static.biome", status: "ran" },
+						{ name: "static.tsc", status: "ran" },
+						{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+					],
+				});
+				const id = result.verdict.ran?.find(({ name }) => name === "lens.contracts")?.coverage?.review;
+				const stored = await (await CoverageCache.open(root)).read(parts, "review", { id });
+				if (!(stored instanceof ReviewCoverage)) throw new Error("Review coverage missing");
+				return Object.fromEntries(
+					stored
+						.toJSON()
+						.lenses.map(({ name, files }) => [
+							name,
+							files.map(({ path, revision, status }) => `${revision} ${path} ${status}`),
+						]),
+				);
+			};
+
+			const each = ["head src/a.ts read", "base src/a.ts not read"];
+			expect(await reads(lenses)).toEqual({ contracts: each, correctness: each });
+			expect(
+				await reads(changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` }))),
+			).toEqual({ contracts: each, correctness: each });
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

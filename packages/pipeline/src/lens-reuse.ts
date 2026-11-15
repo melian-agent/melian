@@ -16,8 +16,15 @@ export type ReusableOutcome = {
 	readonly reused?: number;
 };
 
-/** A lens's runs copied from an earlier task: that task, and the outcome of each run it copies, by key. */
-export type LensCopy<Outcome> = { readonly task: number; readonly outcomes: Record<string, Outcome> };
+/**
+ * A lens's runs copied from an earlier task: that task, the nonce its conversations were rendered under, and the outcome
+ * of each run it copies, by key.
+ */
+export type LensCopy<Outcome> = {
+	readonly task: number;
+	readonly nonce: string;
+	readonly outcomes: Record<string, Outcome>;
+};
 
 // A run that ended as asked: answered, on a model the plan accepts, within its budgets, and not a probe. A probing run is
 // never copied, so every finding it reports rests on a probe of its own review.
@@ -40,13 +47,16 @@ function finished(
  * The lenses of `lenses` a new lens task copies from `previous`, a completed task of the same revision, keyed by each
  * lens's first run. A lens is copied only when an earlier run has its request's key and it, and the run it escalated
  * to, finished as {@link finished} says. A quick run's key holds its next run's, so a change to either reruns both.
- * Each copied outcome names the task that asked it, which a copy of a copy keeps.
+ * Each copied outcome names the task that asked it, and the copy the nonce that task rendered it under, which a copy of
+ * a copy keeps.
  */
 export function lensCopies<Outcome extends ReusableOutcome>(
 	previous: {
 		readonly task: number;
+		readonly nonce: string;
 		readonly lenses: readonly ReusableRun[];
 		readonly result: Record<string, Outcome>;
+		readonly reused?: Readonly<Record<string, { readonly nonce: string }>>;
 	},
 	lenses: readonly ReusableRun[],
 	refused: (key: string, model: string) => boolean,
@@ -67,6 +77,7 @@ export function lensCopies<Outcome extends ReusableOutcome>(
 		}
 		copies[first.key] = {
 			task: previous.task,
+			nonce: previous.reused?.[earlier.key]?.nonce ?? previous.nonce,
 			outcomes: Object.fromEntries(
 				runs.map(([run, each]) => [run.key, { ...each, reused: each.reused ?? previous.task }]),
 			),
