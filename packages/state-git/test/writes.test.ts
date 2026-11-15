@@ -1,3 +1,4 @@
+import { RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Clock } from "../src/index.ts";
 import { RecordRepository } from "../src/repository.ts";
@@ -120,7 +121,7 @@ describe("the retry deadline", { timeout: 120_000 }, () => {
 		expect(await retriesAt(5_000, 5_000)).toBe(1);
 	});
 
-	it("gives each transfer the time left before the deadline", async () => {
+	it("gives each read the time left before the deadline, and a push three quarters of it", async () => {
 		let now = 1_000;
 		const clock: Clock = { now: () => now, sleep: async () => {} };
 		const store = await remote.open({ clock, deadlineMs: 10_000 });
@@ -136,7 +137,52 @@ describe("the retry deadline", { timeout: 120_000 }, () => {
 		});
 		await store.add([check("timed")]);
 		expect(fetch.mock.calls[0]![2]).toBe(10_000);
-		expect(push.mock.calls[0]![4]).toBe(7_000);
+		expect(push.mock.calls[0]![4]).toBe(5_250);
+	});
+
+	it("ends a timed-out push's landed check at the call's deadline, and fails it a tick past", async () => {
+		for (const [late, lands] of [
+			[0, true],
+			[1, false],
+		] as const) {
+			vi.restoreAllMocks();
+			let now = 0;
+			const clock: Clock = { now: () => now, sleep: () => Promise.reject(new Error("no second push")) };
+			const store = await remote.open({ clock, deadlineMs: 10_000 });
+			const fetch = RecordRepository.prototype.fetch;
+			const push = RecordRepository.prototype.push;
+			let pushed = false;
+			vi.spyOn(RecordRepository.prototype, "push").mockImplementationOnce(async function (
+				this: RecordRepository,
+				...args
+			) {
+				expect(await push.apply(this, args)).toBe("landed");
+				now += args[4];
+				pushed = true;
+				return "timedOut";
+			});
+			// After the push, a fetch needs the time left to the deadline, and `late` more; it stops at the time it is given.
+			const given: number[] = [];
+			vi.spyOn(RecordRepository.prototype, "fetch").mockImplementation(async function (
+				this: RecordRepository,
+				...args
+			) {
+				if (!pushed) return fetch.apply(this, args);
+				given.push(args[2]);
+				const needs = 10_000 - now + late;
+				if (needs > args[2]) {
+					now += args[2];
+					throw new RecordError("unreachable", "the remote stalled");
+				}
+				now += needs;
+				return fetch.apply(this, args);
+			});
+			const write = store.add([check(`bounded-${late}`)]);
+			if (lands) await write;
+			else await expect(write).rejects.toThrow("may have landed");
+			expect(now).toBe(10_000);
+			expect(given).toEqual([2_500]);
+		}
 	});
 
 	it("waits a random time below a bound that doubles from 50 ms and stops growing at 8 s", async () => {

@@ -107,20 +107,22 @@ export class GitRecordStore implements RecordStore {
 			const { changes, value } = decide(tree);
 			if (changes.length === 0) return value;
 			const commit = await this.#repository.commit(tip, changes);
-			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, Math.max(left(), 1));
+			// A push leaves a quarter of the time for the landed check, whose first fetch is the tip-alone read this write began with.
+			const pushMs = Math.max(Math.floor((left() * 3) / 4), 1);
+			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, pushMs);
 			if (outcome === "landed") return value;
-			if (outcome === "timedOut" && (await this.#landed(commit, tip))) return value;
+			if (outcome === "timedOut" && (await this.#landed(commit, tip, left))) return value;
 			await this.#clock.sleep(Math.random() * bound);
 		}
 	}
 
 	// Whether a push stopped at its deadline landed: its commit is the tip or an ancestor of it. The tip alone may not
 	// reach back to it, so the fetch deepens until the history holds the commit, or holds the tip it was built on
-	// without it, or ends.
-	async #landed(commit: string, parent: string | undefined): Promise<boolean> {
+	// without it, or ends, each fetch within what is `left` of the call's deadline.
+	async #landed(commit: string, parent: string | undefined, left: () => number): Promise<boolean> {
 		try {
 			for (let depth = 1; ; depth *= 2) {
-				const tip = await this.#repository.fetch(this.#remote, this.#branch, this.#deadlineMs, depth);
+				const tip = await this.#repository.fetch(this.#remote, this.#branch, left(), depth);
 				if (tip === undefined) return false;
 				if (await this.#repository.isAncestor(commit, tip)) return true;
 				if (parent !== undefined && (await this.#repository.isAncestor(parent, tip))) return false;

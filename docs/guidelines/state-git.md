@@ -9,6 +9,7 @@
 - `StateTree` judges every entry of the fetched tree before a call answers or builds a commit. An entry is known when it is a mode `100644` file at `changesets/<changeset>/cell.json` holding a cell Melian writes, or at the path a record's own bytes give. A stray in one changeset's folder refuses that changeset; a stray anywhere else refuses every changeset. A handle remembers what it judged by object ID and path, so it reads each blob once.
 - A write builds one commit with `read-tree`, `hash-object`, `update-index` and `commit-tree` on a temporary index, and pushes it with `--force-with-lease` on the tip it read. A lost race waits a random time below a bound that doubles from 50 ms to 8 s, and reads again, until the deadline.
 - A push stopped at its deadline counts as landed only when its commit is the tip or an ancestor of it. The check deepens its fetch until the history holds the commit, holds the tip the commit was built on without it, or ends.
+- `deadlineMs` bounds the whole call. Each read gets the time left; a push gets three quarters of it, and the landed check gets what remains, so a push that stalls still leaves time to learn whether it landed.
 
 ## Rules
 
