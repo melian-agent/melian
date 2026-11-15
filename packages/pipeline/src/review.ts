@@ -2197,50 +2197,49 @@ async function triage(
 		else await unlockModels(providers);
 	}
 	let replaced: number | undefined;
-	const commit = () =>
-		root.commit(async (tx) => {
-			const document = await tx.doc(DecisionDocument, root.id);
-			const known = document.decisions[revision]?.[set];
-			// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
-			const retry = rerun && known?.decision === undefined;
-			const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
-			if (attachesTo !== undefined && !(attach && known.task === attachesTo)) return undefined;
-			const index = await tx.doc(ReviewIndex, root.id);
-			const previous = index.reviews[revision];
-			const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
-			const task = attach
-				? (known.task as TaskId<DecisionResult>)
-				: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
-			if (!attach) {
-				replaced = known?.task;
-				document.decisions = {
-					...document.decisions,
-					[revision]: {
-						...document.decisions[revision],
-						[set]: { key, task, ...(inputCut ? { inputCut: true } : {}) },
-					},
-				};
-			}
-			if (!attach || (known.decision === undefined && known.failure === undefined)) {
-				// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
-				if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
-				else if (previous !== undefined)
-					index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
-				// Its waves go with the verification, so the sweep aborts any still live.
-				delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision];
-				const verdicts = await tx.doc(VerdictDocument, root.id);
-				await new RoundWriter(tx, root.id).preserve(revision);
-				delete verdicts.verdicts[revision];
-				if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
-				if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
-			}
-			return task;
-		}, context);
-	let taskId = await commit();
+	const decide = async (tx: Tx) => {
+		const document = await tx.doc(DecisionDocument, root.id);
+		const known = document.decisions[revision]?.[set];
+		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
+		const retry = rerun && known?.decision === undefined;
+		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
+		if (attachesTo !== undefined && !(attach && known.task === attachesTo)) return undefined;
+		const index = await tx.doc(ReviewIndex, root.id);
+		const previous = index.reviews[revision];
+		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
+		const task = attach
+			? (known.task as TaskId<DecisionResult>)
+			: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
+		if (!attach) {
+			replaced = known?.task;
+			document.decisions = {
+				...document.decisions,
+				[revision]: {
+					...document.decisions[revision],
+					[set]: { key, task, ...(inputCut ? { inputCut: true } : {}) },
+				},
+			};
+		}
+		if (!attach || (known.decision === undefined && known.failure === undefined)) {
+			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
+			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
+			else if (previous !== undefined)
+				index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
+			// Its waves go with the verification, so the sweep aborts any still live.
+			delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision];
+			const verdicts = await tx.doc(VerdictDocument, root.id);
+			await new RoundWriter(tx, root.id).preserve(revision);
+			delete verdicts.verdicts[revision];
+			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
+			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
+		}
+		return task;
+	};
+	let taskId = await root.commit(decide, context);
 	if (taskId === undefined) {
 		await unlockModels!(providers);
 		attachesTo = undefined;
-		taskId = (await commit())!;
+		taskId = (await root.commit(decide, context))!;
 	}
 	// A live replaced task would still ask its decider, and its answer lands nowhere.
 	if (replaced !== undefined && replaced !== taskId) {

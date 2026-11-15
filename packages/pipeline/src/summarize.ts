@@ -470,68 +470,67 @@ export async function summarizeReview(options: {
 			if (attaches || rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
 			else locked = true;
 		}
-		const commit = () =>
-			conversation.commit(async (tx): Promise<TaskId<string> | typeof unlockFirst | undefined> => {
-				const index = await tx.doc(SummaryIndex, conversation.id);
-				const known = index.tasks[revision];
-				const document = await tx.doc(VerdictDocument, conversation.id);
-				// Decided again here: another call can store this route's walkthrough after the reads above.
-				if (
-					!rerun &&
-					(document.walkthroughs?.[revision] !== undefined ||
-						document.routedWalkthroughs?.[revision]?.[wanted!] !== undefined)
-				)
-					return undefined;
-				const previous = known === undefined ? undefined : await tx.task(known as TaskId);
-				const onRoute =
-					previous !== undefined &&
-					!previous.abortRequested &&
-					asks(previous.input as unknown as SummaryInput, request.key, wanted);
-				const attach = onRoute && (await attachable(tx, known, [...undecided, "failed", "completed"]));
-				const counts =
-					previous?.state.status === "terminal" &&
-					previous.state.outcome.status !== "aborted" &&
-					index.counted[revision] !== known;
-				const spent = (document.walkthroughAttempts?.[revision] ?? 0) + (counts ? 1 : 0);
-				// The read found nothing to attach to or create and unlocked nothing, so this writes nothing else.
-				if (locked && (attach || spent < maxWalkthroughAttempts)) return unlockFirst;
-				if (attach) {
-					if (index.counted[revision] === known) {
-						if (document.walkthroughAttempts !== undefined)
-							document.walkthroughAttempts[revision] = Math.max(
-								0,
-								(document.walkthroughAttempts[revision] ?? 0) - 1,
-							);
-						delete index.counted[revision];
-					}
-					return known as TaskId<string>;
+		const decide = async (tx: Tx): Promise<TaskId<string> | typeof unlockFirst | undefined> => {
+			const index = await tx.doc(SummaryIndex, conversation.id);
+			const known = index.tasks[revision];
+			const document = await tx.doc(VerdictDocument, conversation.id);
+			// Decided again here: another call can store this route's walkthrough after the reads above.
+			if (
+				!rerun &&
+				(document.walkthroughs?.[revision] !== undefined ||
+					document.routedWalkthroughs?.[revision]?.[wanted!] !== undefined)
+			)
+				return undefined;
+			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
+			const onRoute =
+				previous !== undefined &&
+				!previous.abortRequested &&
+				asks(previous.input as unknown as SummaryInput, request.key, wanted);
+			if (onRoute && (await attachable(tx, known, [...undecided, "failed", "completed"]))) {
+				if (locked) return unlockFirst;
+				if (index.counted[revision] === known) {
+					if (document.walkthroughAttempts !== undefined)
+						document.walkthroughAttempts[revision] = Math.max(
+							0,
+							(document.walkthroughAttempts[revision] ?? 0) - 1,
+						);
+					delete index.counted[revision];
 				}
-				// An aborted walkthrough costs no attempt; one that ran to any other end does, before the cap reads the count.
-				if (previous?.state.status === "terminal" && previous.state.outcome.status !== "aborted")
-					await countAttempt(tx, conversation.id, revision, known!);
-				if (!rerun && spent >= maxWalkthroughAttempts) return undefined;
-				if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
-				const created = await tx.createTask(
-					SummaryTask,
-					{
-						root: conversation.id,
-						revision,
-						prompt: request.unkeyed.nonce,
-						model,
-						...(thinking === undefined ? {} : { thinking }),
-						paths: changeset.revision.files.map(({ path }) => path),
-						key: request.key,
-					},
-					{ ownership: { kind: "conversation" } },
-				);
-				index.tasks[revision] = created;
-				return created;
-			}, context);
-		let task = await commit();
+				return known as TaskId<string>;
+			}
+			const counts =
+				previous?.state.status === "terminal" &&
+				previous.state.outcome.status !== "aborted" &&
+				index.counted[revision] !== known;
+			// The read found nothing to attach to or create and unlocked nothing, so this writes nothing.
+			if (locked && (document.walkthroughAttempts?.[revision] ?? 0) + (counts ? 1 : 0) < maxWalkthroughAttempts)
+				return unlockFirst;
+			// An aborted walkthrough costs no attempt; one that ran to any other end does, before the cap reads the count.
+			if (previous?.state.status === "terminal" && previous.state.outcome.status !== "aborted")
+				await countAttempt(tx, conversation.id, revision, known!);
+			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
+			if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
+			const created = await tx.createTask(
+				SummaryTask,
+				{
+					root: conversation.id,
+					revision,
+					prompt: request.unkeyed.nonce,
+					model,
+					...(thinking === undefined ? {} : { thinking }),
+					paths: changeset.revision.files.map(({ path }) => path),
+					key: request.key,
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+			index.tasks[revision] = created;
+			return created;
+		};
+		let task = await conversation.commit(decide, context);
 		if (task === unlockFirst) {
 			await options.unlockModels!([model.provider]);
 			locked = false;
-			task = (await commit()) as TaskId<string> | undefined;
+			task = (await conversation.commit(decide, context)) as TaskId<string> | undefined;
 		}
 		if (task === undefined) return;
 		harness.resume();
