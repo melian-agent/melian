@@ -7,9 +7,10 @@ Builder agent: [pull request #467](https://github.com/melian-agent/melian/pull/4
 - The live run is the coordinator's, by the maintainer's ruling of 2026-11-09.
 - Hand mutant proof is owed only for changed code that guards trust or durability, by the maintainer's ruling of 2026-11-14. This pass claims mutants in `probing.ts`, `probing-live.ts` and `goldens.ts`.
 - Pair 1 runs first: the goldens at 3 passes, then the misses at 1 pass. The maintainer ruled this on 2026-11-15, in the coordinator's session.
+- Only a hand-entered `lines` range scores a miss, found or missed. A location derived from a fix decides nothing: the miss is unadjudicated whenever an unrefuted sighting sits at its file under its rule, and missed only when none does. The maintainer chose this, option A of three the coordinator put, on 2026-11-16, in the coordinator's session.
 - The coordinator answered approach questions, which are not rulings:
   - A miss scores on the trust-boundary lens's own sightings.
-  - A hit located by a fix with more than one hunk in the miss's file is left unadjudicated, and gets no score.
+  - A hit located by a fix with more than one hunk in the miss's file is left unadjudicated, and gets no score. The ruling of 2026-11-16 widened this to every fix.
   - A miss's probes run only when the invocation vouches for both its base and its head, since the base supplies the policy.
   - Claims pair with sightings by core's full claim identity: ID, check and level.
   - Each hit carries what its claim already holds, and nothing more is persisted.
@@ -18,13 +19,13 @@ Builder agent: [pull request #467](https://github.com/melian-agent/melian/pull/4
 
 `npm run eval:probing -w @melian-agent/evals` runs `src/probing-live.ts`. Each combination reviews every probing golden and every miss on its own route. The results file holds every review, and the run replaces it whole after each pass, so a cut run keeps the passes it finished. It records the checkout's commit and the commits each miss's names resolve to.
 
-A miss counts as found only when three things hold. A trust-boundary sighting sits at the miss's file under its rule, the verdict leaves the claim of that sighting's ID and level unrefuted, and the sighting overlaps the defect's lines. The lines come from the miss itself, or from the old side of its fix's hunks against the head the review froze.
+A miss counts as found only when three things hold. A trust-boundary sighting sits at the miss's file under its rule, the verdict leaves the claim of that sighting's ID and level unrefuted, and the sighting overlaps the lines the misses file names. A fix's hunks, the old side of its diff against the head the review froze, only show the reader where to look.
 
 The score follows the verdict. An unrefuted claim counts whether or not its probe was sound. The results file lets a reader check: each hit and near entry carries its claim's `evidence` and `verification`, the verifier's verdict and reason among them. A stored claim names no probe, so the file cannot say which probe a hit rests on; the telemetry keeps each probe's attack and how it ended. The full rendered review is kept by running with `MELIAN_EVAL_SHOW=1` and keeping the terminal output beside the results file.
 
 - **Sightings, level by level.** `readFindings` with `producers: [{ check: "lens.trust-boundary", version }]` and `asReported: true` returns one level's own sightings. The pipeline already exported it, so this pull request exports nothing new from the pipeline. A first read across the levels names which levels sighted anything, and one read per level follows. One read across levels would not do: an ID excludes lines, so quick and careful can sight one ID at different lines, and that read keeps the most severe level's lines. A sighting counts only when the verdict holds the claim of its ID and level unrefuted. A sighting with no claim, a claim with no sighting, or a claim held twice gives the miss no score and names the ID and level. Each entry carries the sighting's own lines and words, with `sightedBy` naming whose they are.
 - **Golden scoring is unchanged.** A golden's run returns no sightings. The branch's first commit, `7671487a`, added 23 lines to `packages/evals/test/goldens.test.ts`, and no commit since has touched the file; it passes unchanged. The runRange test "returns trust-boundary's own sightings at the head beside the verdict, and a golden's run returns none" shows the same at the runner.
-- **No score on a union of hunks.** A fix that changes one hunk in the miss's file locates the miss there, and a hit is `found`. A fix with several hunks locates the miss on all of them, so a hit is recorded as `fix hunks`. It prints "unadjudicated, no score" with every hunk and the ones the hits overlap. A file-and-rule hit is unadjudicated the same way. An unadjudicated hit may be another defect's, so its review gets no score and its pass no miss recall. A review that found nothing at the file under the rule still scores as missed.
+- **No score from a fix.** A fix's diff says which lines changed, not which defect each held. One hunk can repair two touching defects, and several hunks can repair more than the miss. So a miss located by its fix matches as `fix hunks`, however many hunks the fix has. When a sighting sits at the file under the rule, it prints "unadjudicated, no score" with every hunk and the ones the sightings overlap. A miss with neither lines nor a fix is unadjudicated the same way. An unadjudicated miss may hold another defect's sighting, so its review gets no score and its pass no miss recall. A review that sighted nothing at the file under the rule still scores as missed.
 
 ## Codex's adversarial reviews
 
@@ -51,18 +52,18 @@ The Actions round 43710063296 at `e9cb18e3` raised the same notice, and one P2. 
 
 The Actions round 43711601290 at `dcf75544` raised the same notice and three P2s:
 
-- `correctness` and `design` found one defect. A miss whose every `trust-boundary` claim the verifier refuted threw "which the verdict holds no claim for" and got no score, since the match read only the verdict's findings and refuted claims sit in their own group. The held fix matches against `Verdict.all()`, core's existing query over every group, and fixes its TSDoc to name the refuted group. A refuted claim then scores the miss as not found. A dismissed claim counts by its own verification: the measurement asks whether the lens sighted the defect and the verifier let it stand, and a dismissal is a person's later call that a fresh store cannot hold. A test and [the evals guideline](../guidelines/evals.md#measuring-the-probing-levels-routes) pin that choice. Golden precision still scores the findings alone. The coordinator chose this fix.
-- `tests` found that no test held a false positive, so a pass's precision forced to 1 survived. A held test puts one on the clean golden in the first pass.
+- `correctness` and `design` found one defect. A miss whose every `trust-boundary` claim the verifier refuted threw "which the verdict holds no claim for" and got no score, since the match read only the verdict's findings and refuted claims sit in their own group. `601a9e1d` matches against `Verdict.all()`, core's existing query over every group, and fixes its TSDoc to name the refuted group. A refuted claim then scores the miss as not found. A dismissed claim counts by its own verification: the measurement asks whether the lens sighted the defect and the verifier let it stand, and a dismissal is a person's later call that a fresh store cannot hold. A test and [the evals guideline](../guidelines/evals.md#measuring-the-probing-levels-routes) pin that choice. Golden precision still scores the findings alone. The coordinator chose this fix.
+- `tests` found that no test held a false positive, so a pass's precision forced to 1 survived. `6d3ffaa0` puts one on the clean golden in the first pass.
 
 ## The review of record at `dcf75544`
 
 Opus 5.5 reviewed `c05b435d...dcf75544` with a fresh context. Its gate passed, 9,680 tests, and 16 trust mutants it ran by hand each failed their test. It raised:
 
 - R1, P2: the mutation inventory was not yet in the diff. This entry's inventory answers it.
-- R2, P3: one fix hunk that repairs two touching defects credits the other defect's sighting as found. It is the fourth instance of the class "how a miss is located and matched", after the hunks union, the head ref read again, and the refuted-only miss. The coordinator took the class to the maintainer, and its fix waits on that ruling.
-- R3, P3: a misses entry with a typo in its file, rule or lines scored a clean miss, and the run exited 0. The fix refuses such an entry, exit 2, before any provider: its file must be one the range changes, its rule one the base's `trust-boundary` lens declares, and its lines inside the file at the head.
+- R2, P3: one fix hunk that repairs two touching defects credits the other defect's sighting as found. It is the fourth instance of the class "how a miss is located and matched", after the hunks union, the head ref read again, and the refuted-only miss. The coordinator took the class to the maintainer, who ruled on 2026-11-16 as Rulings above records. `0108e526` follows the ruling.
+- R3, P3: a misses entry with a typo in its file, rule or lines scored a clean miss, and the run exited 0. `222bf092` refuses such an entry, exit 2, before any provider: its file must be one the range changes, its rule one the base's `trust-boundary` lens declares for the file's folder, and its lines inside the file at the head. `055d08de` adds the tests its mutants were owed: a range that changes two files, and a nested lens that declares the miss's rule.
 
-The fixes for the round, R3 and the class land together once the maintainer rules, so the delta review of record runs once.
+The fixes for the round, R3 and R2 landed together after the ruling, so the delta review of record runs once.
 
 ## Failing tests first
 
@@ -81,8 +82,9 @@ Each fix began with a test that failed at the head before it:
 - The refuted-only miss: 1 failed of 42, with `m: lens.trust-boundary sighted 215518d04356c417 at b878e8bcfd1e@deep, which the verdict holds no claim for`.
 - The false positive: the new test passed on the code and failed with the round's mutant, precision forced to 1 at `probing.ts:770`: `expected [ 1, 1, 1 ] to deeply equal [ 0.5, 1, 1 ]`.
 - R3: 1 failed of 43, the misses file exiting 0 where 2 was expected.
+- R2: 3 failed of 44 against the code before `0108e526`. A fix of one hunk at the defect matched as `lines`, so its sighting scored as found where the ruling leaves it unadjudicated.
 
-After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`.
+After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, and 45 of 45 at `055d08de`.
 
 ## Mutants
 
@@ -90,6 +92,7 @@ After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `
 
 - Pass 6, `c05b435d...5d1cb395`: 459 killed, 3 equivalent. One kill was run in a clean worktree with the mutant committed, since its test reads the checkout's status.
 - Pass 7, `5d1cb395...8fe10c2b`: 87 killed, 1 equivalent. Its two survivors at `8fe10c2b` were rerun at `dcf75544` in pass 13 and killed there.
-- Pass 13, `8fe10c2b...dcf75544`: 139 killed, 5 equivalent, 2 owed a test. Both sit in the "hits overlap" message, which the fix for R2 rewrites, so their test lands with that fix.
+- Pass 13, `8fe10c2b...dcf75544`: 139 killed, 5 equivalent, 2 owed a test. Both sat in the "hits overlap" message. The R2 fix rewrote it, removing the optional chain, and its test kills the rewritten line's mutants in pass 16.
+- Pass 16, `f8c3da9e...055d08de`: 76 killed, covering the round's fix, R3 and R2. R3's three survivors at `87f01fae` are among them: two killed by the test `055d08de` adds, and an optional chain removed.
 
 Each equivalence carries its reason in the inventory. Rows outside the claimed files carry a note citing the ruling of 2026-11-14, and ignored rows keep the enumerator's configuration note.
