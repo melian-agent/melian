@@ -149,6 +149,8 @@ interface CheckInput {
 	// The run identity, short of its task, that owns the revision's mutation check while it is the latest to ask. Absent in
 	// an input an earlier build stored.
 	readonly authority?: string;
+	// The `LANG` the run's key read, which the tools run with. Absent in an input an earlier build stored.
+	readonly lang?: string | null;
 }
 
 type Outcome =
@@ -244,6 +246,7 @@ async function runStatic(
 				tool,
 				settings,
 				revision,
+				...(input.lang === undefined ? {} : { lang: input.lang }),
 				...mutationLeave,
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
@@ -488,6 +491,8 @@ interface ChecksInput {
 	readonly tier: string;
 	readonly writer?: WriterTrust | undefined;
 	readonly cold?: boolean;
+	// The `LANG` the run's key read. Absent in an input an earlier build stored.
+	readonly lang?: string | null;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
 	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
@@ -507,7 +512,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
-			const { changeset, config, source, tier, rerun, writer, cold } = task.input;
+			const { changeset, config, source, tier, rerun, writer, cold, lang } = task.input;
 			const run = identityKey({ ...task.input.identity, task: runtime.taskId });
 			let checks: string[];
 			try {
@@ -542,6 +547,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								cold,
 								created: Date.now(),
 								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
+								...(lang === undefined ? {} : { lang }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
@@ -646,7 +652,7 @@ export interface RunChecksInput {
 async function runIdentity(
 	input: RunChecksInput,
 	tier: string,
-): Promise<{ identity: Omit<RunIdentity, "task">; reusable: boolean }> {
+): Promise<{ identity: Omit<RunIdentity, "task">; reusable: boolean; lang: string | null }> {
 	const { base, head } = input.changeset.revision;
 	const { repoRoot } = input.changeset;
 	const analyser = (tool: "biome" | "tsc") => ({
@@ -679,7 +685,7 @@ async function runIdentity(
 		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
 	};
 	const policy = checkRequest(facts).key.slice(0, 16);
-	return { identity: { base, head, tier, policy }, reusable: checkReusable(facts) };
+	return { identity: { base, head, tier, policy }, reusable: checkReusable(facts), lang: facts.lang };
 }
 
 // A working tree's melian.yaml files are no commit's, so their text is keyed as the guardrails read it for the touched
@@ -733,7 +739,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const { identity, reusable } = await runIdentity(input, tier);
+	const { identity, reusable, lang } = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
@@ -743,6 +749,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		tier,
 		writer: input.writer,
 		...(input.cold === true ? { cold: true } : {}),
+		lang,
 	};
 	// An unknown tier fails the checks task with its own error, so it is not this call's to report.
 	let knownTier = true;
