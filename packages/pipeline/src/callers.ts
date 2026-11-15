@@ -164,7 +164,8 @@ export class CallerContext {
 	async recordCoverage(input: {
 		harness: Harness;
 		children: Readonly<Record<string, ConversationId>>;
-		lenses: readonly { key: string; name: string }[];
+		// A copied run's conversation was rendered under the nonce of the task that asked it.
+		lenses: readonly { key: string; name: string; nonce?: string }[];
 		files: readonly ChangedFile[];
 		nonce: string;
 		context: Context;
@@ -178,7 +179,9 @@ export class CallerContext {
 			if (child === undefined) throw new CoverageError("Lens conversation unavailable for review coverage");
 			const conversation = await input.harness.conversation(child, input.context);
 			if (!conversation) throw new CoverageError("Lens conversation unavailable for review coverage");
-			transcripts.push(await ReviewTranscript.read(conversation, input.context, lens.name, paths, input.nonce));
+			transcripts.push(
+				await ReviewTranscript.read(conversation, input.context, lens.name, paths, lens.nonce ?? input.nonce),
+			);
 		}
 		const files: ChangedFile[] = [...input.files];
 		const changed = new Set(input.files.flatMap((file) => [file.path, ...(file.oldPath ? [file.oldPath] : [])]));

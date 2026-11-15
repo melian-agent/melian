@@ -160,9 +160,9 @@ export function lensScript(...findings: ReturnType<typeof report>[]): LensScript
 	};
 }
 
-// Fake models for reviews: one model every tier routes to.
-export function scenarioModels(): FakeModels {
-	return createFakeModels({ models: [{ id: "scripted" }] });
+// Fake models for reviews: one model every tier routes to, and any others a review may route to instead.
+export function scenarioModels(...others: string[]): FakeModels {
+	return createFakeModels({ models: [{ id: "scripted" }, ...others.map((id) => ({ id }))] });
 }
 
 // Opens a harness that reviews and publishes through `provider`.
@@ -179,6 +179,8 @@ export interface ScenarioReview {
 	readonly policy?: "worktree";
 	/** The records of the checks that run without a model; all `ran` by default. */
 	readonly checks?: CheckRecord[];
+	/** The fake model every tier routes to, `scripted` by default. Another one changes every lens's request. */
+	readonly model?: string;
 }
 
 // Opens a harness that only reviews, as the CLI's review does, so a publish task a crash left stays put.
@@ -220,7 +222,7 @@ export async function reviewScenario(
 	);
 	scriptLenses(fake, lenses, script);
 	const { config: loaded } = await loadConfig(repo, source, ".");
-	const ref = fake.ref("scripted");
+	const ref = fake.ref(how.model ?? "scripted");
 	const route = { model: `${ref.provider}/${ref.modelId}` };
 	// The scenarios script correctness and contracts; the default full tier's other lenses have goldens of their own.
 	const tiers = { ...loaded.tiers, fast: ["guardrails", "static"], full: ["standard", "lens.contracts"] };
