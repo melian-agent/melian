@@ -26,6 +26,10 @@ export interface GitOptions {
 	readonly env?: Readonly<Record<string, string>>;
 }
 
+// The most of git's standard error kept. A fetch or push carries there whatever the remote or a credential helper
+// sends, so without a bound one could fill memory inside any deadline. Melian's own tests see at most 250 bytes.
+export const stderrLimit = 4 * 1024 * 1024;
+
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
 // them over `cwd`, so Melian run from a hook would read that repository instead of the one it was given.
 const repositoryLocalVariables = [
@@ -76,7 +80,22 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			truncated = true;
 			child.kill();
 		});
-		child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+		let stderrSize = 0;
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderrSize += chunk.length;
+			if (stderrSize <= stderrLimit) {
+				stderr.push(chunk);
+				return;
+			}
+			// A cut stream is never resolved, so no caller can read part of a message as a failure it knows.
+			stop();
+			reject(
+				new ChangesetError(
+					"gitOutputTooLarge",
+					`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it`,
+				),
+			);
+		});
 		child.on("error", (cause) =>
 			reject(
 				new ChangesetError("gitUnavailable", "git could not be started; is it installed and on PATH?", { cause }),
@@ -97,12 +116,16 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// Git's own process, by the pid spawn recorded. A transport git started, such as ssh, can hold the output pipes
 		// open after git stops, so the result does not wait for them. A transport inherits git's stderr, so this end of it
 		// is closed, and the transport keeps nothing of this process alive; it ends on its own.
+		const stop = () => {
+			clearTimeout(deadline);
+			child.kill();
+			child.stderr.destroy();
+		};
 		const deadline =
 			options.deadlineMs === undefined
 				? undefined
 				: setTimeout(() => {
-						child.kill();
-						child.stderr.destroy();
+						stop();
 						finish(-1, true);
 					}, options.deadlineMs);
 		child.on("close", (code) => finish(code ?? -1, false));
