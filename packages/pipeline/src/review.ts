@@ -1701,8 +1701,8 @@ async function runLenses(
 		}
 	}
 	let replaced: number | undefined;
-	// A review that commits between that read and this commit can change what this commit copies, or stop it attaching.
-	// Then it writes nothing, and the review commits again with every run's provider unlocked.
+	// This commit acts only on what that read found, since a review that commits between the two can change it.
+	// Anything else writes nothing, and the review commits again with every run's provider unlocked.
 	let checked = unlockModels !== undefined;
 	const own = async (tx: Tx): Promise<TaskId<LensResult> | undefined> => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -1713,7 +1713,7 @@ async function runLenses(
 			(await attachable(tx, known.task, undecided)) &&
 			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
-		// A task other than the one the read found asks lenses whose providers this review left locked.
+		// A task other than the one the read found asks lenses whose providers this review left locked, so commit again.
 		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);

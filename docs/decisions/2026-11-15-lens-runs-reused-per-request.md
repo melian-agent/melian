@@ -71,6 +71,12 @@ Left out of the match:
 
 What it costs: a repeat review of a head asks every lens again when Enola's availability, or the graph's key, changed between the two reviews. Both are rare. The first needs Enola to fail, or the host to supply no graph, in one review only. The second needs an upgrade of Enola, the compiler or Enola's configuration, which rebuilds the graph for the same tree. The request key is unchanged, so callers stay best effort, as [the caller context decision](2026-10-07-caller-context-outside-the-attach-key.md) says. Keeping a caller record with each copied run would copy more often, but it changes the lens task's stored shape; [issue #437](https://github.com/melian-agent/melian/issues/437) can weigh it as a later gain.
 
+## A commit acts only on what its read found
+
+Problem: a review unlocks credentials before the commit that attaches or copies, from a read of the review index. When it reads that it will attach, it unlocks nothing, since a live task's providers were unlocked when it resumed and a finished task asks no model. When it reads that it will copy, it unlocks only the providers of the lenses it will ask. Another review can commit between the read and the commit. Two reviews of record on [pull request #466](https://github.com/melian-agent/melian/pull/466) each found a path through that gap. A review that read it would copy attached to a task another review had created. A review that read it would attach attached to the task a `--rerun` had created in its place. Either way, a lens could run with its provider's credential command never run.
+
+Choice: the commit acts only on what its read found: the task it read it would attach to, or the lenses it read it would copy. Any other outcome writes nothing, and the review commits again with every provider unlocked, which may then attach or copy whatever it finds. The coordinator chose this on 2026-11-15, in its session, as a choice of approach, and told the maintainer.
+
 ## How the older clauses now read
 
 - Enclosing functions: the functions and their notes are inside the lens run's request. A repeat call whose request matches attaches to the first call's task, or copies its run. A changed function read on the same head runs that lens again.
