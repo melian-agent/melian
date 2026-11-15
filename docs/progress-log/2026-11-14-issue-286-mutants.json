@@ -1498,6 +1498,11 @@
 				"code": 0,
 				"collected": 1,
 				"failed": 0
+			},
+			"scripts/melian-round-workflow.test.mjs > the melian round workflow > edits the comment this run already posted rather than post a second": {
+				"code": 0,
+				"collected": 1,
+				"failed": 0
 			}
 		},
 		"rows": [
@@ -2097,6 +2102,22 @@
 					"failed": 1,
 					"killed": true
 				}
+			},
+			{
+				"id": "W9",
+				"file": ".github/workflows/melian-round.yml",
+				"from": "gh api -X PATCH \"repos/$REPOSITORY/issues/comments/$own\" -F \"body=@$RUNNER_TEMP/comment.md\" > \"$RUNNER_TEMP/posted.json\"",
+				"to": "gh api -X PATCH \"repos/$REPOSITORY/issues/comments/$own\" -F \"body=@$RUNNER_TEMP/comment.md\" > /dev/null",
+				"claim": "killed",
+				"evidence": "scripts/melian-round-workflow.test.mjs > the melian round workflow > edits the comment this run already posted rather than post a second",
+				"survivorClasses": [],
+				"run": {
+					"code": 1,
+					"collected": 1,
+					"failed": 1,
+					"killed": true
+				},
+				"note": "Added after Melian round run 43664910268 found the edit's answer untested; run at the fix commit, after the test passed unmutated."
 			}
 		]
 	}

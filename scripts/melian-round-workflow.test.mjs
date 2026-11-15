@@ -1131,19 +1131,24 @@ describe("the melian round workflow", () => {
 				},
 			];
 			// A fake gh answers only the fresh read, the listing, which holds this run's comment, and an edit of comment 56
-			// with the status token.
+			// with the status token, which it answers as GitHub does, with the comment it stored.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
 					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/issues/7/comments?per_page=100 --jq" ] && printf "%s" "$COMMENTS" | jq -r "$5" && exit 0',
-					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/56 -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/56 -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && printf "%s" "$ANSWER" && exit 0',
 					"exit 1",
 					"",
 				].join("\n"),
 			);
 			chmodSync(join(dir, "gh"), 0o755);
+			const answer = JSON.stringify({
+				id: 56,
+				body: "the body GitHub stored",
+				issue_url: "https://api.github.com/repos/o/r/issues/7",
+			});
 			const round = join(dir, "round");
 			mkdirSync(round);
 			writeFileSync(
@@ -1171,9 +1176,12 @@ describe("the melian round workflow", () => {
 					COMMENTS: JSON.stringify(comments),
 					EDITED: join(dir, "edited.md"),
 					STATUS_TOKEN: "status-token",
+					ANSWER: answer,
 				},
 			});
 			expect([ran.status, ran.stderr]).toEqual([0, ""]);
+			// The record step hashes this answer, so an edit keeps it as a post does.
+			expect(readFileSync(join(dir, "posted.json"), "utf8")).toBe(answer);
 			expect(readFileSync(join(dir, "edited.md"), "utf8")).toBe(readFileSync(join(dir, "comment.md"), "utf8"));
 			expect(readFileSync(join(dir, "edited.md"), "utf8")).toMatch(
 				new RegExp(`^<!-- melian-round run:9 nonce:${nonce} -->\nMelian round on `),
