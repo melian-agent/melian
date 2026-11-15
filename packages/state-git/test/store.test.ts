@@ -36,7 +36,7 @@ describe("the branch it is given", { timeout: 60_000 }, () => {
 		const state = remote.tip();
 		const trial = await remote.open({ branch: "melian/trial" });
 		await trial.add([check("b")]);
-		expect((await trial.list(changeset)).map((record) => record.id)).toEqual([check("b").id]);
+		expect(keys(await trial.list(changeset))).toEqual(["b"]);
 		expect(remote.tip()).toBe(state);
 		expect(remote.tip("melian/trial")).toBeDefined();
 	});
