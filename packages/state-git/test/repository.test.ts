@@ -158,6 +158,50 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		expect((await repository.run(["for-each-ref", "refs/melian/fetch"], time())).stdout).toBe("");
 	});
 
+	// Answers `answer` in place of the first git command `matches` picks, and runs every other command as it is.
+	function failFirst(matches: (args: readonly string[]) => boolean, answer: () => never | Promise<never>) {
+		const run = RecordRepository.prototype.run;
+		let failed = false;
+		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
+			if (failed || !matches(args[0])) return run.apply(this, args);
+			failed = true;
+			return answer();
+		});
+	}
+
+	const fetchRefs = async (repository: RecordRepository) =>
+		(await repository.run(["for-each-ref", "refs/melian/fetch"], time())).stdout;
+
+	it("deletes its ref when reading the fetched tip fails", async () => {
+		const { repository } = await fetched();
+		failFirst(
+			(args) => args[0] === "rev-parse",
+			() => {
+				throw new RecordError("unreachable", "rev-parse ran past its deadline");
+			},
+		);
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toThrow(
+			"rev-parse ran past its deadline",
+		);
+		vi.restoreAllMocks();
+		expect(await fetchRefs(repository)).toBe("");
+	});
+
+	it("deletes its ref before it points the hint at the tip, so a hint that runs out of time leaves no ref", async () => {
+		const { repository } = await fetched();
+		failFirst(
+			(args) => args[0] === "update-ref" && args[1] === "refs/melian/last",
+			() => {
+				throw new RecordError("unreachable", "the hint ran past its deadline");
+			},
+		);
+		await expect(repository.fetch(remote.url, remote.branch, time())).rejects.toThrow(
+			"the hint ran past its deadline",
+		);
+		vi.restoreAllMocks();
+		expect(await fetchRefs(repository)).toBe("");
+	});
+
 	it("fails as unreachable once a lock outlasts its retries", async () => {
 		const { repository } = await fetched();
 		holdRefLock(repository, Number.POSITIVE_INFINITY);

@@ -151,11 +151,16 @@ export class RecordRepository {
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
 			if (!contention.test(result.stderr)) throw unreachable(`fetching ${branch} from ${url} failed`, result);
 		}
-		const tip = (
-			await this.#succeed(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], deadline)
-		).trim();
-		await this.#keepLast(tip, deadline);
+		let tip: string;
+		try {
+			tip = (await this.#succeed(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], deadline)).trim();
+		} catch (cause) {
+			// The read's failure is the one to report; a ref this cannot delete is a leftover, as a killed call's is.
+			await this.#deleteRef(ref, deadline).catch(() => {});
+			throw cause;
+		}
 		await this.#deleteRef(ref, deadline);
+		await this.#keepLast(tip, deadline);
 		return tip;
 	}
 
