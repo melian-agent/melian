@@ -18,6 +18,7 @@ const sample: CheckRequestInput = {
 		cold: false,
 	},
 	host: { platform: "linux", arch: "x64", node: "24.1.0", caseFolds: false },
+	lang: "en_AU.UTF-8",
 	policy: [{ file: "pay/melian.yaml", text: "tiers: { fast: [guardrails] }\n" }],
 };
 
@@ -62,6 +63,15 @@ describe("checkRequest", () => {
 		expect(request.request).not.toHaveProperty("mutation");
 		expect(request.key).not.toBe(checkRequest(sample).key);
 		expect(request.producer).toBe("check");
+	});
+
+	it("keys the tools' locale only when mutation runs the head's tests", () => {
+		const { mutation: _, ...plain } = sample;
+		expect(checkRequest({ ...sample, lang: "C.UTF-8" }).key).not.toBe(checkRequest(sample).key);
+		expect(checkRequest({ ...sample, lang: null }).key).not.toBe(checkRequest(sample).key);
+		expect(checkRequest({ ...plain, lang: "C.UTF-8" }).key).toBe(checkRequest(plain).key);
+		expect(checkRequest({ ...plain, lang: null }).key).toBe(checkRequest(plain).key);
+		expect(checkRequest(plain).request).not.toHaveProperty("lang");
 	});
 
 	it("keys the version of Melian's own code for every check it runs", () => {

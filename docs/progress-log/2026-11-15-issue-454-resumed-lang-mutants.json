@@ -1,0 +1,239 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "b57b759f47170fab72410ad4356fa491e1611ed8",
+		"head": "2790f52b7c961df4f848e21d76d94c2948d65755"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/checks.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 249,
+			"column": 8,
+			"endLine": 249,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ee2d3be7bceb43060280b7a1227b085f29810b76bb5e9721c8159c68336f98cc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 249,
+			"column": 8,
+			"endLine": 249,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "21dd226b7698abafc5975f022bb17180980e073e8360550448d6b61706afb1d4",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "runStaticTool reads input.lang, which is undefined whether the spread adds { lang: undefined } or nothing, so toolEnvironment falls back to the process either way."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 249,
+			"column": 8,
+			"endLine": 249,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "input.lang !== undefined",
+			"status": "generated",
+			"id": "063bb2ca3b4fa54bc5d277527b6ae3e6fec46810ff5aeecfaeadfc558815e50e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 249,
+			"column": 40,
+			"endLine": 249,
+			"endColumn": 60,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "30b57586c47b86f2b1de0fec17b9a0ce96c69f1982757b46496c0ee1caa6021e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 550,
+			"column": 12,
+			"endLine": 550,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7d45d64cd2ffe864236f51a1cc8babf0825ce4e633d5e3927a6416f3938f32b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 550,
+			"column": 12,
+			"endLine": 550,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4da91d38916ba985185cd25d1e6b0547e414c34315d87043aba582b325de1626",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Pi Durable copies a task input with omitUndefinedProperties, so { lang: undefined } stores the same record as no spread, and the resumed check reads no lang either way."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 550,
+			"column": 12,
+			"endLine": 550,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lang !== undefined",
+			"status": "generated",
+			"id": "ba9ee9f9fce68c610e243a38372e445cbd9c167cf0a9578812415e026479b64f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 550,
+			"column": 38,
+			"endLine": 550,
+			"endColumn": 46,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7cfefa6140b2789e840c36728654b2880a258fdb0bea60e2013dcc2bb32eb632",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 688,
+			"column": 8,
+			"endLine": 688,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b5a44dc43501bdcc2ca18983ea35a9a3ebb493aba2b37706838424f4c801d748",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 688,
+			"column": 20,
+			"endLine": 688,
+			"endColumn": 48,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c5816dd5d0eafe3f2fc3672360d36946d6e685e67b69508e4cebd6c0b1451ed6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again rather than reuse a run from a build that stored Biome and tsc text"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 10,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

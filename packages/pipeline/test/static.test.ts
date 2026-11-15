@@ -12,7 +12,7 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Run, staticToolSource, staticToolVersion } from "../src/static.ts";
+import { Run, staticToolSource, staticToolVersion, toolLocale } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
@@ -27,6 +27,19 @@ beforeEach(() => {
 afterEach(() => {
 	vi.restoreAllMocks();
 	removeRepository(repo);
+});
+
+it("reads the LANG a tool runs with, and null when the Melian process has none", () => {
+	try {
+		vi.stubEnv("LANG", "en_AU.UTF-8");
+		expect(toolLocale()).toBe("en_AU.UTF-8");
+		vi.stubEnv("LANG", "");
+		expect(toolLocale()).toBe("");
+		vi.stubEnv("LANG", undefined);
+		expect(toolLocale()).toBeNull();
+	} finally {
+		vi.unstubAllEnvs();
+	}
 });
 
 it("keeps Enola provisioning out of checkout binary discovery", () => {

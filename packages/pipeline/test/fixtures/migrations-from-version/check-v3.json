@@ -1,0 +1,206 @@
+{
+  "recordedBy": "088aa41f1da8eb250aefcaf28ae930f69a9a5bee",
+  "task": {
+    "id": 10,
+    "conversationId": 1,
+    "kind": "melian.check",
+    "version": 3,
+    "input": {
+      "run": "bc0dd5c466dc667d311b601fb6a551c9b8a90bdc ecca57ad55db342545236b94f9f3aa0834a92b82 fast 42bfda9baeb84e1d 8",
+      "check": "static.biome",
+      "changeset": {
+        "kind": "range",
+        "id": "range-9b05700fdaf159cc",
+        "repoRoot": "/tmp/melian-pipeline-NLgLaD",
+        "spec": {
+          "base": "bc0dd5c466dc667d311b601fb6a551c9b8a90bdc",
+          "head": "ecca57ad55db342545236b94f9f3aa0834a92b82",
+          "mode": "twoDot"
+        },
+        "revision": {
+          "head": "ecca57ad55db342545236b94f9f3aa0834a92b82",
+          "base": "bc0dd5c466dc667d311b601fb6a551c9b8a90bdc",
+          "files": [
+            {
+              "status": "modified",
+              "path": "src/a.ts",
+              "oldMode": "100644",
+              "oldKind": "file",
+              "newMode": "100644",
+              "newKind": "file",
+              "binary": false,
+              "hunks": [
+                {
+                  "file": "src/a.ts",
+                  "index": 0,
+                  "oldStart": 1,
+                  "oldLines": 1,
+                  "newStart": 1,
+                  "newLines": 1,
+                  "header": "@@ -1 +1 @@",
+                  "text": "-export const a = 1;\n+export const a = 2;"
+                }
+              ]
+            }
+          ],
+          "policyFiles": []
+        }
+      },
+      "config": {
+        "trust": {
+          "writers": true
+        },
+        "probe": {
+          "read": [
+            "node_modules"
+          ]
+        },
+        "comparison": {
+          "retirement": {
+            "pullRequests": 10,
+            "recall": 0.75
+          }
+        },
+        "output": {
+          "emoji": "auto"
+        },
+        "publish": {
+          "emoji": "on",
+          "walkthrough": {
+            "enabled": true,
+            "collapsed": true,
+            "diagrams": true
+          }
+        },
+        "tiers": {
+          "fast": [
+            "static.biome"
+          ],
+          "standard": [
+            "fast",
+            "lens.correctness"
+          ],
+          "full": [
+            "standard",
+            "lens.contracts",
+            "lens.trust-boundary",
+            "lens.removed-behaviour",
+            "lens.tests",
+            "lens.conventions"
+          ]
+        },
+        "stages": {
+          "pre-commit": "fast",
+          "pre-push": "standard",
+          "pull-request": "full",
+          "comment": "standard"
+        },
+        "resolution": {
+          "P0": "block",
+          "P1": "block",
+          "P2": "acknowledge",
+          "P3": "advisory",
+          "nit": "silent",
+          "preExisting": {
+            "P0": "advisory",
+            "P1": "advisory",
+            "P2": "advisory",
+            "P3": "advisory",
+            "nit": "advisory"
+          }
+        },
+        "lenses": {},
+        "models": {},
+        "static": {
+          "biome": {
+            "enabled": true,
+            "timeout": 300,
+            "severity": {}
+          },
+          "enola": {
+            "enabled": false,
+            "timeout": 300,
+            "severity": {}
+          },
+          "mutation": {
+            "enabled": false,
+            "timeout": 7200,
+            "severity": {},
+            "maxLines": 2000
+          },
+          "tsc": {
+            "enabled": true,
+            "timeout": 300,
+            "severity": {},
+            "project": "tsconfig.json"
+          }
+        },
+        "guardrails": {
+          "supersession-drop": {
+            "enabled": true
+          },
+          "forbidden-paths": {
+            "enabled": true,
+            "severity": "P1",
+            "rules": {}
+          },
+          "required-files": {
+            "enabled": true,
+            "severity": "P2",
+            "rules": {}
+          },
+          "forbidden-patterns": {
+            "enabled": true,
+            "severity": "P2",
+            "rules": {
+              "forged-mutation-kill": {
+                "pattern": "__stryker_{2}|activeMutan[t]",
+                "paths": [
+                  "**/*.ts",
+                  "**/*.tsx",
+                  "**/*.mts",
+                  "**/*.cts",
+                  "**/*.js",
+                  "**/*.jsx",
+                  "**/*.mjs",
+                  "**/*.cjs"
+                ],
+                "message": "Stryker's active-mutant variable lets a file behave differently under a mutant, so a test could throw only when one runs and every mutant would read as killed; a file here may not read it"
+              }
+            }
+          },
+          "policy-change-review": {
+            "enabled": true,
+            "severity": "P2",
+            "analyserSeverity": "P1",
+            "files": []
+          }
+        },
+        "knowledge": {
+          "writeBack": false
+        },
+        "decisions": {
+          "thresholds": {}
+        },
+        "ruleAliases": {},
+        "checks": {
+          "allowSkip": []
+        },
+        "triage": {
+          "escalateAt": "P1"
+        }
+      },
+      "source": {
+        "kind": "revision",
+        "commit": "bc0dd5c466dc667d311b601fb6a551c9b8a90bdc"
+      },
+      "created": 1794717612631,
+      "authority": "bc0dd5c466dc667d311b601fb6a551c9b8a90bdc ecca57ad55db342545236b94f9f3aa0834a92b82 fast 42bfda9baeb84e1d 8"
+    },
+    "state": {
+      "checkpoint": {
+        "phase": "run"
+      }
+    }
+  }
+}
