@@ -14,7 +14,7 @@ Cutting the stream would not be enough. The record store reads a fetch's standar
 
 Core's `git` keeps at most `stderrLimit`, 4 MiB, of a command's standard error. One byte past it, `git` stops the command by its own pid, closes its end of the stream so a transport that shares it keeps nothing of the process alive, and rejects with `ChangesetError` `gitOutputTooLarge`. It never resolves with part of the stream, so no caller can read a cut message as a failure it knows.
 
-The bound sits far above anything a legitimate command writes. Across the whole test suite, 111,982 git calls wrote at most 250 bytes of standard error each.
+The bound sits far above anything a legitimate command writes. Across the whole test suite, before the tests that flood standard error on purpose, 111,982 git calls wrote at most 250 bytes of it each.
 
 The record store turns that error into its own `unreachable`, naming the command, so a fetch or a ref deletion stopped this way fails the call and is never read as an absent branch or a held lock. A push is different: a remote's hook can write after the ref has moved, so a push stopped for its standard error may have landed. The push answers `stopped`, the outcome a push stopped at its deadline already had under the name `timedOut`, and the store checks whether it landed as it does after a deadline.
 

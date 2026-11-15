@@ -28,8 +28,8 @@ export interface GitOptions {
 
 /**
  * The most bytes of a Git command's standard error that `git` keeps; past it, `git` stops the command and rejects with
- * `gitOutputTooLarge`. A fetch or push carries there whatever the remote or a credential helper sends. No command in
- * Melian's own tests writes more than 250 bytes there.
+ * `gitOutputTooLarge`. A fetch or push carries there whatever the remote or a credential helper sends. Before the tests
+ * that write past this limit on purpose, no command in Melian's tests wrote more than 250 bytes there.
  */
 export const stderrLimit = 4 * 1024 * 1024;
 
