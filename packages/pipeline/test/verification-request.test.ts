@@ -1,6 +1,7 @@
 import { KeyedRequest } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
+import { probeEvidenceWording } from "../src/probing.ts";
 import {
 	candidateKey,
 	type VerificationCandidate,
@@ -121,7 +122,8 @@ describe("verificationRequest", () => {
 				description: expect.stringMatching(/\S/),
 				parameters: expect.objectContaining({ type: "object" }),
 			});
-		expect(text.prompt.split("\n\n").slice(-3)).toEqual([
+		const [lines] = text.prompt.split("\n\n## Claim c1's probe");
+		expect(lines!.split("\n\n").slice(-3)).toEqual([
 			"Claim c1 finding <id>, reported at P1",
 			"Claim c2 finding <id>",
 			"Dismissed d1 finding <id>",
@@ -140,6 +142,21 @@ describe("verificationRequest", () => {
 			"Dismissed d1\\n",
 		])
 			expect(keyed).toContain(fragment);
+	});
+});
+
+describe("verificationRequest's probe evidence", () => {
+	// Pull request #436, on merging the probing level: the verifier is shown a block of evidence per probing claim, and its
+	// headings and wording reached no key, so a changed wording reused a verification judged under the old one.
+	it("keys the probe evidence's wording and the blocks it renders", () => {
+		const keyed = JSON.stringify(verificationRequest(sample).request);
+		for (const wording of Object.values(probeEvidenceWording))
+			expect(keyed).toContain(JSON.stringify(wording).slice(1, -1));
+		const { text } = verificationRequest(sample).request as { text: { prompt: string } };
+		expect(text.prompt).toContain("## Claim c1's probe");
+		expect(text.prompt).toContain("Melian did not run it again.");
+		expect(text.prompt).toContain("Melian could not run it again; why is in the probe's block below.");
+		expect(text.prompt).toContain("When Melian ran it again it failed, exiting 1.");
 	});
 });
 

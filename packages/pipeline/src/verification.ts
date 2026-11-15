@@ -31,9 +31,12 @@ import {
 	ProbeReruns,
 	type ProbeRun,
 	probeClaimKey,
+	probeEvidenceWording,
 	probeFailed,
+	probingWording,
 	renderProbeEvidence,
 	rerunKey,
+	type StoredProbeResult,
 } from "./probing.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex, type ReviewIndexState, stillOwns } from "./review-index.ts";
@@ -169,15 +172,16 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
-						instructions: [
-							verifierPrompt(candidate, claims, dismissed, task.input.revision.nonce),
-							...claims.flatMap(({ label, id, source }) => {
+						instructions: verifierPrompt(
+							candidate,
+							claims,
+							dismissed,
+							claims.flatMap(({ label, id, source }) => {
 								const probe = probed({ id, source });
-								return probe === undefined
-									? []
-									: [renderProbeEvidence(label, probe.probe, probe.again, task.input.revision.nonce)];
+								return probe === undefined ? [] : [{ label, ...probe }];
 							}),
-						].join("\n\n"),
+							task.input.revision.nonce,
+						),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
 					});
@@ -432,6 +436,7 @@ function verifierPrompt(
 	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
 	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
 	dismissed: readonly { label: string; id: string }[],
+	evidence: readonly { label: string; probe: Omit<ClaimProbe, "environment">; again: ProbeRun | undefined }[],
 	nonce: string,
 ): string {
 	return [
@@ -447,6 +452,7 @@ function verifierPrompt(
 				]),
 		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
 		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
+		...evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, nonce)),
 	].join("\n\n");
 }
 
@@ -463,6 +469,25 @@ function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[]
 
 // The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
 // for what varies, so every fixed fragment it is shown reaches the key.
+function placeholderResult(exitCode: number): StoredProbeResult {
+	return { exitCode, signal: null, output: "<output>", truncated: false, timedOut: false };
+}
+
+function placeholderProbe(exitCode: number): Omit<ClaimProbe, "environment"> {
+	return {
+		id: "<probe>",
+		attack: 1,
+		plan: [{ target: "<target>", reason: "<reason>", passing: "<passing>", failing: "<failing>" }],
+		probe: {
+			attack: 1,
+			script: "<script>",
+			files: [{ path: "<path>", text: "<text>" }],
+			result: placeholderResult(exitCode),
+			milliseconds: 0,
+		},
+	};
+}
+
 function verifierText(): unknown {
 	const nonce = identityNonce;
 	return {
@@ -479,8 +504,15 @@ function verifierText(): unknown {
 				{ label: "c2", id: "<id>", severity: undefined },
 			],
 			[{ label: "d1", id: "<id>" }],
+			[
+				{ label: "c1", probe: placeholderProbe(1), again: undefined },
+				{ label: "c2", probe: placeholderProbe(1), again: { refused: "<refused>" } },
+				{ label: "c3", probe: placeholderProbe(0), again: { result: placeholderResult(1), milliseconds: 0 } },
+			],
 			nonce,
 		),
+		wording: probeEvidenceWording,
+		planRow: probingWording.planRow,
 		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
 		continue: continueJudging,
 	};
