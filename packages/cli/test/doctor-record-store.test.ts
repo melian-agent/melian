@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import * as pipeline from "@melian-agent/pipeline";
+import { GitRecordStore } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { check, Remote } from "../../state-git/test/fixtures/remote.ts";
@@ -109,6 +110,34 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		await doctor(io);
 		expect(line()).not.toContain("\u001b");
 		expect(line()).toMatch(/^warn records melian\/state holds a file/);
+	});
+
+	it("reads a relative origin from the checkout, not from the store's own repository", async () => {
+		origin(relative(repo, remote.path));
+		remote.plant({ "notes.txt": { bytes: "hello" } });
+		await doctor(io);
+		expect(line()).toBe(
+			"warn records melian/state holds a file Melian did not write, which a writer must remove: notes.txt",
+		);
+	});
+
+	it("passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path", async () => {
+		const open = vi.spyOn(GitRecordStore, "open").mockRejectedValue(new Error("stopped"));
+		origin("https://example.invalid/x.git");
+		const top = realpathSync(repo);
+		const remotes = {
+			"https://example.invalid/x.git": "https://example.invalid/x.git",
+			"git@example.invalid:x/y.git": "git@example.invalid:x/y.git",
+			"host:y.git": "host:y.git",
+			[remote.path]: remote.path,
+			"./up:stream.git": join(top, "up:stream.git"),
+			"../upstream.git": join(dirname(top), "upstream.git"),
+		};
+		for (const url of Object.keys(remotes)) {
+			execFileSync("git", ["remote", "set-url", "origin", url], { cwd: repo });
+			await doctor(io);
+		}
+		expect(open.mock.calls.map(([options]) => options.remote)).toEqual(Object.values(remotes));
 	});
 
 	it("warns when the remote cannot be read", async () => {
