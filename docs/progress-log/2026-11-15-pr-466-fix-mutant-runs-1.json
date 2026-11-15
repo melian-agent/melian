@@ -1977,6 +1977,30 @@
         "passed": false
       },
       "killed": true
+    },
+    {
+      "id": "89f33ac1671c5e4bd757e111439e9e7535a2f5553dc969ea67fcbf2aa0c7a1a4",
+      "at": "packages/pipeline/src/review.ts:1707:71",
+      "mutator": "ArrayDeclaration",
+      "replacement": "[]",
+      "head": "20315ad0",
+      "test": {
+        "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+        "path": [
+          "a repeat review copies each lens run whose request is unchanged",
+          "keeps a copied lens's caller notes from the review that asked it, not the one that copied it"
+        ]
+      },
+      "baseline": {
+        "collected": 1,
+        "passed": true
+      },
+      "result": {
+        "collected": 1,
+        "passed": true
+      },
+      "killed": false,
+      "note": "Rerun after the review of record at c86db607 found it survives at this inventory's own head; the earlier kill was recorded at 1e336d27, not at this head. Unproven at 20315ad0. c54d1358 rewrote this code; inventory 4 claims its mutants, and the new code's caller-notes mutants are killed there."
     }
   ]
 }
