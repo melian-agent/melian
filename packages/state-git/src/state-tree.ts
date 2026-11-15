@@ -158,7 +158,11 @@ export class StateTree {
 				return size <= fileLimit ? [[oid, size] as const] : [];
 			}),
 		);
-		const total = [...small.values()].reduce((sum, size) => sum + size, 0);
+		// Each path is judged and held apart, so a blob counts at every path it sits at.
+		const total = entries.reduce(
+			(sum, entry) => sum + (StateTree.#readable(entry) ? (small.get(entry.oid) ?? 0) : 0),
+			0,
+		);
 		if (total > tipLimit)
 			throw new RecordError(
 				"unreachable",

@@ -171,6 +171,38 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 		expect(blobs).not.toHaveBeenCalled();
 	});
 
+	// One cell's bytes at `count` changesets' paths, with git reporting every blob at what one file may be.
+	async function sharedCell(count: number) {
+		const writer = await remote.open();
+		await writer.writeCell(changeset, undefined, '"x"');
+		const bytes = remote.git(["cat-file", "blob", remote.oid(cellPath(changeset))]);
+		remote.plant({
+			[cellPath(changeset)]: null,
+			...Object.fromEntries(
+				Array.from({ length: count }, (_, n) => [cellPath(`pull-${n.toString(16).padStart(16, "0")}`), { bytes }]),
+			),
+		});
+		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(
+			async (oids) => new Map(oids.map((oid) => [oid, fileLimit])),
+		);
+		return remote.open();
+	}
+
+	it("counts a blob at every path it sits at, and reads a tip of one cell at 64 paths, the limit", async () => {
+		const store = await sharedCell(64);
+		expect(await store.strays()).toEqual([]);
+	});
+
+	it("fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing", async () => {
+		const store = await sharedCell(65);
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		await expect(store.strays()).rejects.toMatchObject({
+			code: "unreachable",
+			message: `melian/state holds ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; disposing changesets brings it under`,
+		});
+		expect(blobs).not.toHaveBeenCalled();
+	});
+
 	it("fails as unreachable when git gives more bytes than the sizes it reported", async () => {
 		const store = await reader();
 		const sizes = RecordRepository.prototype.sizes;

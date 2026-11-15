@@ -53,7 +53,7 @@ The maintainer ruled on 2026-11-15, in the coordinator's session, that the entry
 
 | Resource | What bounds it, or who accepted it | Test or issue |
 | --- | --- | --- |
-| Memory for records and cells | 256 MiB of readable blobs at the tip, `tipLimit`, from the sizes git reports, and the read stops at those sizes | `store.test.ts`, "the bytes a tip may hold"; [issue #455](https://github.com/melian-agent/melian/issues/455) |
+| Memory for records and cells | 256 MiB of readable blobs at the tip, `tipLimit`, from the sizes git reports, a blob counted at every path it sits at, and the read stops at those sizes | `store.test.ts`, "the bytes a tip may hold"; [issue #455](https://github.com/melian-agent/melian/issues/455) |
 | Memory for the entries | 65,536 entries, `entryLimit`, checked before any size is read | `store.test.ts`, "the entries a tip may hold" |
 | Memory for the listing of entries | 64 MiB, `listingLimit`, a KiB a line on average; git is stopped there, so the list never grows past it | `store.test.ts`, at the cap and one byte past it |
 | Memory for the sizes | One line per distinct readable blob, so the entry limit bounds it | the entry limit's tests |
