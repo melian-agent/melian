@@ -42,8 +42,8 @@ type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
  * The record store of rule 12 of [the shared record
  * decision](../../../docs/decisions/2026-11-13-shared-record-behind-a-store-port.md), on a branch of a git remote. A
  * record is a plain JSON file at its `record.path` and a changeset's cell is `changesets/<changeset>/cell.json`. Every
- * call fetches the branch's tip alone into the store's own repository, so it answers fresh or fails with `RecordError`
- * `unreachable`. A write builds one commit with git's plumbing and pushes it leased on the tip it fetched, retrying a
+ * call fetches the branch, its whole history, into the store's own repository, so it answers fresh or fails with
+ * `RecordError` `unreachable`. A write builds one commit with git's plumbing and pushes it leased on the tip it fetched, retrying a
  * lost race until the deadline. A file the store did not write refuses every call on the changeset whose folder holds
  * it, or every call when it sits anywhere else, by [the amending decision](../../../docs/decisions/2026-11-14-git-record-store-refuses-by-location.md).
  */
