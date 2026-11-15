@@ -396,7 +396,7 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		try {
 			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
 			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
-			const notesOf = async (reviewed: readonly Lens[], callers?: CallerContext) => {
+			const notesOf = async (reviewed: readonly Lens[], callers?: CallerContext, settings = enabled) => {
 				const plain = () => fauxAssistantMessage("No findings.");
 				scriptConversations(fake, [
 					{ match: correctness, replies: [plain] },
@@ -405,7 +405,7 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 				const result = await reviewChangeset({
 					harness,
 					changeset: await Changeset.resolve(repo, "main...feature"),
-					config: enabled,
+					config: settings,
 					lenses: reviewed,
 					standards: [],
 					models: fake.review,
@@ -430,6 +430,37 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			);
 			expect(again["lens.correctness"]).toContain(unavailable);
 			expect(again["lens.contracts"]).not.toContain(unavailable);
+
+			// The correctness lens is copied from the review above, which ran it without callers, though this one has them.
+			const third = await notesOf(
+				lenses.map((lens) => Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look twice.` })),
+				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+			);
+			expect(third["lens.correctness"]).toContain(unavailable);
+			expect(third["lens.contracts"]).not.toContain(unavailable);
+
+			// A review with Enola off keeps no caller notes, so a lens copied from it carries none into one with Enola on.
+			const off = lenses.map((lens) =>
+				Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} Look off.` }),
+			);
+			await notesOf(off, undefined, config);
+			await notesOf(
+				off.map((lens) =>
+					lens.name === "correctness"
+						? Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions} On.` })
+						: lens,
+				),
+				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+			);
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const index = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews;
+			const task = await harness.getTask(
+				index[Revision.key(changeset.revision)]!.task as Parameters<Harness["getTask"]>[0],
+				context,
+			);
+			const input = task!.input as { reused?: object; callers: { notes: Record<string, unknown> } };
+			expect(Object.keys(input.reused ?? {}).map((key) => key.split("@")[0])).toEqual(["contracts"]);
+			expect(Object.keys(input.callers.notes).map((key) => key.split("@")[0])).toEqual(["correctness"]);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
