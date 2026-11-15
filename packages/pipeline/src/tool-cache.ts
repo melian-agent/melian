@@ -276,7 +276,7 @@ export class ToolCache {
 		}
 		if (hash.digest("hex") !== expected)
 			throw new ToolCacheError("invalidOutput", "Tool archive SHA-256 mismatch; nothing extracted");
-		await writeFile(target, Buffer.concat(chunks, size), { flag: "wx", mode: 0o600 });
+		await writeFile(target, chunks, { flag: "wx", mode: 0o600 });
 	}
 
 	#extract(compressed: Buffer, wanted: string): Buffer {

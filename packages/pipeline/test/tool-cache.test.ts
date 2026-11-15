@@ -469,6 +469,22 @@ it("reads a download whole, in many chunks, before writing any of it", async () 
 	expect({ pulled, written }).toEqual({ pulled: 64, written: [] });
 });
 
+it("writes the chunks it read, with no joined copy of the archive", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const middle = Math.floor(bytes.length / 2);
+	const halves = [new Uint8Array(bytes.subarray(0, middle)), new Uint8Array(bytes.subarray(middle))];
+	const body = new ReadableStream<Uint8Array>({
+		start(controller) {
+			for (const half of halves) controller.enqueue(new Uint8Array(half));
+			controller.close();
+		},
+	});
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
+	await cache.materialise(testTool(bytes), "darwin-arm64");
+	const archives = vi.mocked(writeFile).mock.calls.filter(([path]) => String(path).endsWith("archive"));
+	expect(archives.map(([, data]) => data)).toEqual([halves]);
+});
+
 it("keeps a downloaded archive readable by its owner alone", async () => {
 	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
 	const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
