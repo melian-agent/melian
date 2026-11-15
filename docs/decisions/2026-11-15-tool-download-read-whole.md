@@ -2,7 +2,7 @@
 
 Amends: [Restore the tool cache clauses that partial supersessions retired](2026-11-08-restore-tool-cache-clauses.md), the clause "Stream the download to a temporary file while hashing it"
 
-Status: the maintainer agreed on 2026-11-15, in the coordinator's session, for [issue #430](https://github.com/melian-agent/melian/issues/430). The coordinator put to him that the download would be read whole under the existing 128 MiB bound, then checked and written once, in place of streaming to a temporary file while hashing, keeping the size bound, the digest check and the refusal of a file that fails it; he answered "agree".
+Status: the maintainer agreed on 2026-11-15, in the coordinator's session, for [issue #430](https://github.com/melian-agent/melian/issues/430). The coordinator put to him that the download would be read whole under the existing 128 MiB bound, then checked and written once, in place of streaming to a temporary file while hashing. The size bound, the digest check and the refusal of a file that fails it would stay. He answered "agree".
 
 ## Problem
 
