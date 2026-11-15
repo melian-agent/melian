@@ -1,0 +1,205 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 73,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 73,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+      "survivorClasses": [],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 73,
+      "mutatorName": "LogicalOperator",
+      "replacement": "!stats.isFile() && !stats.isDirectory() || !stats.isSymbolicLink()",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 46,
+      "mutatorName": "LogicalOperator",
+      "replacement": "!stats.isFile() || !stats.isDirectory()",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 7,
+      "endLine": 349,
+      "endColumn": 22,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "stats.isFile()",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 26,
+      "endLine": 349,
+      "endColumn": 46,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "stats.isDirectory()",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > copies files, directories and links",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 349,
+      "column": 50,
+      "endLine": 349,
+      "endColumn": 73,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "stats.isSymbolicLink()",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 350,
+      "column": 4,
+      "endLine": 353,
+      "endColumn": 6,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "run": {
+        "head": "b6a5ff9e",
+        "test": "packages/pipeline/test/probe.test.ts > copyReads > refuses a FIFO in probe.read, naming the reviewer's path",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 351,
+      "column": 5,
+      "endLine": 351,
+      "endColumn": 19,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/pipeline/src/probe.ts",
+      "line": 352,
+      "column": 5,
+      "endLine": 352,
+      "endColumn": 92,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    }
+  ],
+  "total": 11,
+  "omitted": 0,
+  "unmutated": []
+}
