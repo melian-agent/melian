@@ -1,0 +1,505 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "8ed3808e360210d459ffda02ea56d58121424e1e",
+		"head": "c8ce7a3eff969026678d75333cff2dbcee304231"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/check-request.ts",
+		"packages/pipeline/src/checks.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "af5dfcec62e0a855a0ea814a35fc71935d1a93fa7bbf458669e3682e7c723f40",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 79,
+			"column": 65,
+			"endLine": 81,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "337f8174040b5990bb05009405d861d0754443c902aa1f9ae8c2afcb727b7cc7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 80,
+			"column": 8,
+			"endLine": 80,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ae3aad89a2b9cbcabd0ff9432b802329b3cbd3b877d4894d3ba905794150393e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 80,
+			"column": 8,
+			"endLine": 80,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7448b5ed210a7454946b502420cb1c436380914bb03d25e44cb1ca26680c60d5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 80,
+			"column": 8,
+			"endLine": 80,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "input.policy === \"unread\"",
+			"status": "generated",
+			"id": "834e783b9e14fa3cf4da0cb6da39dabe399df8e220ae724613c76f4081cf8ea6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"checkRequest",
+						"marks a run under a working tree's unread policy not reusable, and leaves a request with none unchanged"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 80,
+			"column": 25,
+			"endLine": 80,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6341fd45eb63f5a4f89fab1e8fa899b13195288eb2603ffc432020e3339a9106"
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 680,
+			"column": 16,
+			"endLine": 680,
+			"endColumn": 52,
+			"mutatorName": "MethodExpression",
+			"replacement": "checkRequest(facts).key",
+			"status": "generated",
+			"id": "9c2e64cd42db726dc6ec0b97933356b5965a61faae6b8757bc06f2a112386fe2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"runs again rather than reuse a run from a build that stored Biome and tsc text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 681,
+			"column": 8,
+			"endLine": 681,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b6a7c3f14d6d2d877a7aa1034357b5208ef427df8dd75e3016a9dc451435593a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 681,
+			"column": 20,
+			"endLine": 681,
+			"endColumn": 48,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "408546aa20767a4ac43eafb88c8d7ddb5d66c2f1cd8a3c273658db04adbdcd0b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"attaches to a run whose tools and host agree, and runs again when an analyser's version or the host differs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 691,
+			"column": 7,
+			"endLine": 691,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ffda5ff0b90c46ab184a8ea45a151ade418eefd7024d20e0270c5fb52e43c802",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"stops on a failure to read the working tree's policy that is not a configuration error"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 691,
+			"column": 7,
+			"endLine": 691,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "78ef5ab6b8aa2414f39bb79988638faef7a990b49633b1069dc62dbac9a8cdbb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 691,
+			"column": 44,
+			"endLine": 691,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "90c3c245e13ebbfca118103fc97ff41bc81d9a6e283d207d93831646d7e49d7b"
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cbb0eb9498c54313c7ca0797c0b3f31495ed82104c5776b097ef7734dff619aa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "44bf0ce727f1a29e63bb982d48b4d9fc7e2d018018e171d06ef673421b36dc79",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 75,
+			"mutatorName": "LogicalOperator",
+			"replacement": "existing !== undefined && existing !== stale && !restart || reusable",
+			"status": "generated",
+			"id": "59fd1fbe24903c7535148ac6efa6577cb38b60924c3332f46ef7c2242be4b34d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d47152e93b215b7ae40095b82e3c04089b06ba37a33ef01141d3dfd00b2afb5d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "existing !== undefined && existing !== stale || !restart",
+			"status": "generated",
+			"id": "861c364caf96fe0113c272b6700565839307f2f2dfe3f184f04926db8185489b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3208cbb7ad7c8d479c077925c9d430cd2a5527a14afea51ec7edfd467e3637ab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 51,
+			"mutatorName": "LogicalOperator",
+			"replacement": "existing !== undefined || existing !== stale",
+			"status": "generated",
+			"id": "4684dd8f9063d0e5ba1be0d6bc2741859679851f4d5fcf7504859bd82923e926",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"copies only recorded check sources on rerun (missing=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "be30ac3275ef6e001436d5112ca5e924503f136c30a7374f9fea69f4a5e4e0a9",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "existing is undefined only on a first start, where stale is undefined too, so existing !== stale is already false and the result is unchanged"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 7,
+			"endLine": 761,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "existing === undefined",
+			"status": "generated",
+			"id": "bf24afcc4e426b931496a9d802736ccdec2033e6f9ed9df557583a9715505dbf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 33,
+			"endLine": 761,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c94723e4e95d497612e1beb13ce71150b1bccc7406c2127e20aa4c2df14f23e5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"copies only recorded check sources on rerun (missing=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 33,
+			"endLine": 761,
+			"endColumn": 51,
+			"mutatorName": "EqualityOperator",
+			"replacement": "existing === stale",
+			"status": "generated",
+			"id": "ba3f3c6818d2b466735d61c525dc55dc01c0d693e4d2cf9ba157936dfa5a64db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 761,
+			"column": 55,
+			"endLine": 761,
+			"endColumn": 63,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "restart",
+			"status": "generated",
+			"id": "e63266fe4fd250415e26e36e77d617afd151accb3da2564282f96e08d37ea086",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reuses a run under a nested melian.yaml at the size limit and never one past it"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 23,
+	"omitted": 0,
+	"unmutated": []
+}

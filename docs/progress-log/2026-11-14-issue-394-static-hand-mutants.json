@@ -1,0 +1,328 @@
+{
+	"about": "Hand mutants of staticToolVersion in packages/pipeline/src/static.ts at 594f2446. The enumerator sets static.ts aside because the file sends signals; these mutants touch no signal code. Columns are 0-based, as the inventory writes them.",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 504,
+			"column": 3,
+			"endLine": 504,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads the version of the checkout's own install, which is the one a run starts"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 504,
+			"column": 3,
+			"endLine": 504,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads Melian's own copy when the checkout has none"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 506,
+			"column": 6,
+			"endLine": 506,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads Melian's own copy when the checkout has none"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 506,
+			"column": 6,
+			"endLine": 506,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Melian depends on @biomejs/biome and typescript, so staticToolSource never names a missing source for biome or tsc, and this branch runs only for a missing source"
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 1
+				},
+				"killed": false
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 509,
+			"column": 6,
+			"endLine": 509,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Melian depends on @biomejs/biome and typescript, so staticToolSource never names a missing source for biome or tsc, and this branch runs only for a missing source"
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 1
+				},
+				"killed": false
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 509,
+			"column": 37,
+			"endLine": 509,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Melian depends on @biomejs/biome and typescript, so staticToolSource never names a missing source for biome or tsc, and this branch runs only for a missing source"
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 1
+				},
+				"killed": false
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 511,
+			"column": 9,
+			"endLine": 511,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"says unavailable for a manifest that names no version, or cannot be read"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 511,
+			"column": 9,
+			"endLine": 511,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads the version of the checkout's own install, which is the one a run starts"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 511,
+			"column": 49,
+			"endLine": 511,
+			"endColumn": 62,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"says unavailable for a manifest that names no version, or cannot be read"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 136,
+			"column": 24,
+			"endLine": 136,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "pkg: \"\"",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads the version of the checkout's own install, which is the one a run starts"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 137,
+			"column": 20,
+			"endLine": 137,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "pkg: \"\"",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"staticToolVersion",
+						"reads Melian's own copy when the checkout has none"
+					]
+				}
+			},
+			"survivorClasses": [],
+			"run": {
+				"baseline": {
+					"collected": 1,
+					"passed": 1
+				},
+				"mutated": {
+					"collected": 1,
+					"passed": 0
+				},
+				"killed": true
+			}
+		}
+	]
+}

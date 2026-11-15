@@ -446,6 +446,89 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
 	});
 
+	it("reads a live fallback decider's provider from the decider its task names", async () => {
+		const fake = createFakeModels();
+		const decider: Decider = {
+			name: "llm-fallback:triage-provider/model",
+			calibrated: false,
+			decide: async () => ({ answers: [] }),
+		};
+		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false, decider });
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				decisionTask(decider),
+				{
+					root: root.id,
+					revision: "r",
+					key: "0".repeat(64),
+					decider: { name: decider.name },
+					request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
+	});
+
+	it("unlocks no provider for a decider whose name only contains the fallback's prefix", async () => {
+		const decider: Decider = {
+			name: "x-llm-fallback:triage-provider/model",
+			calibrated: false,
+			decide: async () => ({ answers: [] }),
+		};
+		const reopened = await ReviewHarness.open(createMemoryStorage(), createFakeModels().review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				decisionTask(decider),
+				{
+					root: root.id,
+					revision: "r",
+					key: "0".repeat(64),
+					decider: { name: decider.name },
+					request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
+	});
+
+	it("asks a versioned decider for a legacy decision task that names it only in its key", async () => {
+		const decide = vi.fn(async () => ({ answers: [] }));
+		const decider: Decider = { name: "recorded", version: "v1", calibrated: false, decide };
+		const reopened = await ReviewHarness.open(createMemoryStorage(), createFakeModels().review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		const id = await root.commit(
+			(tx) =>
+				tx.createTask(
+					decisionTask(decider),
+					{
+						root: root.id,
+						revision: "r",
+						key: JSON.stringify({ decider: decider.name }),
+						request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+					},
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		harness.resume();
+		const settled = await harness.waitForTask(id, context);
+		expect(decide).toHaveBeenCalledTimes(1);
+		expect(settled.state.outcome?.status).not.toBe("aborted");
+	});
+
 	describe("resumed providers of a stored route", () => {
 		const model = (provider: string) => ({ provider, modelId: "m" });
 		type Run = { key: string; route: { provider: string; modelId: string }[]; escalation?: { next: Run } };
@@ -1688,8 +1771,8 @@ describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
 		});
 		const crashed = (await replace.inspect(context)).tasks.find((task) => task.record.kind === "melian.decision");
 		expect(crashed).toBeDefined();
-		const input = crashed!.record.input as unknown as { key: string };
-		expect(JSON.parse(input.key).decider).toBe(decider.name);
+		const input = crashed!.record.input as unknown as { decider: { name: string } };
+		expect(input.decider.name).toBe(decider.name);
 		const root = await replace.root(context);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(DecisionDocument, root.id);

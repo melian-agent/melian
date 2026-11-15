@@ -47,9 +47,15 @@ export type DecisionTaskInput = {
 	root: ConversationId;
 	revision: string;
 	key: string;
+	decider?: { name: string; version?: string };
 	request: StoredRequest;
 	inputCut?: boolean;
 };
+
+// The decider a decision task asks. A task stored before the key became a hash names only the decider's name, in its key.
+export function deciderOf(input: DecisionTaskInput): { readonly name: string; readonly version?: string } {
+	return input.decider ?? { name: String((JSON.parse(input.key) as { decider?: unknown }).decider) };
+}
 
 // `superseded` when a later call recorded another task for the revision's question set, so this one wrote nothing.
 export type DecisionResult = "recorded" | "superseded";
@@ -78,7 +84,7 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 		phases: {
 			decide: async (task, runtime, context) => {
 				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
-				const { root, revision, key, request } = task.input;
+				const { root, revision, request } = task.input;
 				const timedOut = AbortSignal.timeout(timeout);
 				const signal = AbortSignal.any([runtime.signal, timedOut]);
 				// A decider that ignores its signal would otherwise hold the task open past the timeout.
@@ -94,10 +100,11 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				});
 				expired.catch(() => undefined);
 				let answer: Pick<StoredEntry, "decision" | "failure">;
-				// The registry holds the decider the harness opened with, whatever the input's key names, so asking it would
-				// record another decider's answer under this key.
-				const named = (JSON.parse(key) as { decider?: unknown }).decider;
-				if (named !== decider.name) {
+				// The registry holds the decider the harness opened with, whatever the input names, so asking it would
+				// record another decider's answer under this one.
+				const named = deciderOf(task.input);
+				const versioned = task.input.decider !== undefined;
+				if (named.name !== decider.name || (versioned && named.version !== decider.version)) {
 					await runtime.commit(async (tx) => {
 						await timing.end(tx);
 						return { status: "terminal", outcome: { status: "aborted" } };

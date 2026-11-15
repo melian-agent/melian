@@ -849,6 +849,23 @@ describe("triage", () => {
 		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
 	});
 
+	it("fails closed when the harness holds another version of the decider the decision names", async () => {
+		const recorded = choosing("quick", "same");
+		const versioned = (version: string): Decider => ({
+			name: "same",
+			calibrated: false,
+			version,
+			decide: (request) => recorded.decide(request),
+		});
+		await open(versioned("installed"));
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await review({ decider: versioned("asked") });
+
+		expect(recorded.requests).toHaveLength(0);
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
+	});
+
 	describe("attaching to a stored decision", () => {
 		// Fails its first `failures` calls, then chooses quick.
 		function flaky(failures: number): Decider & { readonly calls: number } {
@@ -929,6 +946,30 @@ describe("triage", () => {
 			await review({ decider });
 			await review({ decider, rerun: true });
 			expect(decider.calls).toBe(1);
+		});
+
+		it("attaches for an unchanged decider version, and asks again when the version changes", async () => {
+			const asked = flaky(0);
+			let version = "one";
+			const decider: Decider = {
+				name: asked.name,
+				calibrated: false,
+				get version() {
+					return version;
+				},
+				decide: (request) => asked.decide(request),
+			};
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+			await review({ decider });
+			await review({ decider });
+			expect(asked.calls).toBe(1);
+			version = "two";
+
+			const changed = await review({ decider });
+
+			expect(asked.calls).toBe(2);
+			expect(lensRecord(changed)).toMatchObject({ level: "quick" });
 		});
 
 		it("asks a changed question again rather than attach", async () => {

@@ -404,6 +404,7 @@ jobs:
           name: ${{ needs.round.outputs.artifact }}
           path: ${{ runner.temp }}/round
       - name: Comment on the pull request
+        id: comment
         env:
           GH_TOKEN: ${{ github.token }}
           STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
@@ -436,9 +437,9 @@ jobs:
             --jq '.[] | select(.user.id == 353727783) | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
           own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "melian-status-bot")
           if [ -n "$own" ]; then
-            GH_TOKEN="$token" gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+            GH_TOKEN="$token" gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > "$RUNNER_TEMP/posted.json"
           else
-            GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/issues/$NUMBER/comments" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+            GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/issues/$NUMBER/comments" -F "body=@$RUNNER_TEMP/comment.md" > "$RUNNER_TEMP/posted.json"
           fi
       # Read again just before setting it, as the comment does: a status names a head, and a pull request that moved
       # during the round shows a head no round reviewed, so it gets none.
@@ -475,3 +476,22 @@ jobs:
           if [ -z "$token" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
           printf '%s' "$status" | GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
           echo "melian/review on $HEAD: $(printf '%s' "$status" | jq -r '.state + ", " + .description')"
+      # A writer, or any workflow whose token can write pull requests, can edit the comment and keep its marker. So the run
+      # records the body GitHub stored, as a status only this Environment's token can set as melian-status-bot, and GitHub
+      # lets no one edit or delete a status. The check in AGENTS.md compares the live comment with it. The status goes on
+      # the commit this run built, which the run's own record names, so the check reads nothing in the body to find it.
+      # It runs after melian/review, so a failure here never costs the head its status; the comment then reads unverified.
+      - name: Record the comment's body
+        if: ${{ !cancelled() && steps.comment.outcome == 'success' }}
+        env:
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          token="$STATUS_TOKEN" && unset STATUS_TOKEN
+          if [ -z "$token" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          node scripts/round-record.mjs "$RUNNER_TEMP/posted.json" "$RUN_ID" "$NUMBER" > "$RUNNER_TEMP/record.json"
+          GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/statuses/$SHA" --input "$RUNNER_TEMP/record.json" > /dev/null
+          echo "melian/round-comment on $SHA: $(jq -r .description "$RUNNER_TEMP/record.json")"

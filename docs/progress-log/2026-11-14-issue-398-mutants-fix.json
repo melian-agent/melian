@@ -1,0 +1,111 @@
+{
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 336,
+			"column": 21,
+			"endLine": 336,
+			"endColumn": 44,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open with a head's allowlist > refuses a probe whose probe.read copy passes its deadline part-way, and leaves no partial copy",
+			"survivorClasses": [],
+			"run": {
+				"head": "2cdfeb9c",
+				"test": "packages/pipeline/test/probe.test.ts > Probe.open with a head's allowlist > refuses a probe whose probe.read copy passes its deadline part-way, and leaves no partial copy",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 356,
+			"column": 6,
+			"endLine": 356,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies an entry at its limit of entries and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"head": "2cdfeb9c",
+				"test": "packages/pipeline/test/probe.test.ts > copyReads > copies an entry at its limit of entries and refuses one past it",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 356,
+			"column": 6,
+			"endLine": 356,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > copyReads > refuses a copy whose last entry finished past its deadline",
+			"survivorClasses": [],
+			"run": {
+				"head": "2cdfeb9c",
+				"test": "packages/pipeline/test/probe.test.ts > copyReads > refuses a copy whose last entry finished past its deadline",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 356,
+			"column": 6,
+			"endLine": 356,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "now() >= deadline",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies at its deadline and refuses part-way once the deadline has passed",
+			"survivorClasses": [],
+			"run": {
+				"head": "2cdfeb9c",
+				"test": "packages/pipeline/test/probe.test.ts > copyReads > copies at its deadline and refuses part-way once the deadline has passed",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 356,
+			"column": 6,
+			"endLine": 356,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "now() <= deadline",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > copyReads > copies an entry at its limit of entries and refuses one past it",
+			"survivorClasses": [],
+			"run": {
+				"head": "2cdfeb9c",
+				"test": "packages/pipeline/test/probe.test.ts > copyReads > copies an entry at its limit of entries and refuses one past it",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 356,
+			"column": 35,
+			"endLine": 356,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+			"survivorClasses": []
+		}
+	],
+	"total": 6,
+	"omitted": 0,
+	"unmutated": []
+}

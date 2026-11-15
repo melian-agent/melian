@@ -1,5 +1,5 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import * as core from "@melian-agent/core";
 import {
 	Changeset,
@@ -377,6 +377,28 @@ describe("runChecks", () => {
 		expect(second.identity.task).not.toBe(first.identity.task);
 	});
 
+	it("attaches to a run whose tools and host agree, and runs again when an analyser's version or the host differs", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input, run: first } = await checks(base, head);
+		const again = await runChecks(harness, input, context);
+		expect(again.identity).toEqual(first.identity);
+
+		const version = vi.spyOn(staticRunner, "staticToolVersion").mockReturnValue("0.0.1");
+		const bumped = await runChecks(harness, input, context);
+		expect(bumped.identity.policy).not.toBe(first.identity.policy);
+		expect(bumped.identity.task).not.toBe(first.identity.task);
+		version.mockRestore();
+
+		const host = core.hostFacts();
+		vi.spyOn(core, "hostFacts").mockReturnValue({ ...host, caseFolds: !host.caseFolds });
+		const moved = await runChecks(harness, input, context);
+		expect(moved.identity.policy).not.toBe(first.identity.policy);
+		expect(moved.identity.task).not.toBe(first.identity.task);
+	});
+
 	// Issue #281: a run from before Biome and tsc text was withheld stored that text in its findings, so a build that
 	// withholds it must not reuse that run. 8921ccb4, the last such build, computed the policy below for this input; it was
 	// recorded by running this input through that build's runChecks, never written by hand.
@@ -411,6 +433,214 @@ describe("runChecks", () => {
 		);
 		expect(run.identity.policy).toMatch(/^[0-9a-f]{16}$/);
 		expect(run.identity.policy).not.toBe("f0eb2ebd9fb9b2f2");
+	});
+
+	// Codex's review of pull request #436: a working tree's nested policy decides what guardrails find, so a change to it
+	// at the same base and head must start a run of its own rather than attach to one made under the old rule.
+	it("runs again when a nested melian.yaml in the working tree changes", { timeout: 60_000 }, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/dist/a.js": lines("built") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "worktree" };
+		const run = async () => {
+			const { config } = await loadConfig(repo, source, "");
+			return runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		};
+		const before = await run();
+		expect(before.records).toEqual([{ name: "guardrails", status: "ran", findings: 0, notes: [] }]);
+
+		writeFileSync(
+			join(repo, "pay", "melian.yaml"),
+			lines(
+				"guardrails:",
+				"  forbidden-paths:",
+				"    rules:",
+				"      out:",
+				"        paths: [dist/**]",
+				"        message: built",
+			),
+		);
+		const after = await run();
+		expect(after.identity.task).not.toBe(before.identity.task);
+		expect(after.records).toEqual([{ name: "guardrails", status: "ran", findings: 1, notes: [] }]);
+	});
+
+	// A nested melian.yaml at the size limit is keyed by its text, so a repeat attaches; one byte past it cannot be read
+	// whole, so no run of it is reused and each repeat runs, and fails, again.
+	it("reuses a run under a nested melian.yaml at the size limit and never one past it", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "worktree" };
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = () =>
+			runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		const atLimit = `#${"x".repeat(core.maxConfigBytes - 2)}\n`;
+
+		writeFileSync(join(repo, "pay", "melian.yaml"), atLimit);
+		const first = await run();
+		expect(first.records).toEqual([{ name: "guardrails", status: "ran", findings: 0, notes: [] }]);
+		expect((await run()).identity.task).toBe(first.identity.task);
+
+		writeFileSync(join(repo, "pay", "melian.yaml"), `${atLimit}#`);
+		const past = await run();
+		expect(past.records).toMatchObject([{ name: "guardrails", status: "failed", reason: "tooLarge" }]);
+		expect((await run()).identity.task).not.toBe(past.identity.task);
+	});
+
+	// tsc resolves types from the checkout's install, which can drift from the lockfile, as an `npm install` of one
+	// package does. Each package manager's record of what it installed keys the run, so a changed record runs it again
+	// and the same record reuses it. Each path came from a real install by that manager.
+	describe("the checkout's install", () => {
+		const fixture = async () => {
+			const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+			const head = commit(repo, { "a.ts": lines("a") });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+			return async () =>
+				(
+					await runChecks(
+						harness,
+						{ rootConversationId: root.id, changeset, config, source, tier: "fast" },
+						context,
+					)
+				).identity.task;
+		};
+		const write = (path: string, text: string) => {
+			mkdirSync(dirname(join(repo, path)), { recursive: true });
+			writeFileSync(join(repo, path), text);
+		};
+
+		it.each([
+			["npm", "package-lock.json", "node_modules/.package-lock.json"],
+			["pnpm", "pnpm-lock.yaml", "node_modules/.pnpm/lock.yaml"],
+			["Yarn 1", "yarn.lock", "node_modules/.yarn-integrity"],
+			["Yarn 4 with node_modules", "yarn.lock", "node_modules/.yarn-state.yml"],
+			["Yarn 4", "yarn.lock", ".yarn/install-state.gz"],
+			["Yarn 4 with Plug'n'Play", "yarn.lock", ".pnp.cjs"],
+		])(
+			"runs again when %s's record of the install changes under the same lockfile",
+			{
+				timeout: 60_000,
+			},
+			async (_, lockfile, record) => {
+				const run = await fixture();
+				write(lockfile, "lock");
+				write(record, "@types/node 1");
+				const installed = await run();
+				expect(await run()).toBe(installed);
+				write(record, "@types/node 2");
+				expect(await run()).not.toBe(installed);
+			},
+		);
+
+		// A missing record would read as an unchanged install, so a lockfile whose manager left no record never reuses.
+		it.each([["package-lock.json"], ["pnpm-lock.yaml"], ["yarn.lock"]])(
+			"never reuses a run beside %s with none of its manager's records",
+			{ timeout: 60_000 },
+			async (lockfile) => {
+				const run = await fixture();
+				write(lockfile, "lock");
+				const first = await run();
+				expect(await run()).not.toBe(first);
+			},
+		);
+
+		// npm's install is fully recorded, so only the unreadable file, a directory where Yarn's record would be, decides.
+		it("never reuses a run whose install record cannot be read", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("package-lock.json", "lock");
+			write("node_modules/.package-lock.json", "@types/node 1");
+			mkdirSync(join(repo, "node_modules", ".yarn-integrity"), { recursive: true });
+			const first = await run();
+			expect(await run()).not.toBe(first);
+		});
+
+		// An install no manager recorded cannot be told from another, so it is not the same install twice.
+		it("never reuses a run beside a node_modules that no manager recorded", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("node_modules/@types/node/index.d.ts", "export {};");
+			const first = await run();
+			expect(await run()).not.toBe(first);
+		});
+
+		// Removing the unrecorded node_modules leaves every digest as it was, so the run made beside it must not answer.
+		it("never reuses a run made beside an unrecorded node_modules once it is removed", {
+			timeout: 60_000,
+		}, async () => {
+			const run = await fixture();
+			write("node_modules/@types/node/index.d.ts", "export {};");
+			const unrecorded = await run();
+			rmSync(join(repo, "node_modules"), { recursive: true });
+			expect(await run()).not.toBe(unrecorded);
+		});
+
+		// npm writes its record even when told to write no lockfile, and the record alone identifies the install.
+		it("reuses a run beside a node_modules npm recorded without a lockfile", { timeout: 60_000 }, async () => {
+			const run = await fixture();
+			write("node_modules/.package-lock.json", "@types/node 1");
+			const first = await run();
+			expect(await run()).toBe(first);
+		});
+
+		// Bun writes no record of its install, so its lockfile alone is keyed, and its node_modules reuses as before.
+		it("reuses a run beside Bun's lockfile and its node_modules, which have no record to read", {
+			timeout: 60_000,
+		}, async () => {
+			const run = await fixture();
+			write("bun.lock", "lock");
+			write("node_modules/@types/node/index.d.ts", "export {};");
+			const first = await run();
+			expect(await run()).toBe(first);
+		});
+	});
+
+	// A revision's policy is fixed by its commit, so its run is keyed as it was before working-tree policy was: a nested
+	// melian.yaml past the size limit at the commit leaves the run reusable.
+	it("reuses a revision source's run under a nested melian.yaml past the size limit", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [guardrails]"),
+			"pay/melian.yaml": `#${"x".repeat(core.maxConfigBytes)}\n`,
+		});
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const source: RepositorySource = { kind: "revision", commit: base };
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = () =>
+			runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		const first = await run();
+		expect(first.records).toMatchObject([{ name: "guardrails", status: "failed", reason: "tooLarge" }]);
+		expect((await run()).identity.task).toBe(first.identity.task);
+	});
+
+	// Only a policy file Melian cannot read whole keys a random value; any other failure is a fault, and the run stops.
+	it("stops on a failure to read the working tree's policy that is not a configuration error", async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "pay/a.ts": lines("a") });
+		const { harness, root } = await open();
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const actual = core.configLookup;
+		const fault = new TypeError("not a configuration error");
+		vi.spyOn(core, "configLookup").mockImplementation((repoRoot, source) =>
+			Object.assign(actual(repoRoot, source), { policyText: () => Promise.reject(fault) }),
+		);
+		await expect(
+			runChecks(
+				harness,
+				{ rootConversationId: root.id, changeset, config, source: { kind: "worktree" }, tier: "fast" },
+				context,
+			),
+		).rejects.toBe(fault);
 	});
 
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {

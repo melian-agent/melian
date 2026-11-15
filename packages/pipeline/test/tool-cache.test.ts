@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type * as fs from "node:fs/promises";
 import {
 	chmod,
@@ -29,6 +29,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 		open: vi.fn(original.open),
 		rename: vi.fn(original.rename),
 		lstat: vi.fn(original.lstat),
+		writeFile: vi.fn(original.writeFile),
 	};
 });
 
@@ -59,7 +60,7 @@ it.each([new Error("local download refused"), "local download refused"])(
 	},
 );
 
-it("closes download and verification handles after a binary stat refusal", async () => {
+it("closes verification handles after a binary stat refusal", async () => {
 	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
 	const original = await vi.importActual<typeof fs>("node:fs/promises");
 	const handles: FileHandle[] = [];
@@ -80,7 +81,7 @@ it("closes download and verification handles after a binary stat refusal", async
 			code: "invalidOutput",
 			message: "Materialised tool failed verification",
 		});
-		expect(handles).toHaveLength(3);
+		expect(handles).toHaveLength(2);
 		for (const handle of handles) expect(handle.close).toHaveBeenCalledOnce();
 	} finally {
 		for (const handle of handles) await handle.close();
@@ -443,6 +444,99 @@ it("refuses a publication changed before its final verification", async () => {
 	} finally {
 		vi.mocked(rename).mockImplementation(original.rename);
 	}
+});
+
+// Node 22 and 24 bundle an undici that crashes when a server closes the connection while a body is paused
+// (nodejs/undici#5360), which a write awaited between chunks causes. No fake response can reproduce that, so these pin
+// what avoids it: nothing is written until the whole body is read, and then only when its digest matches.
+it("reads a download whole, in many chunks, before writing any of it", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const chunks = Array.from({ length: 64 }, (_, index) =>
+		bytes.subarray(Math.floor((index * bytes.length) / 64), Math.floor(((index + 1) * bytes.length) / 64)),
+	);
+	let pulled = 0;
+	const written: number[] = [];
+	const body = new ReadableStream<Uint8Array>({
+		async pull(controller) {
+			const paths = await readdir(root, { recursive: true });
+			if (paths.some((path) => path.endsWith("archive"))) written.push(pulled);
+			if (pulled === chunks.length) return controller.close();
+			controller.enqueue(new Uint8Array(chunks[pulled++]!));
+		},
+	});
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe("trusted");
+	expect({ pulled, written }).toEqual({ pulled: 64, written: [] });
+});
+
+it("keeps a download in slabs of 1 MiB, however finely it arrives", async () => {
+	const text = randomBytes(1_500_000).toString("base64");
+	const bytes = toolArchive([{ name: "enola", text }]);
+	const pieces: Uint8Array[] = [];
+	for (let offset = 0; offset < bytes.length; ) {
+		const length = offset < 2000 ? 1 : 7919;
+		pieces.push(new Uint8Array(bytes.subarray(offset, offset + length)), new Uint8Array(0));
+		offset += length;
+	}
+	const body = new ReadableStream<Uint8Array>({
+		start(controller) {
+			for (const piece of pieces) controller.enqueue(piece);
+			controller.close();
+		},
+	});
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe(text);
+	const [written] = archiveWrites();
+	expect(written?.map((slab) => slab.byteLength)).toEqual([1024 * 1024, bytes.length - 1024 * 1024]);
+	expect(Buffer.concat(written ?? []).equals(bytes)).toBe(true);
+});
+
+for (const [size, name, slabs] of [
+	[1024 * 1024, "one slab", [1024 * 1024]],
+	[1024 * 1024 + 1, "two slabs", [1024 * 1024, 1]],
+] as const) {
+	it(`writes a download of ${size} bytes as ${name}`, async () => {
+		const bytes = randomBytes(size);
+		const body = new ReadableStream<Uint8Array>({
+			start(controller) {
+				for (let offset = 0; offset < size; offset += 4096)
+					controller.enqueue(new Uint8Array(bytes.subarray(offset, offset + 4096)));
+				controller.close();
+			},
+		});
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(body) });
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toThrow();
+		const [written] = archiveWrites();
+		expect(written?.map((slab) => slab.byteLength)).toEqual(slabs);
+		expect(Buffer.concat(written ?? []).equals(bytes)).toBe(true);
+	});
+}
+
+function archiveWrites(): Uint8Array[][] {
+	return vi
+		.mocked(writeFile)
+		.mock.calls.filter(([path]) => String(path).endsWith("archive"))
+		.map(([, data]) => data as Uint8Array[]);
+}
+
+it("keeps a downloaded archive readable by its owner alone", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+	const binary = await cache.materialise(testTool(bytes), "darwin-arm64");
+	expect((await lstat(join(dirname(binary), "archive"))).mode & 0o777).toBe(0o600);
+});
+
+it("writes nothing of a download whose digest does not match", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const cache = await ToolCache.open(root, { fetch: async () => new Response(Buffer.from("not the pinned archive")) });
+	await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({
+		code: "invalidOutput",
+		message: "Tool archive SHA-256 mismatch; nothing extracted",
+	});
+	const archives = [...vi.mocked(open).mock.calls, ...vi.mocked(writeFile).mock.calls].filter(([path]) =>
+		String(path).endsWith("archive"),
+	);
+	expect(archives).toEqual([]);
 });
 
 it("caps streamed archive bytes before writing an oversized chunk", async () => {

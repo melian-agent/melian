@@ -1,4 +1,6 @@
+// npm's record of the install sits beside it, as a real install writes, so a check run under it can be reused.
 export const emptyVitestInstall = {
+	"node_modules/.package-lock.json": "{}",
 	"node_modules/vitest/package.json": JSON.stringify({
 		name: "vitest",
 		version: "5.0.3",

@@ -1,0 +1,15 @@
+Codex's third adversarial review of [pull request #436](https://github.com/melian-agent/melian/pull/436) found that a check run was not keyed by the checkout's install. The coordinator advised option A on [issue #394](https://github.com/melian-agent/melian/issues/394#issuecomment-6875733608): key npm's record of the install through the mutation check's own reader. The advice is not a ruling.
+
+Problem: the check key named Biome's and tsc's versions, but tsc resolves types from the whole install, which the runner links into each worktree. Example: `npm install @types/node@<next>` changes `node_modules` and leaves `package-lock.json` alone; a repeat review of the same commits attached to the earlier tsc run. Solution: `installDigests` in `packages/pipeline/src/mutation-static.ts` hashes each package manager's lockfile and `node_modules/.package-lock.json`, npm's record of what it installed. A missing record reads `unavailable`, so a checkout without one never shares a key with one that has it. `runIdentity` keys it for every check run, and `mutationInstallation` now reads through it, so the mutation check gains the same record.
+
+The fix started with a failing test. At `c5df92e0`, "runs again when the checkout's install changes under the same lockfile" in `packages/pipeline/test/checks.test.ts` failed with `expected 8 not to be 8`: after npm's record appeared, the run reused task 8. After the fix it passes, with 292 tests across `checks.test.ts`, `check-request.test.ts`, `mutation-cache.test.ts` and `mutation-enumeration.test.ts`. The test also holds that a missing record keys apart from a present one, and that the same record reuses the run. `mutation-cache.test.ts`'s test that restates the installation identity's shape gains the record.
+
+Cost: every check run reruns once after the upgrade, and a mutation partition starts cold once.
+
+The changed code guards trust: it decides what a key matches. The enumerated inventory over `c5df92e0...5b9dd992` is [2026-11-14-issue-394-install-mutants.json](2026-11-14-issue-394-install-mutants.json): six generated mutants in `mutation-static.ts`, and three string literals the configuration ignores. `checks.ts` and `check-request.ts` gained only object fields, which Stryker does not mutate, so four hand mutants stand for them and for the record itself. [The runs](2026-11-14-issue-394-install-mutant-runs.json) were made at `5b9dd992`, each against its named test alone after that test passed unmutated. All ten were killed:
+
+- The six generated mutants of `installDigests`, by the shape test, except the emptied `catch` block, which the checks test kills.
+- The missing record's entry emptied to `[]` first survived the checks test, since an absent entry still keys apart from a present one. The shape test kills it: it pins the stored identity's exact form.
+- npm's record dropped from the list, and `runIdentity` keying `{}`, by the checks test.
+- The request dropping `install`, by `check-request.test.ts`'s coverage test.
+- The mutation identity keying `{}`, by the shape test.

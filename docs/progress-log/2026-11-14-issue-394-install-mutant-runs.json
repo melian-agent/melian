@@ -1,0 +1,152 @@
+[
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:135:73:BlockStatement:{}",
+    "at": "packages/pipeline/src/mutation-static.ts:135:73",
+    "mutator": "BlockStatement",
+    "replacement": "{}",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:137:31:BlockStatement:{}",
+    "at": "packages/pipeline/src/mutation-static.ts:137:31",
+    "mutator": "BlockStatement",
+    "replacement": "{}",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:138:7:BlockStatement:{}",
+    "at": "packages/pipeline/src/mutation-static.ts:138:7",
+    "mutator": "BlockStatement",
+    "replacement": "{}",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:139:11:ArrayDeclaration:[]",
+    "at": "packages/pipeline/src/mutation-static.ts:139:11",
+    "mutator": "ArrayDeclaration",
+    "replacement": "[]",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:145:11:BlockStatement:{}",
+    "at": "packages/pipeline/src/mutation-static.ts:145:11",
+    "mutator": "BlockStatement",
+    "replacement": "{}",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:130:Hand: drop npm's install record:",
+    "at": "packages/pipeline/src/mutation-static.ts:130:1",
+    "mutator": "Hand: drop npm's install record",
+    "replacement": "",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/checks.ts:658:Hand: key no install:install: {},",
+    "at": "packages/pipeline/src/checks.ts:658:2",
+    "mutator": "Hand: key no install",
+    "replacement": "install: {},",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/check-request.ts:89:Hand: request drops the install:",
+    "at": "packages/pipeline/src/check-request.ts:89:3",
+    "mutator": "Hand: request drops the install",
+    "replacement": "",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:168:Hand: mutation identity keys no install:lockfiles: {},",
+    "at": "packages/pipeline/src/mutation-static.ts:168:4",
+    "mutator": "Hand: mutation identity keys no install",
+    "replacement": "lockfiles: {},",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  },
+  {
+    "id": "packages/pipeline/src/mutation-static.ts:146:11:ArrayDeclaration:[]",
+    "at": "packages/pipeline/src/mutation-static.ts:146:11",
+    "mutator": "ArrayDeclaration",
+    "replacement": "[]",
+    "baseline": {
+      "collected": 1,
+      "passed": 1
+    },
+    "result": {
+      "collected": 1,
+      "passed": 0
+    },
+    "killed": true
+  }
+]

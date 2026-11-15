@@ -1,0 +1,575 @@
+{
+	"head": "25e83ac6",
+	"runs": [
+		{
+			"id": "e092fc96a855c974d02973c72f45e5b66ee5d6f9566757f9afa255a7a56a2384",
+			"at": "packages/pipeline/src/verification.ts:181:15",
+			"mutator": "ConditionalExpression",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "32c339b82f05c866e3ac846c06d50d760fac10bbf15c2bfaa21776acaeab0f6e",
+			"at": "packages/pipeline/src/verification.ts:181:15",
+			"mutator": "ConditionalExpression",
+			"replacement": "false",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "6ba06ef000fe5d54538672e820c234e81570fc589ef50dc361550cbd1d02c3eb",
+			"at": "packages/pipeline/src/verification.ts:181:15",
+			"mutator": "EqualityOperator",
+			"replacement": "probe !== undefined",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "72d83a2f5dc9bc5a14b5a3062e00c74b8d6e7adabb192b9e7eff00798fcc77e8",
+			"at": "packages/pipeline/src/verification.ts:181:37",
+			"mutator": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "e6fb6b625369458a5845742f9b4cf47304a9e2cb9146138ac252ffd18acbb86b",
+			"at": "packages/pipeline/src/verification.ts:181:42",
+			"mutator": "ArrayDeclaration",
+			"replacement": "[]",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "777faac51a0774ca31563a24bfe4bfe6c0d040a654591f57d5b73ab410f19fef",
+			"at": "packages/pipeline/src/verification.ts:181:43",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "3f14b0853a0b39b4f1d9921d678dfed6fb7fa2fa8c85442887d3934716053a29",
+			"at": "packages/pipeline/src/verification.ts:455:18",
+			"mutator": "ArrowFunction",
+			"replacement": "() => undefined",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "81228fd17cfbe2ca6df88bcd0c9eee6af35ce6325182a75879041e77769e5758",
+			"at": "packages/pipeline/src/verification.ts:470:64",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "cf706437f98800894dcc645c13cadeb7645670dc497cad0494e1f0fe7e8d8998",
+			"at": "packages/pipeline/src/verification.ts:471:8",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "63938d0546c0ce385480b117bce4c80dcb1fb53eb0f7896d4a490523da5d6678",
+			"at": "packages/pipeline/src/verification.ts:471:42",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "5339a830ac1b3712f69332ead8095919876bc4346917ae8ad461428fab833890",
+			"at": "packages/pipeline/src/verification.ts:471:65",
+			"mutator": "BooleanLiteral",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "c3880f0b4f956a27e2be0186b4f20386773bd931b3cc134a8b17fcc95363ae58",
+			"at": "packages/pipeline/src/verification.ts:471:82",
+			"mutator": "BooleanLiteral",
+			"replacement": "true",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "4daf3b9c2e36e243babbfed7899f59b04dcee0194c7e7a2857b705a8a4e87e6d",
+			"at": "packages/pipeline/src/verification.ts:474:77",
+			"mutator": "BlockStatement",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "5b8cfd50befb9e845c96875512e984915bdf9fad2e0a8ce220543e876bb56d4d",
+			"at": "packages/pipeline/src/verification.ts:475:8",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "430ed03e8cf72ab2258470067cf509273a0316274c99244866a2662ddc5f5100",
+			"at": "packages/pipeline/src/verification.ts:476:6",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "52ef7328082f95f29ad4a3155ad6a28f85cbe441562c91e3b8a2a5cefdc176ba",
+			"at": "packages/pipeline/src/verification.ts:478:8",
+			"mutator": "ArrayDeclaration",
+			"replacement": "[]",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "1e89957cad9e488e98eebb347cfba8ba5a4b2df78ca0d11b0bd078d4c02982cf",
+			"at": "packages/pipeline/src/verification.ts:478:9",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "00c7fe204deafaf5bececc1008e473639a243cb580c4c3492999fb94841e8898",
+			"at": "packages/pipeline/src/verification.ts:478:19",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "6eebc8c20eb2e129b43b1aa3c6538b284649afd8913e9d087114fac5f5b2a505",
+			"at": "packages/pipeline/src/verification.ts:478:39",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "86f2c38a185ea1805a270f716074415cdaf21eb60ebdb0c95a27b4f4bbaba8df",
+			"at": "packages/pipeline/src/verification.ts:478:60",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "a2f19f6dd22e2826d8b987e008b3b0328836bbc8c6c1bd48fb0f66ee91702032",
+			"at": "packages/pipeline/src/verification.ts:478:82",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "494499ed477229eb5ebe4b4568b1df0b3974c7802bb54fc7818d3aec76cf2503",
+			"at": "packages/pipeline/src/verification.ts:479:9",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "4da7cbbaa7b143c0fd1d9274210eb920cb8127c585fc4097d4f45a5b247205b6",
+			"at": "packages/pipeline/src/verification.ts:481:11",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "523f96d6ebdb4a5c5e33e4ac1b7863b5d6bfebf111bf3ed11b2777eb73c22ed4",
+			"at": "packages/pipeline/src/verification.ts:482:10",
+			"mutator": "ArrayDeclaration",
+			"replacement": "[]",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "d8c499ad8e271752415da944cc4b4344bb54df1083ecbd87c1261520f0e589a1",
+			"at": "packages/pipeline/src/verification.ts:482:11",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "3c020a6e35fe33c4c87303fd84ac66dbcafa68c6d1c0f4422d28ded0418ea655",
+			"at": "packages/pipeline/src/verification.ts:482:19",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "c255a2e3f892e1aef193203398df9564f19e3aedd81f6d353370dd5d95f40581",
+			"at": "packages/pipeline/src/verification.ts:482:35",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "7c1a9f24d56d5e3663dd2aa81d37f91fe8ab7057bfb4e97fd6aed13ed10ebdb2",
+			"at": "packages/pipeline/src/verification.ts:507:3",
+			"mutator": "ArrayDeclaration",
+			"replacement": "[]",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "2c9445e41e6edb409b465689bfc3425c3be9dfe217e0cedfbc5b4b9fc0784c8b",
+			"at": "packages/pipeline/src/verification.ts:508:4",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "826117e7221e9ddc6061d0f099791a6e0c5840acdecba013671a34ee1d9073bf",
+			"at": "packages/pipeline/src/verification.ts:508:13",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "8577ba524b77a3f39928dcafeda99a18e62caa70a098c24aafbd87a1145946a5",
+			"at": "packages/pipeline/src/verification.ts:509:4",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "580a8127f63aa438a7e37f4436e4939ce6902644ee24aa6e609eed09117f5995",
+			"at": "packages/pipeline/src/verification.ts:509:13",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "33270ef9e9fba5f5ff17e4c34a822a86a673c668635c8b878e3c8f469a98e022",
+			"at": "packages/pipeline/src/verification.ts:509:54",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "70c5b0035dc4d2ecd8fe7f93a63232a9124f2934ab5202706bddbd5b999cbd25",
+			"at": "packages/pipeline/src/verification.ts:509:65",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 1
+			},
+			"killed": false
+		},
+		{
+			"id": "a8ae7100f7d4a09d8446aeee7520fa8a373db65df3d6248d57afb7a3597f56c1",
+			"at": "packages/pipeline/src/verification.ts:510:4",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "1785c0e1625aa02d8e324fe55d6a7c8e4fe33e354dd07d539cc01d200449197b",
+			"at": "packages/pipeline/src/verification.ts:510:13",
+			"mutator": "StringLiteral",
+			"replacement": "\"\"",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "ed94899194f7c144fcb8429ab88a0c68063abcf9b6701a964a5f8d7f337284cf",
+			"at": "packages/pipeline/src/verification.ts:510:54",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		},
+		{
+			"id": "e5cede66ddc35d5c738284788cf4e0a565fb329daa29bc1df4a24258e5c20df2",
+			"at": "packages/pipeline/src/verification.ts:526:20",
+			"mutator": "ObjectLiteral",
+			"replacement": "{}",
+			"baseline": {
+				"collected": 1,
+				"passed": 1
+			},
+			"result": {
+				"collected": 1,
+				"passed": 0
+			},
+			"killed": true
+		}
+	]
+}
