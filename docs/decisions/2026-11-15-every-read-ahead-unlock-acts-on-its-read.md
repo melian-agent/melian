@@ -30,7 +30,7 @@ Two sites need no change.
 
 The evals' `liveModels`, in `packages/evals/src/credentials.ts`, unlocks every named credential before the first review and reads nothing first.
 
-A commit that refuses returns a value the step cannot mistake for a result: `undefined` for triage, whose commit never returns it otherwise, and a private symbol for the final verification and the walkthrough, where `undefined` already means there is nothing to wait for.
+A commit that refuses gives the step a signal it cannot mistake for a result. Triage's returns `undefined`, which its commit never returns otherwise. The final verification's returns a private symbol, since `undefined` already means there is nothing to wait for. The walkthrough's refuses after it has counted a finished attempt, so it throws a private error, and Pi Durable stores none of a commit whose callback throws.
 
 ## What it costs
 
