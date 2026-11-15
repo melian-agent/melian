@@ -1,0 +1,7 @@
+# Melian's own full tier, as every golden policy carries, so a live run scores the whole review. Only trust-boundary is
+# held at its level that probes.
+tiers:
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
+lenses:
+  trust-boundary:
+    level: { floor: deep }

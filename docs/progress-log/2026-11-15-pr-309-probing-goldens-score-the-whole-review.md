@@ -1,0 +1,7 @@
+The Actions round on [pull request #309](https://github.com/melian-agent/melian/pull/309) at `1197dc27` blocked on finding `1b02d7f564631de7`, from the design lens. The six probing goldens switched off every lens but `trust-boundary`, so a live run would score that lens alone. [The evals guideline](../guidelines/evals.md#two-modes) counts every lens's findings on a lens's goldens, since a golden scores the whole review. The corpus test let them off carrying Melian's full tier.
+
+The fix follows the finding. Each probing golden's `melian.golden.yaml` now carries Melian's full tier, as every other lens golden does, and still holds `trust-boundary` at `deep`. Each script answers the six other lenses that run there with no finding, as the other goldens' scripts do. Durability does not run on these paths. The sandbox test's live half scripts the same answers.
+
+Test first: with the exemption removed from `carry Melian's own full tier`, the test failed at `1197dc27` with `trust-boundary-probe-claim-lost-release/melian.golden.yaml: expected [ 'standard', 'lens.contracts', …(4) ] to deeply equal [ 'standard', 'lens.contracts', …(6) ]`. With the fixtures fixed, `packages/evals/test/goldens.test.ts` passed: 137 of 137. In between, the six scripted probing goldens and the sandbox test failed with `lenses did not finish: contracts, conventions, correctness, design, removed-behaviour, tests` until the scripts answered those lenses.
+
+The change touches no trust or durability code: `goldens.ts`'s sandbox choice is unchanged, and its test still asserts both halves.
