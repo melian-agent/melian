@@ -1331,3 +1331,89 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		).rejects.toThrow("deep ran without probes, which cannot run here: no sandbox-runtime here");
 	});
 });
+
+describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
+	const claim = () => loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+	const answered = ["contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+		match: `You are the ${lens} reviewer`,
+		replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+	}));
+	const listing = (count: number) =>
+		testing.fauxAssistantMessage(
+			Array.from({ length: count }, () => testing.fauxToolCall("list_files", {})),
+			{ stopReason: "toolUse" },
+		);
+
+	it("gives no score to a live run whose prober leaves an attack with neither a probe nor a skip", async () => {
+		const golden = claim();
+		const availability = vi.spyOn(Probe, "availability").mockResolvedValue({ available: true });
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the prober for the trust-boundary lens",
+				replies: [
+					testing.fauxAssistantMessage("I read the plan."),
+					testing.fauxAssistantMessage("Still no probe."),
+				],
+			},
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage(
+						[testing.fauxToolCall("record_plan", golden.script["trust-boundary"]![0]!.calls![0]!.arguments)],
+						{ stopReason: "toolUse" },
+					),
+					testing.fauxAssistantMessage("Planned 1 attack."),
+				],
+			},
+			{ match: "You are the correctness reviewer", replies: [testing.fauxAssistantMessage("Reported 0 findings.")] },
+			...answered,
+		]);
+		const ref = fake.ref();
+		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(
+			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with neither a probe nor a skip/,
+		);
+	});
+
+	it("gives no score to a live run whose lens without probes ends at its budget", async () => {
+		const golden = claim();
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage([testing.fauxToolCall("record_plan", { attacks: [] })], {
+						stopReason: "toolUse",
+					}),
+					testing.fauxAssistantMessage("Planned no attacks."),
+				],
+			},
+			{
+				match: "You are the correctness reviewer",
+				replies: [listing(200), listing(1), testing.fauxAssistantMessage("Never asked.")],
+			},
+			...answered,
+		]);
+		const ref = fake.ref();
+		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(/^Not reviewed: .*lens\.correctness ended \(.*tool calls/);
+	});
+
+	it("fails a scripted run whose lens ends at its budget", async () => {
+		const golden = claim();
+		const many = Array.from({ length: 200 }, () => ({ name: "list_files", arguments: {} }));
+		const script = {
+			...golden.script,
+			correctness: [{ calls: many }, { calls: [{ name: "list_files", arguments: {} }] }, { text: "Never asked." }],
+		};
+		await expect(runGolden({ ...golden, script }, { kind: "scripted" })).rejects.toThrow(
+			/^Not reviewed: .*lens\.correctness ended /,
+		);
+	});
+});

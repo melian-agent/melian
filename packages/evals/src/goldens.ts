@@ -5,7 +5,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	Changeset,
+	type CheckRecord,
 	causeSchema,
+	checksOfTier,
+	deterministicChecks,
 	evaluateGuardrails,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
@@ -383,6 +386,16 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
+		// A golden measures its lenses, so the checks a host runs without a model skip with leave, and any other check
+		// that did not finish leaves the review not reviewed.
+		const tier = config.stages["pull-request"] ?? "full";
+		const hostChecks = checksOfTier(config, tier).filter((name) =>
+			(deterministicChecks as readonly string[]).includes(name),
+		);
+		config = { ...config, checks: { allowSkip: [...config.checks.allowSkip, ...hostChecks] } };
+		const checks = hostChecks.map(
+			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
+		);
 		const storage = createMemoryStorage();
 		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
 		const reviewHarness = await openReviewHarness(storage, models, {
@@ -401,12 +414,14 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				models,
 				policy: source,
 				writer,
+				tier,
+				checks,
 			};
 			const reviewed = await reviewChangeset(review);
+			const status = reviewed.verdict.reviewStatus();
+			if (status.state === "error") throw new Error(status.description);
 			// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
-			const unprobed = [...(reviewed.verdict.ran ?? []), ...reviewed.verdict.notRun].find(({ reason }) =>
-				reason?.includes(" ran without probes"),
-			);
+			const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
 			if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),
