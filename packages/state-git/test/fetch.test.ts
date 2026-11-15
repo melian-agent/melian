@@ -30,7 +30,10 @@ describe("reading the branch", { timeout: 60_000 }, () => {
 		await writeFile(global, `[uploadpack]\n\tpackObjectsHook = ${hook}\n`);
 		vi.stubEnv("GIT_CONFIG_GLOBAL", global);
 		const reader = await remote.open();
-		await expect(reader.list(changeset)).rejects.toMatchObject({ code: "unreachable" });
+		await expect(reader.list(changeset)).rejects.toMatchObject({
+			code: "unreachable",
+			message: expect.stringContaining(`fetching melian/state from ${remote.url} failed`),
+		});
 		vi.unstubAllEnvs();
 		expect(keys(await reader.list(changeset))).toHaveLength(30);
 	});
