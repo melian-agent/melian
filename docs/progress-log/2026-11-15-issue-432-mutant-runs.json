@@ -3731,7 +3731,8 @@
         "collected": 1,
         "passed": false
       },
-      "killed": true
+      "killed": false,
+      "void": "Its named test, the refused-fallback test in plan.test.ts, failed whenever the repository it rebuilt got another commit second, so this kill proved nothing; 19aa6036 fixed the test."
     },
     {
       "id": "29e48e85b8351812831ff85397b682f8180694b0afec6e7df47230e4d6990bec",

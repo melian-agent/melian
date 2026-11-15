@@ -1353,17 +1353,19 @@
       "replacement": "(previous?.input as StoredLensTaskInput | undefined)?.callers?.notes && {}",
       "status": "generated",
       "id": "91c9d0f085d7c4c727f3293609f17c326bc9078e4180effce9ff5b450520aff2",
-      "claim": "killed",
+      "claim": "new-test",
       "evidence": {
         "test": {
-          "file": "packages/pipeline/test/plan.test.ts",
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
           "path": [
-            "reviewChangeset with a plan, for a lens two folders define",
-            "runs again under --rerun a variant that finished on a refused fallback"
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "keeps a copied lens's caller notes from the review that asked it when only a file's caller query differs"
           ]
         }
       },
-      "survivorClasses": []
+      "survivorClasses": [
+        "nullish-logical"
+      ]
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1619,17 +1621,19 @@
       "replacement": "[]",
       "status": "generated",
       "id": "381b7ffeaa1326b4c6f498773b48af7ab6af53f6e2e4ee640fc7204e799f1e30",
-      "claim": "killed",
+      "claim": "new-test",
       "evidence": {
         "test": {
-          "file": "packages/pipeline/test/plan.test.ts",
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
           "path": [
-            "reviewChangeset with a plan, for a lens two folders define",
-            "runs again under --rerun a variant that finished on a refused fallback"
+            "a repeat review copies a lens run only from a task shown the same callers",
+            "keeps a copied lens's caller notes from the review that asked it when only a file's caller query differs"
           ]
         }
       },
-      "survivorClasses": []
+      "survivorClasses": [
+        "dropped-value"
+      ]
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1835,17 +1839,19 @@
       "replacement": "lensResult[next.key]",
       "status": "generated",
       "id": "688be157eb5c5b3ecd95a5cf48d4ed19b48c08f13023ce4d8f5b6b3d68c1977a",
-      "claim": "killed",
+      "claim": "new-test",
       "evidence": {
         "test": {
-          "file": "packages/pipeline/test/plan.test.ts",
+          "file": "packages/pipeline/test/review.test.ts",
           "path": [
-            "reviewChangeset with a plan, for a lens two folders define",
-            "runs again under --rerun a variant that finished on a refused fallback"
+            "on a repeat review after a task ended without deciding",
+            "records no coverage failure for an aborted task whose quick lens could escalate and whose callers have no graph"
           ]
         }
       },
-      "survivorClasses": []
+      "survivorClasses": [
+        "optional-chain"
+      ]
     },
     {
       "file": "packages/pipeline/src/review.ts",

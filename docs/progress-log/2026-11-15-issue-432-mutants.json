@@ -3752,15 +3752,9 @@
       "replacement": "routeAt(lens, level).route.thinking",
       "status": "generated",
       "id": "98f32b6290839de51e976e3845e74d85983a9bd560affa3217d81c2a091b7ba8",
-      "claim": "killed",
+      "claim": "equivalent",
       "evidence": {
-        "test": {
-          "file": "packages/pipeline/test/plan.test.ts",
-          "path": [
-            "reviewChangeset with a plan, for a lens two folders define",
-            "runs again under --rerun a variant that finished on a refused fallback"
-          ]
-        }
+        "reason": "runAt runs only on a routed level, and resolveModelRoute throws without a route, so routeAt(lens, level).route is always present here."
       },
       "survivorClasses": [
         "optional-chain"

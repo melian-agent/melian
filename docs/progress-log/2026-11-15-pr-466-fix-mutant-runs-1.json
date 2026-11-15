@@ -1281,7 +1281,8 @@
         "collected": 1,
         "passed": false
       },
-      "killed": true
+      "killed": false,
+      "void": "Its named test, the refused-fallback test in plan.test.ts, failed whenever the repository it rebuilt got another commit second, so this kill proved nothing; 19aa6036 fixed the test."
     },
     {
       "id": "c07decee6c90a4db9955c550cca5ce45c9b9d2c70c7d22acb1e31e4afc931e60",
@@ -1557,7 +1558,8 @@
         "collected": 1,
         "passed": false
       },
-      "killed": true
+      "killed": false,
+      "void": "Its named test, the refused-fallback test in plan.test.ts, failed whenever the repository it rebuilt got another commit second, so this kill proved nothing; 19aa6036 fixed the test."
     },
     {
       "id": "ab8d54794202d0cdbe9b7be94c53136e2fcde59847c42903b60a65619e01f007",
@@ -1764,7 +1766,8 @@
         "collected": 1,
         "passed": false
       },
-      "killed": true
+      "killed": false,
+      "void": "Its named test, the refused-fallback test in plan.test.ts, failed whenever the repository it rebuilt got another commit second, so this kill proved nothing; 19aa6036 fixed the test."
     },
     {
       "id": "1402e0333084c1dc28869ffd7c7171aa64ac36cc0c930775d1b2a132c724d745",
@@ -1892,6 +1895,77 @@
         "path": [
           "a repeat review copies each lens run whose request is unchanged",
           "keeps a copied lens's reads in the coverage the repeat review records"
+        ]
+      },
+      "baseline": {
+        "collected": 1,
+        "passed": true
+      },
+      "result": {
+        "collected": 1,
+        "passed": false
+      },
+      "killed": true
+    },
+    {
+      "id": "91c9d0f085d7c4c727f3293609f17c326bc9078e4180effce9ff5b450520aff2",
+      "at": "packages/pipeline/src/review.ts:1699:23",
+      "mutator": "LogicalOperator",
+      "replacement": "(previous?.input as StoredLensTaskInput | undefined)?.callers?.notes && {}",
+      "head": "20315ad0",
+      "test": {
+        "file": "packages/pipeline/test/plan.test.ts",
+        "path": [
+          "reviewChangeset with a plan, for a lens two folders define",
+          "runs again under --rerun a variant that finished on a refused fallback"
+        ]
+      },
+      "baseline": {
+        "collected": 1,
+        "passed": true
+      },
+      "result": {
+        "collected": 1,
+        "passed": true
+      },
+      "killed": false,
+      "note": "Rerun with 19aa6036's fix to the test applied: the mutant survives, and every test in lens-reuse-review.test.ts passes against it at 20315ad0 too. c54d1358 rewrote this code; inventory 4 claims its mutants, and the new-test row at review.ts:1724:23 there is this mutant at the new code."
+    },
+    {
+      "id": "381b7ffeaa1326b4c6f498773b48af7ab6af53f6e2e4ee640fc7204e799f1e30",
+      "at": "packages/pipeline/src/review.ts:1707:72",
+      "mutator": "ArrayDeclaration",
+      "replacement": "[]",
+      "head": "20315ad0",
+      "test": {
+        "file": "packages/pipeline/test/plan.test.ts",
+        "path": [
+          "reviewChangeset with a plan, for a lens two folders define",
+          "runs again under --rerun a variant that finished on a refused fallback"
+        ]
+      },
+      "baseline": {
+        "collected": 1,
+        "passed": true
+      },
+      "result": {
+        "collected": 1,
+        "passed": true
+      },
+      "killed": false,
+      "note": "Rerun with 19aa6036's fix to the test applied: the mutant survives, and every test in lens-reuse-review.test.ts passes against it at 20315ad0 too. c54d1358 rewrote this code; inventory 4 claims its mutants, and the new-test row at review.ts:1724:23 there is this mutant at the new code."
+    },
+    {
+      "id": "688be157eb5c5b3ecd95a5cf48d4ed19b48c08f13023ce4d8f5b6b3d68c1977a",
+      "at": "packages/pipeline/src/review.ts:3022:32",
+      "mutator": "OptionalChaining",
+      "replacement": "lensResult[next.key]",
+      "head": "8b304866",
+      "test": {
+        "file": "packages/pipeline/test/review.test.ts",
+        "path": [
+          "on a repeat review after a task ended without deciding",
+          "records no coverage failure for an aborted task whose quick lens could escalate and whose callers have no graph"
         ]
       },
       "baseline": {

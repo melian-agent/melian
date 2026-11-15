@@ -283,17 +283,13 @@
       "replacement": "manifest.name",
       "status": "generated",
       "id": "27005a81f6c709b00c5238791135fa3dc9dbbb5c8fd93a05beefb44452d7b533",
-      "claim": "killed",
+      "claim": "equivalent",
       "evidence": {
-        "test": {
-          "file": "packages/pipeline/test/plan.test.ts",
-          "path": [
-            "reviewChangeset with a plan, for a lens two folders define",
-            "runs again under --rerun a variant that finished on a refused fallback"
-          ]
-        }
+        "reason": "findPackageJSON throws for a bare package name rather than return undefined, so manifest is undefined never; a manifest of JSON null throws a TypeError rather than Melian's error, and either way the module fails to load."
       },
-      "survivorClasses": []
+      "survivorClasses": [
+        "optional-chain"
+      ]
     },
     {
       "file": "packages/pipeline/src/installed-version.ts",
