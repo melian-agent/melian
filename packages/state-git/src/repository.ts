@@ -140,6 +140,7 @@ export class RecordRepository {
 					"--no-auto-gc",
 					"--no-auto-maintenance",
 					`--depth=${depth}`,
+					"--end-of-options",
 					url,
 					`+refs/heads/${branch}:${ref}`,
 				],
@@ -278,7 +279,15 @@ export class RecordRepository {
 	): Promise<PushOutcome> {
 		const ref = `refs/heads/${branch}`;
 		const result = await this.run(
-			["push", "--porcelain", "--quiet", `--force-with-lease=${ref}:${expected ?? ""}`, url, `${commit}:${ref}`],
+			[
+				"push",
+				"--porcelain",
+				"--quiet",
+				`--force-with-lease=${ref}:${expected ?? ""}`,
+				"--end-of-options",
+				url,
+				`${commit}:${ref}`,
+			],
 			deadline,
 		);
 		if (result.timedOut) return "timedOut";

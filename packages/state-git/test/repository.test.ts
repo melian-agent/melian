@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +39,23 @@ async function fetched(): Promise<{ repository: RecordRepository; tip: string }>
 	const repository = await opened();
 	const tip = (await repository.fetch(remote.url, remote.branch, time())) as string;
 	return { repository, tip };
+}
+
+// A program that leaves a file when it runs, for a remote spelled as an option that would make git run it.
+async function marker(): Promise<{ program: string; ran: () => Promise<boolean> }> {
+	await mkdir(remote.root, { recursive: true });
+	const program = join(remote.root, "marker.sh");
+	const ran = join(remote.root, "ran");
+	await writeFile(program, `#!/bin/sh\ntouch '${ran}'\nexit 1\n`);
+	await chmod(program, 0o755);
+	return {
+		program,
+		ran: () =>
+			access(ran).then(
+				() => true,
+				() => false,
+			),
+	};
 }
 
 function unreachable(message: RegExp) {
@@ -100,6 +117,15 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 			unreachable(/ran past its deadline$/),
 		);
 		expect(Date.now() - started).toBeLessThan(10_000);
+	});
+
+	it("runs no program a remote spelled as an option names, and fails as unreachable", async () => {
+		const { program, ran } = await marker();
+		const repository = await opened();
+		await expect(repository.fetch(`--upload-pack=${program}`, remote.branch, time())).rejects.toSatisfy(
+			unreachable(/^fetching melian\/state from --upload-pack=\S+ failed: \S/),
+		);
+		expect(await ran()).toBe(false);
 	});
 
 	it("says it ran past its deadline when git is stopped at it", async () => {
@@ -198,6 +224,16 @@ describe("pushing", { timeout: 60_000 }, () => {
 		const { repository, tip } = await fetched();
 		const commit = await repository.commit(tip, [], time());
 		expect(await repository.push(remote.url, remote.branch, commit, tip, oneMillisecond())).toBe("timedOut");
+	});
+
+	it("runs no program a remote spelled as an option names, and fails as unreachable", async () => {
+		const { repository, tip } = await fetched();
+		const commit = await repository.commit(tip, [], time());
+		const { program, ran } = await marker();
+		await expect(repository.push(`--receive-pack=${program}`, remote.branch, commit, tip, time())).rejects.toSatisfy(
+			unreachable(/^pushing to melian\/state at --receive-pack=\S+ failed: \S/),
+		);
+		expect(await ran()).toBe(false);
 	});
 
 	it("fails as unreachable, with git's own words trimmed, when the remote is not there", async () => {
