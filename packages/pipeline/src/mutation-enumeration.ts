@@ -325,6 +325,11 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 }
 
 const javascript = /\.[cm]?[jt]sx?$/;
+
+export function enumerable(path: string): boolean {
+	return productionWithExtensions(path, javascript);
+}
+
 export function inside(root: string, path: string): boolean {
 	const distance = relative(root, path);
 	return distance !== ".." && !distance.startsWith(`..${sep}`) && !isAbsolute(distance);

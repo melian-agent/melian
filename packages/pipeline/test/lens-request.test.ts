@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { LensToolName, Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { piVersions } from "../src/harness.ts";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
 import {
@@ -66,9 +66,9 @@ type Sample = typeof sample;
 
 // The run as the review builds it: whatever is quoted, inside boundaries of the nonce it is rendered under, with the
 // caller section when asked for it.
-function build(input: Sample) {
+function build(input: Sample, request = lensRequest) {
 	const { escalation, callers, ...rest } = input;
-	return lensRequest({
+	return request({
 		...rest,
 		...(escalation === undefined ? {} : { escalation }),
 		run: (nonce, withCallers) => ({
@@ -184,6 +184,26 @@ describe("lensRequest", () => {
 			tool.outputLimits = original;
 		}
 		expect(build(sample).key).toBe(before);
+	});
+
+	it("keys list_mutants by a description that carries its cap, so a new cap asks again", async () => {
+		const asking = { ...sample, run: { ...sample.run, tools: ["list_mutants"] as LensToolName[] } };
+		const before = build(asking);
+		expect(before.request.tools).toContainEqual(specOf(lensListedTools.list_mutants));
+		vi.resetModules();
+		vi.doMock("../src/mutant-listing.ts", async (original) => ({
+			...(await original<object>()),
+			maxListedMutants: 100,
+		}));
+		try {
+			const reloaded = await import("../src/lens-request.ts");
+			const tools = await import("../src/lens-tools.ts");
+			expect(tools.lensListedTools.list_mutants.description).toContain("At most 100 a call");
+			expect(build(asking, reloaded.lensRequest).key).not.toBe(before.key);
+		} finally {
+			vi.doUnmock("../src/mutant-listing.ts");
+			vi.resetModules();
+		}
 	});
 
 	it("offers a run that does not probe no planner tool, and keys no probing text", () => {
