@@ -1,4 +1,4 @@
-# Issue #454: Melian's first round on the LANG key
+# [Issue #454](https://github.com/melian-agent/melian/issues/454): Melian's first round on the LANG key
 
 Melian's own-build round at `873f640c`, on [pull request #464](https://github.com/melian-agent/melian/pull/464), read `findings`, not blocking, in 10 minutes for $4.37. It raised one acknowledge finding and two advisories.
 
@@ -19,3 +19,7 @@ Both source files were restored after each run, and `git status` showed only the
 
 - The internal `lang` field of `CheckRequestInput` carried TSDoc. It is now a line comment.
 - The check request's row in the identity guideline held a sentence of over 45 words. It is now three sentences; the pull request's copy of the row matches.
+
+## Round two
+
+Round two, at `6529ba81`, read `findings`, not blocking, in 10 minutes for $5.44, with two advisories and nothing above. The row's list of what the request holds was one sentence of 77 words, and is now four. This entry's title now links the issue.
