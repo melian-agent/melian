@@ -408,8 +408,6 @@ it("removes nothing beside a live static run and names it", async () => {
 
 it.each([
 	["a dead process", () => `melian-static pid ${deadPid()}`],
-	["pid 1", () => "melian-static pid 1"],
-	["pid 0", () => "melian-static pid 0"],
 	["another reason", () => `someone else pid ${process.pid}`],
 	["a reason that only starts like a run's", () => `melian-static pid ${process.pid} extra`],
 ])("does not count a lock held by %s as a live run", async (_, reason) => {
@@ -419,6 +417,18 @@ it.each([
 	expect(prune.live).toEqual([]);
 	expect((await prune.apply()).removed).toHaveLength(1);
 });
+
+it.each([1, 0])(
+	"counts a lock naming pid %i, which Melian never probes, as a live run and removes nothing",
+	async (pid) => {
+		await graph("f".repeat(40), 30 * day);
+		const path = await worktree(`melian-static pid ${pid}`);
+		const prune = await plan();
+		expect(prune.live).toEqual([{ pid, worktree: path }]);
+		expect(await prune.apply()).toEqual({ removed: [], live: [{ pid, worktree: path }] });
+		expect(await exists(prune.entries[0]?.paths[0] ?? "")).toBe(true);
+	},
+);
 
 it("stops when a static run starts after the plan was made", async () => {
 	const first = await graph("f".repeat(40), 30 * day);

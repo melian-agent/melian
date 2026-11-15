@@ -51,8 +51,12 @@ async function worktrees(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Work
 	const heads = [...output.matchAll(/\0HEAD ([0-9a-f]+)/g)].map((match) => match[1]!);
 	const live: LiveRun[] = [];
 	for (const record of output.split("\0\0")) {
-		const pid = Number(/\0locked melian-static pid (\d+)(?:\0|$)/.exec(record)?.[1]);
-		if (running(pid)) live.push({ pid, worktree: record.slice("worktree ".length, record.indexOf("\0")) });
+		const lock = /\0locked melian-static pid (\d+)(?:\0|$)/.exec(record);
+		if (lock === null) continue;
+		const pid = Number(lock[1]);
+		// `running` never probes pid 1 or below, so prune cannot tell whether that run is live, and counts it as live.
+		if (pid <= 1 || running(pid))
+			live.push({ pid, worktree: record.slice("worktree ".length, record.indexOf("\0")) });
 	}
 	return { heads, live };
 }

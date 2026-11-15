@@ -53,7 +53,7 @@ A merge base counts as no live commit. Enola builds a graph for the base of ever
 
 ### 3. A prune beside a live review
 
-A static run registers its worktrees with `git worktree add --lock --reason "melian-static pid <pid>"` before it reads the cache. When any registered worktree carries that lock and its process is alive, prune removes nothing, names the run, and exits non-zero. It reads the worktree list again before each removal, so a run that starts during a prune stops it.
+A static run registers its worktrees with `git worktree add --lock --reason "melian-static pid <pid>"` before it reads the cache. When any registered worktree carries that lock and its process is alive, prune removes nothing, names the run, and exits non-zero. A lock whose pid Melian cannot check counts as live. Melian never probes pid 1 or below, and a Melian that is a container's entrypoint runs as pid 1, so prune refuses beside such a lock rather than count its run as dead. It reads the worktree list again before each removal, so a run that starts during a prune stops it.
 
 What remains is a run that registers in the moment between that read and a removal. Each removal renames the entry to a `.prune-<pid>-` name in its own directory, then deletes it, and `CacheScratch` sweeps a dead pruner's leftovers as it sweeps a dead fetch's. A reader that loses the race fails closed: `static.enola` fails its coverage store on a graph that has gone, the review reads not reviewed, and a rerun rebuilds the graph.
 
