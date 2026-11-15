@@ -24,4 +24,4 @@ The inventory now claims the mutant killed by that test. The probe-trust entry a
 
 ## R2, P3: the inventories' ignored rows had no claim
 
-`node scripts/enumerate-mutants.mjs --sample` refused both of this pull request's inventories, because their ignored string-literal rows had no `claim`, `evidence` or `survivorClasses`. Those rows now say what [issue #408's inventory](2026-11-14-issue-408-mutants.json) says of its own: equivalent, "not generated: Stryker ignores this string literal under the repository's configuration", with no survivor class. The sampler accepts both files.
+`node scripts/enumerate-mutants.mjs --sample` refused both of this pull request's inventories, because their ignored string-literal rows had no `claim`, `evidence` or `survivorClasses`. Those rows now say what the [inventory](2026-11-14-issue-408-mutants.json) for [issue #408](https://github.com/melian-agent/melian/issues/408) says of its own rows: equivalent, "not generated: Stryker ignores this string literal under the repository's configuration", with no survivor class. The sampler accepts both files.
