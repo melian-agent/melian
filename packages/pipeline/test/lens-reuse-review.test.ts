@@ -341,4 +341,48 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
+
+	it("keeps a copied lens's caller notes from the review that asked it, not the one that copied it", async () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-reuse-notes-"));
+		try {
+			const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+			const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+			const notesOf = async (reviewed: readonly Lens[], callers?: CallerContext) => {
+				const plain = () => fauxAssistantMessage("No findings.");
+				scriptConversations(fake, [
+					{ match: correctness, replies: [plain] },
+					{ match: contracts, replies: [plain] },
+				]);
+				const result = await reviewChangeset({
+					harness,
+					changeset: await Changeset.resolve(repo, "main...feature"),
+					config: enabled,
+					lenses: reviewed,
+					standards: [],
+					models: fake.review,
+					...(callers === undefined ? {} : { callers }),
+					checks: [{ name: "guardrails", status: "ran" }],
+				});
+				return Object.fromEntries(
+					(result.verdict.ran ?? [])
+						.filter(({ name }) => name.startsWith("lens."))
+						.map((record) => [record.name, "reason" in record ? (record.reason ?? "") : ""]),
+				);
+			};
+			const unavailable = "Callers unavailable: the host supplied no graph context";
+			const first = await notesOf(
+				lenses,
+				CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, root),
+			);
+			expect(first["lens.contracts"]).not.toContain(unavailable);
+
+			const again = await notesOf(
+				changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
+			);
+			expect(again["lens.correctness"]).toContain(unavailable);
+			expect(again["lens.contracts"]).not.toContain(unavailable);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
 });

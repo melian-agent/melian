@@ -1690,11 +1690,24 @@ async function runLenses(
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
-		const reused = copiesFrom(
-			known?.task === undefined ? undefined : await tx.task(known.task as TaskId),
-			input.lenses,
-			refused,
+		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
+		const reused = copiesFrom(previous, input.lenses, refused);
+		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
+		const copiedNotes = new Set(
+			input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
 		);
+		const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
+		const callers =
+			input.callers === undefined
+				? undefined
+				: {
+						...input.callers,
+						notes: Object.fromEntries(
+							Object.entries(input.callers.notes).flatMap(([key, notes]) =>
+								!copiedNotes.has(key) ? [[key, notes]] : key in earlierNotes ? [[key, earlierNotes[key]!]] : [],
+							),
+						),
+					};
 		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
 		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
 		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
@@ -1709,7 +1722,7 @@ async function runLenses(
 			input.revision,
 			input.lenses,
 			input.escalateAt,
-			input.callers,
+			callers,
 			reused,
 		).toJSON();
 		const created = await tx.createTask(LensTask, copying, { ownership: { kind: "conversation" } });
