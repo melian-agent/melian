@@ -214,6 +214,14 @@ describe("lensRequest", () => {
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: none }).request).not.toHaveProperty("wording");
 	});
 
+	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared.
+	it("keys the trust-boundary lens's probing wording as the table main keyed", () => {
+		const golden = JSON.parse(
+			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),
+		);
+		expect(probingWording).toEqual(golden);
+	});
+
 	it("writes neither escalation field for a run with no escalation severity and no next run", () => {
 		const { escalateAt: _e, ...rest } = sample;
 		const { request } = build({ ...rest, escalation: undefined } as unknown as Sample);

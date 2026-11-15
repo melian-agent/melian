@@ -3310,3 +3310,62 @@ describe("the turns a lens run is sent", () => {
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
 	});
 });
+
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
+// trust-boundary lens's planner and prober must still be shown what they were shown then.
+describe("the trust-boundary lens's probing turns", () => {
+	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		const scripts = {
+			planner: [],
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				(messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) =>
+					call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0")),
+				fauxAssistantMessage("Done."),
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+			others: [
+				{
+					match: planner,
+					replies: [
+						fauxAssistantMessage("Nothing."),
+						call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }),
+						plan[1]!,
+					],
+				},
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const { run, requests, changeset } = await review(scripts, escalating(fake));
+		await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		const store = harness!.harness;
+		const root = await store.root(backgroundContext);
+		const task = (await store.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[
+			Revision.key(changeset.revision)
+		]!.task;
+		const { nonce } = (
+			(await store.getTask(task as TaskId, backgroundContext))!.input as { revision: { nonce: string } }
+		).revision;
+		const turns = [planner, prober].flatMap((who) =>
+			requests[who]!.map((messages, index) =>
+				[
+					`=== ${who === planner ? "planner" : "prober"} request ${index + 1} ===`,
+					...messages
+						.filter(({ role }) => role === "system" || role === "user")
+						.map((message) => `--- ${message.role} ---\n${textOf(message)}`),
+				].join("\n"),
+			),
+		);
+		// The nonce is drawn afresh and the commits are dated, so each is written as a name.
+		const { base, head } = changeset.revision;
+		const shown = turns
+			.join("\n\n")
+			.replaceAll(nonce, "NONCE")
+			.replaceAll(base.slice(0, 12), "BASE")
+			.replaceAll(head.slice(0, 12), "HEAD");
+		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
+	});
+});

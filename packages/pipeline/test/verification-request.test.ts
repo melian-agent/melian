@@ -8,6 +8,7 @@ import {
 	type VerificationInput,
 	verificationRequest,
 } from "../src/verification.ts";
+import { verifierVersion } from "../src/verification-instructions.ts";
 
 const location = {
 	file: "src/a.ts",
@@ -142,6 +143,15 @@ describe("verificationRequest", () => {
 			"Dismissed d1\\n",
 		])
 			expect(keyed).toContain(fragment);
+	});
+});
+
+// Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
+// that rests on a probe is asked under the key, and the verifier's version, it had then.
+describe("a verification no probe evidence reaches", () => {
+	it("keeps the key and the verifier's version main gave it", () => {
+		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
+		expect(verificationRequest(sample).key).toBe("04364f1f6900da045e954f73d88effad517136b83cbe312329af2947b7bc3708");
 	});
 });
 
