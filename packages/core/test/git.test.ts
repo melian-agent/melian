@@ -161,6 +161,16 @@ describe("git with a standard error past its limit", () => {
 		);
 	});
 
+	it("stops git itself by its own pid, not only the stream", async () => {
+		// After passing the limit this git writes nothing more, so closing the stream cannot end it; only the kill can.
+		// Unkilled, it ends on its own after ten seconds.
+		const recorded = join(repo, "git-pid");
+		const env = standIn(`echo $$ > ${recorded}\n${writes(stderrLimit + 1)}\nsleep 10`);
+		const error = await rejection(git(repo, ["fetch"], { env }), ChangesetError);
+		expect(error.code).toBe("gitOutputTooLarge");
+		await expectEnded(Number(readFileSync(recorded, "utf8")));
+	}, 20_000);
+
 	it("stops a remote that writes to standard error without end, and the remote with it", async () => {
 		// The transport records its own pid, then writes for ever to the standard error it shares with git.
 		const recorded = join(repo, "transport-pid");

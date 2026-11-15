@@ -117,7 +117,6 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// open after git stops, so the result does not wait for them. A transport inherits git's stderr, so this end of it
 		// is closed, and the transport keeps nothing of this process alive; it ends on its own.
 		const stop = () => {
-			clearTimeout(deadline);
 			child.kill();
 			child.stderr.destroy();
 		};
