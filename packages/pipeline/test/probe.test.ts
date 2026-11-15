@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -13,12 +14,14 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn } from "../../core/test/fixtures/repo.ts";
 import {
 	completeUtf8,
+	copyReads,
 	nodeReads,
 	Probe,
 	ProbeError,
@@ -440,6 +443,27 @@ describe("Probe.open with a head's allowlist", () => {
 		await probe.close();
 	});
 
+	it("refuses a probe whose probe.read copy passes its deadline part-way, and leaves no partial copy", async () => {
+		const { sandbox } = passthrough();
+		writeFileSync(join(checkout, "generated", "more.txt"), "more\n");
+		const start = performance.now();
+		const copying = () =>
+			left().some((probe) =>
+				["out.txt", "more.txt"].some((file) => existsSync(join(scratch, probe, "tree", "generated", file))),
+			);
+		vi.spyOn(performance, "now").mockImplementation(() => (copying() ? start + probeLimits.read.time + 1 : start));
+		try {
+			const error = await refusal({ script: "" }, options(sandbox, atHead(["generated"])));
+			expect(error).toMatchObject({
+				code: "invalidProbe",
+				message: `probe.read's copy of generated passes its limit of ${probeLimits.read.time} milliseconds`,
+			});
+		} finally {
+			vi.restoreAllMocks();
+		}
+		expect(left()).toEqual([]);
+	});
+
 	it("copies an allowed path over the tracked tree, keeping its links as written", async () => {
 		const { sandbox } = passthrough();
 		writeFileSync(join(checkout, "tracked.txt"), "local\n");
@@ -772,6 +796,116 @@ describe("nodeReads", () => {
 	it("grants the host's own nvm node its prefix", () => {
 		const real = realpathSync(process.execPath);
 		if (real.includes(`${sep}.nvm${sep}`)) expect(nodeReads(real)).toEqual([dirname(dirname(real))]);
+	});
+});
+
+describe("copyReads", () => {
+	let source: string;
+	let tree: string;
+	const limits = { entries: 1_000, bytes: 1_000, time: 1_000 };
+
+	// `d` holds three entries and seven bytes: the directory, a file of three bytes and one of four.
+	beforeEach(() => {
+		source = join(scratch, "source");
+		tree = join(scratch, "tree");
+		mkdirSync(join(source, "d"), { recursive: true });
+		mkdirSync(tree);
+		writeFileSync(join(source, "d", "a"), "aaa");
+		writeFileSync(join(source, "d", "b"), "bbbb");
+	});
+
+	const copy = (bounds: Partial<typeof limits>, now?: () => number, entries = ["d"]) =>
+		copyReads(
+			entries.map((entry) => [entry, join(source, entry)] as const),
+			tree,
+			{ ...limits, ...bounds },
+			now,
+		);
+	const copied = () => readdirSync(join(tree, "d")).sort();
+
+	it("bounds what probe.read copies in by the limits the probe runs within", () => {
+		expect(probeLimits.read).toEqual({ entries: 50_000, bytes: 536_870_912, time: 60_000 });
+	});
+
+	it("copies an entry at its limit of entries and refuses one past it", async () => {
+		await copy({ entries: 3 });
+		expect(copied()).toEqual(["a", "b"]);
+		rmSync(join(tree, "d"), { recursive: true });
+		await expect(copy({ entries: 2 })).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 2 entries"),
+		);
+	});
+
+	it("copies an entry at its limit of bytes and refuses one past it", async () => {
+		await copy({ bytes: 7 });
+		expect(copied()).toEqual(["a", "b"]);
+		rmSync(join(tree, "d"), { recursive: true });
+		await expect(copy({ bytes: 6 })).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 6 bytes"),
+		);
+	});
+
+	it("counts the limits across every entry, not each alone", async () => {
+		mkdirSync(join(source, "e"));
+		writeFileSync(join(source, "e", "c"), "c");
+		await expect(copy({ entries: 4 }, undefined, ["d", "e"])).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of e passes its limit of 4 entries"),
+		);
+		await expect(copy({ bytes: 7 }, undefined, ["d", "e"])).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of e passes its limit of 7 bytes"),
+		);
+	});
+
+	it("copies files, directories and links", async () => {
+		symlinkSync("a", join(source, "d", "link"));
+		await copy({});
+		expect(copied()).toEqual(["a", "b", "link"]);
+		expect(readlinkSync(join(tree, "d", "link"))).toBe("a");
+	});
+
+	it("refuses a FIFO in probe.read, naming the reviewer's path", async () => {
+		execFileSync("mkfifo", [join(source, "d", "pipe")]);
+		await expect(copy({})).rejects.toEqual(
+			new ProbeError(
+				"invalidProbe",
+				`probe.read's copy of d meets ${join(source, "d", "pipe")}, which is not a file, directory or link`,
+			),
+		);
+	});
+
+	it("refuses a socket in probe.read", async () => {
+		const server = createServer();
+		await new Promise<void>((done) => server.listen(join(source, "d", "socket"), done));
+		try {
+			await expect(copy({})).rejects.toEqual(
+				new ProbeError(
+					"invalidProbe",
+					`probe.read's copy of d meets ${join(source, "d", "socket")}, which is not a file, directory or link`,
+				),
+			);
+		} finally {
+			await new Promise((done) => server.close(done));
+		}
+	});
+
+	// The clock reads the start until the copy has begun, so the deadline falls part-way.
+	const clock = (late: number) => () => (existsSync(join(tree, "d")) ? 5_000 + late : 5_000);
+
+	it("copies at its deadline and refuses part-way once the deadline has passed", async () => {
+		await copy({ time: 1_000 }, clock(1_000));
+		expect(copied()).toEqual(["a", "b"]);
+		rmSync(join(tree, "d"), { recursive: true });
+		await expect(copy({ time: 1_000 }, clock(1_001))).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 1000 milliseconds"),
+		);
+		expect(copied()).toEqual([]);
+	});
+
+	it("refuses a copy whose last entry finished past its deadline", async () => {
+		const done = () => ["a", "b"].every((file) => existsSync(join(tree, "d", file)));
+		await expect(copy({ time: 1_000 }, () => (done() ? 6_001 : 5_000))).rejects.toEqual(
+			new ProbeError("invalidProbe", "probe.read's copy of d passes its limit of 1000 milliseconds"),
+		);
 	});
 });
 
