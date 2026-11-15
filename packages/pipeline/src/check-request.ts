@@ -31,7 +31,7 @@ export type CheckRequestInput = {
 		readonly cold: boolean;
 	};
 	readonly host: HostFacts;
-	/** The `LANG` every tool runs with, or null when unset. Keyed only with mutation, whose tests are the head's code. */
+	// The `LANG` every tool runs with, or null when unset. Keyed only with mutation, whose tests are the head's code.
 	readonly lang: string | null;
 	/**
 	 * For a working-tree source, every `melian.yaml` the guardrails would read for the touched paths, or `unread` when
