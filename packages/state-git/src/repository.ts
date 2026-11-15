@@ -37,13 +37,13 @@ const contention =
 const lostRace =
 	/\t\[rejected\] \((stale info|fetch first|non-fast-forward|already exists)\)|\t\[remote rejected\] \((failed to update ref|cannot lock ref|incorrect old value)/;
 
-/** One entry of a commit's tree, as `ls-tree -r -z` gives it. */
+// One entry of a commit's tree, as `ls-tree -r -z` gives it.
 export type TreeEntry = { readonly mode: string; readonly type: string; readonly oid: string; readonly path: Buffer };
 
-/** A file a commit adds, by its bytes, or removes, by `null`. */
+// A file a commit adds, by its bytes, or removes, by `null`.
 export type TreeChange = { readonly path: string; readonly bytes: string | null };
 
-/** How a push ended: it landed, a newer tip refused it, or it ran past its deadline and may have landed. */
+// How a push ended: it landed, a newer tip refused it, or it ran past its deadline and may have landed.
 export type PushOutcome = "landed" | "stale" | "timedOut";
 
 function unreachable(message: string, result?: GitResult, cause?: unknown): RecordError {
@@ -51,10 +51,8 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 	return new RecordError("unreachable", said ? `${message}: ${said}` : message, { cause });
 }
 
-/**
- * The bare repository Melian keeps beside a clone, at `records.git` in its state directory, which holds fetches of the
- * branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
- */
+// The bare repository Melian keeps beside a clone, at `records.git` in its state directory, which holds fetches of the
+// branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
 export class RecordRepository {
 	readonly path: string;
 
@@ -62,7 +60,7 @@ export class RecordRepository {
 		this.path = path;
 	}
 
-	/** Opens the repository at `path`, creating it with Melian's configuration when it is not there. */
+	// Opens the repository at `path`, creating it with Melian's configuration when it is not there.
 	static async open(path: string, deadline: Deadline): Promise<RecordRepository> {
 		const found = await lstat(path).catch((cause: unknown) => {
 			if ((cause as NodeJS.ErrnoException).code !== "ENOENT")
@@ -121,10 +119,8 @@ export class RecordRepository {
 		return result.stdout;
 	}
 
-	/**
-	 * Fetches `branch`'s tip from `url`, `depth` commits deep, and returns its object ID, or `undefined` when the branch
-	 * does not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
-	 */
+	// Fetches `branch`'s tip from `url`, `depth` commits deep, and returns its object ID, or `undefined` when the branch
+	// does not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
 	async fetch(url: string, branch: string, deadline: Deadline, depth = 1): Promise<string | undefined> {
 		const ref = `refs/melian/fetch/${randomUUID()}`;
 		for (;;) {
@@ -164,7 +160,7 @@ export class RecordRepository {
 		}
 	}
 
-	/** Every file of `commit`'s tree, by its raw path. */
+	// Every file of `commit`'s tree, by its raw path.
 	async entries(commit: string, deadline: Deadline): Promise<TreeEntry[]> {
 		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit], deadline);
 		if (result.code !== 0) throw unreachable(`listing ${commit} failed in ${this.path}`, result);
@@ -181,7 +177,7 @@ export class RecordRepository {
 		return entries;
 	}
 
-	/** The sizes of the blobs `oids` name. */
+	// The sizes of the blobs `oids` name.
 	async sizes(oids: readonly string[], deadline: Deadline): Promise<Map<string, number>> {
 		const sizes = new Map<string, number>();
 		if (oids.length === 0) return sizes;
@@ -195,7 +191,7 @@ export class RecordRepository {
 		return sizes;
 	}
 
-	/** The bytes of the blobs `oids` name. */
+	// The bytes of the blobs `oids` name.
 	async blobs(oids: readonly string[], deadline: Deadline): Promise<Map<string, Buffer>> {
 		const blobs = new Map<string, Buffer>();
 		if (oids.length === 0) return blobs;
@@ -214,7 +210,7 @@ export class RecordRepository {
 		return blobs;
 	}
 
-	/** Builds one commit on `parent`, or a root commit, that applies `changes` to its tree, and returns its object ID. */
+	// Builds one commit on `parent`, or a root commit, that applies `changes` to its tree, and returns its object ID.
 	async commit(parent: string | undefined, changes: readonly TreeChange[], deadline: Deadline): Promise<string> {
 		const index = join(this.path, `melian-index-${randomUUID()}`);
 		try {
@@ -247,10 +243,8 @@ export class RecordRepository {
 		}
 	}
 
-	/**
-	 * Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push
-	 * a newer tip refused is `stale`; one stopped at `deadline` is `timedOut`, and may have landed.
-	 */
+	// Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push
+	// a newer tip refused is `stale`; one stopped at `deadline` is `timedOut`, and may have landed.
 	async push(
 		url: string,
 		branch: string,
@@ -273,7 +267,7 @@ export class RecordRepository {
 		});
 	}
 
-	/** Whether `ancestor` is `descendant` or an ancestor of it, in the history this repository holds. */
+	// Whether `ancestor` is `descendant` or an ancestor of it, in the history this repository holds.
 	async isAncestor(ancestor: string, descendant: string, deadline: Deadline): Promise<boolean> {
 		const result = await this.run(["merge-base", "--is-ancestor", ancestor, descendant], deadline);
 		if (result.code === 0) return true;
@@ -281,7 +275,7 @@ export class RecordRepository {
 		throw unreachable(`comparing ${ancestor} with ${descendant} failed in ${this.path}`, result);
 	}
 
-	/** How many commits this repository holds in `commit`'s history, itself included. */
+	// How many commits this repository holds in `commit`'s history, itself included.
 	async depth(commit: string, deadline: Deadline): Promise<number> {
 		return Number((await this.#succeed(["rev-list", "--count", commit], deadline)).trim());
 	}

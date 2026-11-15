@@ -2,17 +2,17 @@ import { checkCellValue, checkChangeset, disposalMark, RecordError, SharedRecord
 import type { Deadline } from "./deadline.ts";
 import type { RecordRepository, TreeEntry } from "./repository.ts";
 
-/** The largest record or cell the store reads or writes, in bytes. */
+// The largest record or cell the store reads or writes, in bytes.
 export const fileLimit = 4 * 1024 * 1024;
 
 const cellName = "cell.json";
 const version = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-/** A changeset's cell as the branch holds it, at `changesets/<changeset>/cell.json`. */
+// A changeset's cell as the branch holds it, at `changesets/<changeset>/cell.json`.
 export type Cell = { readonly value: string; readonly version: string };
 
-/** The bytes of `cell.json` holding `value` at `version`. */
+// The bytes of `cell.json` holding `value` at `version`.
 export function cellBytes(cell: Cell): string {
 	return JSON.stringify({ v: 1, value: cell.value, version: cell.version });
 }
@@ -71,10 +71,8 @@ export type Judged =
 
 type Changeset = { records: Map<string, SharedRecord>; cell: Cell | undefined; strays: string[] };
 
-/**
- * One fetched tip of the branch, every entry judged: a record at the path its own bytes give, a cell, or a stray. An
- * entry is judged by its mode, type, object ID and path alone, so a handle keeps what it judged and reads each blob once.
- */
+// One fetched tip of the branch, every entry judged: a record at the path its own bytes give, a cell, or a stray. An
+// entry is judged by its mode, type, object ID and path alone, so a handle keeps what it judged and reads each blob once.
 export class StateTree {
 	readonly #changesets = new Map<string, Changeset>();
 	readonly #strays: string[] = [];
@@ -92,12 +90,12 @@ export class StateTree {
 		}
 	}
 
-	/** The branch holds nothing yet. */
+	// The branch holds nothing yet.
 	static empty(): StateTree {
 		return new StateTree([]);
 	}
 
-	/** Judges every entry of `commit`'s tree, reusing what `judged` already holds and adding what it reads. */
+	// Judges every entry of `commit`'s tree, reusing what `judged` already holds and adding what it reads.
 	static async read(
 		repository: RecordRepository,
 		commit: string,
@@ -166,12 +164,12 @@ export class StateTree {
 		return changeset;
 	}
 
-	/** Every entry the store did not write, in the order the tree lists them, wherever it sits. */
+	// Every entry the store did not write, in the order the tree lists them, wherever it sits.
 	get strays(): string[] {
 		return [...this.#strays, ...[...this.#changesets.values()].flatMap((changeset) => changeset.strays)];
 	}
 
-	/** Throws `RecordError` `unknownFile` naming a stray that refuses calls on `changeset`: one in its folder, or outside every folder. */
+	// Throws `RecordError` `unknownFile` naming a stray that refuses calls on `changeset`: one in its folder, or outside every folder.
 	refuse(changeset: string): void {
 		const stray = this.#strays[0] ?? this.#changesets.get(changeset)?.strays[0];
 		if (stray !== undefined)
