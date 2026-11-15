@@ -131,10 +131,13 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 	});
 }
 
+// Git's own options that take their value as the next argument.
+const optionsWithValues = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
+
 // The first argument after git's own options, such as `diff` in `git -c diff.renames=true diff`.
 function subcommand(args: readonly string[]): string {
 	for (let i = 0; i < args.length; i++) {
-		if (args[i] === "-c" || args[i] === "-C") i++;
+		if (optionsWithValues.has(args[i]!)) i++;
 		else if (!args[i]!.startsWith("-")) return args[i]!;
 	}
 	return "";
