@@ -1,0 +1,219 @@
+{
+  "total": 13,
+  "omitted": 0,
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 268,
+      "column": 31,
+      "endLine": 268,
+      "endColumn": 33,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 272,
+      "column": 3,
+      "endLine": 272,
+      "endColumn": 27,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "size -= chunk.byteLength",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 7,
+      "endLine": 273,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 7,
+      "endLine": 273,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 7,
+      "endLine": 273,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size >= archiveLimit",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > accepts the archive byte limit before refusing an oversized standalone executable",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > accepts the archive byte limit before refusing an oversized standalone executable",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 7,
+      "endLine": 273,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size <= archiveLimit",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 28,
+      "endLine": 273,
+      "endColumn": 103,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 53,
+      "endLine": 273,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 273,
+      "column": 71,
+      "endLine": 273,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 274,
+      "column": 3,
+      "endLine": 274,
+      "endColumn": 22,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 275,
+      "column": 3,
+      "endLine": 275,
+      "endColumn": 22,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 279,
+      "column": 55,
+      "endLine": 279,
+      "endColumn": 82,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "killed",
+      "evidence": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
+      "survivorClasses": [],
+      "run": {
+        "head": "13d32698",
+        "test": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/pipeline/src/tool-cache.ts",
+      "line": 279,
+      "column": 63,
+      "endLine": 279,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    }
+  ]
+}
