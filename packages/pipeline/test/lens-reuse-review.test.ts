@@ -456,6 +456,19 @@ describe("a repeat review copies a lens run only from a task shown the same call
 		expect(again.copied).toEqual("none");
 	});
 
+	it("asks every lens again when the graph matches and only the caveat differs", async () => {
+		await review(lenses, [], { config: enabled, callers: graph() });
+		const again = await review(lookTwice(), [], {
+			config: enabled,
+			callers: graph({ issues: [{ file: "src/a.ts", reason: "the query timed out" }] }),
+		});
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toEqual("none");
+		expect(again.callers?.caveat).toBe(
+			`${blindCallers}: each changed site was a test file or its caller query failed`,
+		);
+	});
+
 	it("asks every lens again when Enola was off for the earlier review", async () => {
 		await review(lenses);
 		const again = await review(lookTwice(), [], { config: enabled, callers: graph() });
