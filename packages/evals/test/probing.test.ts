@@ -102,7 +102,7 @@ async function measure(settings: NodeJS.ProcessEnv, using: ProbingRunners = runn
 		using,
 		(line) => {
 			// A pass loop that never ends awaits only microtasks, so no test timeout would fire.
-			if (lines.push(line) > 10_000) throw new Error("the run printed without end");
+			if (lines.push(line) > 1_000) throw new Error("the run printed without end");
 		},
 		(line) => errors.push(line),
 	);
@@ -537,7 +537,10 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const head = git(repo, "rev-parse", "feature");
-			const misses = missesFile([{ name: "hit", repo, base, head, file: "other.ts", rule: "fail-open" }]);
+			const misses = missesFile([
+				{ name: "hit", repo, base, head, file: "other.ts", rule: "fail-open" },
+				{ name: "next", repo, base, head, file: "other.ts", rule: "fail-open" },
+			]);
 			let goldenCall = 0;
 			let missCall = 0;
 			const using = runners({
@@ -548,7 +551,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				}),
 				range: vi.fn(async () => {
 					missCall += 1;
-					if (missCall === 2) throw new Error("clone gone");
+					if (missCall === 4) throw new Error("clone gone");
 					return ran([]);
 				}),
 			});
@@ -565,21 +568,23 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const scored = { notes: [], sharedProberTier: [], ...spent };
 			const [first, second] = JSON.parse(readFileSync(out, "utf8")).results[0].passes;
 			expect(first).toStrictEqual({
-				misses: { found: 0, total: 1 },
+				misses: { found: 0, total: 2 },
 				failed: [lost.name],
 				reviews: [
 					{ name: lost.name, kind: "golden", error: "no review", notes: [], sharedProberTier: [] },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
 					{ name: "hit", kind: "miss", found: false, ...scored },
+					{ name: "next", kind: "miss", found: false, ...scored },
 				],
 			});
 			expect(second).toStrictEqual({
 				goldens: { precision: 1, recall: 0 },
-				failed: ["hit"],
+				failed: ["next"],
 				reviews: [
 					{ name: lost.name, kind: "golden", score: { ...scoreGolden(lost, []) }, ...scored },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
-					{ name: "hit", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
+					{ name: "hit", kind: "miss", found: false, ...scored },
+					{ name: "next", kind: "miss", error: "clone gone", notes: [], sharedProberTier: [] },
 				],
 			});
 		} finally {
