@@ -1,219 +1,606 @@
 {
-  "total": 13,
-  "omitted": 0,
-  "mutants": [
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 268,
-      "column": 31,
-      "endLine": 268,
-      "endColumn": 33,
-      "mutatorName": "ArrayDeclaration",
-      "replacement": "[\"Stryker was here\"]",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 272,
-      "column": 3,
-      "endLine": 272,
-      "endColumn": 27,
-      "mutatorName": "AssignmentOperator",
-      "replacement": "size -= chunk.byteLength",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 7,
-      "endLine": 273,
-      "endColumn": 26,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 7,
-      "endLine": 273,
-      "endColumn": 26,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 7,
-      "endLine": 273,
-      "endColumn": 26,
-      "mutatorName": "EqualityOperator",
-      "replacement": "size >= archiveLimit",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > accepts the archive byte limit before refusing an oversized standalone executable",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > accepts the archive byte limit before refusing an oversized standalone executable",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 7,
-      "endLine": 273,
-      "endColumn": 26,
-      "mutatorName": "EqualityOperator",
-      "replacement": "size <= archiveLimit",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 28,
-      "endLine": 273,
-      "endColumn": 103,
-      "mutatorName": "CallExpression",
-      "replacement": ";",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > caps streamed archive bytes before writing an oversized chunk",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 53,
-      "endLine": 273,
-      "endColumn": 69,
-      "mutatorName": "StringLiteral",
-      "replacement": "\"\"",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 273,
-      "column": 71,
-      "endLine": 273,
-      "endColumn": 101,
-      "mutatorName": "StringLiteral",
-      "replacement": "\"\"",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 274,
-      "column": 3,
-      "endLine": 274,
-      "endColumn": 22,
-      "mutatorName": "CallExpression",
-      "replacement": ";",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 275,
-      "column": 3,
-      "endLine": 275,
-      "endColumn": 22,
-      "mutatorName": "CallExpression",
-      "replacement": ";",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > reads a download whole, in many chunks, before writing any of it",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 279,
-      "column": 55,
-      "endLine": 279,
-      "endColumn": 82,
-      "mutatorName": "ObjectLiteral",
-      "replacement": "{}",
-      "claim": "killed",
-      "evidence": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
-      "survivorClasses": [],
-      "run": {
-        "head": "13d32698",
-        "test": "packages/pipeline/test/tool-cache.test.ts > keeps a downloaded archive readable by its owner alone",
-        "collected": 1,
-        "failed": true
-      }
-    },
-    {
-      "file": "packages/pipeline/src/tool-cache.ts",
-      "line": 279,
-      "column": 63,
-      "endLine": 279,
-      "endColumn": 67,
-      "mutatorName": "StringLiteral",
-      "replacement": "\"\"",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
-    }
-  ]
+	"melianMutants": 2,
+	"range": {
+		"base": "d127d7bc2fd8564e943fe96e8d7873c95996d588",
+		"head": "75932b262c478511195887e9e070f679f39a5344"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/tool-cache.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "d398a6582704ce1bf3dcba14b4c2355afd5c24debb04da07b2a0b8415c7ee96b",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 10,
+			"column": 17,
+			"endLine": 10,
+			"endColumn": 28,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "1024 / 1024",
+			"status": "generated",
+			"id": "b8597cfc3b20f1f993009d9d827922523db526cbe9ade0c26720a6fc627c401a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 270,
+			"column": 26,
+			"endLine": 270,
+			"endColumn": 28,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "1fed5c94e3d3b92a771a093d5bdc7b19495778d46effedeca0d2de2a934d58c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a download in slabs of 1 MiB, however finely it arrives"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 276,
+			"column": 3,
+			"endLine": 276,
+			"endColumn": 27,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "size -= chunk.byteLength",
+			"status": "generated",
+			"id": "80e3da7795583c07012b01bbffa2ad199f25dda5bc821f49393422e7f74bfa88",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"caps streamed archive bytes before writing an oversized chunk"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 7,
+			"endLine": 277,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5d5bb4279158e4d6146e20916e908887190cb88f42140d5b2eb8752ed8ca0d18",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"reads a download whole, in many chunks, before writing any of it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 7,
+			"endLine": 277,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "390331c88c0dfbad88b589902d8ca90a3ad57ad7e5ac871b0ecffc5cb6f64a6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"caps streamed archive bytes before writing an oversized chunk"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 7,
+			"endLine": 277,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "size >= archiveLimit",
+			"status": "generated",
+			"id": "bdd45faf9e4754b3815b3008d7d921a7c9e3d8c0f6e27f285b9fbf4ff18db658",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"accepts the archive byte limit before refusing an oversized standalone executable"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 7,
+			"endLine": 277,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "size <= archiveLimit",
+			"status": "generated",
+			"id": "5c6fadb7071377d3e0ec38c752a0595e78a3e7a880a33ba4a9539f8100688e79",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"reads a download whole, in many chunks, before writing any of it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 28,
+			"endLine": 277,
+			"endColumn": 103,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "0f06bcd05a35cfd05c37c7126a759b6db4fafcc60c8cf0fb9bdbccc426bd2f4a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"caps streamed archive bytes before writing an oversized chunk"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 53,
+			"endLine": 277,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d853872920b17365d2ca59bae93600e6d58f3f46281a8808476bbcfb71220fe5"
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 277,
+			"column": 71,
+			"endLine": 277,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0430f6f20a0ef4fcafb1629c2b0b80e531188aef52abcc562011c1cf3a3945b6"
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 278,
+			"column": 3,
+			"endLine": 278,
+			"endColumn": 22,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "02afcdbaa953ebd18bfb347ec316ec512aba300f9749b57c2138e33ef7f4f58a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"reads a download whole, in many chunks, before writing any of it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 280,
+			"column": 24,
+			"endLine": 280,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8e0761615c9191ecfb85459eda6839294452f6434367ae33042381edbff76c51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a download in slabs of 1 MiB, however finely it arrives"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 280,
+			"column": 24,
+			"endLine": 280,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "offset <= view.length",
+			"status": "generated",
+			"id": "7eabfa1066f2553b535ff95d345ae415b2c7f65f08b8aa8c14b61a75bdeb54f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 280,
+			"column": 24,
+			"endLine": 280,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "offset >= view.length",
+			"status": "generated",
+			"id": "2561732eafd29a10beca7a8fecd70eaf7ba078fd35df13e50fd74aeb4870ed55",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 282,
+			"column": 4,
+			"endLine": 282,
+			"endColumn": 20,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "offset -= copied",
+			"status": "generated",
+			"id": "9a57e6731b4b40f34da3ade0ea45e77e12598cbf119149b22a630b5c939bb872",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a download in slabs of 1 MiB, however finely it arrives"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 283,
+			"column": 4,
+			"endLine": 283,
+			"endColumn": 18,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "used -= copied",
+			"status": "generated",
+			"id": "e3be6c4e1a5ac3dce85722c13dbbef4c4683fd0603f8d3143e27c3b4e6a1700e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a download in slabs of 1 MiB, however finely it arrives"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 284,
+			"column": 8,
+			"endLine": 284,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8b5c404d0c01ffe63a5327ffe0da79e433035d9b391f452286cc05f8d2c5975c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a download in slabs of 1 MiB, however finely it arrives"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 284,
+			"column": 8,
+			"endLine": 284,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a358d46e01e411ca8739a250f9325ea059cc5b682594367beef7df9b4def0626",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 284,
+			"column": 8,
+			"endLine": 284,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "used !== slabSize",
+			"status": "generated",
+			"id": "fc6c06438d021debfbaf1d93ce0acc7fc63a9b7d9553da0684e858848f29b1b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 284,
+			"column": 27,
+			"endLine": 288,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "728a26e7450dd490b0afa4a9aeb2f5fb38c7e25e5bc61dd4751275aa24034d71",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 285,
+			"column": 5,
+			"endLine": 285,
+			"endColumn": 22,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "450e86a3a73675383faac3fbea6f6f9d216cfc1ebb760a65e0223217c20f5322",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 291,
+			"column": 6,
+			"endLine": 291,
+			"endColumn": 14,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "359dcd73309367d8481cba48adc3d0c7ea070dc3dcb474db99f768b28ece7f43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 291,
+			"column": 6,
+			"endLine": 291,
+			"endColumn": 14,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "26f84329a9f4a90279e500c966090e576535795ff855c67482e1b5d25119417a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 291,
+			"column": 6,
+			"endLine": 291,
+			"endColumn": 14,
+			"mutatorName": "EqualityOperator",
+			"replacement": "used >= 0",
+			"status": "generated",
+			"id": "5e123ec66839079c308cb93a3fe73522c67baada2cefae410592ee5eb89ec51b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048576 bytes as one slab"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 291,
+			"column": 6,
+			"endLine": 291,
+			"endColumn": 14,
+			"mutatorName": "EqualityOperator",
+			"replacement": "used <= 0",
+			"status": "generated",
+			"id": "295d5e1d5c8d256e41e823946af4becc7f498e1f70f198c3575cbf803d93ffa7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 291,
+			"column": 16,
+			"endLine": 291,
+			"endColumn": 51,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "fffd07f8de9c05eee56ccc5b9dfb85212c083396fd58b922d1142d636cc2b3cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"writes a download of 1048577 bytes as two slabs"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 294,
+			"column": 33,
+			"endLine": 294,
+			"endColumn": 60,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "382e7ba4a5ecfdd0da176a5a33d60c6e7ad8122643b65e0ec5a3485e37d7f7e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/tool-cache.test.ts",
+					"path": [
+						"keeps a downloaded archive readable by its owner alone"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/tool-cache.ts",
+			"line": 294,
+			"column": 41,
+			"endLine": 294,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d84c6b9c1f0c531d982e4fd8b1e7c332a850e4e5da3c3c9f81679fbe699791ac"
+		}
+	],
+	"total": 28,
+	"omitted": 0,
+	"unmutated": []
 }
