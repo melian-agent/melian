@@ -76,11 +76,13 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		expect(line()).toMatch(/^warn records .*records\.git is not a directory$/);
 	});
 
-	it("names an origin that carries a user and password without them", async () => {
-		origin("https://melian:FAKESECRET@127.0.0.1:9/x.git");
+	it("names none of an origin that carries a token", async () => {
+		origin("https://melian:FAKESECRET@127.0.0.1:9/x.git?token=QUERYSECRET");
 		expect(await doctor(io)).toBe(0);
-		expect(line()).toMatch(/^warn records fetching melian\/state from https:\/\/127\.0\.0\.1:9\/x\.git failed: /);
-		expect(output).not.toMatch(/melian:|FAKESECRET/);
+		expect(line()).toMatch(
+			/^warn records fetching melian\/state from the clone's origin failed, git exit \d+; run `git ls-remote/,
+		);
+		expect(output).not.toMatch(/melian:|FAKESECRET|QUERYSECRET|127\.0\.0\.1/);
 	});
 
 	it("says the branch holds only what Melian wrote, when it is absent or clean", async () => {

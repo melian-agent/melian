@@ -50,15 +50,18 @@ export type TreeChange = { readonly path: string; readonly bytes: string | null 
 // How a push ended: it landed, a newer tip refused it, or it ran past its deadline and may have landed.
 export type PushOutcome = "landed" | "stale" | "timedOut";
 
-// The remote as a message names it, a URL's user and password removed, since a remote may carry a token. Git
-// anonymises its own messages so, and no command answers with its form.
-function shown(url: string): string {
-	if (!URL.canParse(url)) return url;
-	const parsed = new URL(url);
-	if (parsed.username === "" && parsed.password === "") return url;
-	parsed.username = "";
-	parsed.password = "";
-	return parsed.href;
+// A command that talks to the remote quotes none of git's text or the remote's: git prints a URL's query, a URL the
+// user's configuration rewrote, and whatever the remote sends, any of which may carry a token. This says where to look.
+function seeGit(branch: string): string {
+	return `run \`git ls-remote origin refs/heads/${branch}\` in the clone to see git's own words`;
+}
+
+// The class a porcelain `!` line gives, in Melian's words: `[remote rejected]` is the remote's, `[rejected]` git's own.
+function refusal(line: string): string {
+	const flag = line.split("\t")[2] ?? "";
+	if (flag.startsWith("[remote rejected]")) return "the remote rejected it";
+	if (flag.startsWith("[rejected]")) return "git rejected it";
+	return "git refused it";
 }
 
 function unreachable(message: string, result?: GitResult, cause?: unknown): RecordError {
@@ -165,10 +168,13 @@ export class RecordRepository {
 			],
 			deadline,
 		);
-		if (result.timedOut) throw unreachable(`fetching ${branch} from ${shown(url)} ran past its deadline`);
+		if (result.timedOut) throw unreachable(`fetching ${branch} from the clone's origin ran past its deadline`);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/.test(result.stderr)) return undefined;
-			throw unreachable(`fetching ${branch} from ${shown(url)} failed`, result);
+			throw new RecordError(
+				"unreachable",
+				`fetching ${branch} from the clone's origin failed, git exit ${result.code}; ${seeGit(branch)}`,
+			);
 		}
 		let tip: string;
 		try {
@@ -319,11 +325,11 @@ export class RecordRepository {
 		const refused = result.stdout.split("\n").find((line) => line.startsWith("!\t"));
 		if (refused !== undefined && lostRace.test(refused)) return "stale";
 		// With no refusal of the ref, git may have stopped after the remote updated it, such as when the connection drops.
-		const unsure = refused === undefined ? ", and may have landed; repeat the call" : "";
-		throw unreachable(`pushing to ${branch} at ${shown(url)} failed${unsure}`, {
-			...result,
-			stderr: [refused?.split("\t").slice(2).join(" "), result.stderr].filter(Boolean).join("\n"),
-		});
+		const ended =
+			refused === undefined
+				? `failed, git exit ${result.code}, and may have landed; repeat the call, or`
+				: `was refused: ${refusal(refused)}, git exit ${result.code};`;
+		throw new RecordError("unreachable", `pushing to ${branch} on the clone's origin ${ended} ${seeGit(branch)}`);
 	}
 
 	// Whether `ancestor` is `descendant` or an ancestor of it, in the history this repository holds.

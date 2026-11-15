@@ -20,6 +20,12 @@ afterEach(async () => {
 
 const absent = "0".repeat(40);
 
+// The advice a remote's message gives in place of git's own words, as a pattern.
+const see = "run `git ls-remote origin refs/heads/melian/state` in the clone to see git's own words".replace(
+	/[`/]/g,
+	"\\$&",
+);
+
 function within(ms: number): Deadline {
 	return Deadline.after(systemClock, ms);
 }
@@ -136,7 +142,7 @@ describe("fetching the tip", { timeout: 60_000 }, () => {
 		const { program, ran } = await marker();
 		const repository = await opened();
 		await expect(repository.fetch(`--upload-pack=${program}`, remote.branch, time())).rejects.toSatisfy(
-			unreachable(/^fetching melian\/state from --upload-pack=\S+ failed: \S/),
+			unreachable(/^fetching melian\/state from the clone's origin failed, git exit \d+; /),
 		);
 		expect(await ran()).toBe(false);
 	});
@@ -263,65 +269,53 @@ describe("reading the objects themselves", { timeout: 60_000 }, () => {
 	});
 });
 
-describe("naming the remote", { timeout: 60_000 }, () => {
-	const named = /https:\/\/127\.0\.0\.1:9\/x\.git/;
-	const hidden = /melian:|FAKESECRET/;
+describe("keeping git's words out of a remote's messages", { timeout: 60_000 }, () => {
+	const secret = "https://melian:FAKESECRET@127.0.0.1:9/x.git?token=QUERYSECRET";
+	const hidden = /melian:|FAKESECRET|QUERYSECRET|127\.0\.0\.1/;
 
-	it("names a remote whose fetch failed without its user and password", async () => {
+	it("names the origin, git's exit code and the command to run when a fetch fails", async () => {
 		const repository = await opened();
-		const error = await repository
-			.fetch("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
-			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
+		const error = await repository.fetch(secret, remote.branch, time()).catch((caught: unknown) => caught);
+		expect(error).toSatisfy(
+			unreachable(new RegExp(`^fetching melian/state from the clone's origin failed, git exit 128; ${see}$`)),
+		);
 		expect((error as RecordError).message).not.toMatch(hidden);
 	});
 
-	it("names a remote whose fetch ran past its deadline without its user and password", async () => {
+	it("names the origin alone when a fetch runs past its deadline", async () => {
 		const repository = await opened();
-		const error = await repository
-			.fetch("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, oneMillisecond())
-			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(
-			unreachable(new RegExp(`^fetching melian/state from ${named.source} ran past its deadline$`)),
+		await expect(repository.fetch(secret, remote.branch, oneMillisecond())).rejects.toSatisfy(
+			unreachable(/^fetching melian\/state from the clone's origin ran past its deadline$/),
 		);
 	});
 
-	it("names a remote whose push failed without its user and password", async () => {
+	it("names the origin, git's exit code and the command to run when a push fails", async () => {
 		const { repository, tip } = await fetched();
-		const error = await repository
-			.push("https://melian:FAKESECRET@127.0.0.1:9/x.git", remote.branch, tip, tip, time())
-			.catch((caught: unknown) => caught);
+		const error = await repository.push(secret, remote.branch, tip, tip, time()).catch((caught: unknown) => caught);
 		expect(error).toSatisfy(
 			unreachable(
-				new RegExp(`^pushing to melian/state at ${named.source} failed, and may have landed; repeat the call: `),
+				new RegExp(
+					`^pushing to melian/state on the clone's origin failed, git exit 128, and may have landed; repeat the call, or ${see}$`,
+				),
 			),
 		);
 		expect((error as RecordError).message).not.toMatch(hidden);
 	});
 
-	it("names a remote that carries a password alone without it", async () => {
-		const repository = await opened();
-		const error = await repository
-			.fetch("https://:FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
-			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
-		expect((error as RecordError).message).not.toMatch(hidden);
-	});
-
-	it("names a remote with no user or password exactly as it was given", async () => {
-		const repository = await opened();
-		await expect(repository.fetch("HTTPS://127.0.0.1:9/x.git", remote.branch, time())).rejects.toSatisfy(
-			unreachable(/^fetching melian\/state from HTTPS:\/\/127\.0\.0\.1:9\/x\.git failed: /),
-		);
-	});
-
-	it("names a remote that carries a token as its user alone without it", async () => {
-		const repository = await opened();
-		const error = await repository
-			.fetch("https://FAKESECRET@127.0.0.1:9/x.git", remote.branch, time())
-			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(unreachable(new RegExp(`^fetching melian/state from ${named.source} failed: `)));
-		expect((error as RecordError).message).not.toMatch(hidden);
+	it("names neither the given URL nor the one the user's configuration rewrote it to", async () => {
+		const global = join(remote.root, "global.gitconfig");
+		await writeFile(global, '[url "https://127.0.0.1:9/REWRITTENSECRET/"]\n\tinsteadOf = https://given.invalid/\n');
+		vi.stubEnv("GIT_CONFIG_GLOBAL", global);
+		try {
+			const repository = await opened();
+			const error = await repository
+				.fetch("https://given.invalid/x.git", remote.branch, time())
+				.catch((caught: unknown) => caught);
+			expect(error).toSatisfy(unreachable(/^fetching melian\/state from the clone's origin failed, git exit \d+; /));
+			expect((error as RecordError).message).not.toMatch(/REWRITTENSECRET|given\.invalid|127\.0\.0\.1/);
+		} finally {
+			vi.unstubAllEnvs();
+		}
 	});
 });
 
@@ -388,22 +382,22 @@ describe("pushing", { timeout: 60_000 }, () => {
 		const commit = await repository.commit(tip, [], time());
 		const { program, ran } = await marker();
 		await expect(repository.push(`--receive-pack=${program}`, remote.branch, commit, tip, time())).rejects.toSatisfy(
-			unreachable(
-				/^pushing to melian\/state at --receive-pack=\S+ failed, and may have landed; repeat the call: \S/,
-			),
+			unreachable(/^pushing to melian\/state on the clone's origin failed, git exit \d+, and may have landed; /),
 		);
 		expect(await ran()).toBe(false);
 	});
 
-	it("fails as unreachable, with git's own words trimmed, when the remote is not there", async () => {
+	it("fails as unreachable, quoting none of git's words, when the remote is not there", async () => {
 		const { repository, tip } = await fetched();
-		const error = await repository
-			.push(`file://${join(remote.root, "absent.git")}`, remote.branch, tip, tip, time())
-			.catch((caught: unknown) => caught);
-		expect(error).toSatisfy(
-			unreachable(/^pushing to melian\/state at file:\S+ failed, and may have landed; repeat the call: \S/),
+		await expect(
+			repository.push(`file://${join(remote.root, "absent.git")}`, remote.branch, tip, tip, time()),
+		).rejects.toSatisfy(
+			unreachable(
+				new RegExp(
+					`^pushing to melian/state on the clone's origin failed, git exit 128, and may have landed; repeat the call, or ${see}$`,
+				),
+			),
 		);
-		expect((error as RecordError).message).not.toMatch(/\s$/);
 	});
 
 	for (const race of [
@@ -434,7 +428,7 @@ describe("pushing", { timeout: 60_000 }, () => {
 			expect(await repository.push(remote.url, remote.branch, tip, tip, time())).toBe("stale");
 		});
 
-	it("fails as unreachable, quoting the refusal, when the remote refuses for another reason than a race", async () => {
+	it("fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race", async () => {
 		const { repository, tip } = await fetched();
 		const run = RecordRepository.prototype.run;
 		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
@@ -448,7 +442,7 @@ describe("pushing", { timeout: 60_000 }, () => {
 		});
 		await expect(repository.push(remote.url, remote.branch, tip, tip, time())).rejects.toMatchObject({
 			code: "unreachable",
-			message: `pushing to melian/state at ${remote.url} failed: [remote rejected] (pre-receive hook declined)\nerror: failed to push some refs`,
+			message: `pushing to melian/state on the clone's origin was refused: the remote rejected it, git exit 1; run \`git ls-remote origin refs/heads/melian/state\` in the clone to see git's own words`,
 		});
 	});
 
@@ -466,7 +460,28 @@ describe("pushing", { timeout: 60_000 }, () => {
 		});
 		await expect(repository.push(remote.url, remote.branch, tip, tip, time())).rejects.toMatchObject({
 			code: "unreachable",
-			message: `pushing to melian/state at ${remote.url} failed, and may have landed; repeat the call: fatal: the remote end hung up unexpectedly`,
+			message: `pushing to melian/state on the clone's origin failed, git exit 128, and may have landed; repeat the call, or run \`git ls-remote origin refs/heads/melian/state\` in the clone to see git's own words`,
+		});
+	});
+
+	it.each([
+		["git's own", "!\trefs/heads/x:refs/heads/melian/state\t[rejected] (needs force)", "git rejected it"],
+		[
+			"another",
+			"!\trefs/heads/x:refs/heads/melian/state\t[remote failure] (remote failed to report status)",
+			"git refused it",
+		],
+	])("names a refusal of %s class, quoting none of its words", async (_, line, named) => {
+		const { repository, tip } = await fetched();
+		const run = RecordRepository.prototype.run;
+		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(async function (this: RecordRepository, ...args) {
+			if (args[0][0] !== "push") return run.apply(this, args);
+			const stdout = `To ${remote.url}\n${line}\nDone\n`;
+			return { code: 1, stdout, stdoutBytes: Buffer.from(stdout), stderr: "error: failed to push some refs\n" };
+		});
+		await expect(repository.push(remote.url, remote.branch, tip, tip, time())).rejects.toMatchObject({
+			code: "unreachable",
+			message: `pushing to melian/state on the clone's origin was refused: ${named}, git exit 1; run \`git ls-remote origin refs/heads/melian/state\` in the clone to see git's own words`,
 		});
 	});
 });

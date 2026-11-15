@@ -32,7 +32,7 @@ describe("reading the branch", { timeout: 60_000 }, () => {
 		const reader = await remote.open();
 		await expect(reader.list(changeset)).rejects.toMatchObject({
 			code: "unreachable",
-			message: expect.stringContaining(`fetching melian/state from ${remote.url} failed`),
+			message: expect.stringContaining("fetching melian/state from the clone's origin failed"),
 		});
 		vi.unstubAllEnvs();
 		expect(keys(await reader.list(changeset))).toHaveLength(30);
