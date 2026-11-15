@@ -476,6 +476,25 @@ describe("a repeat review copies a lens run only from a task shown the same call
 		expect(again.copied).toEqual("none");
 	});
 
+	it("unlocks every run's provider when it meant to copy and a review that ran meanwhile leaves it a task to attach to", async () => {
+		await review(lenses, [], { config: enabled, callers: graph() });
+		const unlocked: string[][] = [];
+		let racer: Awaited<ReturnType<typeof review>> | undefined;
+		const unlockModels = async (providers: readonly string[]) => {
+			unlocked.push([...providers]);
+			if (racer !== undefined) return;
+			// While this review unlocks the one run it means to ask, another reviews the same lenses with no callers, so it
+			// copies nothing and asks both. This review's commit then finds that task under its own selection.
+			racer = await review(lookTwice(), [], { config: enabled });
+		};
+		const again = await review(lookTwice(), [], { config: enabled, callers: graph(), unlockModels });
+		expect(racer?.copied).toBe("none");
+		expect(again.task).toBe(racer?.task);
+		// The run it meant to ask, then every run once its commit found a task to attach to. The verification it then
+		// attaches to is the other review's, so it unlocks no verifier.
+		expect(unlocked).toEqual([["faux"], ["faux", "faux"]]);
+	});
+
 	it("keeps a copied lens's caller notes from the review that asked it when only a file's caller query differs", async () => {
 		const groups = [{ file: "src/a.ts", symbol: "a", callers: [], truncated: false }];
 		const failed = "Callers unavailable for src/a.ts: the query timed out";

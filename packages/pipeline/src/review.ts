@@ -1710,7 +1710,8 @@ async function runLenses(
 			(await attachable(tx, known.task, undecided)) &&
 			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
-		if (attach) return known.task as TaskId<LensResult>;
+		// A task created since the read asks lenses whose providers this review left locked.
+		if (attach) return checked && unlockedFor !== undefined ? undefined : (known.task as TaskId<LensResult>);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
 		const reused = copiesFrom(previous, input.lenses, input.callers, refused);
