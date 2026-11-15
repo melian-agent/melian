@@ -505,7 +505,10 @@ export {
 	SharedRecord,
 } from "./record.ts";
 export {
+	checkCellValue,
+	checkChangeset,
 	disposalMark,
+	disposedError,
 	MemoryRecordSpace,
 	MemoryRecordStore,
 	type RecordCell,

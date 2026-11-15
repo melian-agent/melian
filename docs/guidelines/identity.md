@@ -67,7 +67,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Request key, `KeyedRequest.of` | `core/src/request-key.ts` | takes a recorded result as the answer to this producer's request, by [the request keys decision](../decisions/2026-11-14-request-keys-as-built.md) | Only what a producer passes as unkeyed, under one of `requestExclusions`: `nonce`, `language`, `bestEffort`, `chosenBy`. The key is the SHA-256 of `canonicalJson({ producer, request })` |
 | Request bytes, `requestJson` | `core/src/request-key.ts` | writes a request one way before it is keyed | A field left undefined, at any depth; `null` stays. A number that is not a safe integer is written as its decimal text |
 | Host facts, `hostFacts` | `core/src/host.ts` | lets a check run on this host answer for another | Nothing: platform, architecture, Node's version, and whether the filesystem under the given directory folds case, asked of the filesystem once per directory |
-| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts` | lets a `writeCell` land | Everything: random on every write in memory, a number never reused in a directory, and never a hash of the value, so a value that came back never matches a version read before it left |
+| Cell version | `core/src/record-store.ts`, `core/src/directory-record-store.ts`, `state-git/src/git-record-store.ts` | lets a `writeCell` land | Everything: random on every write in memory and on the git branch, a random UUID kept in `cell.json` beside the value, a number never reused in a directory, and never a hash of the value, so a value that came back never matches a version read before it left |
 
 ### Pipeline
 
@@ -92,6 +92,12 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Coverage producer index | `pipeline/src/coverage-cache.ts` | reads cached coverage under a graph | Nothing |
 | State directory hash | `pipeline/src/tool-provisioning.ts` | gives a clone its state directory | Nothing |
 | Tool cache directory | `pipeline/src/tool-cache.ts` | reuses a materialised tool | Nothing |
+
+### State branch
+
+| Key | Built in | When it matches, Melian | Left out, and why |
+| --- | --- | --- | --- |
+| Judgement key, `keyOf` in `StateTree.read` | `state-git/src/state-tree.ts` | does not read the entry's blob again, and takes the judgement it made of an entry with the same mode, type, object ID and raw path bytes on this handle: a record, a cell or a stray | Nothing: every field `ls-tree` lists. It lives for one handle and is never stored |
 
 ### GitHub and evals
 

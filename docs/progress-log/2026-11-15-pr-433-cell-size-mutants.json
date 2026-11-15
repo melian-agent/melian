@@ -1,0 +1,151 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 175,
+   "column": 6,
+   "endLine": 175,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 175,
+   "column": 6,
+   "endLine": 175,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 175,
+   "column": 6,
+   "endLine": 175,
+   "endColumn": 80,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Buffer.byteLength(cellBytes({\n  value,\n  version: randomUUID()\n})) >= fileLimit",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 175,
+   "column": 6,
+   "endLine": 175,
+   "endColumn": 80,
+   "mutatorName": "EqualityOperator",
+   "replacement": "Buffer.byteLength(cellBytes({\n  value,\n  version: randomUUID()\n})) <= fileLimit",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 175,
+   "column": 34,
+   "endLine": 175,
+   "endColumn": 66,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 176,
+   "column": 3,
+   "endLine": 176,
+   "endColumn": 80,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+   "survivorClasses": [],
+   "run": {
+    "head": "f5a11944",
+    "test": "packages/state-git/test/scopes.test.ts > a cell's size > takes a cell of the limit, and refuses one a byte past it before reaching the remote",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 176,
+   "column": 25,
+   "endLine": 176,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 176,
+   "column": 40,
+   "endLine": 176,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 8,
+ "omitted": 0,
+ "unmutated": []
+}

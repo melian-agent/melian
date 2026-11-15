@@ -1,0 +1,339 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 50,
+   "column": 36,
+   "endLine": 57,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 51,
+   "column": 5,
+   "endLine": 51,
+   "endColumn": 23,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "URL.canParse(url)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 51,
+   "column": 5,
+   "endLine": 51,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 51,
+   "column": 5,
+   "endLine": 51,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 5,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 5,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote with no user or password exactly as it was given",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote with no user or password exactly as it was given",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 5,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "LogicalOperator",
+   "replacement": "parsed.username === \"\" || parsed.password === \"\"",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 5,
+   "endLine": 53,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 5,
+   "endLine": 53,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "parsed.username !== \"\"",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a token as its user alone without it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 25,
+   "endLine": 53,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 31,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a password alone without it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a password alone without it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 31,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "EqualityOperator",
+   "replacement": "parsed.password !== \"\"",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a password alone without it",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote that carries a password alone without it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 53,
+   "column": 51,
+   "endLine": 53,
+   "endColumn": 53,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 54,
+   "column": 19,
+   "endLine": 54,
+   "endColumn": 21,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 55,
+   "column": 19,
+   "endLine": 55,
+   "endColumn": 21,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch failed without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 163,
+   "column": 6,
+   "endLine": 163,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch ran past its deadline without its user and password",
+   "survivorClasses": [],
+   "run": {
+    "head": "3e7f368d",
+    "test": "packages/state-git/test/repository.test.ts > naming the remote > names a remote whose fetch ran past its deadline without its user and password",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 163,
+   "column": 41,
+   "endLine": 163,
+   "endColumn": 102,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 166,
+   "column": 21,
+   "endLine": 166,
+   "endColumn": 67,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 316,
+   "column": 20,
+   "endLine": 316,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 20,
+ "omitted": 0,
+ "unmutated": []
+}

@@ -1,0 +1,1025 @@
+{
+  "mutants": [
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 89,
+      "column": 4,
+      "endLine": 89,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 89,
+      "column": 4,
+      "endLine": 89,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 89,
+      "column": 4,
+      "endLine": 89,
+      "endColumn": 21,
+      "mutatorName": "EqualityOperator",
+      "replacement": "tip !== undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 113,
+      "column": 7,
+      "endLine": 113,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 113,
+      "column": 7,
+      "endLine": 113,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "equivalent",
+      "evidence": "core git reads maxBytes ?? Infinity, so passing an absent maxBytes is the same as leaving the option out",
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 113,
+      "column": 7,
+      "endLine": 113,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "options.maxBytes !== undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 113,
+      "column": 45,
+      "endLine": 113,
+      "endColumn": 75,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 216,
+      "column": 6,
+      "endLine": 216,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 216,
+      "column": 6,
+      "endLine": 216,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 216,
+      "column": 6,
+      "endLine": 216,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "sizes.size !== 0",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 217,
+      "column": 15,
+      "endLine": 217,
+      "endColumn": 32,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 19,
+      "endLine": 219,
+      "endColumn": 29,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 37,
+      "endLine": 219,
+      "endColumn": 106,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 59,
+      "endLine": 219,
+      "endColumn": 106,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "sum + `${oid} blob ${size}\\n`.length + size - 1",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 59,
+      "endLine": 219,
+      "endColumn": 102,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "sum + `${oid} blob ${size}\\n`.length - size",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 59,
+      "endLine": 219,
+      "endColumn": 95,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "sum - `${oid} blob ${size}\\n`.length",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 219,
+      "column": 65,
+      "endLine": 219,
+      "endColumn": 88,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > reading the tree > reads each blob once per handle",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 32,
+      "endLine": 220,
+      "endColumn": 55,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 33,
+      "endLine": 220,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 45,
+      "endLine": 220,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 67,
+      "endLine": 220,
+      "endColumn": 110,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 76,
+      "endLine": 220,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 220,
+      "column": 89,
+      "endLine": 220,
+      "endColumn": 93,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 221,
+      "column": 6,
+      "endLine": 221,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 221,
+      "column": 6,
+      "endLine": 221,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 221,
+      "column": 42,
+      "endLine": 221,
+      "endColumn": 106,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when git gives more bytes than the sizes it reported",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 10,
+      "column": 24,
+      "endLine": 10,
+      "endColumn": 41,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "256 * 1024 / 1024",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 10,
+      "column": 24,
+      "endLine": 10,
+      "endColumn": 34,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "256 / 1024",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 138,
+      "column": 19,
+      "endLine": 138,
+      "endColumn": 112,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 138,
+      "column": 31,
+      "endLine": 138,
+      "endColumn": 84,
+      "mutatorName": "MethodExpression",
+      "replacement": "entries",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > is judged by its path alone, and its bytes are never read",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > is judged by its path alone, and its bytes are never read",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 138,
+      "column": 46,
+      "endLine": 138,
+      "endColumn": 83,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 138,
+      "column": 89,
+      "endLine": 138,
+      "endColumn": 109,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 141,
+      "column": 29,
+      "endLine": 144,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 142,
+      "column": 17,
+      "endLine": 142,
+      "endColumn": 59,
+      "mutatorName": "LogicalOperator",
+      "replacement": "sizes.get(oid) && Number.POSITIVE_INFINITY",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 11,
+      "endLine": 143,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 11,
+      "endLine": 143,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 11,
+      "endLine": 143,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size < fileLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 11,
+      "endLine": 143,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size > fileLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 31,
+      "endLine": 143,
+      "endColumn": 53,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 143,
+      "column": 56,
+      "endLine": 143,
+      "endColumn": 58,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 16,
+      "endLine": 146,
+      "endColumn": 35,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 43,
+      "endLine": 146,
+      "endColumn": 68,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 146,
+      "column": 58,
+      "endLine": 146,
+      "endColumn": 68,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "sum - size",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 147,
+      "column": 6,
+      "endLine": 147,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 147,
+      "column": 6,
+      "endLine": 147,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 147,
+      "column": 6,
+      "endLine": 147,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total >= tipLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 147,
+      "column": 6,
+      "endLine": 147,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total <= tipLimit",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 148,
+      "column": 3,
+      "endLine": 151,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 149,
+      "column": 4,
+      "endLine": 149,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 150,
+      "column": 4,
+      "endLine": 150,
+      "endColumn": 145,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable one byte past the limit, naming the branch, the total and the limit, and reads nothing",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 153,
+      "column": 25,
+      "endLine": 153,
+      "endColumn": 88,
+      "mutatorName": "MethodExpression",
+      "replacement": "fresh.map(entry => entry.oid)",
+      "claim": "killed",
+      "evidence": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/scopes.test.ts > a record's size > reads a file of the limit, and leaves one a byte past it unread as a stray",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 153,
+      "column": 35,
+      "endLine": 153,
+      "endColumn": 55,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 153,
+      "column": 64,
+      "endLine": 153,
+      "endColumn": 87,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 155,
+      "column": 11,
+      "endLine": 155,
+      "endColumn": 22,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 155,
+      "column": 27,
+      "endLine": 155,
+      "endColumn": 67,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 155,
+      "column": 36,
+      "endLine": 155,
+      "endColumn": 67,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+      "survivorClasses": [],
+      "run": {
+        "head": "eb6f73a3",
+        "test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > reads a tip whose records and cells total the limit",
+        "collected": 1,
+        "failed": true
+      }
+    }
+  ],
+  "total": 56,
+  "omitted": 0,
+  "unmutated": []
+}

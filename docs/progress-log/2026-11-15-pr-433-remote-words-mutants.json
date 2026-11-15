@@ -1,0 +1,507 @@
+{
+	"mutants": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 55,
+			"column": 40,
+			"endLine": 57,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 56,
+			"column": 8,
+			"endLine": 56,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 61,
+			"column": 14,
+			"endLine": 61,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "line.split(\"\\t\")[2] && \"\"",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 61,
+			"column": 25,
+			"endLine": 61,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 61,
+			"column": 37,
+			"endLine": 61,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 62,
+			"column": 5,
+			"endLine": 62,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 62,
+			"column": 5,
+			"endLine": 62,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 62,
+			"column": 5,
+			"endLine": 62,
+			"endColumn": 41,
+			"mutatorName": "MethodExpression",
+			"replacement": "flag.endsWith(\"[remote rejected]\")",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 62,
+			"column": 21,
+			"endLine": 62,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 62,
+			"column": 50,
+			"endLine": 62,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 63,
+			"column": 5,
+			"endLine": 63,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > names a refusal of another class, quoting none of its words",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > names a refusal of another class, quoting none of its words",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 63,
+			"column": 5,
+			"endLine": 63,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 63,
+			"column": 5,
+			"endLine": 63,
+			"endColumn": 34,
+			"mutatorName": "MethodExpression",
+			"replacement": "flag.endsWith(\"[rejected]\")",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > names a refusal of git's own class, quoting none of its words",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 63,
+			"column": 21,
+			"endLine": 63,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 63,
+			"column": 43,
+			"endLine": 63,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 64,
+			"column": 8,
+			"endLine": 64,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 171,
+			"column": 6,
+			"endLine": 171,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 171,
+			"column": 6,
+			"endLine": 171,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin alone when a fetch runs past its deadline",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin alone when a fetch runs past its deadline",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 171,
+			"column": 41,
+			"endLine": 171,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 174,
+			"column": 3,
+			"endLine": 177,
+			"endColumn": 5,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > keeping git's words out of a remote's messages > names the origin, git's exit code and the command to run when a fetch fails",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 175,
+			"column": 4,
+			"endLine": 175,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 176,
+			"column": 4,
+			"endLine": 176,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 329,
+			"column": 3,
+			"endLine": 329,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 329,
+			"column": 3,
+			"endLine": 329,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, saying it may have landed, when git reports no refusal of the ref",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, saying it may have landed, when git reports no refusal of the ref",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 329,
+			"column": 3,
+			"endLine": 329,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refused !== undefined",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 330,
+			"column": 6,
+			"endLine": 330,
+			"endColumn": 81,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 331,
+			"column": 6,
+			"endLine": 331,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 332,
+			"column": 2,
+			"endLine": 332,
+			"endColumn": 112,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 332,
+			"column": 24,
+			"endLine": 332,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 332,
+			"column": 39,
+			"endLine": 332,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		}
+	],
+	"total": 30,
+	"omitted": 0,
+	"unmutated": [],
+	"byHand": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 61,
+			"column": 14,
+			"endLine": 61,
+			"endColumn": 39,
+			"mutatorName": "by hand: fallback removed",
+			"replacement": "line.split(\"\\t\")[2]!",
+			"claim": "equivalent",
+			"evidence": "git prints every porcelain ! line as flag, refs and summary, separated by tabs, so the summary field is always there and the fallback only satisfies the type checker; run by hand, it survives",
+			"survivorClasses": [],
+			"run": {
+				"head": "12fc09d3",
+				"test": "packages/state-git/test/repository.test.ts > pushing > fails as unreachable, naming the refusal's class and none of its words, when the remote refuses for another reason than a race",
+				"collected": 1,
+				"failed": false
+			}
+		}
+	]
+}
