@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Clock, Deadline, systemClock } from "../src/deadline.ts";
@@ -97,6 +97,25 @@ describe("a step the deadline cannot start late", { timeout: 60_000 }, () => {
 			message: expect.stringMatching(refused),
 		});
 		expect(await commands()).toHaveLength(1);
+	});
+
+	it("starts creating the repository with a millisecond left, and refuses, creating nothing, with none", async () => {
+		const commands = await shimGit(200);
+		const inits = async () => (await commands()).filter((line) => line.startsWith("init "));
+		const stopped = join(remote.host(), "records.git");
+		await expect(RecordRepository.open(stopped, deadlineAt(1))).rejects.toMatchObject({
+			code: "unreachable",
+			message: `${stopped} cannot be created`,
+		});
+		expect(await inits()).toHaveLength(1);
+		const host = remote.host();
+		const refusedPath = join(host, "records.git");
+		await expect(RecordRepository.open(refusedPath, deadlineAt(0))).rejects.toMatchObject({
+			code: "unreachable",
+			message: `${refusedPath} cannot be created within its deadline`,
+		});
+		expect(await inits()).toHaveLength(1);
+		expect(await readdir(host)).toEqual([]);
 	});
 
 	it("starts a push with a millisecond left, and refuses it, starting nothing, with none", async () => {
