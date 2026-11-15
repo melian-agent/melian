@@ -29,7 +29,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -183,6 +183,14 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 			await Standards.load(repo, { kind: "worktree", preferences: "/home/b/melian.yaml" }, paths),
 		);
 		expect(again.asked).toEqual([]);
+	});
+
+	it("asks every lens again when the same standards are read at another commit", async () => {
+		const paths = ["src/a.ts"];
+		const at = (branch: string) => ({ kind: "revision" as const, commit: gitIn(repo, "rev-parse", branch) });
+		await review(lenses, await Standards.load(repo, at("main"), paths));
+		const again = await review(lenses, await Standards.load(repo, at("feature"), paths));
+		expect(again.asked).toEqual(["contracts", "correctness"]);
 	});
 
 	it("asks every lens again when the standards' source changes", async () => {
