@@ -153,10 +153,13 @@ describe("verificationRequest's probe evidence", () => {
 		for (const wording of Object.values(probeEvidenceWording))
 			expect(keyed).toContain(JSON.stringify(wording).slice(1, -1));
 		const { text } = verificationRequest(sample).request as { text: { prompt: string } };
-		expect(text.prompt).toContain("## Claim c1's probe");
-		expect(text.prompt).toContain("Melian did not run it again.");
-		expect(text.prompt).toContain("Melian could not run it again; why is in the probe's block below.");
-		expect(text.prompt).toContain("When Melian ran it again it failed, exiting 1.");
+		const rests = (label: string, outcome: string, rerun: string) =>
+			`## Claim ${label}'s probe\n\nClaim ${label} rests on probe <probe>, which the lens's prober wrote for attack 1 of the plan below. It ${outcome} when the prober ran it. ${rerun}`;
+		expect(text.prompt).toContain(rests("c1", "failed, exiting 1", "Melian did not run it again."));
+		expect(text.prompt).toContain(
+			rests("c2", "failed, exiting 1", "Melian could not run it again; why is in the probe's block below."),
+		);
+		expect(text.prompt).toContain(rests("c3", "passed, exiting 0", "When Melian ran it again it failed, exiting 1."));
 	});
 });
 
