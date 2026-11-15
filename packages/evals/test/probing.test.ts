@@ -2,7 +2,15 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, Finding, type FindingInput, Lens, type MelianConfig } from "@melian-agent/core";
+import {
+	defaultConfig,
+	Finding,
+	type FindingInput,
+	Lens,
+	type MelianConfig,
+	type ResolvedFinding,
+	Verdict,
+} from "@melian-agent/core";
 import {
 	backgroundContext,
 	createMemoryStorage,
@@ -86,12 +94,30 @@ function ran(findings: readonly Finding[], fields: Partial<RangeRun> = {}): Rang
 		telemetry: paid,
 		findings,
 		sightings: findings,
+		verdict: held({ findings }),
 		rendered: "rendered review\n",
 		toolMismatches: [],
 		notes: [],
 		tiers: {},
 		...fields,
 	};
+}
+
+// A verdict holding each finding in the group it names, as adjudication would leave it.
+function held(groups: {
+	findings?: readonly Finding[];
+	dismissed?: readonly Finding[];
+	refuted?: readonly Finding[];
+}): Verdict {
+	const resolved = (findings: readonly Finding[] = []) => findings as ResolvedFinding[];
+	return new Verdict({
+		status: "findings",
+		blocking: false,
+		findings: { block: [], acknowledge: [], advisory: resolved(groups.findings), silent: [] },
+		dismissed: resolved(groups.dismissed),
+		notRun: [],
+		...(groups.refuted === undefined ? {} : { refuted: resolved(groups.refuted) }),
+	});
 }
 
 function runners(fields: Partial<ProbingRunners> = {}): ProbingRunners {
@@ -321,7 +347,7 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
 		const loose = { by: "file and rule" } as const;
 		const found = (findings: readonly Finding[], sightings = findings, which = miss) =>
-			which.match({ findings, sightings }, loose).hits.length > 0;
+			which.match({ verdict: held({ findings }), sightings }, loose).hits.length > 0;
 		expect(found([finding])).toBe(true);
 		expect(found([])).toBe(false);
 		const changed = (properties: object) =>
@@ -394,7 +420,10 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 			verification: each.properties.verification,
 		});
 		expect(
-			miss.match({ findings: [verdict], sightings: [quick, careful] }, { by: "lines", ranges: [[start, start]] }),
+			miss.match(
+				{ verdict: held({ findings: [verdict] }), sightings: [quick, careful] },
+				{ by: "lines", ranges: [[start, start]] },
+			),
 		).toEqual({
 			matched: "lines",
 			hits: [],
@@ -402,24 +431,56 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		});
 		expect(
 			miss.match(
-				{ findings: [verdict], sightings: [quick, careful] },
+				{ verdict: held({ findings: [verdict] }), sightings: [quick, careful] },
 				{ by: "lines", ranges: [[end + 5, end + 5]] },
 			),
 		).toEqual({ matched: "lines", hits: [shown(careful)], near: [] });
 		expect(() =>
-			miss.match({ findings: [verdict], sightings: [quick] }, { by: "lines", ranges: [[start, start]] }),
+			miss.match(
+				{ verdict: held({ findings: [verdict] }), sightings: [quick] },
+				{ by: "lines", ranges: [[start, start]] },
+			),
 		).toThrow(
 			`m: the verdict holds a lens.trust-boundary claim ${finding.id} from careful1 that the lens never sighted`,
 		);
 		expect(() =>
-			miss.match({ findings: [quick], sightings: [quick, careful] }, { by: "lines", ranges: [[start, start]] }),
+			miss.match(
+				{ verdict: held({ findings: [quick] }), sightings: [quick, careful] },
+				{ by: "lines", ranges: [[start, start]] },
+			),
 		).toThrow(`m: lens.trust-boundary sighted ${finding.id} at careful1, which the verdict holds no claim for`);
 		expect(() =>
 			miss.match(
-				{ findings: [careful, verdict], sightings: [quick, careful] },
+				{ verdict: held({ findings: [careful, verdict] }), sightings: [quick, careful] },
 				{ by: "lines", ranges: [[start, start]] },
 			),
 		).toThrow(`m: the verdict holds the lens.trust-boundary claim ${finding.id} from careful1 twice`);
+	});
+
+	it("takes a miss's claims from every group of the verdict: a refuted claim scores as not found, and a dismissed one by its own verification", async () => {
+		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
+		const finding = reviewed.findings[0]!;
+		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
+		const loose = { by: "file and rule" } as const;
+		const judged = (verdict: "confirmed" | "refuted") =>
+			Finding.from({
+				...finding.toJSON(),
+				properties: {
+					...finding.properties,
+					verification: {
+						verdict,
+						reason: `the probe ${verdict} it`,
+						executor: "llm",
+						model: "fake/judge",
+						version: "1",
+					},
+				},
+			});
+		const hits = (verdict: Verdict) => miss.match({ verdict, sightings: [finding] }, loose).hits;
+		expect(hits(held({ refuted: [judged("refuted")] }))).toEqual([]);
+		// A dismissal is a person's later call, which a measurement's fresh store cannot hold, so it decides nothing here.
+		expect(hits(held({ dismissed: [judged("confirmed")] })).map(({ id }) => id)).toEqual([finding.id]);
+		expect(hits(held({ dismissed: [judged("refuted")] }))).toEqual([]);
 	});
 
 	it("gives a miss no score when the verdict and the lens's sightings disagree on which claims it made", async () => {
@@ -427,13 +488,13 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		const finding = reviewed.findings[0]!;
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
 		const loose = { by: "file and rule" } as const;
-		expect(() => miss.match({ findings: [finding] }, loose)).toThrow(
+		expect(() => miss.match({ verdict: held({ findings: [finding] }) }, loose)).toThrow(
 			"m: its review returned no lens.trust-boundary sightings to score",
 		);
-		expect(() => miss.match({ findings: [], sightings: [finding] }, loose)).toThrow(
+		expect(() => miss.match({ verdict: held({ findings: [] }), sightings: [finding] }, loose)).toThrow(
 			`m: lens.trust-boundary sighted ${finding.id} at ${finding.properties.source.version}, which the verdict holds no claim for`,
 		);
-		expect(() => miss.match({ findings: [finding], sightings: [] }, loose)).toThrow(
+		expect(() => miss.match({ verdict: held({ findings: [finding] }), sightings: [] }, loose)).toThrow(
 			`m: the verdict holds a lens.trust-boundary claim ${finding.id} from ${finding.properties.source.version} that the lens never sighted`,
 		);
 		const security = { check: "lens.security", version: "v" };
@@ -441,7 +502,7 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 			...finding.toJSON(),
 			properties: { ...finding.properties, source: security, reportedBy: [security], otherClaims: undefined },
 		});
-		expect(miss.match({ findings: [elsewhere], sightings: [] }, loose)).toEqual({
+		expect(miss.match({ verdict: held({ findings: [elsewhere] }), sightings: [] }, loose)).toEqual({
 			matched: "file and rule",
 			hits: [],
 			near: [],
@@ -473,7 +534,7 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 			evidence: each.properties.evidence,
 			verification: each.properties.verification,
 		});
-		const both = (sightings: readonly Finding[]) => ({ findings: sightings, sightings });
+		const both = (sightings: readonly Finding[]) => ({ verdict: held({ findings: sightings }), sightings });
 		expect(
 			miss.match(both([finding, near]), {
 				by: "lines",
@@ -553,13 +614,15 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 				},
 			});
 		const location = { by: "lines", ranges: [[46, 47]] } as const;
-		expect(miss.match({ findings: [speaker([40, 44])], sightings: [sighting] }, location)).toEqual({
-			matched: "lines",
-			hits: [shown(sighting)],
-			near: [],
-		});
+		expect(miss.match({ verdict: held({ findings: [speaker([40, 44])] }), sightings: [sighting] }, location)).toEqual(
+			{
+				matched: "lines",
+				hits: [shown(sighting)],
+				near: [],
+			},
+		);
 		const swapped = at(40, 44, finding.id);
-		expect(miss.match({ findings: [speaker([46, 47])], sightings: [swapped] }, location)).toEqual({
+		expect(miss.match({ verdict: held({ findings: [speaker([46, 47])] }), sightings: [swapped] }, location)).toEqual({
 			matched: "lines",
 			hits: [],
 			near: [shown(swapped)],

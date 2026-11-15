@@ -298,19 +298,19 @@ export class Miss {
 
 	/**
 	 * What a review found of the miss, scored on `trust-boundary`'s own sightings, since a merged finding keeps only its
-	 * speaker's lines. A sighting answers the miss when the verdict holds its claim unrefuted, by its ID and the level
-	 * that sighted it, and it sits at the miss's file under its rule and overlaps its lines; with no lines, file and rule
-	 * alone decide. Throws when the sightings and the verdict's claims disagree, which leaves the miss unscored rather
+	 * speaker's lines. A sighting answers the miss when the verdict, in any of its groups, holds its claim unrefuted, by
+	 * its ID and the level that sighted it, and it sits at the miss's file under its rule and overlaps its lines; with no
+	 * lines, file and rule alone decide. Throws when the sightings and the verdict's claims disagree, which leaves the miss unscored rather
 	 * than missed.
 	 */
-	match(run: Pick<RangeRun, "findings" | "sightings">, location: MissLocation): MissMatch {
+	match(run: Pick<RangeRun, "verdict" | "sightings">, location: MissLocation): MissMatch {
 		const { sightings } = run;
 		if (sightings === undefined)
 			throw new Error(`${this.name}: its review returned no ${probingCheck} sightings to score`);
 		// An ID excludes lines, so two levels of the lens can sight one ID at different lines with different verdicts.
 		const identity = (id: string, source: FindingSource) => `${id} ${source.version}`;
 		const held = new Map<string, MemberClaim>();
-		for (const finding of run.findings)
+		for (const finding of run.verdict.all())
 			for (const claim of VerificationState.from(finding).claims) {
 				if (claim.source.check !== probingCheck) continue;
 				const key = identity(claim.id, claim.source);

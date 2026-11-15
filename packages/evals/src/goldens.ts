@@ -23,6 +23,7 @@ import {
 	type RepositorySource,
 	Revision,
 	Standards,
+	type Verdict,
 	verificationSchema,
 } from "@melian-agent/core";
 import {
@@ -360,6 +361,8 @@ export interface RangeRun {
 	 * scenario, before the verdict merged them with another check's. Absent when the target names no check.
 	 */
 	readonly sightings?: readonly Finding[];
+	/** The review's verdict. Its {@link Verdict.all} holds every claim it adjudicated, refuted and dismissed ones too. */
+	readonly verdict: Verdict;
 }
 
 /** A golden's review. */
@@ -538,6 +541,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			toolMismatches,
 			notes: reviewed.verdict.lensNotes(),
 			tiers: tiersRun(reviewed.verdict.ran ?? [], lenses, config),
+			verdict: reviewed.verdict,
 			telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
 		};
 	} catch (error) {
