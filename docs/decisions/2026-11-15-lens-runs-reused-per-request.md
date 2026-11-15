@@ -21,6 +21,7 @@ Choice: `lensRequest` in `packages/pipeline/src/lens-request.ts` keys each run t
 - every tool the run is offered, by name, description and schema, and a probing run's planner and prober tools and reminders;
 - the wording a failover sends;
 - the base and head, `escalateAt`, and the run a quick run escalates to by its key, or why it is capped;
+- for a run that escalates to another, the wording that carries its findings to that run, since that run is copied only with it;
 - the standards it quotes, by their raw text, their source and whether they are trusted.
 
 Left out, each with its reason:

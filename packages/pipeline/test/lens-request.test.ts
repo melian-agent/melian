@@ -3,7 +3,7 @@ import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { continuePrompt, lensRequest } from "../src/lens-request.ts";
 import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "../src/lens-tools.ts";
-import { answerPrompt, recordPlanPrompt } from "../src/probing.ts";
+import { answerPrompt, probingWording, recordPlanPrompt } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
 const sample = {
@@ -128,6 +128,16 @@ describe("lensRequest", () => {
 		const capped = build({ ...sample, escalation: { cap: "at its ceiling" } as unknown as Sample["escalation"] }).key;
 		const none = build({ ...sample, escalation: undefined as unknown as Sample["escalation"] }).key;
 		expect(new Set([moves, capped, none]).size).toBe(3);
+	});
+
+	it("keys the wording that carries a quick run's findings to the run it escalates to, and only when it moves on", () => {
+		const { carriedHeading, carried, carriedLabel, carriedRow } = probingWording;
+		expect(build(sample).request.carried).toEqual({ carriedHeading, carried, carriedLabel, carriedRow });
+		const capped = build({ ...sample, escalation: { cap: "at its ceiling" } as unknown as Sample["escalation"] });
+		expect(capped.request).not.toHaveProperty("carried");
+		expect(build({ ...sample, escalation: undefined as unknown as Sample["escalation"] }).request).not.toHaveProperty(
+			"carried",
+		);
 	});
 
 	it("writes neither escalation field for a run with no escalation severity and no next run", () => {

@@ -1,6 +1,6 @@
 import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
 import { lensListedTools, recordPlan, reportFinding, runProbe, skipAttack } from "./lens-tools.ts";
-import { answerPrompt, recordPlanPrompt } from "./probing.ts";
+import { answerPrompt, probingWording, recordPlanPrompt } from "./probing.ts";
 import { identityNonce, injectionPolicy } from "./untrusted.ts";
 
 /** The input a lens run's model is given when the model before it on the route failed. */
@@ -43,6 +43,7 @@ type LensRequestBody = {
 	head: string;
 	escalateAt?: Severity;
 	escalation?: { next: string } | { cap: string };
+	carried?: { carriedHeading: string; carried: string; carriedLabel: string; carriedRow: string };
 	standards: RecordJson;
 };
 
@@ -52,7 +53,8 @@ const specOf = ({ name, description, parameters }: ToolSpec): ToolSpec => ({ nam
  * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the injection policy
  * that renders ahead of its instructions, each tool its planner and prober are offered by name, description and
  * schema, the wording a failover and a probing run's reminders send, the revision's base and head, `escalateAt`,
- * the escalation by its next run's key, and the standards it quotes as their source gave them. Best-effort context stays out, as rule 5 of the shared record decision says:
+ * the escalation by its next run's key with the wording that carries findings to it, and the standards it quotes as
+ * their source gave them. Best-effort context stays out, as rule 5 of the shared record decision says:
  * the caller section, and the Enola graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under the
  * review's own nonce with its caller section.
  */
@@ -82,6 +84,17 @@ export function lensRequest<Run extends LensRequestRun>(
 			head: input.head,
 			...(input.escalateAt === undefined ? {} : { escalateAt: input.escalateAt }),
 			...(input.escalation === undefined ? {} : { escalation: { ...input.escalation } }),
+			// The run escalated to is shown this run's findings in this wording, and is copied only with this run.
+			...(input.escalation !== undefined && "next" in input.escalation
+				? {
+						carried: {
+							carriedHeading: probingWording.carriedHeading,
+							carried: probingWording.carried,
+							carriedLabel: probingWording.carriedLabel,
+							carriedRow: probingWording.carriedRow,
+						},
+					}
+				: {}),
 			standards: requestJson(input.standards),
 		},
 		{ nonce: input.nonce, bestEffort: input.run(input.nonce, true) },
