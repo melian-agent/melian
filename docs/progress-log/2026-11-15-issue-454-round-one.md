@@ -31,3 +31,7 @@ The Opus review of record at `51757f1d` would not block, and raised one P3: `doc
 ## The Actions round
 
 The `melian round` workflow at `cc6b9d0e` read `findings`, not blocking, in 5.5 minutes for $4.88, with one acknowledge finding from the design lens. The amendment said the shared record never carries a mutation run, but amended only the request-keys decision, so the shared-record decision's rules 2 and 8, which share and import every matching check result, still stood with nothing to say this exception wins. The amendment now amends those two rules as well, and says how the manifest stays complete: the importing host runs the mutation check itself. No test can reproduce a finding on the decision graph; the decisions suite, 532 tests, passed after the change.
+
+## Round three
+
+Round three, at `cc6b9d0e`, read `findings`, blocking, in 10.5 minutes. The design lens raised the Actions round's finding again, as a P1 block; the commit above fixes it. Its one advisory was the design's new sentence on the mutation exception, of over 45 words, which is now three sentences.
