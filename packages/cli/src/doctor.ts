@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, sep } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
@@ -25,6 +25,7 @@ import {
 	providersWithCredentials,
 	staticToolSource,
 } from "@melian-agent/pipeline";
+import { GitRecordStore } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
@@ -465,6 +466,49 @@ async function trustCheck(
 	}
 }
 
+// A file on the record branch that Melian did not write refuses calls until a writer removes it, so the line names it.
+async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const name = "records";
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const remote = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
+	if (remote === undefined) return undefined;
+	let store: GitRecordStore | undefined;
+	try {
+		store = await GitRecordStore.open({
+			directory: await stateDirectory(root, env),
+			remote: fromCheckout(root, remote),
+			deadlineMs: 20_000,
+		});
+		const strays = await store.strays();
+		if (strays.length === 0)
+			return {
+				name,
+				state: "ok",
+				detail: "melian/state holds only records and cells Melian wrote, or is not there yet",
+			};
+		const shown = strays.slice(0, 5).map((path) => visibleText(path));
+		const more = strays.length > shown.length ? `, and ${strays.length - shown.length} more` : "";
+		return {
+			name,
+			state: "warn",
+			detail: `melian/state holds ${strays.length === 1 ? "a file" : `${strays.length} files`} Melian did not write, which a writer must remove: ${shown.join(", ")}${more}`,
+		};
+	} catch (error) {
+		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
+	} finally {
+		await store?.close();
+	}
+}
+
+// Git reads a remote with no colon, or a slash before its first colon, as a path relative to the checkout, by
+// url_is_local_not_ssh in its connect.c, which no command answers; the store runs git in its own repository instead.
+function fromCheckout(root: string, url: string): string {
+	const colon = url.indexOf(":");
+	const slash = url.indexOf("/");
+	return colon === -1 || (slash !== -1 && slash < colon) ? resolve(root, url) : url;
+}
+
 // Runs an empty probe, so the line says whether one runs here, not only whether the parts are installed.
 async function probeCheck(): Promise<Check> {
 	const availability = await Probe.availability();
@@ -509,6 +553,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await executableCheck(io.cwd, io.executable),
 			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
+			await recordStoreCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
 			await mutationCheck(io.cwd, io.env),

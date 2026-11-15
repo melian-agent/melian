@@ -12,6 +12,7 @@
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../pipeline/tsconfig.build.json" },
 		{ "path": "../github/tsconfig.build.json" },
-		{ "path": "../decisions/tsconfig.build.json" }
+		{ "path": "../decisions/tsconfig.build.json" },
+		{ "path": "../state-git/tsconfig.build.json" }
 	]
 }

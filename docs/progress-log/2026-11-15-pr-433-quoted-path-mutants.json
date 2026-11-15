@@ -1,0 +1,593 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 65,
+   "column": 50,
+   "endLine": 75,
+   "endColumn": 1,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 66,
+   "column": 4,
+   "endLine": 66,
+   "endColumn": 7,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 67,
+   "column": 4,
+   "endLine": 67,
+   "endColumn": 7,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 68,
+   "column": 4,
+   "endLine": 68,
+   "endColumn": 7,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 69,
+   "column": 5,
+   "endLine": 69,
+   "endColumn": 8,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 70,
+   "column": 5,
+   "endLine": 70,
+   "endColumn": 8,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 71,
+   "column": 5,
+   "endLine": 71,
+   "endColumn": 8,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 72,
+   "column": 5,
+   "endLine": 72,
+   "endColumn": 8,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 73,
+   "column": 5,
+   "endLine": 73,
+   "endColumn": 8,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 74,
+   "column": 5,
+   "endLine": 74,
+   "endColumn": 9,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 79,
+   "column": 38,
+   "endLine": 88,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 80,
+   "column": 12,
+   "endLine": 80,
+   "endColumn": 14,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 81,
+   "column": 26,
+   "endLine": 86,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 83,
+   "column": 6,
+   "endLine": 83,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 83,
+   "column": 6,
+   "endLine": 83,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 83,
+   "column": 6,
+   "endLine": 83,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "letter === undefined",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 83,
+   "column": 36,
+   "endLine": 83,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "LogicalOperator",
+   "replacement": "byte < 0x20 && byte >= 0x7f",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 22,
+   "mutatorName": "EqualityOperator",
+   "replacement": "byte <= 0x20",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 11,
+   "endLine": 84,
+   "endColumn": 22,
+   "mutatorName": "EqualityOperator",
+   "replacement": "byte >= 0x20",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 26,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 26,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "byte > 0x7f",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 26,
+   "endLine": 84,
+   "endColumn": 38,
+   "mutatorName": "EqualityOperator",
+   "replacement": "byte < 0x7f",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 48,
+   "endLine": 84,
+   "endColumn": 88,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 84,
+   "column": 82,
+   "endLine": 84,
+   "endColumn": 85,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 85,
+   "column": 7,
+   "endLine": 85,
+   "endColumn": 40,
+   "mutatorName": "AssignmentOperator",
+   "replacement": "text -= String.fromCharCode(byte)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 87,
+   "column": 8,
+   "endLine": 87,
+   "endColumn": 19,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 157,
+   "column": 9,
+   "endLine": 157,
+   "endColumn": 35,
+   "mutatorName": "LogicalOperator",
+   "replacement": "path && quoted(entry.path)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+   "survivorClasses": [],
+   "run": {
+    "head": "0d8e068b",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > names a path that is not UTF-8 as git lists it, so names that differ only there stay apart",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 31,
+ "omitted": 0,
+ "unmutated": []
+}

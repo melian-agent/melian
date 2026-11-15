@@ -1,0 +1,347 @@
+{
+ "mutants": [
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 478,
+   "column": 36,
+   "endLine": 482,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > reads a relative origin from the checkout, not from the store's own repository",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > reads a relative origin from the checkout, not from the store's own repository",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 506,
+   "column": 57,
+   "endLine": 510,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 507,
+   "column": 27,
+   "endLine": 507,
+   "endColumn": 30,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 508,
+   "column": 27,
+   "endLine": 508,
+   "endColumn": 30,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 8,
+   "endLine": 509,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 8,
+   "endLine": 509,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 8,
+   "endLine": 509,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "colon === -1 && slash !== -1 && slash < colon",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 8,
+   "endLine": 509,
+   "endColumn": 20,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 8,
+   "endLine": 509,
+   "endColumn": 20,
+   "mutatorName": "EqualityOperator",
+   "replacement": "colon !== -1",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 18,
+   "endLine": 509,
+   "endColumn": 20,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 25,
+   "endLine": 509,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 25,
+   "endLine": 509,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "slash !== -1 || slash < colon",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 25,
+   "endLine": 509,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 25,
+   "endLine": 509,
+   "endColumn": 37,
+   "mutatorName": "EqualityOperator",
+   "replacement": "slash === -1",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 35,
+   "endLine": 509,
+   "endColumn": 37,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 41,
+   "endLine": 509,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 41,
+   "endLine": 509,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "slash <= colon",
+   "claim": "equivalent",
+   "evidence": "Two indexes into one string are equal only when both are -1, and then colon === -1 has already decided.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 509,
+   "column": 41,
+   "endLine": 509,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "slash >= colon",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "57c626ba",
+    "test": "packages/cli/test/doctor-record-store.test.ts > doctor's record store line > passes a URL, an scp-style remote and an absolute path on unchanged, and resolves a relative path",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 18,
+ "omitted": 0,
+ "unmutated": []
+}

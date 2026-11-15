@@ -1,7 +1,7 @@
 {
 	"name": "@melian-agent/state-git",
 	"version": "0.0.0",
-	"description": "Pi Durable storage backend on an orphan git branch",
+	"description": "The record store on a git branch, melian/state",
 	"private": true,
 	"type": "module",
 	"license": "MIT",
@@ -34,9 +34,6 @@
 	},
 	"dependencies": {
 		"@melian-agent/core": "*"
-	},
-	"devDependencies": {
-		"@melian-agent/pipeline": "*"
 	},
 	"engines": {
 		"node": ">=22.19.0"

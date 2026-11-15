@@ -1,0 +1,299 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 102,
+   "column": 16,
+   "endLine": 102,
+   "endColumn": 114,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > judges an entry again on the same handle when only its mode changes, either way",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > judges an entry again on the same handle when only its mode changes, either way",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 102,
+   "column": 38,
+   "endLine": 102,
+   "endColumn": 114,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 102,
+   "column": 103,
+   "endLine": 102,
+   "endColumn": 111,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 105,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 105,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > refuses an executable cell whose bytes a regular cell in another changeset shares",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > refuses an executable cell whose bytes a regular cell in another changeset shares",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 105,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(path === undefined || changeset === undefined || bytes === undefined) && !StateTree.#readable(entry)",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 74,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 74,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(path === undefined || changeset === undefined) && bytes === undefined",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 51,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 51,
+   "mutatorName": "LogicalOperator",
+   "replacement": "path === undefined && changeset === undefined",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "An undecodable path gives no changeset, which the next operand refuses.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 6,
+   "endLine": 129,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "path !== undefined",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 28,
+   "endLine": 129,
+   "endColumn": 51,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry outside every changeset's folder > refuses every call on every changeset for a cell Melian would write, in a folder that names no changeset",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 28,
+   "endLine": 129,
+   "endColumn": 51,
+   "mutatorName": "EqualityOperator",
+   "replacement": "changeset !== undefined",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 55,
+   "endLine": 129,
+   "endColumn": 74,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "Bytes are absent only for an entry that is not readable, which the last operand refuses, or for one past the size limit, whose undefined bytes decode to the empty string, which is no cell or record.",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 55,
+   "endLine": 129,
+   "endColumn": 74,
+   "mutatorName": "EqualityOperator",
+   "replacement": "bytes !== undefined",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+   "survivorClasses": [],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/writes.test.ts > concurrent writers > two clones adding at once lose no record",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 129,
+   "column": 78,
+   "endLine": 129,
+   "endColumn": 105,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "StateTree.#readable(entry)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > refuses an executable cell whose bytes a regular cell in another changeset shares",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "70f39dc1",
+    "test": "packages/state-git/test/scopes.test.ts > a stray entry inside one changeset's folder > refuses an executable cell whose bytes a regular cell in another changeset shares",
+    "collected": 1,
+    "failed": true
+   }
+  }
+ ],
+ "total": 17,
+ "omitted": 0,
+ "unmutated": []
+}
