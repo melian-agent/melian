@@ -1366,8 +1366,21 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 				match: "You are the trust-boundary reviewer",
 				replies: [
 					testing.fauxAssistantMessage(
-						[testing.fauxToolCall("record_plan", golden.script["trust-boundary"]![0]!.calls![0]!.arguments)],
-						{ stopReason: "toolUse" },
+						[
+							testing.fauxToolCall("record_plan", {
+								attacks: [
+									{
+										target: ".github/workflows/claim.yml",
+										reason: "A release that lands between a claim run's read and its writes is lost.",
+										passing: "The issue carries status: ready after the release's run.",
+										failing: "The issue still carries status: in progress.",
+									},
+								],
+							}),
+						],
+						{
+							stopReason: "toolUse",
+						},
 					),
 					testing.fauxAssistantMessage("Planned 1 attack."),
 				],
