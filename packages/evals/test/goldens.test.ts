@@ -27,6 +27,7 @@ import {
 import {
 	buildGoldenRepository,
 	type Golden,
+	type GoldenMode,
 	goldensDirectory,
 	loadGoldens,
 	runGolden,
@@ -1313,6 +1314,50 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		const run = runGolden(golden, { kind: "scripted" });
 		await expect(run).rejects.toBeInstanceOf(GoldenRunError);
 		await expect(run).rejects.toThrow(
+			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
+		);
+		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("probes a live golden in the host's sandbox even when its mode carries the corpus's probes field", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const available = Probe.availability.bind(Probe);
+		const availability = vi
+			.spyOn(Probe, "availability")
+			.mockImplementation(async (sandbox) =>
+				sandbox === Probe.sandbox ? { available: false, reason: "no sandbox-runtime here" } : available(sandbox),
+			);
+		onTestFinished(() => {
+			availability.mockRestore();
+		});
+		const fake = testing.createFakeModels();
+		testing.scriptConversations(fake, [
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [
+					testing.fauxAssistantMessage([testing.fauxToolCall("record_plan", { attacks: [] })], {
+						stopReason: "toolUse",
+					}),
+					testing.fauxAssistantMessage("Planned no attacks."),
+				],
+			},
+			...["correctness", "contracts", "removed-behaviour", "tests", "conventions", "design"].map((lens) => ({
+				match: `You are the ${lens} reviewer`,
+				replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+			})),
+		]);
+		const ref = fake.ref();
+		// Built outside the call, as a shared options bag would be, so TypeScript's excess-property check misses `probes`.
+		const options = {
+			kind: "live" as const,
+			models: fake.review,
+			model: `${ref.provider}/${ref.modelId}`,
+			probes: "unconfined" as const,
+		};
+		const mode: GoldenMode = options;
+		const live = runGolden(golden, mode);
+		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
+		await expect(live).rejects.toThrow(
 			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
 		);
 		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
