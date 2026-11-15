@@ -127,7 +127,7 @@ async function review(reviewed: readonly Lens[], standards: Standards | [] = [])
 	const conversations = Object.fromEntries(
 		Object.entries(outcome.result).map(([key, { conversation }]) => [key.split("@")[0], conversation]),
 	);
-	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations };
+	return { review: result, asked: [...asked].sort(), lensStages, copied, conversations, task: entry.task };
 }
 
 describe("a repeat review copies each lens run whose request is unchanged", () => {
@@ -153,6 +153,13 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(second.lensStages.contracts).toEqual({ outcome: "reused", tokens: undefined });
 		expect(second.lensStages.correctness?.outcome).toBe("ran");
 		expect(second.lensStages.correctness?.tokens).toBeGreaterThan(0);
+	});
+
+	it("attaches to the first review's lens task when the same lenses come in another order", async () => {
+		const first = await review(lenses);
+		const again = await review([...lenses].reverse());
+		expect(again.task).toBe(first.task);
+		expect(again.asked).toEqual([]);
 	});
 
 	it("asks only the lenses offered a tool whose description changed", async () => {
