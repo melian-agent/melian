@@ -39,6 +39,12 @@ describe("isChangesetId", () => {
 		expect(isChangesetId(id)).toBe(false);
 	});
 
+	// Written out by hand, not built from the shape: a new ID length would orphan every store already on disk.
+	it("accepts IDs as stores hold them today, written out by hand", () => {
+		expect(pullRequestChangesetId("github", { owner: "Owner", name: "Repo" }, 7)).toBe("pull-c7e7c2973dc5ef6c");
+		expect(["pull-c7e7c2973dc5ef6c", "range-3f0a9b1c2d4e5f60"].map(isChangesetId)).toEqual([true, true]);
+	});
+
 	it("accepts both prefixes at exactly sixteen hex digits", () => {
 		expect(["pull-0123456789abcdef", "range-fedcba9876543210"].map(isChangesetId)).toEqual([true, true]);
 	});
