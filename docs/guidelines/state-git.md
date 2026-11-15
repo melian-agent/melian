@@ -15,6 +15,7 @@
 ## Rules
 
 - Run git only through `RecordRepository.run`. It checks the repository's configuration bytes and passes `overrides`, the settings that would run a program or start background work. A new setting with that power goes on that list with a one-line reason, and a test proves it holds with the configuration check mocked out, as `test/overrides.test.ts` does.
+- Pass `--end-of-options` before the remote, or any other argument a caller supplies. A remote spelled as an option, such as `--upload-pack=<program>`, otherwise makes git run that program on the host.
 - Never read a stray entry's bytes into a record, and never rewrite or remove one. A commit carries it along by its object ID.
 - A failure to reach or answer from the remote is `RecordError` `unreachable`; never answer from a tree read in part.
 - The location rule protects what a call reads, not whether the store stays available. Every call fetches every blob of the tip before it judges any, so a writer who pushes a very large file to the branch can make every call slow or fail, as a writer who deletes the branch can. A fetch that runs out of time or disk fails as `unreachable`, naming the branch. Git writes each object whole, under its own hash, and writes the fetch's ref last, so a later call reads only what a whole fetch named. `test/fetch.test.ts` cuts a pack part-way; a full disk stops the fetch at the same point, before the ref, so it needs no test of its own.
