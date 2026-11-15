@@ -331,6 +331,7 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		expect(found([finding], [finding], other)).toBe(false);
 		const refuted = { verification: { verdict: "refuted", reason: "no" } };
 		expect(found([changed(refuted)], [finding])).toBe(false);
+		expect(found([changed({ verification: undefined })], [finding])).toBe(true);
 		expect(found([finding], [changed(refuted)])).toBe(true);
 		const claim = finding.claims()[0]!;
 		const security = { check: "lens.security", version: "v" };
