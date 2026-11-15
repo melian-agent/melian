@@ -1,0 +1,1251 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "a36d73cb979f8369b1cac75073e39e05f4363300",
+		"head": "5d2df40c4302fef4afbfb4b956a47530b26912ae"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/store-prune.ts",
+		"packages/core/src/changeset.ts",
+		"packages/cli/src/repository.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+	"mutants": [
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 734,
+			"column": 5,
+			"endLine": 734,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b5e7183fb49f7bc0e08e9671db5fd55a914b7e84fb1be0199130b198948a80a2"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 734,
+			"column": 5,
+			"endLine": 734,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d4c3a22a37b22ebd3b2d9ac7f5bab90317b215b1c8af51e78fd5cc255bbf6cc1"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 734,
+			"column": 5,
+			"endLine": 734,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "changesetId !== undefined",
+			"status": "generated",
+			"id": "dc8076890da503ca4c0d668710fadf6fca75103f155b83f831d03f4436bcb1f0"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 734,
+			"column": 32,
+			"endLine": 734,
+			"endColumn": 77,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8707a8a7230aea320e99243eab6824ab87f30e7953c6311231a7b8eb5afe30ca"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 734,
+			"column": 51,
+			"endLine": 734,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "102bd87715c1ed8cbe56d82b48fb4eddd66a11988ca6cbaa5119f63f7a2896e4"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 740,
+			"column": 72,
+			"endLine": 740,
+			"endColumn": 98,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "2c98f4833388b7290bbcca4e49b0c151a4fa170442783d1b64d621e01d145c10"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 740,
+			"column": 83,
+			"endLine": 740,
+			"endColumn": 98,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "51cf1fb320101b7b65090be6bfac9ae595198e3d5398124ece1d4c4e2298b3b7"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 740,
+			"column": 83,
+			"endLine": 740,
+			"endColumn": 98,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ff2e6da73d256d23e24be651d60aee7c50c2029d9f5773ddf360bbccd60e6836"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 740,
+			"column": 83,
+			"endLine": 740,
+			"endColumn": 98,
+			"mutatorName": "EqualityOperator",
+			"replacement": "round.id !== id",
+			"status": "generated",
+			"id": "aabce9c040e35ecb94056767d19b941aa37554d0c1edddd34188301bc1f31901"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 73,
+			"column": 6,
+			"endLine": 73,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bd93f3ecbdd5215bc9d8e1a3c9262c899be507eb8260562985a1199203ccc3e7"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 73,
+			"column": 6,
+			"endLine": 73,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2ff2f8f7a24c8671e4d595135b9cc568b033a745b4b0c8b4fb7cb599c2625062"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 73,
+			"column": 6,
+			"endLine": 73,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "changesetId !== undefined",
+			"status": "generated",
+			"id": "e2582d4c486b5023d779fa45c3c7bad32c89560c7044c6a3e39f1f0e74903277"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 73,
+			"column": 33,
+			"endLine": 73,
+			"endColumn": 81,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d28a87b4fec63364e942d69ddffdbf7e16bf1f56dd71bd4b8bd75975e9ee11af"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 73,
+			"column": 52,
+			"endLine": 73,
+			"endColumn": 79,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "51a158088617fb3cefd7a31816ad4c95d07ff84cd865d68a9976ac2286427be2"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 75,
+			"column": 6,
+			"endLine": 75,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f6211854c966984f105abadb5504982ca2a8123048157c9c3e6d863f74db450c"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 75,
+			"column": 6,
+			"endLine": 75,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0181823685045a3c46d587e5e43a05bc8081ab7bd59fa1d3a133b607b2f7bc13"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 75,
+			"column": 6,
+			"endLine": 75,
+			"endColumn": 37,
+			"mutatorName": "MethodExpression",
+			"replacement": "changesetId.endsWith(\"pull-\")",
+			"status": "generated",
+			"id": "c1f336412c32d3bf8daaee3b946507f055ffb085261a9487c5f657236ed0bd66"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 75,
+			"column": 29,
+			"endLine": 75,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8771e61ee86d2c02747253524d526f90f9f4d6df1c79436079def91a884ed248"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b4edd2abda037007193f811103bd6000c0576711dabe36a5c28d022fabf817d4"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fb839690a78610ff20fe7ef0252b4a369f67be5e58a4cc39fbf05860e79b69c7"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "named !== undefined || named.changeset.id !== changesetId",
+			"status": "generated",
+			"id": "d1c1a87930972bbd5603dfa12229126ee79ab8a517a16591bdebec9a0cb2d2b3"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bb641fc97db278379829d72c373eb89cf0f4d8a2daa0e8d516efa05d2cc3522c"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "named === undefined",
+			"status": "generated",
+			"id": "3de0e744433959da09d7c9e25940d82728d4beb2609af31fff28a36b789a38d0"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 29,
+			"endLine": 78,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6cecb8a8f5282188aaae7e136a12a08a97b99b28c018c475138177e65fba6a4c"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 78,
+			"column": 29,
+			"endLine": 78,
+			"endColumn": 63,
+			"mutatorName": "EqualityOperator",
+			"replacement": "named.changeset.id === changesetId",
+			"status": "generated",
+			"id": "86f358fe4b72e206a245e2eb85a2b34edf491df23f5984689592c5974c373e1d"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 79,
+			"column": 3,
+			"endLine": 79,
+			"endColumn": 111,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4efa406c3715efa7680120bfe49e01241beaad5909b8cf7fbf1c66962cec9f55"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 79,
+			"column": 22,
+			"endLine": 79,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "93e90a6442c60b262c101b7ccce59f56b51278a138d1911030e7bd465ccda164"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 87,
+			"column": 70,
+			"endLine": 87,
+			"endColumn": 97,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e8562b45a5291ebb2f66ae41034f9cd5224af06767e4e4827b6e6ad34d33c083"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 87,
+			"column": 80,
+			"endLine": 87,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2550b196b987ab0fdcfa6448fe0844c6f87e7501294fd37050f06f2aa4ef3933"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 87,
+			"column": 80,
+			"endLine": 87,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "78e4bb2ba747e9bacdb0542898a0a27f2af97a0ba6d8b168163def362e1a88c4"
+		},
+		{
+			"file": "packages/cli/src/compare.ts",
+			"line": 87,
+			"column": 80,
+			"endLine": 87,
+			"endColumn": 97,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.id !== round",
+			"status": "generated",
+			"id": "4e0039a4a5ceee1837acb215256907f8e19bfce17eef1a00c3f62934230ff2e4"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 46,
+			"column": 16,
+			"endLine": 48,
+			"endColumn": 10,
+			"mutatorName": "MethodExpression",
+			"replacement": "names.filter(name => name.endsWith(\".sqlite\") && isChangesetId(name.slice(0, -\".sqlite\".length)))",
+			"status": "generated",
+			"id": "b2dd34b3ac5c427f960c3c6bc3ac737bc15be2494a9ef62f1a51ce06d6734512"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 46,
+			"column": 16,
+			"endLine": 47,
+			"endColumn": 97,
+			"mutatorName": "MethodExpression",
+			"replacement": "names",
+			"status": "generated",
+			"id": "824f83a4ac7080ac10e03b977e12a12ea88e3176adcdd4926b754a014d059e5e"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 11,
+			"endLine": 47,
+			"endColumn": 96,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c42a0c557de763a684a1a69c56e3c547d066aabd2f4ee7dcb45eaea46d3f5a62"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 21,
+			"endLine": 47,
+			"endColumn": 96,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9a91a6687528f5d78911edc85e6f19d4c2dd400f3672eb5859cce50a880e5b04"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 21,
+			"endLine": 47,
+			"endColumn": 96,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ff3217ca7d778d6a82d4a8b68dc379f0bafafd137181b218b48fb66d588b49ac"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 21,
+			"endLine": 47,
+			"endColumn": 96,
+			"mutatorName": "LogicalOperator",
+			"replacement": "name.endsWith(\".sqlite\") || isChangesetId(name.slice(0, -\".sqlite\".length))",
+			"status": "generated",
+			"id": "1523c0395f20dc8757e6762e02c5f62d79c9b58cb2da37e4cc639bbcceaeefca"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 21,
+			"endLine": 47,
+			"endColumn": 45,
+			"mutatorName": "MethodExpression",
+			"replacement": "name.startsWith(\".sqlite\")",
+			"status": "generated",
+			"id": "a2fc809eb2a3a2507f48872396dbf941d582767ca2b25edc82974eaef209a334"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 35,
+			"endLine": 47,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ae8d4c84ea276ffc166c0f500519200672c3c873c5e88da08945840d7d121af8"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 63,
+			"endLine": 47,
+			"endColumn": 95,
+			"mutatorName": "MethodExpression",
+			"replacement": "name",
+			"status": "generated",
+			"id": "921a7373e58b9fbbb09874dbddfaa166fe997e6dd012b7e75edbe91e1abb5bed"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 77,
+			"endLine": 47,
+			"endColumn": 94,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+\".sqlite\".length",
+			"status": "generated",
+			"id": "2583961be61958d4ae5147ebb986606d306b8948383244eb1b8ae383b45be365"
+		},
+		{
+			"file": "packages/cli/src/comparison-stores.ts",
+			"line": 47,
+			"column": 78,
+			"endLine": 47,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6bec2279afb2b8862af2e226400437d4c9d88df60b9ae1ba82aa6d52aab6cb27"
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 58,
+			"column": 66,
+			"endLine": 61,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1e4a22354ca55f9628969fca4b9f37648373a2d662e72cdef1e06f8a7dedd25f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/([^.]+)\\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "e9b500ad8953553aafa9ab8c59645fb39c71408d66e16f1f562416a8ac80d967",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID x.range-0123456789abcdef.r1 before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[1-9][0-9]*|k[0-9a-f]{16})/",
+			"status": "generated",
+			"id": "b504c7ac723a7bcd50cd35ed37a66092c1ac88529eca142ab314d770176da73e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID range-0123456789abcdef.r1-suffix before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.])\\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "b3ef13d9c1cf2938612963deaa3530098b2efb5ae41898d2f6bc7986e8107d69",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([.]+)\\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "fc86f3a456f95f79665f12c4765cfa00ca8783792a771ae2e2c0fe83e40cd1a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[^1-9][0-9]*|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "eed782f6a3b9f432b5848ac05cafd6099dad229b0b64cf4e155cdf0b23fa9066",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[1-9][0-9]|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "467b6bb2f69b42c86b9e86d78750faeeebdb91dd5176d18ec180f948e8451bad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[1-9][^0-9]*|k[0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "5ca1862d0d92f104b9d23055568d0ed07bfd433a4d6a34d48ee449a9b1fce573",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID range-0123456789abcdef.r1x before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[1-9][0-9]*|k[0-9a-f])$/",
+			"status": "generated",
+			"id": "006348c2e8fe9d8d2ed8ea3c1767dc0620328ae17b192b74fd2ab49d6497d5c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.k0123456789abcdef"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 59,
+			"endColumn": 58,
+			"mutatorName": "Regex",
+			"replacement": "/^([^.]+)\\.(?:r[1-9][0-9]*|k[^0-9a-f]{16})$/",
+			"status": "generated",
+			"id": "bb69e365a432252e2ae812e929ac66a8756e9dd9f18d89440b115454034cfda5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.k0123456789abcdef"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 60,
+			"column": 8,
+			"endLine": 60,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7808bcff9a0633a60bcd98a59b1afbfa43022a8c3b9d2bff7eff8cbf3b43c293",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID range-a.r1 before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 60,
+			"column": 8,
+			"endLine": 60,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a5c86d1c5cad2443c7f5fc33c38261f751686ea5ecb23f73693d8b04218a18bf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 60,
+			"column": 8,
+			"endLine": 60,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "match !== null || isChangesetId(match[1]!)",
+			"status": "generated",
+			"id": "a177c1824155e782b97ea7e0f6281f1e7dd142935fbeaba0718e5f312b01e06b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID range-a.r1 before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 60,
+			"column": 8,
+			"endLine": 60,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f0c3831428f88c19e213acd61dc387cdd479bfaed7a9d1ee810962c8baee3498",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"rejects malformed round ID range-0123456789abcdef.r1-suffix before reading the repository"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/cli/src/repository.ts",
+			"line": 60,
+			"column": 8,
+			"endLine": 60,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "match === null",
+			"status": "generated",
+			"id": "735316b2e3e43cf119f86fff38e6070d04dd15f9df5473013cacb979b9266fd1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/commands.test.ts",
+					"path": [
+						"stored round findings",
+						"accepts the complete round ID range-0123456789abcdef.r1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 179,
+			"column": 27,
+			"endLine": 179,
+			"endColumn": 67,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d62d82b8ea2ae3de54a86417441eb901a355b03747b02757729b74cae0a799a6"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 186,
+			"column": 53,
+			"endLine": 188,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "48bce529e1f196e260d29ee98bdbbb93a83114d7c2eab127d96db1f98041d7a4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/changeset-id.test.ts",
+					"path": [
+						"isChangesetId",
+						"accepts both prefixes at exactly sixteen hex digits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 201,
+			"column": 8,
+			"endLine": 201,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d914b65a88ba64b5e4f9b93de84c96ff37b9abbbeabd2a0b91ad23537fc8f399"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 201,
+			"column": 16,
+			"endLine": 201,
+			"endColumn": 97,
+			"mutatorName": "MethodExpression",
+			"replacement": "createHash(\"sha256\").update(identity.join(\"\\0\")).digest(\"hex\")",
+			"status": "generated",
+			"id": "620d4711371282ff179eb932ffe55d572975deb3a3dc7e67a76d78764dc29e6a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/changeset-id.test.ts",
+					"path": [
+						"isChangesetId",
+						"accepts the ID each builder returns"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 201,
+			"column": 27,
+			"endLine": 201,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0957b656209335a23c7b52effec1037ad9b378a68d7ba5c0e522b2ebd15e088b"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 201,
+			"column": 58,
+			"endLine": 201,
+			"endColumn": 62,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fd4e5c5a94855ae763ba6ec490911083ca4b23d753f005cdb65a60f0bbb796f"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 201,
+			"column": 72,
+			"endLine": 201,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "23e1e638e83cc25b399778cd043c868994996533d5aac3cea7fed844119e88d4"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 528,
+			"column": 7,
+			"endLine": 528,
+			"endColumn": 88,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1508c61b41cee4ec4e8bec5efed9f1d30b92a3c4c9f89333d502e5cc77f331f6"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 528,
+			"column": 16,
+			"endLine": 528,
+			"endColumn": 86,
+			"mutatorName": "MethodExpression",
+			"replacement": "createHash(\"sha256\").update(identity).digest(\"hex\")",
+			"status": "generated",
+			"id": "515a30b2174a6ef3a17a39215df6dd373ffbbdacd1b9d6c679ad74539ecd6c2f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/changeset-id.test.ts",
+					"path": [
+						"isChangesetId",
+						"accepts the ID each builder returns"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 528,
+			"column": 27,
+			"endLine": 528,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bf19fce08a5df9b4424716007abe3e94e79706fcc3494f0b0245c76c731ba5c2"
+		},
+		{
+			"file": "packages/core/src/changeset.ts",
+			"line": 528,
+			"column": 61,
+			"endLine": 528,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c75d64a1eb6977dd8206b69c88f00bfb0e1cc9b6f6ed21caa42d74f33da8636b"
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 177,
+			"column": 18,
+			"endLine": 177,
+			"endColumn": 48,
+			"mutatorName": "Regex",
+			"replacement": "/(.*)\\.sqlite(?:-wal|-shm)?$/",
+			"status": "generated",
+			"id": "9cb73442581c54ad5d29c6a36c0b71ec1b7b27d65b95d6663937330715606edb",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"keeps a name that holds a changeset store's name only after a line break or before more text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 177,
+			"column": 18,
+			"endLine": 177,
+			"endColumn": 48,
+			"mutatorName": "Regex",
+			"replacement": "/^(.*)\\.sqlite(?:-wal|-shm)?/",
+			"status": "generated",
+			"id": "bc5f4486554026a12efbc38050c60cf321c2d8d1904f6e0942a16509ff606cfb",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"keeps a name that holds a changeset store's name only after a line break or before more text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 177,
+			"column": 18,
+			"endLine": 177,
+			"endColumn": 48,
+			"mutatorName": "Regex",
+			"replacement": "/^(.)\\.sqlite(?:-wal|-shm)?$/",
+			"status": "generated",
+			"id": "14ebb62d99ad9285e43a8f434a2a9ce6f4da71343e396f7dc5d283ed0397150d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 177,
+			"column": 18,
+			"endLine": 177,
+			"endColumn": 48,
+			"mutatorName": "Regex",
+			"replacement": "/^(.*)\\.sqlite(?:-wal|-shm)$/",
+			"status": "generated",
+			"id": "411dce5e28047c5834a7e0a3725a5b0d62a68785d4e3ee4bf3d97ad3d97ca124",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "47cc10f94dec4c058d0d34a9b8a8fa35d24cefd8650e69a0d5c9fd371475f52b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fb23b49fda2dc278b36cf1908a6dc184ae21c4d6b6c31cf90d7d3939d352c218",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "store !== null && isChangesetId(store[1]!) || node.file",
+			"status": "generated",
+			"id": "b3c0a9cacbabd5c9c2aaa21efc9bc6bdcbc26429424310efae82791f3948cde0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b0aaabe82c84bfc9b1e77976ead990d7893d3698a507f7ab5727e5d1247844d5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "store !== null || isChangesetId(store[1]!)",
+			"status": "generated",
+			"id": "5ec80d5405f8a30463c535ae2be68f999da7fa1dd3354c85e2e9b3999c87ea7f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d56d90215b4de71cae94c2ff91ab7712a9646590a28fcd432e3e9a05def466f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"keeps changesets, scripted stores, links, scratch and anything it does not recognise"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "store === null",
+			"status": "generated",
+			"id": "b3e657349a52c111641c4058031448832b127b7eb00c20c60d17f6f0a4d77f0c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"counts a store named by core's builders, and keeps a name one hex digit short of one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		}
+	],
+	"total": 79,
+	"omitted": 0,
+	"unmutated": []
+}
