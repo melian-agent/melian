@@ -99,7 +99,8 @@ export class StateTree {
 	/** Judges every entry of `commit`'s tree, reusing what `judged` already holds and adding what it reads. */
 	static async read(repository: RecordRepository, commit: string, judged: Map<string, Judged>): Promise<StateTree> {
 		const entries = await repository.entries(commit);
-		const keyOf = (entry: TreeEntry) => `${entry.mode} ${entry.type} ${entry.oid}\0${entry.path.toString("latin1")}`;
+		// Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
+		const keyOf = (entry: TreeEntry) => JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
 		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
 		const wanted = fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid);
 		const sizes = await repository.sizes([...new Set(wanted)]);

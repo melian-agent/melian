@@ -88,6 +88,12 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | State directory hash | `pipeline/src/tool-provisioning.ts` | gives a clone its state directory | Nothing |
 | Tool cache directory | `pipeline/src/tool-cache.ts` | reuses a materialised tool | Nothing |
 
+### State branch
+
+| Key | Built in | When it matches, Melian | Left out, and why |
+| --- | --- | --- | --- |
+| Judgement key, `keyOf` in `StateTree.read` | `state-git/src/state-tree.ts` | does not read the entry's blob again, and takes the judgement it made of an entry with the same mode, type, object ID and raw path bytes on this handle: a record, a cell or a stray | Nothing: every field `ls-tree` lists. It lives for one handle and is never stored |
+
 ### GitHub and evals
 
 | Key | Built in | When it matches, Melian | Left out, and why |
