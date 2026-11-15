@@ -35,3 +35,7 @@ The `melian round` workflow at `cc6b9d0e` read `findings`, not blocking, in 5.5 
 ## Round three
 
 Round three, at `cc6b9d0e`, read `findings`, blocking, in 10.5 minutes. The design lens raised the Actions round's finding again, as a P1 block; the commit above fixes it. Its one advisory was the design's new sentence on the mutation exception, of over 45 words, which is now three sentences.
+
+## Round four, and the corrected ruling
+
+Round four, at `22c8f2ff`, read `findings`, blocking, in 10 minutes for $4.30. The design lens found that leaving mutation results out of the shared record broke three more of its rules. Rule 4 makes a round that names a missing record read not reviewed, and rules 6 and 7 relay a fork's mutation result from the job that ran its code to the trusted job. Two rounds running had found a new instance of one class, so the builder stopped and raised it with the coordinator. The coordinator found the collision came from its own wording of the question it put to the maintainer, "the shared record never carries one". The maintainer answered "Agree" on 2026-11-15, in the coordinator's session, to the correction: the record carries a mutation result, for the round that read it and as a fork's relayed result, and no other host's run reuses it. The amendment now amends rule 8's import alone.
