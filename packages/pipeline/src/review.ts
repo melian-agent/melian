@@ -66,7 +66,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
-import { type CheckRunRecord, checksExtensionFor, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
+import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -1260,8 +1260,8 @@ function noLevel(name: string, band: LevelBand, why: string): ReviewError {
 function planned(options: ReviewOptions): ReviewOptions {
 	const checks = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
 	const { plan } = options;
-	if (plan === undefined) return { ...options, checks };
-	return { ...options, config: { ...options.config, models: plan.routes() }, checks };
+	if (plan === undefined) return { ...options, checkRun: undefined, checks };
+	return { ...options, checkRun: undefined, config: { ...options.config, models: plan.routes() }, checks };
 }
 
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
@@ -1290,20 +1290,22 @@ function ranOn(
 	return ran;
 }
 
-/** What {@link reviewChangeset} reviews, and with what. Raw harnesses must supply check records. */
+/**
+ * What {@link reviewChangeset} reviews, and with what. Raw harnesses must supply check records: a run of checks the
+ * host made upfront, whose records, identity and request travel together, or bare records. Distinct runs mint rounds
+ * even when their records match, and each check's shared record is keyed by its own run's request.
+ */
 export type ReviewOptions = ReviewSettings &
 	(
-		| { readonly harness: ReviewHarness; readonly checks?: readonly CheckRecord[] }
-		| { readonly harness: Harness; readonly checks: readonly CheckRecord[] }
+		| { readonly harness: ReviewHarness; readonly checks?: readonly CheckRecord[]; readonly checkRun?: never }
+		| { readonly harness: Harness; readonly checks: readonly CheckRecord[]; readonly checkRun?: never }
+		| { readonly harness: ReviewHarness; readonly checkRun: CheckRun; readonly checks?: never }
+		| { readonly harness: Harness; readonly checkRun: CheckRun; readonly checks?: never }
 	);
 
 interface ReviewSettings {
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
-	/** The identity of checks the host ran upfront. Distinct runs mint rounds even when their records match. */
-	readonly checkRun?: RunIdentity;
-	/** The full key of the request `checkRun` answers, which keys each check's shared record. */
-	readonly checkRequest?: string;
 	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
 	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
@@ -2342,7 +2344,8 @@ async function triage(
  * reported so far and the `not-reviewed` verdict already recorded.
  */
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
-	if (request.checks === undefined && !(request.harness instanceof ReviewHarness)) {
+	const supplied = request.checkRun?.records ?? request.checks;
+	if (supplied === undefined && !(request.harness instanceof ReviewHarness)) {
 		throw new ReviewError(
 			"notInstalled",
 			"automatic checks require ReviewHarness; raw harness callers must supply checks, including an empty array",
@@ -2351,7 +2354,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	const harness = request.harness instanceof ReviewHarness ? request.harness.harness : request.harness;
 	const automatic =
-		request.checks === undefined && request.harness instanceof ReviewHarness && request.harness.checksAvailable;
+		supplied === undefined && request.harness instanceof ReviewHarness && request.harness.checksAvailable;
 	if (automatic && request.policy === undefined) {
 		throw new ReviewError("missingPolicy", "automatic checks require the policy source the host chose", {
 			lenses: [],
@@ -2376,7 +2379,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				request.context ?? backgroundContext,
 			)
 		: undefined;
-	const options = planned({ ...request, checks: checked?.records ?? request.checks ?? [] });
+	const run = checked ?? request.checkRun;
+	const options = planned({ ...request, checkRun: undefined, checks: run?.records ?? supplied ?? [] });
 	const { changeset, config, standards, models } = options;
 	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
 	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
@@ -3593,7 +3597,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lensTask,
 		verifying,
 		verificationRefused,
-		JSON.stringify(checked?.identity ?? request.checkRun),
+		JSON.stringify(run?.identity),
 		context,
 	);
 	if (adjudication === undefined) throw replaced();
@@ -3663,7 +3667,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
 		await exportRound(
 			request.records,
-			checked?.request ?? request.checkRequest ?? null,
+			run?.request ?? null,
 			options.checks ?? [],
 			verificationCheck === undefined ? checks : [...checks, verificationCheck],
 			decided,
