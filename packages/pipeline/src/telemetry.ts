@@ -30,7 +30,7 @@ import {
 } from "./harness.ts";
 import { LensDocument, type LensPolicy } from "./lens-tools.ts";
 import { probeLimits } from "./probe.ts";
-import { ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
+import { type Attack, type ProbeRecord, ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
 import { ReviewTranscript } from "./review-coverage.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundsDocument } from "./rounds.ts";
@@ -138,15 +138,18 @@ export type Stage = {
 	/** For a lens, the head lines of each changed file that `read_file` delivered to it, as first and last line of each run. */
 	read?: { path: string; ranges: [number, number][] }[];
 	/**
-	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the attacks in the plan it was
-	 * given and the ones it skipped; and how each probe ended.
+	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the plan it was given and the
+	 * attacks it skipped, with why; and each probe's text and how it ended. The text is the model's and the head's, held
+	 * to the probing limits the tools enforce, so a reader shows it as data.
 	 */
 	probes?: {
 		count: number;
 		milliseconds: number;
 		limit: number;
 		attacks: number;
+		plan: Attack[];
 		skipped: number[];
+		skips: { attack: number; reason: string }[];
 		runs: ProbeStage[];
 	};
 };
@@ -164,6 +167,9 @@ export type ProbeStage = {
 	timedOut: boolean;
 	truncated: boolean;
 	milliseconds: number;
+	script: string;
+	files: { path: string; text: string }[];
+	output: string;
 };
 
 // The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
@@ -904,32 +910,7 @@ export class TelemetryReader {
 						...(read.length === 0 ? {} : { read }),
 						...(probes === undefined
 							? {}
-							: {
-									probes: {
-										count: probes.length,
-										milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
-										limit: probing!.timeout ?? probeLimits.timeout.default,
-										attacks: probed!.plan!.length,
-										// Integer keys list in ascending order. An attack skipped and then probed was probed.
-										skipped: Object.keys(probed!.skips ?? {})
-											.map(Number)
-											.filter((attack) => !probes.some(([, probe]) => probe.attack === attack)),
-										runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
-											id: probeId,
-											attack,
-											ended: probeFailed(result)
-												? "failed"
-												: probeConclusive(result)
-													? "passed"
-													: "inconclusive",
-											exitCode: result.exitCode,
-											signal: result.signal,
-											timedOut: result.timedOut,
-											truncated: result.truncated,
-											milliseconds,
-										})),
-									},
-								}),
+							: { probes: proberStage(probed!, probes, probing!.timeout ?? probeLimits.timeout.default) }),
 					}),
 			...(usage === undefined
 				? {}
@@ -962,4 +943,38 @@ export class TelemetryReader {
 /** A stored timing shape this build cannot read. */
 export class TelemetryError extends Error {
 	readonly code = "unreadable";
+}
+
+// A prober's stage: its probes and their text, the plan it was given, and the attacks it skipped with why.
+function proberStage(
+	probed: { plan?: Attack[]; skips?: Record<string, string> },
+	probes: [string, ProbeRecord][],
+	limit: number,
+): NonNullable<Stage["probes"]> {
+	// Integer keys list in ascending order. An attack skipped and then probed was probed.
+	const skips = Object.entries(probed.skips ?? {})
+		.map(([attack, reason]): [number, string] => [Number(attack), reason])
+		.filter(([attack]) => !probes.some(([, probe]) => probe.attack === attack));
+	return {
+		count: probes.length,
+		milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
+		limit,
+		attacks: probed.plan!.length,
+		plan: structuredClone(probed.plan!),
+		skipped: skips.map(([attack]) => attack),
+		skips: skips.map(([attack, reason]) => ({ attack, reason })),
+		runs: probes.map(([probeId, { attack, script, files, result, milliseconds }]) => ({
+			id: probeId,
+			attack,
+			ended: probeFailed(result) ? "failed" : probeConclusive(result) ? "passed" : "inconclusive",
+			exitCode: result.exitCode,
+			signal: result.signal,
+			timedOut: result.timedOut,
+			truncated: result.truncated,
+			milliseconds,
+			script,
+			files: structuredClone(files),
+			output: result.output,
+		})),
+	};
 }

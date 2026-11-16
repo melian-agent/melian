@@ -979,23 +979,32 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(prober).not.toHaveProperty("shown");
 	});
 
-	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+	it("shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry", async () => {
+		const spread = (n: number) => ({ ...attack, target: `${attack.target} ${n}` });
+		const long = 'console.log("x".repeat(20_000));\nprocess.exit(1);\n';
+		const note = { path: "note.txt", text: "beside the probe" };
 		const { run, changeset } = await review({
-			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			planner: [call("record_plan", { attacks: [1, 2, 3, 4].map(spread) }), plan[1]!],
 			prober: [
 				// An attack skipped and then probed was probed, as the run's own record counts it.
 				call("skip_attack", { attack: 2, reason: "it needs the network" }),
 				call("run_probe", { attack: 2, script: passing }),
-				call("run_probe", { attack: 1, script: failing }),
-				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
-				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				call("run_probe", { attack: 1, script: failing, files: [note] }),
+				call("run_probe", { attack: 3, script: long }),
+				call("skip_attack", { attack: 4, reason: "it needs another machine" }),
 				fauxAssistantMessage("Done."),
 			],
 		});
 		await run;
 		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		const prober = telemetry.stages.find((stage) => stage.role === "prober");
-		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
+		const ran = (
+			attack: number,
+			ended: string,
+			exitCode: number,
+			text: { script: string; files: { path: string; text: string }[]; output: string },
+			truncated = false,
+		) => ({
 			id: expect.stringMatching(/^p[0-9]+$/),
 			attack,
 			ended,
@@ -1004,14 +1013,21 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			timedOut: false,
 			truncated,
 			milliseconds: expect.any(Number),
+			...text,
 		});
 		expect(prober!.probes).toEqual({
 			count: 3,
 			milliseconds: expect.any(Number),
 			limit: 30_000,
 			attacks: 4,
+			plan: [1, 2, 3, 4].map(spread),
 			skipped: [4],
-			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
+			skips: [{ attack: 4, reason: "it needs another machine" }],
+			runs: [
+				ran(2, "passed", 0, { script: passing, files: [], output: "held\n" }),
+				ran(1, "failed", 1, { script: failing, files: [note], output: "LEAK\n" }),
+				ran(3, "inconclusive", 1, { script: long, files: [], output: "x".repeat(16 * 1024) }, true),
+			],
 		});
 	});
 
