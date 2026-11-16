@@ -1,14 +1,18 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { createSocket } from "node:dgram";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createConnection, createServer } from "node:net";
+import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Probe } from "../packages/pipeline/src/probe.ts";
 import {
 	containmentPlan,
 	expectedEnvironment,
+	hostAddress,
 	judge,
+	Listener,
 	loginNames,
 	main,
 	observeHost,
@@ -55,6 +59,7 @@ function report() {
 		httpProxy: { "CONNECT api.github.com:443": "403", "GET api.github.com:443": "closed" },
 		socksProxy: { "api.github.com:443": "reply 2", "169.254.169.254:80": "request closed" },
 		sudo: "refused",
+		udp: "ENETUNREACH",
 		ipc: { listed: false, removed: false },
 		walk: { "/tree": walkSummary(3), "/usr": walkSummary(5) },
 		sys: walkSummary(2),
@@ -62,7 +67,12 @@ function report() {
 }
 
 function host() {
-	return { names: { "/home": ["runner", "melian"] }, passages: { "/home": ["runner"] }, written: [] };
+	return {
+		names: { "/home": ["runner", "melian"] },
+		passages: { "/home": ["runner"] },
+		written: [],
+		listener: { connections: 0, datagrams: 0 },
+	};
 }
 
 const argv = [["/usr/bin/unshare", "--ipc", "--", "bwrap", "sh"]];
@@ -81,6 +91,20 @@ describe("judge", () => {
 		const r = report();
 		delete r[route][attempt];
 		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try every route to api.github.com:443"]);
+	});
+
+	it("fails a probe whose connection or datagram reached the host's listener, whatever the probe reported", () => {
+		for (const [listener, failure] of [
+			[{ connections: 1, datagrams: 0 }, "1 connection reached the host's listener"],
+			[{ connections: 0, datagrams: 2 }, "2 datagrams reached the host's listener"],
+		])
+			expect(judge(report(), plan(), argv, { ...host(), listener })).toEqual([failure]);
+	});
+
+	it("fails a probe that sent no datagram", () => {
+		const r = report();
+		delete r.udp;
+		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try UDP"]);
 	});
 
 	it("names each variable outside the expected set, and passes every expected one", () => {
@@ -368,6 +392,55 @@ describe("the probe script", () => {
 		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 	});
 
+	it("connects to a listener it may reach, and sends it a datagram", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-containment-listener-"));
+		dirs.push(dir);
+		const seen = { connections: 0, datagrams: 0 };
+		const tcp = createServer((socket) => {
+			seen.connections++;
+			socket.destroy();
+		});
+		const udp = createSocket("udp4").on("message", () => {
+			seen.datagrams++;
+		});
+		try {
+			await new Promise((resolve) => tcp.listen(0, "127.0.0.1", resolve));
+			await new Promise((resolve) => udp.bind(0, "127.0.0.1", resolve));
+			const targets = {
+				canary: "melian-canary-unused",
+				shm: "",
+				shapes: {},
+				read: [],
+				write: [],
+				network: [{ host: "127.0.0.1", port: tcp.address().port }],
+				udp: { host: "127.0.0.1", port: udp.address().port },
+				walk: [],
+				byteLimit: 1,
+				self: join(dir, "targets.json"),
+			};
+			writeFileSync(join(dir, "probe.mjs"), probeScript);
+			writeFileSync(targets.self, JSON.stringify(targets));
+			const child = spawn(process.execPath, [join(dir, "probe.mjs")], {
+				cwd: dir,
+				env: { PATH: process.env.PATH },
+				stdio: ["ignore", "pipe", "inherit"],
+			});
+			let output = "";
+			child.stdout.on("data", (chunk) => {
+				output += chunk;
+			});
+			const status = await new Promise((resolve) => child.on("close", resolve));
+			expect(status).toBe(0);
+			const report = JSON.parse(output);
+			expect(report.tcp).toEqual({ [`127.0.0.1:${targets.network[0].port}`]: "connected" });
+			expect(report.udp).toBe("sent");
+			expect(seen).toEqual({ connections: 1, datagrams: 1 });
+		} finally {
+			await new Promise((resolve) => tcp.close(resolve));
+			udp.close();
+		}
+	});
+
 	// Runs the script outside the sandbox, on fake values, so what it detects is tested apart from what the sandbox hides.
 	function collect(env, byteLimit = 16 * 1024 ** 3) {
 		const dir = mkdtempSync(join(tmpdir(), "melian-containment-script-"));
@@ -393,6 +466,7 @@ describe("the probe script", () => {
 			read: [files.leak, files.clean],
 			write: [],
 			network: [],
+			udp: { host: "127.0.0.1", port: 9 },
 			walk: [walked],
 			byteLimit,
 			self: join(dir, "targets.json"),
@@ -523,8 +597,11 @@ describe("observeHost", () => {
 		mkdirSync(join(root, "melian"));
 		const p = { ...plan(), read: [root], readable: [] };
 		const r = { ...report(), reads: { [root]: "listed" }, listings: { [root]: ["runner", "melian"] } };
-		const host = observeHost({ ...p, write: [], writable: [] }, [join(root, "runner", "x")]);
-		expect(judge(r, p, argv, host)).toEqual([`${root} lists 1 of the host's entries`]);
+		const observed = {
+			...observeHost({ ...p, write: [], writable: [] }, [join(root, "runner", "x")]),
+			listener: host().listener,
+		};
+		expect(judge(r, p, argv, observed)).toEqual([`${root} lists 1 of the host's entries`]);
 	});
 });
 
@@ -559,6 +636,7 @@ describe("containmentPlan", () => {
 		held: 9,
 		runtimeUrl: undefined,
 		lang: "C.UTF-8",
+		listener: { tcp: { host: "10.1.0.4", port: 4100 }, udp: { host: "10.1.0.4", port: 4101 } },
 	};
 
 	it("tries every route out, and counts only public roots that are not the probe's own as public", () => {
@@ -599,9 +677,11 @@ describe("containmentPlan", () => {
 				"/h/melian-written-ab12",
 			],
 			network: [
+				{ host: "10.1.0.4", port: 4100 },
 				{ host: "api.github.com", port: 443 },
 				{ host: "169.254.169.254", port: 80 },
 			],
+			udp: { host: "10.1.0.4", port: 4101 },
 			walk: input.policy.read,
 			byteLimit: 17_179_869_184,
 			own: ["/r/tree", "/usr/x/run", "/usr/x/probe"],
@@ -613,6 +693,7 @@ describe("containmentPlan", () => {
 	it("tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it", () => {
 		const plan = containmentPlan({ ...input, runtimeUrl: "https://runtime.example/x", lang: undefined });
 		expect(plan.network).toEqual([
+			{ host: "10.1.0.4", port: 4100 },
 			{ host: "api.github.com", port: 443 },
 			{ host: "169.254.169.254", port: 80 },
 			{ host: "runtime.example", port: 443 },
@@ -627,6 +708,90 @@ describe("shmId", () => {
 		expect(shmId("Shared memory id: 1234\n")).toBe("1234");
 		expect(shmId("Shared memory id: 1234")).toBe("1234");
 		expect(shmId("Shared memory id: 12 x")).toBe("");
+	});
+});
+
+describe("hostAddress", () => {
+	it("takes the first IPv4 address outside loopback, past an IPv6 one", () => {
+		const interfaces = {
+			lo: [{ family: "IPv4", internal: true, address: "127.0.0.1" }],
+			eth0: [
+				{ family: "IPv6", internal: false, address: "fe80::1" },
+				{ family: "IPv4", internal: false, address: "10.0.0.5" },
+				{ family: "IPv4", internal: false, address: "10.0.0.6" },
+			],
+		};
+		expect(hostAddress(interfaces)).toBe("10.0.0.5");
+	});
+
+	it("finds none where every IPv4 address is loopback", () => {
+		expect(
+			hostAddress({
+				lo: [{ family: "IPv4", internal: true, address: "127.0.0.1" }],
+				eth0: [{ family: "IPv6", internal: false, address: "fe80::1" }],
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe("Listener", () => {
+	it("passes its own control, starts its counts again, and then counts what reaches it", async () => {
+		const listener = await Listener.open("127.0.0.1");
+		try {
+			await listener.control();
+			expect([listener.connections, listener.datagrams]).toEqual([0, 0]);
+			const { tcp, udp } = listener.targets();
+			const socket = createConnection(tcp).on("error", () => {});
+			await new Promise((resolve) => socket.once("connect", resolve));
+			const sender = createSocket("udp4");
+			await new Promise((resolve) => sender.send("x", udp.port, udp.host, resolve));
+			sender.close();
+			await vi.waitFor(() => expect([listener.connections, listener.datagrams]).toEqual([1, 1]));
+			socket.destroy();
+		} finally {
+			await listener.close();
+		}
+	});
+
+	it("frees both ports when it closes", async () => {
+		const listener = await Listener.open("127.0.0.1");
+		const { tcp, udp } = listener.targets();
+		await listener.close();
+		const server = createServer();
+		const socket = createSocket("udp4");
+		try {
+			await new Promise((resolve, reject) => server.once("error", reject).listen(tcp.port, tcp.host, resolve));
+			await new Promise((resolve, reject) => socket.once("error", reject).bind(udp.port, udp.host, resolve));
+		} finally {
+			await new Promise((resolve) => server.close(resolve));
+			socket.close();
+		}
+	});
+
+	it("fails its control when no connection reaches it", { timeout: 20_000 }, async () => {
+		const listener = new Listener("127.0.0.1", createServer(), createSocket("udp4"));
+		await new Promise((resolve) => listener.tcp.listen(0, "127.0.0.1", resolve));
+		await new Promise((resolve) => listener.udp.bind(0, "127.0.0.1", resolve));
+		try {
+			await expect(listener.control()).rejects.toThrow(/^no connection from the host reached 127\.0\.0\.1:\d+$/);
+		} finally {
+			await listener.close();
+		}
+	});
+
+	it("fails its control when no datagram reaches it", { timeout: 20_000 }, async () => {
+		const listener = new Listener("127.0.0.1", createServer(), createSocket("udp4"));
+		listener.tcp.on("connection", (socket) => {
+			listener.connections++;
+			socket.destroy();
+		});
+		await new Promise((resolve) => listener.tcp.listen(0, "127.0.0.1", resolve));
+		await new Promise((resolve) => listener.udp.bind(0, "127.0.0.1", resolve));
+		try {
+			await expect(listener.control()).rejects.toThrow(/^no datagram from the host reached 127\.0\.0\.1:\d+$/);
+		} finally {
+			await listener.close();
+		}
 	});
 });
 
@@ -664,7 +829,7 @@ describe("main", () => {
 		};
 	}
 
-	async function mainWith(probes, read = async () => ["node_modules"]) {
+	async function mainWith(probes, read = async () => ["node_modules"], interfaces = networkInterfaces()) {
 		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
 		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", ...loginNames].map((name) => [name, process.env[name]]));
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -682,7 +847,7 @@ describe("main", () => {
 				options = given;
 				return open(script, given);
 			};
-			const code = await main(opened, read);
+			const code = await main(opened, read, interfaces);
 			return {
 				code,
 				logs: log.mock.calls,
@@ -822,6 +987,40 @@ describe("main", () => {
 		});
 	});
 
+	it.runIf(process.platform === "linux")(
+		"fails, and plants nothing, when the host has no address outside loopback",
+		async () => {
+			const loopback = { lo: [{ family: "IPv4", internal: true, address: "127.0.0.1" }] };
+			const result = await mainWith((root) => stoppedProbes(root, true), undefined, loopback);
+			expect(result).toEqual({
+				code: 1,
+				logs: [["the host has no IPv4 address outside loopback for the probe to try"]],
+				left: [],
+				segmentsKept: true,
+				fdsKept: true,
+				head: undefined,
+			});
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"fails, opens no probe, and leaves nothing, when its listener cannot open",
+		async () => {
+			const elsewhere = { eth0: [{ family: "IPv4", internal: false, address: "192.0.2.77" }] };
+			const result = await mainWith((root) => stoppedProbes(root, true), undefined, elsewhere);
+			expect(result).toEqual({
+				code: 1,
+				logs: [
+					[expect.stringMatching(/^the host could not reach its own listener on 192\.0\.2\.77: .*EADDRNOTAVAIL/)],
+				],
+				left: [],
+				segmentsKept: true,
+				fdsKept: true,
+				head: undefined,
+			});
+		},
+	);
+
 	it.runIf(process.platform === "linux")("leaves a file that was at a write target before it ran", async () => {
 		const report = {
 			walk: {},
@@ -881,7 +1080,7 @@ describe.runIf(process.platform === "linux" && (availability.available || requir
 		const kinds = lines
 			.map(
 				(line) =>
-					/^(\/sys|token shapes listed|environment|processes visible|tcp|http proxy|socks proxy|ipc|reads|writes|every route tried is shut)\b/.exec(
+					/^(\/sys|token shapes listed|environment|processes visible|tcp|http proxy|socks proxy|ipc|reads|writes|udp|every route tried is shut)\b/.exec(
 						line,
 					)?.[1],
 			)
@@ -897,6 +1096,7 @@ describe.runIf(process.platform === "linux" && (availability.available || requir
 			"ipc",
 			"reads",
 			"writes",
+			"udp",
 			"every route tried is shut",
 		]);
 		expect(

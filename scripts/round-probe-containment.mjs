@@ -5,6 +5,7 @@
 // Usage: node --conditions=@melian-agent/source scripts/round-probe-containment.mjs
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { createSocket } from "node:dgram";
 import {
 	closeSync,
 	existsSync,
@@ -15,11 +16,12 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { connect, createServer } from "node:net";
+import { homedir, networkInterfaces, tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "../packages/core/src/config.ts";
-import { visibleText } from "../packages/core/src/render.ts";
+import { plural, visibleText } from "../packages/core/src/render.ts";
 import { Probe } from "../packages/pipeline/src/probe.ts";
 
 /** The names the round job's logins sit under, so the canary tests the variables a probe would have to reach. */
@@ -98,6 +100,7 @@ export const probeScript = `
 import { readFileSync, readdirSync, lstatSync, openSync, readSync, closeSync, writeFileSync, constants } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { connect } from "node:net";
+import { createSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
 const t = JSON.parse(readFileSync(new URL("./targets.json", import.meta.url), "utf8"));
 const canary = t.canary;
@@ -153,6 +156,13 @@ function exchange(host, port, send, done) {
 
 report.tcp = {};
 for (const { host, port } of t.network) report.tcp[host + ":" + port] = await exchange(host, port);
+report.udp = await new Promise((resolve) => {
+	const socket = createSocket("udp4");
+	let settled = false;
+	const finish = (outcome) => { if (settled) return; settled = true; socket.close(); resolve(outcome); };
+	socket.once("error", (error) => finish(code(error)));
+	socket.send("probe", t.udp.port, t.udp.host, (error) => finish(error ? code(error) : "sent"));
+});
 try { await lookup("api.github.com"); report.dns = "resolved"; } catch (error) { report.dns = code(error); }
 
 const statusLine = (data, socket, ended) => {
@@ -329,6 +339,10 @@ export function judge(report, plan, argv, host) {
 	for (const [target, outcome] of Object.entries(report.tcp))
 		if (outcome === "connected") failures.push(`a TCP connection to ${target} opened`);
 	if (report.dns === "resolved") failures.push("a DNS lookup resolved");
+	if (report.udp === undefined) failures.push("the probe did not try UDP");
+	const { connections, datagrams } = host.listener;
+	if (connections > 0) failures.push(`${plural(connections, "connection")} reached the host's listener`);
+	if (datagrams > 0) failures.push(`${plural(datagrams, "datagram")} reached the host's listener`);
 	if (report.httpProxy.missing !== undefined) failures.push(`the probe has no ${report.httpProxy.missing} to try`);
 	for (const [attempt, status] of Object.entries(report.httpProxy)) {
 		if (attempt === "missing") continue;
@@ -434,6 +448,96 @@ export function outcome(failures) {
 	return { code: 1, lines: failures.map((failure) => `not contained: ${failure}`) };
 }
 
+/**
+ * The host's first IPv4 address that is not loopback. Inside the sandbox, loopback is where the proxies listen, so only
+ * an address on a real interface tells whether a probe can leave the sandbox's network.
+ */
+export function hostAddress(interfaces) {
+	return Object.values(interfaces)
+		.flat()
+		.find((entry) => entry.family === "IPv4" && !entry.internal)?.address;
+}
+
+/** Waits up to five seconds for `test` to hold, and says whether it did. */
+async function until(test) {
+	for (let waited = 0; waited < 5000 && !test(); waited += 20) await new Promise((resolve) => setTimeout(resolve, 20));
+	return test();
+}
+
+/**
+ * A TCP listener and a UDP socket on one host address, for the length of the step. Each counts what reaches it, so a
+ * connection or a datagram from the probe fails the step whatever the probe reports.
+ */
+export class Listener {
+	address;
+	tcp;
+	udp;
+	connections = 0;
+	datagrams = 0;
+
+	constructor(address, tcp, udp) {
+		this.address = address;
+		this.tcp = tcp;
+		this.udp = udp;
+	}
+
+	static async open(address) {
+		const listener = new Listener(address, createServer(), createSocket("udp4"));
+		listener.tcp.on("connection", (socket) => {
+			listener.connections++;
+			socket.destroy();
+		});
+		listener.udp.on("message", () => {
+			listener.datagrams++;
+		});
+		try {
+			await new Promise((resolve, reject) => listener.tcp.once("error", reject).listen(0, address, resolve));
+			await new Promise((resolve, reject) => listener.udp.once("error", reject).bind(0, address, resolve));
+		} catch (error) {
+			await listener.close();
+			throw error;
+		}
+		return listener;
+	}
+
+	/** Where the probe tries to reach it. */
+	targets() {
+		return {
+			tcp: { host: this.address, port: this.tcp.address().port },
+			udp: { host: this.address, port: this.udp.address().port },
+		};
+	}
+
+	/** Reaches both sockets from the host, and throws unless each counted it, then starts the counts again. */
+	async control() {
+		const { tcp, udp } = this.targets();
+		const socket = connect(tcp);
+		socket.on("error", () => {});
+		const connected = await until(() => this.connections > 0);
+		socket.destroy();
+		if (!connected) throw new Error(`no connection from the host reached ${tcp.host}:${tcp.port}`);
+		const sender = createSocket("udp4");
+		sender.on("error", () => {});
+		sender.send("control", udp.port, udp.host);
+		const received = await until(() => this.datagrams > 0);
+		sender.close();
+		if (!received) throw new Error(`no datagram from the host reached ${udp.host}:${udp.port}`);
+		this.connections = 0;
+		this.datagrams = 0;
+	}
+
+	async close() {
+		await new Promise((resolve) => this.tcp.close(() => resolve()));
+		await new Promise((resolve) => {
+			try {
+				this.udp.close(resolve);
+			} catch {
+				resolve();
+			}
+		});
+	}
+}
+
 /** What the containment probe tries, from the policy Probe gave it and what the step planted on the host. */
 export function containmentPlan({
 	canary,
@@ -449,6 +553,7 @@ export function containmentPlan({
 	held,
 	runtimeUrl,
 	lang,
+	listener,
 }) {
 	const tree = policy.read[0];
 	const run = policy.write[0];
@@ -492,10 +597,12 @@ export function containmentPlan({
 			join(home, `melian-written-${tag}`),
 		],
 		network: [
+			listener.tcp,
 			{ host: "api.github.com", port: 443 },
 			{ host: "169.254.169.254", port: 80 },
 			...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
 		],
+		udp: listener.udp,
 		walk: policy.read,
 		// Bytes each walk reads before it stops, and the check fails; far above what a runner's roots hold.
 		byteLimit: 16 * 1024 ** 3,
@@ -521,8 +628,11 @@ export function shmId(made) {
 	return /(\d+)\s*$/.exec(made)?.[1] ?? "";
 }
 
-/** Runs the containment probe through `probes`, Probe unless a test gives another, and returns the step's exit code. */
-export async function main(probes = Probe, read = probeRead) {
+/**
+ * Runs the containment probe through `probes`, Probe unless a test gives another, under the policy `read` returns and
+ * against the host address `interfaces` hold, and returns the step's exit code.
+ */
+export async function main(probes = Probe, read = probeRead, interfaces = networkInterfaces()) {
 	const say = (line) => console.log(visibleText(line));
 	const available = await probes.availability();
 	if (!available.available) {
@@ -538,6 +648,11 @@ export async function main(probes = Probe, read = probeRead) {
 		say(`the policy's probe.read could not be read: ${error.message}`);
 		return 1;
 	}
+	const address = hostAddress(interfaces);
+	if (address === undefined) {
+		say("the host has no IPv4 address outside loopback for the probe to try");
+		return 1;
+	}
 	const canary = `melian-canary-${randomBytes(16).toString("hex")}`;
 	for (const name of loginNames) process.env[name] = canary;
 	const temp = realpathSync(process.env.RUNNER_TEMP ?? tmpdir());
@@ -548,7 +663,15 @@ export async function main(probes = Probe, read = probeRead) {
 	const held = openSync(files[0], "r");
 	const made = execFileSync("ipcmk", ["--shmem", "64"], { encoding: "utf8" });
 	const shm = shmId(made);
+	let listener;
 	try {
+		try {
+			listener = await Listener.open(address);
+			await listener.control();
+		} catch (error) {
+			say(`the host could not reach its own listener on ${address}: ${error.message}`);
+			return 1;
+		}
 		const argv = [];
 		const probe = await probes.open(
 			{
@@ -583,6 +706,7 @@ export async function main(probes = Probe, read = probeRead) {
 				held,
 				runtimeUrl: process.env.ACTIONS_RUNTIME_URL,
 				lang: process.env.LANG,
+				listener: listener.targets(),
 			});
 			writeFileSync(plan.self, JSON.stringify(plan));
 			const result = await probe.run();
@@ -607,11 +731,14 @@ export async function main(probes = Probe, read = probeRead) {
 		say(`ipc: ${JSON.stringify(report.ipc)}`);
 		say(`reads: ${JSON.stringify(report.reads)}`);
 		say(`writes: ${JSON.stringify(report.writes)}`);
-		const host = observeHost(plan, [...policy.read, ...policy.write]);
+		const { connections, datagrams } = listener;
+		say(`udp: ${report.udp}; host listener on ${address}: ${connections} connections, ${datagrams} datagrams`);
+		const host = { ...observeHost(plan, [...policy.read, ...policy.write]), listener: { connections, datagrams } };
 		const { code, lines } = outcome(judge(report, plan, argv, host));
 		for (const line of lines) say(line);
 		return code;
 	} finally {
+		await listener?.close();
 		closeSync(held);
 		for (const file of files) rmSync(file, { force: true });
 		rmSync(scratch, { recursive: true, force: true });
