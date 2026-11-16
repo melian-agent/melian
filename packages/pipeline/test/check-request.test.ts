@@ -86,6 +86,11 @@ describe("checkRequest", () => {
 		expect(checks["static.mutation"]).toBeGreaterThanOrEqual(2);
 	});
 
+	it("keys Enola past the build that ran a head's own recipes, so no run that build stored is reused", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks["static.enola"]).toBe(3);
+	});
+
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {
 		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
 		expect(checkReusable(sample)).toBe(true);

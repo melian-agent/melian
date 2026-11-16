@@ -19,4 +19,6 @@ The list is not every file that steers Enola. Its packwerk check reads `packwerk
 
 Raise the list with the pin. A later Enola that reads policy from a new place needs it added, and the test that reads every listed path from the base updated with it.
 
+The check request key raises `static.enola` to version 3, so no run stored by a build that ran a head's own recipes is reused for the same head. Codex's adversarial review found that a head reviewed before the fix would otherwise keep its old result.
+
 The runner removes `.enola` before the listed paths, so a head whose `.enola` is a link loses the link before `rm` follows `.enola/suppressions.yaml` through it.
