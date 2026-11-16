@@ -356,6 +356,7 @@ describe("an exported record keeps what a static finding shares", () => {
 			["its snapshot ID before the hash", { ...snapshot, snapshotId: `${token} sha256:${hash}` }],
 			["its cache key", { ...snapshot, cacheKey: token }],
 			["its cache key past the hash", { ...snapshot, cacheKey: `${hash}${token}` }],
+			["its cache key before the hash", { ...snapshot, cacheKey: `${token}${hash}` }],
 			["its graph coverage", { ...snapshot, coverage: { ...snapshot.coverage, graph: token } }],
 			["its review coverage", { ...snapshot, coverage: { ...snapshot.coverage, review: token } }],
 			["its test coverage", { ...snapshot, coverage: { ...snapshot.coverage, test: token } }],
