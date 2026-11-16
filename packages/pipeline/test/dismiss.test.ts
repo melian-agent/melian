@@ -1397,6 +1397,24 @@ describe("recording a dismissal", () => {
 			});
 		});
 
+		it("refuses when the policy names a branch that a full object ID's pattern would only part match", async () => {
+			const base = gitIn(repo, "rev-parse", "main");
+			const names = [`pin-${base}`, `${base}-pin`, "a", "z".repeat(64)];
+			for (const name of names) gitIn(repo, "branch", name, base);
+			try {
+				for (const name of names) {
+					const { recorded } = await dismissStoredWith("2:0000000000000000", () => name);
+
+					await expect(recorded, name).rejects.toMatchObject({
+						code: "adjudicationFailed",
+						message: expect.stringContaining("the resolution policy changed since the review read it"),
+					});
+				}
+			} finally {
+				gitIn(repo, "branch", "-D", ...names);
+			}
+		});
+
 		it("refuses a fingerprint of the retired recipe, which names no version, though the policy came from a commit", async () => {
 			const { recorded } = await dismissStoredWith("0000000000000000", "revision");
 
