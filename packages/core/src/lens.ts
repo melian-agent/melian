@@ -435,16 +435,6 @@ function resolveLevels(file: string, name: string, declared: Declared, ancestry:
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
-		// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
-		// would leave the lens clean.
-		if (probe !== undefined && origin === "tests") {
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
