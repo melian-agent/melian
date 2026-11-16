@@ -457,11 +457,17 @@ describe("a level that probes", () => {
 					],
 				},
 				{
-					rewrite: (command) => (inHeadTree(command) ? `date +%s%3N >> '${log}'; ${command}` : command),
+					rewrite: (command) =>
+						inHeadTree(command)
+							? `'${process.execPath}' -e 'console.log(Date.now())' >> '${log}'; ${command}`
+							: command,
 				},
 			);
 			await run;
-			const [first, second] = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			const starts = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			expect(starts).toHaveLength(2);
+			expect(starts.every(Number.isFinite), `start times ${starts.join(", ")}`).toBe(true);
+			const [first, second] = starts;
 			expect(second! - first!).toBeGreaterThanOrEqual(500);
 		} finally {
 			rmSync(join(log, ".."), { recursive: true, force: true });
