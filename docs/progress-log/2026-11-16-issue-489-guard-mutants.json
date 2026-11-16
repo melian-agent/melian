@@ -1,0 +1,2192 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "89a2ac136607acbf9b9c6b3711b8197e2138ff01",
+		"head": "0493326e4ecb8f081c6d4267080dc20c34862263"
+	},
+	"claimsIn": [
+		"packages/core/src/plan.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 341,
+			"column": 98,
+			"endLine": 347,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7f3c29a4b76b7cb4ee5e202145b0368465412d5bf006233886d4d38dbc01ea78",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 343,
+			"column": 14,
+			"endLine": 343,
+			"endColumn": 60,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a958132f85092a2bdf498a9195618f319c971dbe56a20382f4113212a55dbd2e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 343,
+			"column": 26,
+			"endLine": 343,
+			"endColumn": 59,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "bfd01f32a734a46993bf3b2ed6c1cebc20690ef2390912f77c1639aaaf425d66",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 344,
+			"column": 4,
+			"endLine": 344,
+			"endColumn": 20,
+			"mutatorName": "OptionalChaining",
+			"replacement": "routed.thinking",
+			"status": "generated",
+			"id": "2cfe85abea897e224dd9c1ba37f165379d7eb8cd084b6334c85865f076ed2040",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"records removing the effective route's thinking under committed policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 346,
+			"column": 32,
+			"endLine": 346,
+			"endColumn": 85,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "f8e037077d4bf393fa367cebd0bc77f77dcb12d68a3a96c4682b41edb6bc0bc0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 346,
+			"column": 42,
+			"endLine": 346,
+			"endColumn": 85,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "fd374e589c374b4056449c879fb42748d6a977ad35c16480fc2ff185e14da732",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 346,
+			"column": 55,
+			"endLine": 346,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.thinking && run.thinking",
+			"status": "generated",
+			"id": "c91f88f5b0203c41fee8803852158293a86457f79f14dd9c94bd95f90fefe77e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 358,
+			"column": 31,
+			"endLine": 367,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "02e5710d06562634bee69bc0631d372272192746fd149320d2fbc75f1f20c132",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 359,
+			"column": 39,
+			"endLine": 364,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "df8ecaa0ccfe13acfc9f9e55132c20a9e66ff40bf4337bfd98f2f3af6e8f2482",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 361,
+			"column": 17,
+			"endLine": 361,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "credentials[parse(model).provider] && \"none\"",
+			"status": "generated",
+			"id": "cad1b600b91ba6d6a959dd8ce743961aeb443700eb60c170119d8e6b35dc8984",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 361,
+			"column": 55,
+			"endLine": 361,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7a1dc1f010c4424caafb6db8b07c1aaaef34a79d9275b3969b9242ec62e68bbc"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 362,
+			"column": 9,
+			"endLine": 362,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "da9f6220b3fabfaf23dfc4afa3db8a0ea3f5fa85bfca91f46204cc069e9a7dc1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 362,
+			"column": 9,
+			"endLine": 362,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "90c3349b6f5a5a4184daf25037a73e9f2220b9ce64fc2fd6c8ee2ba44eed904e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a resolved plan",
+						"escapes a model name from melian.yaml in every line it prints"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 362,
+			"column": 9,
+			"endLine": 362,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry(model) !== undefined",
+			"status": "generated",
+			"id": "05f2bc834fb1e634cc72d500d6e52aec1a1a37a389289d744ee16af3f7609b2b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 362,
+			"column": 43,
+			"endLine": 362,
+			"endColumn": 99,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1b7186f6eb31a75a5ce903719457b9399283b8a1c1ea0aef076f33baf185182d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 362,
+			"column": 89,
+			"endLine": 362,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5d5432bc9b084840954393b58cf615533e1fc0d91c8bae4f45690c9f0946f88d"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 9,
+			"endLine": 363,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a04fffbd6e436434857b1283fd68b15a3d3aa07768eb303702f35db8965018df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 9,
+			"endLine": 363,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1e141834505519158473b646480f9878f9aa88e4800268def7106e470f061f00",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 9,
+			"endLine": 363,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(own(model) ?? inherited) !== undefined",
+			"status": "generated",
+			"id": "b837de129078e14fc3dfbca26588d2b9ded1a51c50a2028443d9393b9fbce733",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 10,
+			"endLine": 363,
+			"endColumn": 33,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own(model) && inherited",
+			"status": "generated",
+			"id": "d3984af1594c9c0dfe6d0c07e91ba9e16d8a784e0924cf6bd4094e63d71a9835",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 56,
+			"endLine": 363,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dd948aaa28ddb4071e4105203355e8d50a153f4162fbc7f632793e22125b8c45",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 363,
+			"column": 68,
+			"endLine": 363,
+			"endColumn": 91,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own(model) && inherited",
+			"status": "generated",
+			"id": "ab23b59e58688233829928f2edfd1f64af702ece1d7485eaa462977b1b17a791",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 8,
+			"endLine": 365,
+			"endColumn": 59,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b1f20ca7773d3cba4a35d4ba776393361a19d568628f465573628d4da4892815",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"does not warn for a fallback with its own level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 8,
+			"endLine": 365,
+			"endColumn": 59,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7dcb5d2dd31df2e4ebb0b468ffc8a51bdde7fc4b1f64e21db2315ed568517ae8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, promoted low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 8,
+			"endLine": 365,
+			"endColumn": 59,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own(model) === undefined || inherited !== undefined",
+			"status": "generated",
+			"id": "9e2a44c778d5bff538bde0efd1d6f89b6a09fe822e362d66d65a56445f72ce1d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"warns when a bare fallback on another provider inherits a low level from a fallback promoted to first"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 8,
+			"endLine": 365,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c61453469ca46daa33310ebd3f7fc5d5f3e9b85086c6a5c6286d0be9b8c61d47",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"warns when a bare fallback on another provider inherits a low level from a fallback promoted to first"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 8,
+			"endLine": 365,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "own(model) !== undefined",
+			"status": "generated",
+			"id": "007a2a6ffddd84103496d66ce3f3d3be6868dc40e008d6452caf4d88862f7c6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, promoted low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 36,
+			"endLine": 365,
+			"endColumn": 59,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "90a3e52986322035615a767dcefe1d166dddcc6345d00f10c03a731fbe1f90d9",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A model with no own level and nothing inherited plans with no level, so `inheritedLow` already reads it as inheriting; marking it changes nothing."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 36,
+			"endLine": 365,
+			"endColumn": 59,
+			"mutatorName": "EqualityOperator",
+			"replacement": "inherited === undefined",
+			"status": "generated",
+			"id": "043aed3b4c77597898ffb6c363b625aaefdb86b2f67f4c76fedc5a5169cdf3d0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, promoted low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 365,
+			"column": 61,
+			"endLine": 365,
+			"endColumn": 95,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "de154606ecc19b9348bc08056e031b9ba2e72f4fcbe9835b9b082603fdb32bde",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, promoted low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 4,
+			"endLine": 449,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5aac4a40ff58429be6e2b4bad88da4be54a2020c4072aee5dc375ff5227547e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 4,
+			"endLine": 449,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a756080d45e58784ea99c3eccf5173a563f6a8747a7dd5ed71e810f6b2c16f38",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"judges a guarded route that names no model in accept's order, not its fallbacks'"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 4,
+			"endLine": 449,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "policy.model !== undefined",
+			"status": "generated",
+			"id": "888309d048b4997890357585a220c083521d12ee9df0eb8821806102dd45d00a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 33,
+			"endLine": 449,
+			"endColumn": 35,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "836e304b44a19be3f473c65e50adea412275b3bef8273f22c513b696d1f51129",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A name outside the catalogue is not `usable`, so the filter drops it before `runsAt` reads the order."
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 38,
+			"endLine": 449,
+			"endColumn": 100,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4d2a8595322c215592adbabce016d65a876aa00b4a9ba4bdcb3a47110b3737ff",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 57,
+			"endLine": 449,
+			"endColumn": 79,
+			"mutatorName": "LogicalOperator",
+			"replacement": "policy.fallbacks && []",
+			"status": "generated",
+			"id": "85f972e60383122ac5beaba2c1cd5009b14110e6723e28d0ba959980d887df7c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 449,
+			"column": 77,
+			"endLine": 449,
+			"endColumn": 79,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "9adc9ebe92d4a142dd8d86e1bae02b4d9e2455b9ba6d9baaf6d83aa8b2843be5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"says nothing of a refused tier that no lens the review runs uses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 4,
+			"endLine": 452,
+			"endColumn": 100,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set([...committedRoute, ...accept])]",
+			"status": "generated",
+			"id": "df6a5587abdf27776f1bd691ee55175987c5c18aabd1ebe18ed96916c7dbdbd8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it would lose the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 4,
+			"endLine": 452,
+			"endColumn": 48,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "24284658ccd1d109465aaab0240f993f27747ae393ec6f5a1209faaaac0ed99d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 16,
+			"endLine": 452,
+			"endColumn": 46,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "e22e3f8aaa9b8efa8dc3118ec6002c9bd70360301b82bb067789e107898bbdd0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 56,
+			"endLine": 452,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "71eafe3131ce00f9c6f6ebf008c6dc54f57419bc8e89291d4fb46b6cde0a7d58",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 67,
+			"endLine": 452,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3ae356e40e32fec761babc58290fdefa95da60236c458321147a332358bfb15c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it would lose the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 67,
+			"endLine": 452,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "84d902cc1d90176ebf1bb92cd674419962bafc3f6b4df53d889d0ecb63f24049",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 452,
+			"column": 67,
+			"endLine": 452,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "usable(model) || accepted(model)",
+			"status": "generated",
+			"id": "3d4f5572aa2cb5a4713e8c7e03833fc5023786369ea37586b5e76b44dfffbd11",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it would lose the level it inherits"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 453,
+			"column": 4,
+			"endLine": 453,
+			"endColumn": 49,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "341d4f603f08199fdbf5c9a15f68cde2d56f9502e994d51661cfc4ca1c42a05b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"keeps a fallback a preference restates at its committed level under acceptOverridden false"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 455,
+			"column": 18,
+			"endLine": 455,
+			"endColumn": 59,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4aab70be26a5affb90594c6434d2c5b2401a2e0e9d7ec46f0f14ec7449f2452d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 456,
+			"column": 32,
+			"endLine": 456,
+			"endColumn": 34,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "8ff6623fc66d9a0ed1a289fcb6d18c5b737535241a84f128932e5e912ba229c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"records removing the effective route's thinking under committed policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 456,
+			"column": 37,
+			"endLine": 456,
+			"endColumn": 85,
+			"mutatorName": "MethodExpression",
+			"replacement": "chosen",
+			"status": "generated",
+			"id": "a2e98498ff183f8e43c86ff1703084b3fe53a9df58a0d6ac0492d8935bf64844",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"says nothing of a refused tier that no lens the review runs uses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 456,
+			"column": 51,
+			"endLine": 456,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "67a14232d43e8800795d75036edc30de56bcfc11a3a49ff7e10c6c4f23b80d97",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 457,
+			"column": 22,
+			"endLine": 457,
+			"endColumn": 26,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7828be5163abde576b9d6a17d502c3ffaa776499f5de416e4bde272c3aba70ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 457,
+			"column": 28,
+			"endLine": 457,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "89ab4fdbc332f87aa799be92db29f1f9f9d7f77b66895b7e9eb2d97c96c50445",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 457,
+			"column": 39,
+			"endLine": 462,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5b7d4c7d9b253801ee96a08980f8b1afe762f1e3826ccd0d8d8c2695c1c33421",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"keeps every model of a guarded route that policy runs as it stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 459,
+			"column": 17,
+			"endLine": 459,
+			"endColumn": 72,
+			"mutatorName": "MethodExpression",
+			"replacement": "kept",
+			"status": "generated",
+			"id": "70427ab07f59aee781b89455604cef1973b6736d9307121f417fedc718a079eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 459,
+			"column": 29,
+			"endLine": 459,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c7c1cac1183406c921b2e1793c987768901827e0f27d4c1e738162e3859c74ba",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 459,
+			"column": 40,
+			"endLine": 459,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "54f7d88bdc458338ab89b3e0089a1fda49051e770ad7e9dc62c40a3733a8f11c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 459,
+			"column": 40,
+			"endLine": 459,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5e2965822b7b3f8e66b874c976ef6e3e582f3c73c831459856d7aa3a33afd5b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 459,
+			"column": 40,
+			"endLine": 459,
+			"endColumn": 71,
+			"mutatorName": "EqualityOperator",
+			"replacement": "at.get(model) !== wanted(model)",
+			"status": "generated",
+			"id": "fcd523c01c18ee3a826615fadd9d031636e6b0efb56e4c808fdd8e537edbc769",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"drops a fallback a preference relevels under acceptOverridden false, and keeps the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 460,
+			"column": 14,
+			"endLine": 460,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "04347b9d890c3551ce4fec94042eccce53f593f684e804154bf0f46b4296d7c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"keeps every model of a guarded route that policy runs as it stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 460,
+			"column": 14,
+			"endLine": 460,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9179eea695860a370d7bf9e86bf30356b34f475382e8c4bc2e59e4dc060d6f59",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 460,
+			"column": 14,
+			"endLine": 460,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "next.length <= kept.length",
+			"status": "generated",
+			"id": "bc98621905a1e6950acff6f0591feb50534d48e58db19b9f75a7aed27adcc003",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"keeps every model of a guarded route that policy runs as it stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 460,
+			"column": 14,
+			"endLine": 460,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "next.length >= kept.length",
+			"status": "generated",
+			"id": "1279d8c7e3e6755f7a3a61fe417f7f78af0fbf03e7200ab60fb412a309032d19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"keeps every model of a guarded route that policy runs as it stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 473,
+			"column": 9,
+			"endLine": 473,
+			"endColumn": 201,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8b80caa8aba068406d23191db12ff65378e7ca676df2cbd11c308a3d553e7989"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 473,
+			"column": 85,
+			"endLine": 473,
+			"endColumn": 142,
+			"mutatorName": "LogicalOperator",
+			"replacement": "runsAt(effective, chosen, own).get(chosen[0]!) && \"unset\"",
+			"status": "generated",
+			"id": "e7c0e38b2d3820d155f0336689d2301397299ff7b0ad277820446b90daf7b42e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 473,
+			"column": 135,
+			"endLine": 473,
+			"endColumn": 142,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "17a7d9719519bd777e568dc781e704add92d330c0fa5bf9adb2a7310cbffed58"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 473,
+			"column": 170,
+			"endLine": 473,
+			"endColumn": 199,
+			"mutatorName": "LogicalOperator",
+			"replacement": "wanted(chosen[0]!) && \"unset\"",
+			"status": "generated",
+			"id": "e829468c4f0f6bf3b6df380a52d89657155785c6e4522e4dd80bad46f9553076",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a preference that changes a fallback's level",
+						"refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 473,
+			"column": 192,
+			"endLine": 473,
+			"endColumn": 199,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f5251a294b9c84bb84fb8caec1832cc51cea8b2bd0fe141dc8227b4e97402857"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 940,
+			"column": 6,
+			"endLine": 940,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5c47418c57a11c1cedc332e62a2c20ac95bd2df6a081f74dc44f49e9e3977f51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 940,
+			"column": 6,
+			"endLine": 940,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4318e59ff4e66cbdd7f81a8882cc2a51c8aedab09487ab8d3b050776257dcbc4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"says a fallback that names no level runs at a promoted fallback's, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 940,
+			"column": 6,
+			"endLine": 940,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "status === \"routed\"",
+			"status": "generated",
+			"id": "bfa4a67d08af840b3a03b9d9a3f30e7383bb4d7f84623f9515bcfce76d07b997",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"says a fallback that names no level runs at a promoted fallback's, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 940,
+			"column": 17,
+			"endLine": 940,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a239df02ca72d6db8ad67afe32223fa6e2b05b5a24340e218e116413c846f3d4"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 940,
+			"column": 34,
+			"endLine": 940,
+			"endColumn": 36,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "722195c54924e483139ae706a811375da8da5ea63e36433a6478adb5dbac277d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 943,
+			"column": 9,
+			"endLine": 943,
+			"endColumn": 24,
+			"mutatorName": "MethodExpression",
+			"replacement": "models",
+			"status": "generated",
+			"id": "57c3e8e9bf47933caf56faa7685dfa5e3ccd4b3dd0839083e9940d956957ed9f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The first model is on its own provider, so the provider check skips it whether or not `slice(1)` leaves it out."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 943,
+			"column": 44,
+			"endLine": 951,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e4bbc57a904612911311e644609eff531c328c6ab30703c6e57d7df2e9bdeccb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"says a fallback that names no level runs at a promoted fallback's, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 944,
+			"column": 17,
+			"endLine": 944,
+			"endColumn": 43,
+			"mutatorName": "LogicalOperator",
+			"replacement": "model.thinking && thinking",
+			"status": "generated",
+			"id": "b3e03c6af1d85601dd05cf8025a7664f6f3d761ce2cf2f0da50140f65999ccba",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 945,
+			"column": 20,
+			"endLine": 945,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9e9629d0c80eb67783b14c240c44692a18a2c66013c596e37d1e56758f8a7c55",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"does not warn for a fallback with its own level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 945,
+			"column": 20,
+			"endLine": 945,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "372f2986a0a0ab8b6972a2cb3f5b2235054ac9d76b028456c99c1c03529530a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 945,
+			"column": 20,
+			"endLine": 945,
+			"endColumn": 78,
+			"mutatorName": "LogicalOperator",
+			"replacement": "model.thinking === undefined && inheritedLevels.has(model)",
+			"status": "generated",
+			"id": "4e2d88e542930af89ec1129a7779135b128562096fa1e931b1e5cd24d1c130c0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 945,
+			"column": 20,
+			"endLine": 945,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fe933c262bfdd58c1d25e59c267f2ec033ee47e58520a076170950c6dec43ce4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 945,
+			"column": 20,
+			"endLine": 945,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "model.thinking !== undefined",
+			"status": "generated",
+			"id": "969948d1d07b91c33bea9945c9b00327b5acc4ea5bd2311e701f35ec7b557a17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 7,
+			"endLine": 946,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "08d18d7fd7a546251721ab0e91925f821af62b672291ab1abcd34202c7409919",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 7,
+			"endLine": 946,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "eb58dabda03996e852f1fafabcbd003ebc9851a7b7a823e1bbcdeebcc1b0238a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"does not warn for the same provider"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 7,
+			"endLine": 946,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!inherits && provider(model.model) === provider(first)",
+			"status": "generated",
+			"id": "dc8e72557eda18e1f147ef2eebdbb759d1e9d7b1d17350f55e247b8dac9c6409",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"does not warn for the same provider"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 7,
+			"endLine": 946,
+			"endColumn": 16,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "inherits",
+			"status": "generated",
+			"id": "f1ae1c5eda34feb45e33487839dfd4635c978c8b528cf06405434b2ca343c240",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 20,
+			"endLine": 946,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9c616234ab867e20fbec80a5381992e59a1289dde6d277300fbb07c8ce155d6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"does not warn for the same provider"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 20,
+			"endLine": 946,
+			"endColumn": 61,
+			"mutatorName": "EqualityOperator",
+			"replacement": "provider(model.model) !== provider(first)",
+			"status": "generated",
+			"id": "42004a5e8de8fc2b3680a8d71ec85205818f06c832f722a053db91e53a544f82",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 946,
+			"column": 70,
+			"endLine": 946,
+			"endColumn": 72,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "e83955c0c6ff542bf116f184c73036cdd3d70cb98ce87199464bbd97c2401f17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"verifier routing",
+						"says nothing about families when no verifier model matches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3b951a5f2c8eddcd5d8cdd97decc009a95e0216ca3cf2846771589eeef342374",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "db117e43539c7cdae436f1d723ac65b302e0138469c0cd0007a7502a8e5f0573",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "LogicalOperator",
+			"replacement": "level !== \"off\" && level !== \"minimal\" || level !== \"low\"",
+			"status": "generated",
+			"id": "e9d39576677e322bd65b7abee02c3415aedb3cce78de6d0bc959fa8ea4c917a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 45,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e22f0b5675dbda2bb8b2beb52383233af2e76111cdedb252aaad09d86ec08324",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"warns when a bare fallback on another provider inherits off"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 45,
+			"mutatorName": "LogicalOperator",
+			"replacement": "level !== \"off\" || level !== \"minimal\"",
+			"status": "generated",
+			"id": "41dfc200fcac2bf53cb1dabdb642cc119e759f5e29133abb267c165bac9bd635",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "559154091388441c7c12e14c641632e13cc86cdc1527fe70c9f7b8b23461335b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"warns when a bare fallback on another provider inherits off"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 7,
+			"endLine": 947,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level === \"off\"",
+			"status": "generated",
+			"id": "3bb99222f8e49c2b786b5dd26496647a2142da48dc40ff8a38b0a0ceb653e2c2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 17,
+			"endLine": 947,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3f44b68fe1927782d4c8f62cb76b3b9aab47f0bdfbd05b75537b2f4bd6402f62"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 26,
+			"endLine": 947,
+			"endColumn": 45,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "08f11dcf6269e644d38a52fca00c8f3e51996355f015d69e0b52f120a09baba4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"a fallback's level in melian doctor",
+						"warns when a bare fallback on another provider inherits minimal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 26,
+			"endLine": 947,
+			"endColumn": 45,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level === \"minimal\"",
+			"status": "generated",
+			"id": "6bc719696b4db1555e4beb95f07c0f4e1540e23d19a527daee4e959ae93777fb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 36,
+			"endLine": 947,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b1f556d537ea68c75f970036b9a9e2e18a74a82b4998d93ad378a7637f2c0bb1"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 49,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5587482a578131838762d86e0fe61513774a84f182682386a3c5537de548c01d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 49,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level === \"low\"",
+			"status": "generated",
+			"id": "0cf6846f5dfa17dff3ea2229b6d18336ade8a20a1ef537eaba340183ba9538c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, no level",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 59,
+			"endLine": 947,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1be131139887dfac217e48363092fd1d720c9bdbe141c90cd82d7d288f1d9740"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 947,
+			"column": 73,
+			"endLine": 947,
+			"endColumn": 75,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "a7309ece90a21de0fbd91db24cba63f4cbaead91687d5a36cd0c2209b5330988",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 948,
+			"column": 10,
+			"endLine": 950,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "cad9fb5be93d78a57d5f152eef51ea3b1030d95b95c9b239023168d91c5aba2e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/level-readers.test.ts",
+					"path": [
+						"every reader of a level, for a route first unreachable, at low",
+						"warns of a bare fallback on another provider only where it runs at a low level"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 949,
+			"column": 4,
+			"endLine": 949,
+			"endColumn": 118,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3a66d67518198a5c0f02c142edbc9027f57e61cc9855c69c52588eed7407f72e"
+		}
+	],
+	"total": 103,
+	"omitted": 0,
+	"unmutated": []
+}
