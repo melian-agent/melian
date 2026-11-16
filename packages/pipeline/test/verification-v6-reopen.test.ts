@@ -17,14 +17,15 @@ import { ReviewIndex } from "../src/review-index.ts";
 import { createFakeModels, fauxAssistantMessage } from "../src/testing.ts";
 import { crashRepository } from "./fixtures/review-scenario.ts";
 
-const recorded = JSON.parse(
-	readFileSync(new URL("./fixtures/verification-v4-main/v4.json", import.meta.url), "utf8"),
-) as {
+type Recorded = {
 	repoRoot: string;
 	task: { kind: string; version: number; input: JsonObject; initial: { phase: string } & JsonObject };
 };
 
-const older = (version: number) =>
+const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")) as Recorded;
+const fixtures = [read("./fixtures/verification-v4-main/v4.json"), read("./fixtures/verification-v5-481/v5.json")];
+
+const older = (recorded: Recorded, version: number) =>
 	defineTask<JsonObject, { phase: string } & JsonObject, null>({
 		name: "melian.verification",
 		version,
@@ -39,7 +40,7 @@ const older = (version: number) =>
 		},
 	});
 
-async function scenario(run: (input: JsonObject, revision: string, file: string) => Promise<void>) {
+async function scenario(recorded: Recorded, run: (input: JsonObject, revision: string, file: string) => Promise<void>) {
 	const repo = crashRepository();
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-verification-v5-")));
 	try {
@@ -58,59 +59,66 @@ async function scenario(run: (input: JsonObject, revision: string, file: string)
 	}
 }
 
-it("reopens main's version-4 verification task under version 5, its bare fallback at the candidate's level", async () => {
-	expect(recorded.task).toMatchObject({ kind: "melian.verification", version: 4 });
-	await scenario(async (input, revision, file) => {
-		const fake = createFakeModels({ models: [{ id: "judge-unavailable" }, { id: "judge" }] });
-		const asked: [string, unknown][] = [];
-		fake.provider.setResponses(
-			Array.from({ length: 4 }, () => (_request, options, _state, model) => {
-				asked.push([model.id, options?.reasoning]);
-				return model.id === "judge-unavailable"
-					? fauxAssistantMessage("", { stopReason: "error", errorMessage: "Rate limit exceeded" })
-					: fauxAssistantMessage("Done.");
-			}),
-		);
-		const first = await openHarness(await openSqliteStorage(file), {
-			models: fake.models,
-			registry: createRegistry(),
-		});
-		const root = await first.root(context);
-		const id = await root.commit(async (tx) => {
-			const task = await tx.createTask(older(4), input, { ownership: { kind: "conversation" } });
-			(await tx.doc(ReviewIndex, root.id)).reviews[revision] = {
-				task,
-				lenses: [],
-				verification: { task, input: "old" },
-			};
-			return task;
-		}, context);
-		await first.close(context);
-		const second = await openHarness(await openSqliteStorage(file), {
-			models: fake.models,
-			registry: createReviewRegistry(),
-			settings: { retry: { enabled: false } },
-		});
-		try {
-			second.resume();
-			await second.waitForTask(id, context);
-			expect(await second.getTask(id, context)).toMatchObject({
-				version: 5,
-				input,
-				state: { status: "terminal", outcome: { status: "completed" } },
+it.each([
+	[4, fixtures[0]!],
+	[5, fixtures[1]!],
+])(
+	"reopens a recorded version-%i verification task under version 6, its bare fallback at the candidate's level",
+	async (version, recorded) => {
+		expect(recorded.task).toMatchObject({ kind: "melian.verification", version });
+		await scenario(recorded, async (input, revision, file) => {
+			const fake = createFakeModels({ models: [{ id: "judge-unavailable" }, { id: "judge" }] });
+			const asked: [string, unknown][] = [];
+			fake.provider.setResponses(
+				Array.from({ length: 4 }, () => (_request, options, _state, model) => {
+					asked.push([model.id, options?.reasoning]);
+					return model.id === "judge-unavailable"
+						? fauxAssistantMessage("", { stopReason: "error", errorMessage: "Rate limit exceeded" })
+						: fauxAssistantMessage("Done.");
+				}),
+			);
+			const first = await openHarness(await openSqliteStorage(file), {
+				models: fake.models,
+				registry: createRegistry(),
 			});
-			expect(asked).toEqual([
-				["judge-unavailable", "low"],
-				["judge", "low"],
-			]);
-		} finally {
-			await second.close(context);
-		}
-	});
-});
+			const root = await first.root(context);
+			const id = await root.commit(async (tx) => {
+				const task = await tx.createTask(older(recorded, version), input, { ownership: { kind: "conversation" } });
+				(await tx.doc(ReviewIndex, root.id)).reviews[revision] = {
+					task,
+					lenses: [],
+					verification: { task, input: "old" },
+				};
+				return task;
+			}, context);
+			await first.close(context);
+			const second = await openHarness(await openSqliteStorage(file), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			try {
+				second.resume();
+				await second.waitForTask(id, context);
+				expect(await second.getTask(id, context)).toMatchObject({
+					version: 6,
+					input,
+					state: { status: "terminal", outcome: { status: "completed" } },
+				});
+				expect(asked).toEqual([
+					["judge-unavailable", "low"],
+					["judge", "low"],
+				]);
+			} finally {
+				await second.close(context);
+			}
+		});
+	},
+);
 
-it("leaves a version-5 verification task to a build that knows version 5", async () => {
-	await scenario(async (input, _revision, file) => {
+it("leaves a version-6 verification task to a build that knows version 5", async () => {
+	const recorded = fixtures[1]!;
+	await scenario(recorded, async (input, _revision, file) => {
 		const fake = createFakeModels();
 		const first = await openHarness(await openSqliteStorage(file), {
 			models: fake.models,
@@ -126,7 +134,7 @@ it("leaves a version-5 verification task to a build that knows version 5", async
 		);
 		await first.close(context);
 		const registry = createRegistry();
-		registry.install(defineExtension({ name: "melian.verification", tasks: [older(4)] }));
+		registry.install(defineExtension({ name: "melian.verification", tasks: [older(recorded, 5)] }));
 		const second = await openHarness(await openSqliteStorage(file), { models: fake.models, registry });
 		try {
 			const states = (await second.inspect(context)).tasks

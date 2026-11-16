@@ -68,8 +68,14 @@ export type VerificationCandidate = {
 	// identity, so a wave outcome a final step reuses links only the dismissals that wave's verifier was shown.
 	dismissals?: Record<string, string>;
 };
-// A root dismissal a candidate may restate, as the verifier sees it: its claim, never its dismissal's reason.
-export type DismissedPredecessor = { id: string; failureScenario?: string; evidence?: FindingEvidence };
+// A root dismissal a candidate may restate: its claim, as the verifier sees it, never its dismissal's reason, and the ID
+// of its dismissal record, which keys the request and is never shown. A task version 4 stored has no record.
+export type DismissedPredecessor = {
+	id: string;
+	record?: string;
+	failureScenario?: string;
+	evidence?: FindingEvidence;
+};
 export type VerificationInput = {
 	root: ConversationId;
 	revision: ReviewState;
@@ -106,9 +112,11 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 	name: "melian.verification",
 	// Version 3, on main, lets a task reuse a wave's outcomes. Version 4 lets a candidate carry its claims' probes, so a
 	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
-	// optional, so a version 2 or 3 task reads unchanged. Version 5 lets each model of a candidate's route name its own
-	// thinking level, so a build that knows version 4 alone, which would ask every model at the route's, refuses it.
-	version: 5,
+	// optional, so a version 2 or 3 task reads unchanged. Version 5 names each shown dismissal's record, so a request keys
+	// another host's dismissal; the field is optional, so a version 4 task reads unchanged and attaches to nothing new.
+	// Version 6 lets each model of a candidate's route name its own thinking level, so a build that knows version 5 alone,
+	// which would ask every model at the route's, refuses it.
+	version: 6,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -215,7 +223,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						attempt === 0
 							? verifierInput(
 									candidate.state.claims.map(({ verification: _, ...claim }) => claim),
-									(candidate.dismissed ?? []).map(({ id: _, ...claim }) => claim),
+									(candidate.dismissed ?? []).map(({ id: _, record: __, ...claim }) => claim),
 									task.input.revision.nonce,
 								)
 							: continueJudging;
