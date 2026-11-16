@@ -880,30 +880,25 @@ export function verifierInjectionPolicy(nonce: string): string {
 const enumerations = new GraphMemo<MutationEnumeration>(2);
 const listings = new GraphMemo<MutantListing>(4);
 // Each listing's worker may take 512 MiB, and Pi runs a turn's tool calls in parallel, as it runs lenses, so the
-// process enumerates one listing at a time.
+// process enumerates one listing at a time. The queue holds only work that is already bounded.
 let enumerating: Promise<unknown> = Promise.resolve();
 
 function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	const change = [review.nonce, review.repoRoot, review.base, review.head].join("\0");
-	return listings.get([change, path].join("\0"), () => {
+	return listings.get([change, path].join("\0"), async () => {
 		// A call waits its turn inside the 120 seconds the enumerator allows it, so a long queue fails calls rather than stalls.
 		const deadline = performance.now() + 120_000;
-		const turn = enumerating.then(() => enumerate(review, change, path, deadline));
+		// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
+		// configuration cannot switch its own mutants off.
+		const enumeration = await enumerations.get(change, () =>
+			MutationEnumeration.open(review.repoRoot, Revision.key({ base: review.base, head: review.head }), {
+				policy: { kind: "revision", commit: review.base },
+			}),
+		);
+		const turn = enumerating.then(() => enumeration.list({ all: true, limitedTo: [path], deadline }));
 		enumerating = turn.catch(() => {});
-		return turn;
+		return MutantListing.of((await turn).toJSON(), path);
 	});
-}
-
-async function enumerate(review: ReviewState, change: string, path: string, deadline: number): Promise<MutantListing> {
-	// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
-	// configuration cannot switch its own mutants off.
-	const enumeration = await enumerations.get(change, () =>
-		MutationEnumeration.open(review.repoRoot, Revision.key({ base: review.base, head: review.head }), {
-			policy: { kind: "revision", commit: review.base },
-		}),
-	);
-	const inventory = (await enumeration.list({ all: true, limitedTo: [path], deadline })).toJSON();
-	return MutantListing.of(inventory, path);
 }
 
 function changedRanges(file: ReviewState["files"][number]): string {

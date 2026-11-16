@@ -415,6 +415,32 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("lists for one review while another review's setup has not settled", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1) });
+		const open = MutationEnumeration.open;
+		let release: () => void = () => {};
+		const stalled = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let opened = 0;
+		vi.spyOn(MutationEnumeration, "open").mockImplementation(async (...args) => {
+			if (opened++ === 0) await stalled;
+			return open.apply(MutationEnumeration, args);
+		});
+		const first = call(head, { path: "src/a.ts" });
+		try {
+			const second = await Promise.race([
+				call(head, { path: "src/a.ts" }, "e".repeat(24)),
+				new Promise<"blocked">((resolve) => setTimeout(() => resolve("blocked"), 10_000)),
+			]);
+			expect(second).not.toBe("blocked");
+			expect((second as Awaited<typeof first>).details?.mutants).toHaveLength(1);
+		} finally {
+			release();
+			await first;
+		}
+	});
+
 	it("lists the next file after an enumeration fails", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
 		const list = MutationEnumeration.prototype.list;
