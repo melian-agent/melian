@@ -11,6 +11,7 @@ export type EnolaPolicyState = {
 	config: string;
 	hash: string;
 	failOn: string[];
+	rules: string[];
 };
 
 /** Enola policy over one repository, with executable providers disabled. */
@@ -62,6 +63,11 @@ export class EnolaPolicy {
 				(file.path === "enola-intent.yaml" && /^(?:rules|recipes):/m.test(file.text)),
 		);
 		const failOn = hasConstraints ? ["constraints"] : [];
+		const rules = ordered.flatMap((file) =>
+			file.path.startsWith("enola/constraints/") || file.path === "enola-intent.yaml"
+				? declaredRules(file.text)
+				: [],
+		);
 		const text = stringify(config);
 		const hash = createHash("sha256")
 			.update(
@@ -73,7 +79,13 @@ export class EnolaPolicy {
 				}),
 			)
 			.digest("hex");
-		return new EnolaPolicy({ files: structuredClone(ordered), config: text, hash, failOn });
+		return new EnolaPolicy({
+			files: structuredClone(ordered),
+			config: text,
+			hash,
+			failOn,
+			rules: [...new Set(rules)].sort(),
+		});
 	}
 
 	/** Compares raw head policy without letting an invalid head configuration judge the check. */
@@ -102,8 +114,28 @@ export class EnolaPolicy {
 	}
 }
 
-/** Reads Enola SARIF, excluding resolved and explicitly suppressed results. Unlocated results sit on its policy. */
-export function normaliseEnolaSarif(output: string, run: ToolRun): ToolLog {
+// Enola names a result's rule by the `id` its policy declares. A rule the policy does not declare is Enola's own text,
+// which could quote what it read, so it is replaced by a hash and kept only in the message the host alone stores.
+function declaredRules(text: string): string[] {
+	let value: unknown;
+	try {
+		value = parseDocument(text).toJS();
+	} catch {
+		return [];
+	}
+	const rules = (value as { rules?: unknown } | null)?.rules;
+	if (!Array.isArray(rules)) return [];
+	return rules.flatMap((rule: unknown) => {
+		const id = (rule as { id?: unknown } | null)?.id;
+		return typeof id === "string" && id !== "" ? [id] : [];
+	});
+}
+
+/**
+ * Reads Enola SARIF, excluding resolved and explicitly suppressed results. Unlocated results sit on its policy. A rule
+ * outside `rules`, the IDs the base's policy declares, becomes `rule-<hash>`, with the rule Enola wrote in the message.
+ */
+export function normaliseEnolaSarif(output: string, run: ToolRun, rules: ReadonlySet<string>): ToolLog {
 	try {
 		const parsed: unknown = JSON.parse(output);
 		if (typeof parsed !== "object" || parsed === null) throw new Error("Not a SARIF object");
@@ -122,9 +154,20 @@ export function normaliseEnolaSarif(output: string, run: ToolRun): ToolLog {
 			if (result.properties?.bucket === "resolved" || (result.suppressions?.length ?? 0) > 0) return [];
 			if (typeof result.ruleId !== "string" || !["error", "warning", "note", "none"].includes(String(result.level)))
 				throw new Error("Missing rule or severity");
+			const declared = rules.has(result.ruleId);
+			const message = (result as { message?: { text?: unknown } }).message;
 			return [
 				{
 					...result,
+					...(declared
+						? {}
+						: {
+								ruleId: `rule-${createHash("sha256").update(result.ruleId).digest("hex").slice(0, 16)}`,
+								message: {
+									...message,
+									text: `Enola reported the rule ${JSON.stringify(result.ruleId)}, which its policy does not declare: ${String(message?.text ?? "")}`,
+								},
+							}),
 					locations: result.locations?.length
 						? result.locations
 						: [

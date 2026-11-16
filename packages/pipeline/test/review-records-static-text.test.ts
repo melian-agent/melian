@@ -65,10 +65,14 @@ const ran = (name: string, findings: number, version?: string): Extract<CheckRun
 });
 
 function enola(results: unknown[], files?: Record<string, string>) {
-	const log = normaliseEnolaSarif(JSON.stringify({ version: "2.1.0", runs: [{ results }] }), {
-		root: repo,
-		version: "0.4.37",
-	});
+	const log = normaliseEnolaSarif(
+		JSON.stringify({ version: "2.1.0", runs: [{ results }] }),
+		{
+			root: repo,
+			version: "0.4.37",
+		},
+		new Set(["god-class", "constraints/layer"]),
+	);
 	return findingsOf("enola", log, files);
 }
 
@@ -136,7 +140,7 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 			{ ruleId: `layer/${token}`, level: "error", message: { text: "core reaches pipeline" } },
 			{ ruleId: `wide/${token}`, level: "warning", message: { text: "widget is wide" }, locations: at(path) },
 		]);
-		expect(stored.map((finding) => finding.ruleId).join()).toContain(token);
+		expect(stored.map((finding) => finding.message.text).join()).toContain(token);
 		expect(bytes(records.check("e".repeat(64), ran("static.enola", 2, "0.4.37"), stored))).not.toContain(token);
 		for (const finding of stored) {
 			const record = records.dismissal({
