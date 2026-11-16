@@ -220,6 +220,7 @@ describe("lensRequest", () => {
 	});
 
 	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared.
+	// Issue #493 changed its probesAnswer, unansweredOne and unansweredMany on purpose: an exit of 125 shows nothing.
 	it("keys the trust-boundary lens's probing wording as the table main keyed", () => {
 		const golden = JSON.parse(
 			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),

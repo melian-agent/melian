@@ -272,6 +272,7 @@ describe("the tests lens at a level that probes", () => {
 					probe: /probe (p[0-9]+)/.exec(messages.map(textOf).join("\n"))?.[1] ?? "p0",
 					refuted: "0123456789abcdef",
 				}),
+			call("skip_attack", { attack: 1, reason: "the unchanged test already fails, so no probe here can show it" }),
 			fauxAssistantMessage("The unchanged test fails, so I report nothing."),
 		]);
 
@@ -280,7 +281,7 @@ describe("the tests lens at a level that probes", () => {
 			"When the test already fails on the unchanged copy, the probe cannot show whether the test covers the behaviour: print what it printed, exit 125, and report no finding.",
 		);
 		expect(proberPrompt).toContain("exit 0 when it fails, its passing outcome.");
-		const answered = requests[prober]!.at(-1)!.map(textOf).join("\n");
+		const answered = requests[prober]!.flatMap((request) => request.map(textOf)).join("\n");
 		expect(answered).toContain(
 			"did not pass, so it shows no finding wrong: refute a finding only with a probe that exited 0",
 		);
