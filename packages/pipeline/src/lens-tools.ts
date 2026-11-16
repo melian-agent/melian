@@ -265,22 +265,23 @@ function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>, limit = 81
 	);
 }
 
-function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean } {
+function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean; lineCut: boolean } {
 	const shown: string[] = [];
 	let size = 0;
 	for (const row of rows) {
 		const bytes = Buffer.byteLength(row) + (shown.length === 0 ? 0 : 1);
 		if (shown.length === maxReadLines || size + bytes > maxShownBytes) {
-			if (shown.length === 0)
+			const lineCut = shown.length === 0;
+			if (lineCut)
 				shown.push(
 					`${new TextDecoder().decode(Buffer.from(row).subarray(0, maxShownBytes - 64), { stream: true })} [line cut]`,
 				);
-			return { body: shown.join("\n"), count: shown.length, cut: true };
+			return { body: shown.join("\n"), count: shown.length, cut: true, lineCut };
 		}
 		shown.push(row);
 		size += bytes;
 	}
-	return { body: shown.join("\n"), count: shown.length, cut: false };
+	return { body: shown.join("\n"), count: shown.length, cut: false, lineCut: false };
 }
 
 async function lensOf(reader: DocumentReader, conversationId: ConversationId, context: Context): Promise<LensPolicy> {
@@ -291,11 +292,15 @@ async function lensOf(reader: DocumentReader, conversationId: ConversationId, co
 
 function text(content: string | readonly string[], render: (body: string, count: number) => string = (body) => body) {
 	const rows = typeof content === "string" ? content.split("\n") : content.flatMap((row) => row.split("\n"));
-	const { body, count, cut } = fitting(rows);
+	const { body, count, cut, lineCut } = fitting(rows);
 	const note = cut
 		? `\n[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]`
 		: "";
-	return { content: [{ type: "text" as const, text: `${render(body, count)}${note}` }] };
+	const details: LensToolDetails | undefined = lineCut ? { lineCut: true } : undefined;
+	return {
+		content: [{ type: "text" as const, text: `${render(body, count)}${note}` }],
+		...(details === undefined ? {} : { details }),
+	};
 }
 
 // Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are
@@ -414,8 +419,12 @@ async function meter(
 	}, context);
 }
 
+/** What a lens tool's result records beside its text: `lineCut` when it showed only the start of its one line. */
+export type LensToolDetails = { lineCut: true };
+
 type ToolResult = {
 	content?: { type: "text"; text: string }[];
+	details?: LensToolDetails;
 	isError?: boolean;
 	diagnostics?: { severity: "error"; code: string; message: string }[];
 };

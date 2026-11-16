@@ -25,6 +25,7 @@ import { twoLensTiers } from "./fixtures/review-scenario.ts";
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
 const promptLimit = 200 * 1024;
+const maxShownBytes = 48 * 1024;
 // One line of about 30 bytes per value, so 8000 of them pass the prompt's limit alone.
 const big = (count: number) =>
 	lines(...Array.from({ length: count }, (_, index) => `export const value${index} = ${index};`));
@@ -145,6 +146,26 @@ describe("what each lens was shown and read", { timeout: 60_000 }, () => {
 				],
 			},
 		]);
+	});
+
+	it("counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut", async () => {
+		repo = baseAndHead(
+			{ "src/seed.ts": lines("export {};") },
+			{
+				// A row is the line number, a tab and the line, so these rows fall one byte either side of the limit.
+				"src/b.ts": lines("export const a = 1;", "x".repeat(maxShownBytes - 2), "y".repeat(maxShownBytes - 1)),
+			},
+		);
+		const read = (startLine: number) =>
+			fauxAssistantMessage(fauxToolCall("read_file", { path: "src/b.ts", startLine, maxLines: 1 }), {
+				stopReason: "toolUse",
+			});
+		scriptConversations(fake, [
+			{ match: correctness, replies: [read(2), read(3), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		expect((await lensStage("correctness")).read).toEqual([{ path: "src/b.ts", ranges: [[2, 2]] }]);
 	});
 
 	it("names every file whose diff block the prompt carried whole", async () => {

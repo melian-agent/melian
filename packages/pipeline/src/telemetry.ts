@@ -492,14 +492,13 @@ export class StageTelemetry {
 	}
 }
 
-/** Reads durable records without opening a harness or scheduler. */
-// The head lines `read_file` delivered for each changed file, as runs of consecutive lines; a search confers none.
+// The head lines `read_file` delivered whole for each changed file, as runs of consecutive lines; a search confers none.
 function delivered(records: readonly EntryRecord[], lens: LensPolicy): NonNullable<Stage["read"]> {
 	const { revision } = lens;
 	const paths = revision.files.map((file) => file.path);
 	const lines = new Map<string, Set<number>>();
 	for (const read of ReviewTranscript.from(records, lens.name, paths, revision.nonce).reads())
-		if (read.kind === "read" && read.revision === "head")
+		if (read.kind === "read" && read.revision === "head" && read.cut === undefined)
 			for (const line of read.lines) lines.set(read.path, (lines.get(read.path) ?? new Set()).add(line));
 	return [...lines].map(([path, numbers]) => {
 		const ranges: [number, number][] = [];
@@ -512,6 +511,7 @@ function delivered(records: readonly EntryRecord[], lens: LensPolicy): NonNullab
 	});
 }
 
+/** Reads durable records without opening a harness or scheduler. */
 export class TelemetryReader {
 	private readonly storage: Storage;
 
