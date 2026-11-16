@@ -1,0 +1,15 @@
+# Issue #528: a static sighting is proven by its run's stamp
+
+[Issue #528](https://github.com/melian-agent/melian/issues/528) ties a static check's sightings to the run that wrote them. Before, the proof was a run held in the same process, and nothing tied that run to what the store held. A caller could run the checks, upsert an older build's Biome sighting with a login in its text, and review, and the export shared the sighting.
+
+The findings document, version 12, now keeps `checkRuns[revision][check]`: the full request key of the run whose terminal commit wrote every sighting that check has at that revision. `upsertFinding`, `replaceCheckFindings` and `clearSightings` each delete it, and only the check task's terminal commit writes it, last. The checks document, version 5, keeps each run's whole request by its key, once, and never removes one. The check task, version 5, and the checks task, version 4, carry the key. `StaticProof` reads the stamp and the stored request, rehashes the request through core's `KeyedRequest`, and asks whether it requests check code that stores no tool text. The export withholds a static check that sighted anything without that proof. A static finding's dismissal keeps its stamp as `dismissedSighting.run`, and `ReviewRecords.dismissal` shares it only with the proof. The in-process brand on `CheckRun` is gone. [The decision](../decisions/2026-11-16-a-static-sighting-is-proven-by-its-stamp.md) records the rules and their limits. The coordinator answered the approach on 2026-11-16; whether a caller that writes the store by kind is outside the guarantee goes to the maintainer.
+
+The failing test first: `packages/pipeline/test/review-records-planted-sighting.test.ts`'s planted-sighting case, copied to the base 5a3effac4 with relative imports, failed there with `expected '[{"changeset":"range-c8fc772cb8b7a4f1…' not to contain 'melian-test-token-0b71c4'`, and passes after the change. Its control case passed on both.
+
+The second done-when item, a reader on another host reading a shared dismissal as dismissed, is pinned through the reader `RecordedRound` has today: the dismissal is shared, carries no run key, and today's reader still reads the finding as blocking, since it reads no dismissal record yet. [Issue #481](https://github.com/melian-agent/melian/issues/481) teaches it to.
+
+`packages/pipeline/test/fixtures/stored-checks-v4/run.json` was recorded by the base's own code, and `check-stamp-reopen.test.ts` reopens it from SQLite and resumes the base's check and checks tasks under today's versions.
+
+[Pull request #524](https://github.com/melian-agent/melian/pull/524) and [pull request #530](https://github.com/melian-agent/melian/pull/530) conflict in meaning once both are merged: two tests in `review-records-static-text.test.ts` used the tool version `1`, which #530's semver rule withholds. This branch changes it to `1.0.0`.
+
+Files that guard trust or durability: `packages/pipeline/src/findings.ts`, `checks.ts`, `static-proof.ts`, `review.ts` and `review-records.ts`.

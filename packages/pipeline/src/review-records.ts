@@ -32,6 +32,7 @@ import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
+import type { StaticProof } from "./static-proof.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
 
@@ -79,7 +80,8 @@ export type DismissalFacts = {
 	readonly reason: string;
 	readonly at: string;
 	readonly severity: Severity;
-	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
+	// `run` is the request key the sighting's check run stamped when it was dismissed, which no payload carries.
+	readonly sighting: { readonly revision: string; readonly finding: StoredFinding; readonly run?: string };
 	readonly rounds: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
 };
@@ -334,11 +336,13 @@ export class ReviewRecords {
 		return this.#record("round", key, manifest);
 	}
 
-	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
-	dismissal(facts: DismissalFacts): SharedRecord {
+	/**
+	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. A static finding's is shared
+	 * only when `proof` shows the run its sighting was stamped with stored none of its tool's text.
+	 */
+	dismissal(facts: DismissalFacts, proof?: StaticProof): SharedRecord {
 		const { check } = facts.sighting.finding.properties.source;
-		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
-		if (check.startsWith("static."))
+		if (check.startsWith("static.") && proof?.asks(check, facts.sighting.run) !== true)
 			throw new DismissError(
 				"unprovenRun",
 				`The dismissed ${check} finding carries no proof that the run which sighted it stored none of its tool's text, so its dismissal is not shared.`,

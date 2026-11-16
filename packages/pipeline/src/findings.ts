@@ -49,7 +49,8 @@ type FindingLifecycle = {
 	dismissedSeverity?: Severity;
 	// The finding as the dismissed revision showed it, kept beside the severity. Inheritance reads the root's claim and
 	// region from it alone, so neither a later sighting nor a rerun that replaces this one moves what was dismissed.
-	dismissedSighting?: { revision: string; sighting: ProducerFinding };
+	// `run` is the request key the check run that wrote the sighting stamped on its check, when one stood then.
+	dismissedSighting?: { revision: string; sighting: ProducerFinding; run?: string };
 	firstSeenRevision: string;
 	lastSeenRevision: string;
 	history: StoredPastDismissal[];
@@ -81,13 +82,20 @@ type FindingRecord = {
 type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
+// `checkRuns` holds, per revision and check, the request key of the check run whose terminal commit wrote every sighting
+// the check has there. Any write that changes those sightings deletes it in the same commit, and only that commit writes
+// it, so a stamp never outlives the sightings it vouches for.
 export type FindingsState = {
 	revisions: string[];
 	items: Record<string, FindingRecord>;
 	versions: Record<string, number>;
 	inherited?: Record<string, Record<string, StoredInheritance>>;
+	checkRuns?: Record<string, Record<string, string>>;
 };
 
+// Version 12 lets a revision hold, per check, the request key of the check run that wrote its sightings, and a dismissal
+// hold the key that stood for its sighting. A version 11 document holds neither and reads unchanged; an older Melian
+// refuses version 12, so it never writes a sighting under a stamp it would leave standing.
 // Version 11 lets a dismissal record the severity and sighting it was made at. It lets a revision hold its
 // restatements' links, each inheriting a dismissal or naming one as a likely match. A version 10 document holds
 // neither and reads unchanged.
@@ -100,7 +108,7 @@ export type FindingsState = {
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 11,
+	version: 12,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -129,6 +137,19 @@ export const FindingsDocument = defineDoc<FindingsState>({
 
 function producerKey(source: FindingSource): string {
 	return `${source.check}@${source.version ?? ""}`;
+}
+
+// Deletes the stamp `check` holds at `revision`, in the commit of any write that changes its sightings there.
+function unstamp(state: FindingsState, revision: string, check: string): void {
+	const stamps = state.checkRuns?.[revision];
+	if (stamps?.[check] === undefined) return;
+	delete stamps[check];
+	if (Object.keys(stamps).length === 0) delete state.checkRuns![revision];
+}
+
+/** The request key of the check run whose terminal commit wrote every sighting `check` has at `revision`, if one stands. */
+export function stampOf(state: FindingsState | undefined, revision: string, check: string): string | undefined {
+	return state?.checkRuns?.[revision]?.[check];
 }
 
 // Whether `source` has sighted finding `id` at `revision`.
@@ -415,6 +436,7 @@ export async function upsertFinding(
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	if (!state.revisions.includes(revision)) state.revisions.push(revision);
 	bump(state, [revision]);
+	unstamp(state, revision, properties.source.check);
 	const key = producerKey(properties.source);
 	const previous = state.items[properties.id];
 	if (previous === undefined) {
@@ -476,7 +498,8 @@ export async function upsertFinding(
  * Makes `findings` the whole of what `check` sights at `revision`, a {@link Revision.key}: removes the check's earlier sightings there, of any
  * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
  * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
- * a check that failed, so a failed rerun leaves nothing of an earlier run behind.
+ * a check that failed, so a failed rerun leaves nothing of an earlier run behind. `request`, the run's request key,
+ * stamps the check at `revision` last; without it the check's stamp there is deleted.
  */
 export async function replaceCheckFindings(
 	tx: Tx,
@@ -484,8 +507,10 @@ export async function replaceCheckFindings(
 	check: string,
 	revision: string,
 	findings: readonly Finding[],
+	request?: string,
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	unstamp(state, revision, check);
 	const reported = new Set(findings.map((finding) => `${finding.id}\0${producerKey(finding.properties.source)}`));
 	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 	const { items } = state;
@@ -506,6 +531,10 @@ export async function replaceCheckFindings(
 		else items[id] = { ...record, sightings };
 	}
 	if (removed) bump(state, [revision]);
+	if (request !== undefined) {
+		state.checkRuns ??= {};
+		state.checkRuns[revision] = { ...state.checkRuns[revision], [check]: request };
+	}
 }
 
 /**
@@ -550,6 +579,7 @@ export async function dismissFinding(
 	const atRevision = judgedAt(record, accepting, selected(producers));
 	const { winner } = adjudicate(atRevision, true);
 	const trigger = winner.properties.trigger;
+	const run = stampOf(state, accepting, winner.properties.source.check);
 	const shown =
 		severity === undefined
 			? {}
@@ -559,6 +589,7 @@ export async function dismissFinding(
 						revision: accepting,
 						// A commit's document view refuses structuredClone, so the copy goes through JSON.
 						sighting: JSON.parse(JSON.stringify(winner)) as ProducerFinding,
+						...(run === undefined ? {} : { run }),
 					},
 				};
 	const proof = unionOf([
@@ -615,6 +646,7 @@ export async function clearSightings(
 	sources: readonly FindingSource[],
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	for (const { check } of sources) unstamp(state, revision, check);
 	const keys = new Set(sources.map(producerKey));
 	let cleared = false;
 	for (const [id, record] of Object.entries(state.items)) {

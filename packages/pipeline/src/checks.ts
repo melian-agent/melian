@@ -73,20 +73,11 @@ export type CheckRunRecord =
  */
 export type RunIdentity = { base: string; head: string; tier: string; policy: string; task: number };
 
-// The runs runChecks returned in this process. A run built anywhere else names a request it may never have run under.
-const ranHere = new WeakSet<CheckRun>();
-
-export function ranInThisProcess(run: CheckRun): boolean {
-	return ranHere.has(run);
-}
-
 /** One run of a tier: its identity, and one record per check the tier names, in the tier's order. */
 export interface CheckRun {
 	readonly identity: RunIdentity;
 	/** The full key of the request every check of the run answers, which `identity` holds only a prefix of. */
 	readonly request: string;
-	/** The request itself, whose key is `request`. A run without it proves no version of Melian's check code. */
-	readonly asked?: KeyedRequest<RecordJson>;
 	readonly records: readonly CheckRunRecord[];
 }
 
@@ -97,15 +88,19 @@ type Runs = {
 	tasks: Record<string, number>;
 	// The latest check parent's authority includes its task ID, so older children stay retired when a policy key returns.
 	owners?: Record<string, string>;
+	// Each run's whole request by its key, written once when a run is first asked under the key. Nothing removes one: a
+	// stamp or a dismissal may name any key, and an entry is as large as one request.
+	requests?: Record<string, RecordJson>;
 };
 
 export const ChecksDocument = defineDoc<Runs>({
 	kind: "melian.checks",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ runs: {}, tasks: {} }),
+	// Version 5 keeps each run's whole request by its key; a version 4 document has none, and reads unchanged.
 	// Version 4 lets a mutation record be `provisional`; a version 3 document has none, and reads unchanged. An older
 	// Melian refuses version 4, so it never takes a provisional record for a run that may approve.
 	migrate: (value, from) => {
@@ -164,6 +159,9 @@ interface CheckInput {
 	readonly authority?: string;
 	// The `LANG` the run's key read, which the tools run with. Absent in an input an earlier build stored.
 	readonly lang?: string | null;
+	// The run's whole request key, which the check stamps on its sightings. Absent in an input an earlier build stored,
+	// whose sightings then carry no stamp.
+	readonly request?: string;
 }
 
 type Outcome =
@@ -374,13 +372,13 @@ function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>
 function checkTask(environment: NodeJS.ProcessEnv) {
 	return defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, CheckRunRecord>({
 		name: "melian.check",
-		version: 4,
-		// Version 4 adds `lang`, so a build that would run the tools under its own locale refuses the task. A version-3
-		// task already records its timing start.
+		version: 5,
+		// Version 5 adds `request`, so a build that would write the sightings without their stamp refuses the task. Version
+		// 4 added `lang`. A version-3 or later task already records its timing start.
 		migrate: (input, checkpoint, from) => ({
 			input: input as unknown as CheckInput,
 			checkpoint:
-				from === 3 ? (checkpoint as { phase: "run" }) : { ...(checkpoint as { phase: "run" }), legacyTiming: true },
+				from >= 3 ? (checkpoint as { phase: "run" }) : { ...(checkpoint as { phase: "run" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "run" }),
 		phases: {
@@ -471,7 +469,7 @@ function checkTask(environment: NodeJS.ProcessEnv) {
 					await timing.end(tx);
 					if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
 					const findings = outcome?.report?.findings ?? [];
-					await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
+					await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings, task.input.request);
 					runs[run] = { ...runs[run], [check]: record };
 					return { status: "terminal", outcome: { status: "completed", result: record } };
 				}, context);
@@ -509,6 +507,8 @@ interface ChecksInput {
 	readonly cold?: boolean;
 	// The `LANG` the run's key read. Absent in an input an earlier build stored.
 	readonly lang?: string | null;
+	// The run's whole request key, which `identity` holds only a prefix of. Absent in an input an earlier build stored.
+	readonly request?: string;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
 	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
@@ -524,16 +524,17 @@ function skippedReason(check: string): string | undefined {
 // A tier's checks on one revision: one child task per deterministic check, waited on together.
 const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	name: "melian.checks",
-	// Version 3 adds `lang`, so a build that would run the tools under its own locale refuses the task.
-	version: 3,
+	// Version 4 adds `request`, so a build that would create check tasks without it refuses the task. Version 3 added
+	// `lang`.
+	version: 4,
 	migrate: (input, checkpoint, from) => {
-		if (from !== 2) throw new Error(`melian.checks cannot resume a version-${from} task`);
+		if (from !== 2 && from !== 3) throw new Error(`melian.checks cannot resume a version-${from} task`);
 		return { input: input as unknown as ChecksInput, checkpoint: checkpoint as unknown as ChecksState };
 	},
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
-			const { changeset, config, source, tier, rerun, writer, cold, lang } = task.input;
+			const { changeset, config, source, tier, rerun, writer, cold, lang, request } = task.input;
 			const run = identityKey({ ...task.input.identity, task: runtime.taskId });
 			let checks: string[];
 			try {
@@ -569,6 +570,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								created: Date.now(),
 								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
 								...(lang === undefined ? {} : { lang }),
+								...(request === undefined ? {} : { request }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
@@ -784,6 +786,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		writer: input.writer,
 		...(input.cold === true ? { cold: true } : {}),
 		lang,
+		request,
 	};
 	// An unknown tier fails the checks task with its own error, so it is not this call's to report.
 	let knownTier = true;
@@ -799,6 +802,8 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	const start = (rerun: ChecksInput["rerun"] | undefined, stale: number | undefined, restart: boolean) =>
 		root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
+			runs.requests ??= {};
+			if (runs.requests[request] === undefined) runs.requests[request] = asked.request;
 			const existing = runs.tasks[key];
 			if (existing !== undefined && existing !== stale && !restart && reusable)
 				return existing as TaskId<CheckRunRecord[]>;
@@ -846,9 +851,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	}
 	const { outcome } = settled.state;
 	if (outcome.status === "completed") {
-		const run: CheckRun = { identity: { ...identity, task: taskId }, request, asked, records: outcome.result };
-		ranHere.add(run);
-		return run;
+		return { identity: { ...identity, task: taskId }, request, records: outcome.result };
 	}
 	if (outcome.status === "failed") {
 		const code = (outcome.error.detail as { code?: CheckErrorCode } | undefined)?.code ?? "notCompleted";

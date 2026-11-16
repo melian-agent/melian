@@ -9,6 +9,7 @@ import {
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	type RecordJson,
 	Revision,
 	reviewPayloads,
 	SharedRecord,
@@ -29,6 +30,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ChecksDocument } from "../src/checks.ts";
 import { replaceCheckFindings } from "../src/findings.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -77,23 +79,34 @@ const sighting = (text: string | undefined) =>
 		source: { check: "static.biome", version: "2.5.0" },
 	});
 
-// A check run whose request asks for `versions` of Melian's own check code, keyed as the request it carries.
+// A request for `versions` of Melian's own check code, and a check run that names it by `key`, its own by default.
+const askFor = (versions: Record<string, number>) => KeyedRequest.of("check", { checks: versions });
 const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
-	const asked = KeyedRequest.of("check", { checks: versions });
+	const asked = askFor(versions);
 	return {
 		identity: { base: "b".repeat(40), head: "c".repeat(40), tier: "full", policy: asked.key.slice(0, 16), task: 7 },
 		request: key ?? asked.key,
-		asked,
 		records: checks,
 	};
 };
 const current = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 2, "static.mutation": 2 };
+const asked = askFor(current);
+
+// What the host's store holds beside the sightings: the request key each check's terminal commit stamped, and the
+// requests the checks document keeps by key.
+type Store = {
+	readonly stamps?: { readonly biome?: string; readonly tsc?: string };
+	readonly requests?: Readonly<Record<string, RecordJson>>;
+};
+// A store a run under the current request wrote: both checks stamped with its key, and the request kept under it.
+const proven: Store = { stamps: { biome: asked.key, tsc: asked.key }, requests: { [asked.key]: asked.request } };
 
 // One review of the fixture, after the host's store already holds Biome's sighting of the revision, holding `text`.
 async function review(
 	store: MemoryRecordStore,
 	run: { readonly checkRun?: CheckRun; readonly asMade?: true } = {},
 	text: string | undefined = token,
+	held: Store = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
@@ -114,10 +127,13 @@ async function review(
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
 	const root = await harness.root(context);
-	await root.commit(
-		(tx) => replaceCheckFindings(tx, root.id, "static.biome", Revision.key(changeset.revision), [sighting(text)]),
-		context,
-	);
+	const at = Revision.key(changeset.revision);
+	await root.commit(async (tx) => {
+		const runs = await tx.doc(ChecksDocument, root.id);
+		runs.requests = structuredClone({ ...held.requests });
+		await replaceCheckFindings(tx, root.id, "static.biome", at, [sighting(text)], held.stamps?.biome);
+		await replaceCheckFindings(tx, root.id, "static.tsc", at, [], held.stamps?.tsc);
+	}, context);
 	const { verdict } = await reviewChangeset({
 		harness,
 		changeset,
@@ -147,11 +163,16 @@ async function review(
 }
 
 const bytes = (stored: readonly RecordEnvelope[]) => JSON.stringify(stored);
-const biomeRecord = (stored: readonly RecordEnvelope[]) =>
+const checkRecord = (stored: readonly RecordEnvelope[], name: string) =>
 	stored.find(
-		({ kind, payload }) =>
-			kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
+		({ kind, payload }) => kind === "check" && (payload as { result: { name: string } }).result.name === name,
 	)!.payload as { result: { status: string; reason?: string }; sightings: unknown[] };
+const biomeRecord = (stored: readonly RecordEnvelope[]) => checkRecord(stored, "static.biome");
+const withheldRecord = (name: string) => ({
+	v: 1,
+	result: { name, status: "failed", reason: "withheld", error: expect.any(String) },
+	sightings: [],
+});
 
 function readBack(reviewed: Awaited<ReturnType<typeof review>>) {
 	const rounds = reviewed.stored.filter(({ kind }) => kind === "round");
@@ -162,24 +183,59 @@ function readBack(reviewed: Awaited<ReturnType<typeof review>>) {
 	});
 }
 
+const old = askFor({ ...current, "static.biome": 1 });
+
+describe("a static check's sightings, exported from a run the store proves wrote them", () => {
+	it("are shared, with each static check's record, when its stamp and stored request prove the run", async () => {
+		const reviewed = await review(
+			new MemoryRecordStore({ payloads: reviewPayloads }),
+			{ checkRun: runUnder(current) },
+			undefined,
+			proven,
+		);
+
+		expect(biomeRecord(reviewed.stored)).toMatchObject({ result: { name: "static.biome", status: "ran" } });
+		expect(biomeRecord(reviewed.stored).sightings).toHaveLength(1);
+		expect(checkRecord(reviewed.stored, "static.tsc")).toMatchObject({
+			result: { name: "static.tsc", status: "ran" },
+			sightings: [],
+		});
+	});
+});
+
 describe("a static check's sightings, exported from a run that does not prove the text they hold is Melian's", () => {
-	it.each<[string, { readonly checkRun?: CheckRun }]>([
-		["bare check records", {}],
-		["a run of a build whose Biome check stored its text", { checkRun: runUnder({ ...current, "static.biome": 1 }) }],
-		["a run whose request is not the one it was keyed by", { checkRun: runUnder(current, "d".repeat(64)) }],
-		["a run that carries no request", { checkRun: { ...runUnder(current), asked: undefined } }],
-		// A caller can hand in any run beside the sightings, so a request that names current code proves nothing.
-		["a run handed in whose request names current check code", { checkRun: runUnder(current) }],
-	])("leave no tool text in the record, from %s", async (_, run) => {
-		const reviewed = await review(new MemoryRecordStore({ payloads: reviewPayloads }), run);
+	it.each<[string, { readonly checkRun?: CheckRun }, Store]>([
+		["bare check records", {}, proven],
+		[
+			"a run whose sightings carry no stamp",
+			{ checkRun: runUnder(current) },
+			{ ...proven, stamps: { tsc: asked.key } },
+		],
+		[
+			"a run whose sightings another run stamped",
+			{ checkRun: runUnder(current) },
+			{ ...proven, stamps: { biome: "d".repeat(64), tsc: asked.key } },
+		],
+		// A caller can hand in any run beside the sightings, so a request the store never kept proves nothing.
+		["a run whose request the store never kept", { checkRun: runUnder(current) }, { stamps: proven.stamps }],
+		[
+			"a run whose stored request was edited after it was keyed",
+			{ checkRun: runUnder(current) },
+			{ ...proven, requests: { [asked.key]: old.request } },
+		],
+		[
+			"a run of a build whose Biome check stored its text",
+			{ checkRun: runUnder({ ...current, "static.biome": 1 }) },
+			{ stamps: { biome: old.key, tsc: old.key }, requests: { [old.key]: old.request } },
+		],
+	])("leave no tool text in the record, from %s", async (_, run, held) => {
+		const reviewed = await review(new MemoryRecordStore({ payloads: reviewPayloads }), run, token, held);
 
 		expect(reviewed.verdict.blocking).toBe(true);
 		expect(bytes(reviewed.stored)).not.toContain(token);
-		expect(biomeRecord(reviewed.stored)).toEqual({
-			v: 1,
-			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },
-			sightings: [],
-		});
+		expect(biomeRecord(reviewed.stored)).toEqual(withheldRecord("static.biome"));
+		// tsc found nothing, so its record holds no sighting to withhold.
+		expect(checkRecord(reviewed.stored, "static.tsc")).toMatchObject({ result: { status: "ran" }, sightings: [] });
 	});
 
 	it("never read back as passed on another host, where the host's own verdict blocks on them", async () => {
