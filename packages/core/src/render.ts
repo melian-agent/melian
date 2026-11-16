@@ -159,7 +159,7 @@ export function describeLineage({ model, wanted, by, moved, outside, thinking, a
 		thinking === undefined
 			? ""
 			: `; thinking ${thinking.level} set by ${thinking.by}; policy wants ${thinking.wanted}`;
-	const own = answeredAt === undefined ? "" : `; it answered at thinking ${answeredAt}, its own entry's level`;
+	const own = answeredAt === undefined ? "" : `; it answered at thinking ${answeredAt}`;
 	return `on ${model}, ${why}, ${policy} ${outside ? "does not accept" : "accepts"} ${model}${reasoning}${own}`;
 }
 

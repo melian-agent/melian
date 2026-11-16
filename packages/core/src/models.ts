@@ -27,6 +27,26 @@ export function fallbackEntry(model: string, thinking: ModelRoute["thinking"]): 
 	return thinking === undefined ? model : { model, thinking };
 }
 
+/**
+ * The route that runs `models` in order at `thinking`, each model that names its own level at that one. A first model
+ * with a level of its own, a fallback promoted past models no credential reaches, becomes the route's level, and each
+ * later model that names none keeps `thinking` by naming it.
+ */
+export function routeInOrder(
+	models: readonly { readonly model: string; readonly thinking?: ModelRoute["thinking"] }[],
+	thinking: ModelRoute["thinking"],
+): ModelRoute {
+	const [first, ...rest] = models;
+	const level = first?.thinking ?? thinking;
+	const fallbacks = rest.map((each) =>
+		fallbackEntry(each.model, each.thinking ?? (level === thinking ? undefined : thinking)),
+	);
+	return {
+		...(level === undefined ? {} : { thinking: level }),
+		...(first === undefined ? {} : { model: first.model, fallbacks }),
+	};
+}
+
 /** The model a fallback entry names. */
 export function fallbackModel(entry: FallbackEntry): string {
 	return typeof entry === "string" ? entry : entry.model;

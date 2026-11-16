@@ -13,7 +13,6 @@ import {
 	type EscalationTrigger,
 	type Finding,
 	type FindingSource,
-	fallbackEntry,
 	GraphSnapshot,
 	Lens,
 	type LensBudget,
@@ -42,6 +41,7 @@ import {
 	type RoutedModel,
 	resolveModelForTier,
 	resolveModelRoute,
+	routeInOrder,
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
@@ -1209,23 +1209,14 @@ class LevelRoute {
 		const at = `lenses.${lens.name}.route`;
 		const planned = plan?.lensRoute(lens.name, lens.scope, level);
 		if (plan !== undefined && planned !== undefined) {
-			const [first, ...rest] =
-				planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
+			const models = planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
 			return new LevelRoute({
 				key: `${at} ${lens.scope} ${level}`,
 				on: at,
 				tier: at,
 				at,
 				noun: at,
-				route: {
-					...(planned.thinking === undefined ? {} : { thinking: planned.thinking }),
-					...(first === undefined
-						? {}
-						: {
-								model: first.model,
-								fallbacks: rest.map(({ model, thinking }) => fallbackEntry(model, thinking)),
-							}),
-				},
+				route: routeInOrder(models, planned.thinking),
 				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
 			});
 		}

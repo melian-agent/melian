@@ -146,6 +146,56 @@ describe("a fallback's own thinking level", () => {
 		]);
 	});
 
+	it("runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's", () => {
+		const plan = planOf({
+			heavy: {
+				model: "nowhere/first",
+				thinking: "low",
+				fallbacks: [{ model: "faux/second", thinking: "medium" }, "faux/third"],
+			},
+		});
+		expect(plan.routes().heavy).toEqual({
+			model: "faux/second",
+			thinking: "medium",
+			fallbacks: [{ model: "faux/third", thinking: "low" }],
+		});
+	});
+
+	it("says a fallback that names no level runs at a promoted fallback's, when the route names none", () => {
+		const plan = planOf({
+			heavy: { model: "nowhere/first", fallbacks: [{ model: "faux/second", thinking: "medium" }, "faux/third"] },
+		});
+		expect(plan.tier("heavy").models).toEqual([
+			{ model: "faux/second", credential: "test", family: "second", thinking: "medium" },
+			{ model: "faux/third", credential: "test", family: "third", thinking: "medium" },
+		]);
+		expect(plan.routes().heavy).toEqual({
+			model: "faux/second",
+			thinking: "medium",
+			fallbacks: [{ model: "faux/third", thinking: "medium" }],
+		});
+		expect(plan.lines().map((line) => line.text)).toContain(
+			"heavy: faux/second at medium with test, then faux/third at medium with test; routed by melian.yaml",
+		);
+	});
+
+	it("names a promoted fallback's level as the one a later bare fallback answered at, when the route names none", () => {
+		const plan = planOf({
+			verifier: {
+				model: "nowhere/first",
+				fallbacks: [{ model: "faux/second", thinking: "medium" }, "faux/third"],
+				accept: ["nowhere/first"],
+			},
+		});
+		expect(plan.verifierLineage("faux/third")).toEqual({
+			model: "faux/third",
+			wanted: "nowhere/first",
+			by: "melian.yaml",
+			outside: true,
+			answeredAt: "medium",
+		});
+	});
+
 	it("runs a verifier borrowing a lens tier at verifier thinking, not the tier's fallback level", () => {
 		const plan = planOf({
 			heavy: { model: "faux/first", fallbacks: [{ model: "faux/second", thinking: "high" }] },
@@ -196,7 +246,7 @@ describe("the lineage of a fallback with its own level", () => {
 
 	it("says in the verdict and in doctor the level a fallback answered at", () => {
 		const plan = verifier({ model: "faux/second", thinking: "medium" });
-		const own = "it answered at thinking medium, its own entry's level";
+		const own = "it answered at thinking medium";
 		expect(describeLineage(plan.verifierLineage("faux/second")!)).toBe(
 			`on faux/second, set by melian.yaml, where policy wants faux/first and does not accept faux/second; ${own}`,
 		);
@@ -213,7 +263,7 @@ describe("the lineage of a fallback with its own level", () => {
 			},
 		});
 		expect(plan.lines().map(({ text }) => text)).toContain(
-			"verifier runs faux/second, set by melian.yaml; the committed route wants faux/gone, and does not accept faux/second; it answers at thinking medium, its own entry's level",
+			"verifier runs faux/second, set by melian.yaml; the committed route wants faux/gone, and does not accept faux/second; it answers at thinking medium",
 		);
 		expect(
 			planOf({

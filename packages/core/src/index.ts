@@ -286,6 +286,7 @@ export {
 	type RoutedModel,
 	resolveModelForTier,
 	resolveModelRoute,
+	routeInOrder,
 } from "./models.ts";
 export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";

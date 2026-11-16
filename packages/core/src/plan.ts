@@ -8,7 +8,7 @@ import {
 	type RouteLineage,
 } from "./config.ts";
 import { defaultScrutinyLevel, type Lens, type ScrutinyLevel, scrutinyLevels } from "./lens.ts";
-import { type FallbackEntry, fallbackEntry, fallbackModel, fallbackThinking, parseModelReference } from "./models.ts";
+import { type FallbackEntry, fallbackModel, fallbackThinking, parseModelReference, routeInOrder } from "./models.ts";
 import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
@@ -334,13 +334,17 @@ export class ReviewPlan {
 			return catalog.find((model) => model.provider === provider && model.id === modelId);
 		};
 		const usable = (name: string) => entry(name) !== undefined && Object.hasOwn(credentials, entry(name)!.provider);
-		const planned = (names: readonly string[]) =>
-			names.map((model) => ({
+		// A route with no level of its own runs at its first model's, so a fallback promoted to first with a level gives
+		// it to each later model that names none.
+		const planned = (names: readonly string[]) => {
+			const inherited = effective?.thinking === undefined && names[0] !== undefined ? own(names[0]) : undefined;
+			return names.map((model) => ({
 				model,
 				credential: credentials[parse(model).provider] ?? "none",
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
-				...(own(model) === undefined ? {} : { thinking: own(model) }),
+				...((own(model) ?? inherited) === undefined ? {} : { thinking: own(model) ?? inherited }),
 			}));
+		};
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>
 			name === policy?.model ||
@@ -538,13 +542,8 @@ export class ReviewPlan {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
 		for (const { tier, status, models, thinking } of this.tiers) {
 			if (thinking !== undefined) routes[tier] = { thinking };
-			const [first, ...rest] = models;
-			if (first === undefined || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = {
-				...routes[tier],
-				model: first.model,
-				fallbacks: rest.map(({ model, thinking }) => fallbackEntry(model, thinking)),
-			};
+			if (models.length === 0 || (status !== "routed" && status !== "uncredentialed")) continue;
+			routes[tier] = routeInOrder(models, thinking);
 		}
 		return routes;
 	}
@@ -982,7 +981,7 @@ export class ReviewPlan {
 			thinking === undefined
 				? ""
 				: `; thinking ${thinking.level} set by ${thinking.by}; committed policy wants ${thinking.wanted}`;
-		const own = answeredAt === undefined ? "" : `; it answers at thinking ${answeredAt}, its own entry's level`;
+		const own = answeredAt === undefined ? "" : `; it answers at thinking ${answeredAt}`;
 		if (wanted === undefined)
 			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}${own}`;
 		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}${own}`;
