@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
 	type ConfigFor,
+	canonicalJson,
 	configLookup,
 	type Finding,
 	Lens,
@@ -14,6 +15,10 @@ import {
 import { lensSource } from "./lens-tools.ts";
 
 const policyReview = "guardrail/policy-change-review";
+
+// YAML keeps the order a file writes its keys in, and resolution looks each one up, so order must not move the hash.
+// The JSON round trip drops the absent fields canonical JSON refuses.
+const canonical = (value: unknown) => canonicalJson(JSON.parse(JSON.stringify(value)));
 
 /**
  * The policy a review's findings resolve under, and a fingerprint of what decides resolution: every path's table,
@@ -119,12 +124,12 @@ export async function configsFor(
 					const [entry, scope] = Object.hasOwn(lensVariants, variant)
 						? [lensVariants[variant], variantScopes[variant]]
 						: [defaultsAt.get(path)![name], nearestScopesAt.get(path)![name]];
-					return JSON.stringify([path, name, scope ?? null, entry]);
+					return canonical([path, name, scope ?? null, entry]);
 				}),
 		)
 		.sort();
 	const fingerprint = `2:${createHash("sha256")
-		.update(JSON.stringify([byPath, declared]))
+		.update(canonical([byPath, declared]))
 		.digest("hex")
 		.slice(0, 16)}`;
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;

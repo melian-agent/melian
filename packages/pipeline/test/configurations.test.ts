@@ -271,6 +271,37 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			);
 		});
 
+		it("does not depend on the order of the keys a policy file writes", async () => {
+			const policy = (resolution: string, aliases: string, lens: string) => ({
+				"melian.yaml": lines("resolution:", resolution, "ruleAliases:", aliases),
+				".melian/lenses/cleanup/LENS.md": lensFile("cleanup", lens),
+			});
+			const reports = async (sha: string) => {
+				const loaded = await Lens.everywhere(repo, { kind: "revision", commit: sha });
+				const version = loaded.find((lens) => lens.name === "cleanup")!.version;
+				return [finding({ source: { check: "lens.cleanup", version } })];
+			};
+			const written = commit(
+				repo,
+				policy(
+					"  { P2: acknowledge, P3: advisory }",
+					"  { reuse: [repeat], other: [again] }",
+					"resolution: { P2: block, ceiling: acknowledge }",
+				),
+			);
+			const reordered = commit(
+				repo,
+				policy(
+					"  { P3: advisory, P2: acknowledge }",
+					"  { other: [again], reuse: [repeat] }",
+					"resolution: { ceiling: acknowledge, P2: block }",
+				),
+			);
+			expect(await fingerprintOf(reordered, await reports(reordered))).toBe(
+				await fingerprintOf(written, await reports(written)),
+			);
+		});
+
 		it("does not depend on the order of the findings, though their entries differ by path", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md":
