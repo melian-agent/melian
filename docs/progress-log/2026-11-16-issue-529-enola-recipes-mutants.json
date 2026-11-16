@@ -29,7 +29,15 @@
       "status": "generated",
       "id": "699c9178846c708e315336d621128ffdfce9d3454d8c60fae6b93d3721b3b8f4",
       "claim": "killed",
-      "evidence": "packages/core/test/enola.test.ts :: reads every path Enola loads policy from, and nothing beside them, from the base",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "revision Enola policy limits",
+            "reads every path Enola loads policy from, and nothing beside them, from the base"
+          ]
+        }
+      },
       "survivorClasses": [
         "seeded-default"
       ]
@@ -97,7 +105,15 @@
       "status": "generated",
       "id": "422375c59f767d901420742f0697c334d9e52a3dcd058e8b6e1b7e282f6ec0c1",
       "claim": "killed",
-      "evidence": "packages/core/test/enola.test.ts :: reads every path Enola loads policy from, and nothing beside them, from the base",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "revision Enola policy limits",
+            "reads every path Enola loads policy from, and nothing beside them, from the base"
+          ]
+        }
+      },
       "survivorClasses": [
         "seeded-default"
       ]
@@ -139,7 +155,15 @@
       "status": "generated",
       "id": "773616379bd258d713c3916d509348b590897cf27aafd905ababf7e1be3cbf32",
       "claim": "killed",
-      "evidence": "packages/core/test/enola.test.ts :: reads every path Enola loads policy from, and nothing beside them, from the base",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "revision Enola policy limits",
+            "reads every path Enola loads policy from, and nothing beside them, from the base"
+          ]
+        }
+      },
       "survivorClasses": []
     },
     {
@@ -192,7 +216,15 @@
       "status": "generated",
       "id": "b2c5a9d82c3ee6a67845671114e31fce6ba75c32f2d2dfbdf3af694dc4f11e96",
       "claim": "killed",
-      "evidence": "packages/core/test/enola.test.ts :: reads every path Enola loads policy from, and nothing beside them, from the base",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "revision Enola policy limits",
+            "reads every path Enola loads policy from, and nothing beside them, from the base"
+          ]
+        }
+      },
       "survivorClasses": [
         "seeded-default"
       ]
@@ -208,7 +240,15 @@
       "status": "generated",
       "id": "deee2a2eb82bb6a27598cfc65e6bc72c459bf751bccd5d7acd69bbb4e3d43640",
       "claim": "killed",
-      "evidence": "packages/core/test/enola.test.ts :: reads every path Enola loads policy from, and nothing beside them, from the base",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "revision Enola policy limits",
+            "reads every path Enola loads policy from, and nothing beside them, from the base"
+          ]
+        }
+      },
       "survivorClasses": []
     },
     {
@@ -300,7 +340,15 @@
       "status": "generated",
       "id": "1f0155bc93853189bb501eaf2a2bfe59da7cc87b736b397dbd722a9ed8e5ae6f",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/enola-static.test.ts :: compares head against a generated base, applies base policy, and leaves no worktree",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/enola-static.test.ts",
+          "path": [
+            "static.enola",
+            "compares head against a generated base, applies base policy, and leaves no worktree"
+          ]
+        }
+      },
       "survivorClasses": [
         "seeded-default"
       ]
@@ -329,7 +377,15 @@
       "status": "generated",
       "id": "92aaf20923cd6f9d76ea657af61c33c6e74f57d3b663a6896eaf25d21f9539ce",
       "claim": "killed",
-      "evidence": "packages/pipeline/test/enola-static.test.ts :: compares head against a generated base, applies base policy, and leaves no worktree",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/enola-static.test.ts",
+          "path": [
+            "static.enola",
+            "compares head against a generated base, applies base policy, and leaves no worktree"
+          ]
+        }
+      },
       "survivorClasses": []
     },
     {
