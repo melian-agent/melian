@@ -16,7 +16,7 @@ import { lensSource } from "./lens-tools.ts";
 
 const policyReview = "guardrail/policy-change-review";
 // Raised whenever the fingerprint's computation changes, so a stored fingerprint says which computation made it.
-export const fingerprintVersion = "3:";
+export const fingerprintVersion = 3;
 
 // YAML keeps the order a file writes its keys in, and resolution looks each one up, so order must not move the hash.
 // The JSON round trip drops the absent fields canonical JSON refuses.
@@ -130,7 +130,7 @@ export async function configsFor(
 				}),
 		)
 		.sort();
-	const fingerprint = `${fingerprintVersion}${createHash("sha256")
+	const fingerprint = `${fingerprintVersion}:${createHash("sha256")
 		.update(canonical([byPath, declared]))
 		.digest("hex")
 		.slice(0, 16)}`;

@@ -13,12 +13,13 @@ Example: `packages/pipeline/test/caveats-reopen.test.ts` opens a store `main` wr
 
 ## Choice
 
-The fingerprint's version moves from `2:` to `3:`. When the stored fingerprint names an older version and the review read its policy from a commit, a dismissal decides again under the current computation: a commit cannot change, so only the computation differs.
+The fingerprint's version moves from `2:` to `3:`, held as the number `fingerprintVersion` in `packages/pipeline/src/configurations.ts`. When the stored fingerprint names an older version and the review read its policy from a commit, a dismissal decides again under the current computation: a commit cannot change, so only the computation differs.
 
 The refusal stands everywhere else:
 
 - A working-tree policy can change under one source, so an older version there is still refused.
 - A fingerprint of the current version that differs is a different policy, whatever the source.
 - A fingerprint with no version, the first recipe, stays refused, as the retired-fingerprints decision ruled.
+- A fingerprint of a later version than the build's own is refused. Problem: a first form treated every version but the current one as older. Example: a store a newer Melian wrote holds `4:`; rolled back to this build, a dismissal would skip the comparison and decide under a computation that may miss inputs `4:` covers. Solution: only a version below the build's decides again. Codex's review found it.
 
 The account reader still compares fingerprints exactly, so a recorded round from before the change reads not reviewed. This ruling covers dismissals only.

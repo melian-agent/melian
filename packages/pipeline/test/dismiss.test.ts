@@ -1334,7 +1334,9 @@ describe("recording a dismissal", () => {
 			scriptFinding();
 			const changeset = await Changeset.resolve(repo, "main...feature");
 			const policy =
-				source === "revision" ? { kind: "revision" as const, commit: changeset.revision.base } : { kind: "worktree" as const };
+				source === "revision"
+					? { kind: "revision" as const, commit: changeset.revision.base }
+					: { kind: "worktree" as const };
 			const { findings } = await reviewChangeset({
 				harness,
 				changeset,
@@ -1373,6 +1375,15 @@ describe("recording a dismissal", () => {
 
 		it("refuses a fingerprint of the retired recipe, which names no version, though the policy came from a commit", async () => {
 			const { recorded } = await dismissStoredWith("0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a fingerprint of a later computation than this build's, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("4:0000000000000000", "revision");
 
 			await expect(recorded).rejects.toMatchObject({
 				code: "adjudicationFailed",
