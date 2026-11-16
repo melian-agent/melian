@@ -220,6 +220,14 @@ describe("an exported record keeps what Melian defines", () => {
 		});
 	});
 
+	it("exports a sighting of a check that names no version as it was found", () => {
+		const finding = sighting(undefined);
+		const result = { name: "static.biome", status: "ran", findings: 1, notes: [] } as CheckRunRecord;
+		expect((payload(records.check("e".repeat(64), result, [finding])).sightings as StoredFinding[])[0]).toStrictEqual(
+			finding,
+		);
+	});
+
 	it("keeps a lens's own version where a finding's source names it", () => {
 		const finding = sighting("abc@careful", "lens.security");
 		const claims = [{ id: finding.properties.id, source: finding.properties.source, verification: verdict }];
