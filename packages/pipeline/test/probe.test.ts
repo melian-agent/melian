@@ -240,7 +240,9 @@ describe("Probe.open", () => {
 		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
 		expect(runner).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
-		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/);
+		expect(watchdog).toMatch(
+			/^import \{ writeFileSync \} from "node:fs";\nsetTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\nwriteFileSync\(new URL\("\.\.\/run\/started", import\.meta\.url\), ""\);\n$/,
+		);
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
 	});
@@ -1118,6 +1120,23 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it("refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started", async () => {
+		let runs = 0;
+		const { sandbox } = passthrough({
+			wrap: (async (command: string) => ["/bin/bash", "-c", ++runs === 1 ? command : "exit 1"]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			expect((await probe.run()).exitCode).toBe(0);
+			await expect(probe.run()).rejects.toMatchObject({
+				code: "sandboxUnavailable",
+				message: "the probe never started: its sandbox exited 1",
+			});
+		} finally {
+			await probe.close();
+		}
+	});
+
 	it.each([
 		["settles", true],
 		["never settles", false],
@@ -1318,10 +1337,13 @@ describe("Probe.availability", () => {
 		const failing = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
 		expect(await Probe.availability(failing.sandbox)).toEqual({
 			available: false,
-			reason: "an empty probe exited 4: broken",
+			reason: "the probe never started: its sandbox exited 4: broken",
 		});
 		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
-		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
+		expect(await Probe.availability(silent.sandbox)).toEqual({
+			available: false,
+			reason: "the probe never started: its sandbox exited 5",
+		});
 		expect(left()).toEqual([]);
 	});
 

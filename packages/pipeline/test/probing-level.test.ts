@@ -116,6 +116,10 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
+// The probe's command with its script emptied, so its runner starts and the probe passes.
+const passingRun = (command: string) =>
+	`printf '' > ${command.slice(command.lastIndexOf(" ") + 1).replace("run.mjs", "probe.mjs")} && ${command}`;
+
 // Whether a probe is running in a tree of the head, asked while it runs: Probe starts every probe in its tree, and only
 // the head's holds files, the empty probe's that checks the sandbox none.
 function inHeadTree(command: string): boolean {
@@ -541,7 +545,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const error = await run.then(
 			() => undefined,
@@ -2144,7 +2148,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -3868,6 +3872,7 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		["timed out", "sleep 10"],
 		["was cut at its output limit", "yes x | head -c 40000"],
 		["was ended by a signal", "kill -9 $$"],
+		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
 	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(passing, [fauxAssistantMessage("Done.")], gaps, rewrite);
@@ -3877,6 +3882,26 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
 		]);
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it("fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[
+				fauxAssistantMessage("Done."),
+				call("skip_attack", { attack: 1, reason: "the sandbox did not start its probe" }),
+				fauxAssistantMessage("Skipped it."),
+			],
+			gaps,
+			"exit 1",
+		);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and 1 probe the deep prober asked for could not run",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
 	});
 
 	it.each([

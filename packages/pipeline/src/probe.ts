@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
 import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -19,8 +19,10 @@ function runnerSource(): string {
 	return `import "./${watchdogName}";\nimport "./${scriptName}";\n`;
 }
 
+// The watchdog also leaves a marker, before the probe is imported, that Probe.run reads back: a sandbox or Node that
+// fails to launch exits with a code of its own, which without the marker would read as the probe's.
 function watchdogSource(deadline: number): string {
-	return `setTimeout(() => process.exit(124), ${deadline}).unref();\n`;
+	return `import { writeFileSync } from "node:fs";\nsetTimeout(() => process.exit(124), ${deadline}).unref();\nwriteFileSync(new URL("../run/${startedName}", import.meta.url), "");\n`;
 }
 
 // The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer
@@ -172,6 +174,7 @@ const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
 const runnerName = "run.mjs";
 const watchdogName = "watchdog.mjs";
+const startedName = "started";
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
 const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
@@ -852,6 +855,7 @@ export class Probe {
 		let argv: readonly string[] | undefined;
 		let outcome: ProbeResult | undefined;
 		try {
+			rmSync(join(this.#scratch, "run", startedName), { force: true });
 			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
 			// probe's own time limit begins.
 			const wrapping = this.#sandbox.wrap(command, this.policy);
@@ -905,6 +909,18 @@ export class Probe {
 			// A run that settled keeps its result, with the failed stop as its error unless it already holds one.
 			if (outcome !== undefined && stopped !== undefined) outcome = { ...outcome, error: outcome.error ?? stopped };
 		}
+		const ended = !outcome.timedOut && !outcome.truncated && outcome.exitCode !== null;
+		if (
+			ended &&
+			!(await lstat(join(this.#scratch, "run", startedName)).then(
+				() => true,
+				() => false,
+			))
+		)
+			throw new ProbeError(
+				"sandboxUnavailable",
+				`the probe never started: its sandbox exited ${outcome.exitCode}${outcome.output === "" ? "" : `: ${outcome.output.trim()}`}`,
+			);
 		return outcome;
 	}
 
