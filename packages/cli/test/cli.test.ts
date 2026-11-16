@@ -18,7 +18,6 @@ import {
 	type DecisionRequest,
 	DirectoryRecordStore,
 	findingId,
-	type RecordEnvelope,
 	Rendering,
 	reviewPayloads,
 	SharedRecord,
