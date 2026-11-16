@@ -113,7 +113,7 @@ import {
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
-import { continuePrompt, lensRequest } from "./lens-request.ts";
+import { continuePrompt, lensRequest, type MutantLister } from "./lens-request.ts";
 import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
 	budgetEnded,
@@ -136,6 +136,7 @@ import {
 	skipAttack,
 } from "./lens-tools.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
+import { MutationEnumerationError, TypeScriptMutationAdapter } from "./mutation-enumeration.ts";
 import { Probe, type ProbeSandbox, probeLimits } from "./probe.ts";
 import {
 	type Attack,
@@ -2464,6 +2465,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		(basePolicy ??= loadConfig(repoRoot, { kind: "revision", commit: policyBase }, ".").then(
 			({ config: policy }) => policy,
 		));
+	// The instrumenter list_mutants asks, resolved as the tool resolves it, once and only for a lens offered the tool.
+	let lister: Promise<MutantLister> | undefined;
+	const mutantLister = () =>
+		(lister ??= TypeScriptMutationAdapter.open(repoRoot).then(
+			(adapter): MutantLister => ({ version: adapter.identity.toolVersion, source: adapter.source }),
+			(error: unknown): MutantLister => {
+				if (error instanceof MutationEnumerationError && error.code === "instrumenter") return "unavailable";
+				throw error;
+			},
+		));
 	let probesAsked: Promise<string | undefined> | undefined;
 	const probeRefused = () =>
 		(probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy, { repoRoot, head })));
@@ -2702,6 +2713,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				base,
 				head,
 				standards: quoted,
+				...(lens.tools.includes("list_mutants") ? { mutants: await mutantLister() } : {}),
 				...(config.triage.escalateAt === undefined ? {} : { escalateAt: config.triage.escalateAt }),
 				...(escalation === undefined
 					? {}
