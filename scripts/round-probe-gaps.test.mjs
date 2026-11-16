@@ -14,7 +14,7 @@ describe("round-probe-gaps", () => {
 			expect(probeGapLines(JSON.stringify([{ ...gap, cause }]))).toEqual([
 				`melian: lens.trust-boundary at deep could not probe here, ${cause}: ${sentence}`,
 			]);
-		expect(Object.keys(probeGapSentences)).toHaveLength(8);
+		expect(Object.keys(probeGapSentences)).toHaveLength(9);
 	});
 
 	it("prints one line for each gap, in order, and none for none", () => {
