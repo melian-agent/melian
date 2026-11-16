@@ -952,6 +952,42 @@ describe("a level that probes", () => {
 		);
 	});
 
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+		const { run, changeset } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			prober: [
+				// An attack skipped and then probed was probed, as the run's own record counts it.
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
+				call("run_probe", { attack: 2, script: passing }),
+				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
+				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const prober = telemetry.stages.find((stage) => stage.role === "prober");
+		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
+			id: expect.stringMatching(/^p[0-9]+$/),
+			attack,
+			ended,
+			exitCode,
+			signal: null,
+			timedOut: false,
+			truncated,
+			milliseconds: expect.any(Number),
+		});
+		expect(prober!.probes).toEqual({
+			count: 3,
+			milliseconds: expect.any(Number),
+			limit: 30_000,
+			attacks: 4,
+			skipped: [4],
+			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
+		});
+	});
+
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
 		const fake = createFakeModels();
 		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
