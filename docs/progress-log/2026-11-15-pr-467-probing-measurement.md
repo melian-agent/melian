@@ -2,19 +2,14 @@
 
 Builder agent: [pull request #467](https://github.com/melian-agent/melian/pull/467) builds [issue #356](https://github.com/melian-agent/melian/issues/356). The probing level's routes are measured on `live.ts`'s harness, over the probing goldens and the trust-boundary lens's recorded misses.
 
-## Rulings and answers
+## Where its decisions are recorded
 
-- The live run is the coordinator's, by the maintainer's ruling of 2026-11-09.
-- Hand mutant proof is owed only for changed code that guards trust or durability, by the maintainer's ruling of 2026-11-14 in [the narrowing decision](../decisions/2026-11-14-hand-mutation-proof-only-for-trust-and-durability.md). Mutants lists which pass claimed which files.
-- The final rerun of earlier claims at the last head is waived for good, by [the decision of 2026-11-10](../decisions/2026-11-10-final-rerun-waived-until-mutants-verify.md) and [the decision of 2026-11-14](../decisions/2026-11-14-mutants-verify-is-not-built.md) that gave the waiver no end date. Each pass proves its own commits' mutants, and that is this pull request's proof.
-- Pair 1 runs first: the goldens at 3 passes, then the misses at 1 pass. The maintainer ruled this on 2026-11-15, in the coordinator's session.
-- Only a hand-entered `lines` range scores a miss, found or missed. A location derived from a fix decides nothing: the miss is unadjudicated whenever an unrefuted sighting sits at its file under its rule, and missed only when none does. The maintainer chose this, option A of three the coordinator put, on 2026-11-16, in the coordinator's session.
-- The coordinator answered approach questions, which are not rulings:
-  - A miss scores on the trust-boundary lens's own sightings.
-  - A hit located by a fix with more than one hunk in the miss's file is left unadjudicated, and gets no score. The ruling of 2026-11-16 widened this to every fix.
-  - A miss's probes run only when the invocation vouches for both its base and its head, since the base supplies the policy.
-  - Claims pair with sightings by core's full claim identity: ID, check and level.
-  - Each hit carries what its claim already holds, and nothing more is persisted.
+- The coordinator runs the live measurement: [issue #356's comment of 2026-11-09](https://github.com/melian-agent/melian/issues/356#issuecomment-6734810559).
+- Which changed code needs hand mutant proof: [the narrowing decision](../decisions/2026-11-14-hand-mutation-proof-only-for-trust-and-durability.md).
+- The final rerun of earlier claims: [the decision of 2026-11-10](../decisions/2026-11-10-final-rerun-waived-until-mutants-verify.md) and [the decision of 2026-11-14](../decisions/2026-11-14-mutants-verify-is-not-built.md).
+- The order of the live runs, pair 1 first: [issue #356's comment of 2026-11-15](https://github.com/melian-agent/melian/issues/356#issuecomment-6891546646).
+- Only a hand-entered `lines` range scores a miss: [pull request #467's comment of 2026-11-15](https://github.com/melian-agent/melian/pull/467#issuecomment-6902198683).
+- The coordinator chose the approach where this work asked. What it measures, below, states each choice.
 
 ## What it measures
 
@@ -85,6 +80,15 @@ Opus 5.5 reviewed `31c545c6...b88e57d0` with a fresh context and would not block
 
 Codex's review at `b88e57d0` raised one medium: `Verdict.all()` lists refuted findings, so `recordDismissal` accepts a refuted finding's ID. `main` already lists them there, and this pull request changed only that method's TSDoc, so the finding is `main`'s, and [issue #486](https://github.com/melian-agent/melian/issues/486) asks the maintainer whether a refuted finding's ID may be dismissed.
 
+## The Actions round 43783064764 at `350d7998`
+
+The round raised the policy notice on `packages/evals/package.json` again, and two acknowledges new to this pull request:
+
+- `design` found that the miss preflight read a file up to 16 MiB, its own bound, while a lens reads at most core's `revisionLimits.fileBytes`, 8 MiB. A miss in the unreadable tail would score as missed, though `report_finding` refuses a line there. It is a fourth instance of the class "an entry the review cannot score that still scores", so the builder stopped and asked. The coordinator chose the approach: the preflight takes each bound from the review's own limits and keeps none of its own. `bd3a3d73` reads with `revisionLimits.fileBytes` and refuses a file past it. `a5915b0f` holds a symlinked file to the source's own refusal, so the catch refuses nothing but a file too large.
+- `design` read this entry's list of rulings as text the change wrote about its own review. The section now links where each decision was recorded, and quotes none.
+
+The builder checked the preflight once more for a number of its own that the review also has, and found none. Its line count follows `linesAt` in `report_finding`, and its check on the order of `lines` matches that tool's. One rule of `report_finding` it does not apply: a blank snippet is refused, "point at the code itself". A miss whose lines are blank would still score. That is a rule, not a bound, and it is left for the coordinator.
+
 ## Failing tests first
 
 Each fix began with a test that failed at the head before it:
@@ -108,7 +112,9 @@ Each fix began with a test that failed at the head before it:
 
 - R1 at `b88e57d0`: 1 failed of 48. A miss on `moved/claim.yml`, renamed from a path the base's lens covers, read status 2 with "the base's policy does not let the trust-boundary lens review moved/claim.yml", where 0 was expected.
 
-After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, 47 of 47 at `34aad52c`, and 48 of 48 at `eddc1917`.
+- The read bound at `350d7998`: 1 failed of 49. A miss on a file one byte past `revisionLimits.fileBytes` read status 0 and no errors, where 2 was expected.
+
+After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, 47 of 47 at `34aad52c`, 48 of 48 at `eddc1917`, and 49 of 49 at `bd3a3d73` and at `a5915b0f`.
 
 ## Mutants
 
@@ -122,6 +128,7 @@ After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `
 | 16 | `probing.ts` |
 | 17 | `probing.ts`, `telemetry.ts` |
 | 18 | `probing.ts` |
+| 19 | `probing.ts` |
 
 Every claim was run by hand: a scratch script applied the mutant and ran its named test alone, and a kill counted only when exactly one test ran and failed.
 
@@ -131,5 +138,6 @@ Every claim was run by hand: a scratch script applied the mutant and ran its nam
 - Pass 16, `f8c3da9e...055d08de`: 76 killed, covering the round's fix, R3 and R2. R3's three survivors at `87f01fae` are among them: two killed by the test `055d08de` adds, and an optional chain removed.
 - Pass 17, `31c545c6...34aad52c`: 73 killed, 3 equivalent, 1 owed a test. The test `e3de7fa1` adds, a `trust-boundary` stage with no coverage, kills it. `telemetry.ts` is claimed because the score's second check reads the coverage it records.
 - Pass 18, `b88e57d0...eddc1917`: 17 killed, 1 equivalent, 1 owed a test. The survivor accepted any rename, whether or not the base's lens covered its old path. `8567bb73` adds a base that leaves the old path out, with a head that also changes a file the lens covers, so the lens is selected and only the old-path check decides; the mutant fails it, run alone. The same commit renamed the test, so the two kills that named it were rerun under its new name at `8567bb73`, and failed again.
+- Pass 19, `350d7998...bd3a3d73`: 9 killed. At `bd3a3d73`, three survived: each let the catch refuse a read error other than `tooLarge` as too large. `a5915b0f` adds a symlinked miss file to the bound's test, and the whole pass was rerun at that commit, every mutant against that test alone or the one it named; all nine failed.
 
-Each equivalence carries its reason in the inventory. Rows outside the claimed files carry a note citing the ruling of 2026-11-14, and ignored rows keep the enumerator's configuration note.
+Each equivalence carries its reason in the inventory. Rows outside the claimed files carry a note citing [the narrowing decision](../decisions/2026-11-14-hand-mutation-proof-only-for-trust-and-durability.md), and ignored rows keep the enumerator's configuration note.

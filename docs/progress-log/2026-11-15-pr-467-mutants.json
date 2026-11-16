@@ -1,7 +1,7 @@
 {
 	"version": 2,
 	"pullRequest": 467,
-	"head": "8567bb73",
+	"head": "a5915b0f",
 	"passes": [
 		{
 			"pass": "6",
@@ -23,7 +23,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -34,7 +34,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -45,7 +45,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -56,7 +56,7 @@
 					"mutatorName": "BooleanLiteral",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -67,7 +67,7 @@
 					"mutatorName": "BooleanLiteral",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -78,7 +78,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -89,7 +89,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -113,7 +113,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -137,7 +137,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "target.scope?.(scoped.config, scoped.lenses) && scoped",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -148,7 +148,7 @@
 					"mutatorName": "OptionalChaining",
 					"replacement": "target.scope(scoped.config, scoped.lenses)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -159,7 +159,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -170,7 +170,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[\"Stryker was here\"]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -181,7 +181,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -192,7 +192,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -203,7 +203,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.kind !== \"scripted\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -227,7 +227,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -238,7 +238,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -249,7 +249,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -260,7 +260,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -310,7 +310,7 @@
 					"mutatorName": "BooleanLiteral",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -321,7 +321,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -332,7 +332,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -343,7 +343,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -367,7 +367,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -378,7 +378,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "golden!.verifier && {}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -389,7 +389,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -400,7 +400,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -411,7 +411,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.model !== undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -422,7 +422,7 @@
 					"mutatorName": "BooleanLiteral",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -433,7 +433,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "mode.verifierModel && mode.model",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -444,7 +444,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -455,7 +455,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -466,7 +466,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "verifier === undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -477,7 +477,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -488,7 +488,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -499,7 +499,7 @@
 					"mutatorName": "OptionalChaining",
 					"replacement": "config.models.verifier.thinking",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -510,7 +510,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -521,7 +521,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -532,7 +532,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.thinking === undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -543,7 +543,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -554,7 +554,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -565,7 +565,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.probing === undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -576,7 +576,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -587,7 +587,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "config.stages[\"pull-request\"] && \"full\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -624,7 +624,7 @@
 					"mutatorName": "MethodExpression",
 					"replacement": "checksOfTier(config, tier)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -635,7 +635,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -646,7 +646,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -657,7 +657,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -668,7 +668,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -679,7 +679,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -716,7 +716,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -727,7 +727,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -738,7 +738,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -749,7 +749,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.kind === \"scripted\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -773,7 +773,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -784,7 +784,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -795,7 +795,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "mode.kind === \"scripted\" || mode.probes === \"unconfined\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -806,7 +806,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -817,7 +817,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.kind !== \"scripted\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -841,7 +841,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -852,7 +852,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "mode.probes !== \"unconfined\"",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -876,7 +876,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -887,7 +887,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1122,7 +1122,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1133,7 +1133,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1144,7 +1144,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1155,7 +1155,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "golden !== undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1166,7 +1166,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[\"Stryker was here\"]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1177,7 +1177,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1188,7 +1188,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "reviewed.verdict.ran && []",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1199,7 +1199,7 @@
 					"mutatorName": "ArrayDeclaration",
 					"replacement": "[\"Stryker was here\"]",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1210,7 +1210,7 @@
 					"mutatorName": "CallExpression",
 					"replacement": ";",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1221,7 +1221,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1232,7 +1232,7 @@
 					"mutatorName": "BlockStatement",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1243,7 +1243,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1254,7 +1254,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1265,7 +1265,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1276,7 +1276,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "`lens.${each.name}` !== record.name",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1300,7 +1300,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1311,7 +1311,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1322,7 +1322,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "lens === undefined && record.level === undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1333,7 +1333,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1344,7 +1344,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "lens !== undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1355,7 +1355,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1366,7 +1366,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "record.level !== undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1377,7 +1377,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1388,7 +1388,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1399,7 +1399,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "settings?.route === undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/goldens.ts",
@@ -1410,7 +1410,7 @@
 					"mutatorName": "OptionalChaining",
 					"replacement": "settings.route",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/live-output.ts",
@@ -1421,7 +1421,7 @@
 					"mutatorName": "OptionalChaining",
 					"replacement": "failed(error)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/evals/src/probing-live.ts",
@@ -8670,7 +8670,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "(await this.document(ProbingDocument, {\n  kind: \"conversation\",\n  conversationId: id\n}, context)) && {}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8681,7 +8681,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8705,7 +8705,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8716,7 +8716,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8727,7 +8727,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "probed !== undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8738,7 +8738,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "probed.probes && {}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8749,7 +8749,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8760,7 +8760,7 @@
 					"mutatorName": "ArithmeticOperator",
 					"replacement": "sum - probe.milliseconds",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8771,7 +8771,7 @@
 					"mutatorName": "MethodExpression",
 					"replacement": "Object.keys(probed!.skips ?? {}).map(Number)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8782,7 +8782,7 @@
 					"mutatorName": "LogicalOperator",
 					"replacement": "probed!.skips && {}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8793,7 +8793,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8804,7 +8804,7 @@
 					"mutatorName": "BooleanLiteral",
 					"replacement": "probes.some(([, probe]) => probe.attack === attack)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8815,7 +8815,7 @@
 					"mutatorName": "MethodExpression",
 					"replacement": "probes.every(([, probe]) => probe.attack === attack)",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8826,7 +8826,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8837,7 +8837,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "true",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8848,7 +8848,7 @@
 					"mutatorName": "ConditionalExpression",
 					"replacement": "false",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8859,7 +8859,7 @@
 					"mutatorName": "EqualityOperator",
 					"replacement": "probe.attack !== attack",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8870,7 +8870,7 @@
 					"mutatorName": "ArrowFunction",
 					"replacement": "() => undefined",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -8881,7 +8881,7 @@
 					"mutatorName": "ObjectLiteral",
 					"replacement": "{}",
 					"status": "generated",
-					"note": "outside the files this pass claims, which guard no trust or durability, by the maintainer's ruling of 2026-11-14"
+					"note": "outside the files this pass claims, which guard no trust or durability, by the decision of 2026-11-14 that narrowed hand mutant proof"
 				},
 				{
 					"file": "packages/pipeline/src/telemetry.ts",
@@ -15274,6 +15274,159 @@
 					"claim": "killed",
 					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does; rerun at 8567bb73 against that test alone",
 					"survivorClasses": []
+				}
+			]
+		},
+		{
+			"pass": "19",
+			"range": {
+				"base": "350d7998c35f4a92889d5ad4223712675b3db689",
+				"head": "bd3a3d73"
+			},
+			"claimsIn": [
+				"packages/evals/src/probing.ts"
+			],
+			"rows": [
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 281,
+					"column": 100,
+					"endLine": 284,
+					"endColumn": 3,
+					"mutatorName": "BlockStatement",
+					"replacement": "{}",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 7,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 7,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 7,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "LogicalOperator",
+					"replacement": "error instanceof SourceError || error.code === \"tooLarge\"",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 39,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 39,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "EqualityOperator",
+					"replacement": "error.code !== \"tooLarge\"",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 282,
+					"column": 54,
+					"endLine": 282,
+					"endColumn": 64,
+					"mutatorName": "StringLiteral",
+					"replacement": "\"\"",
+					"status": "Ignored",
+					"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+					"note": "ignored by the enumerator's configuration"
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 285,
+					"column": 6,
+					"endLine": 285,
+					"endColumn": 19,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 285,
+					"column": 6,
+					"endLine": 285,
+					"endColumn": 19,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 285,
+					"column": 6,
+					"endLine": 285,
+					"endColumn": 19,
+					"mutatorName": "EqualityOperator",
+					"replacement": "text !== null",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 286,
+					"column": 10,
+					"endLine": 286,
+					"endColumn": 125,
+					"mutatorName": "StringLiteral",
+					"replacement": "``",
+					"status": "Ignored",
+					"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+					"note": "ignored by the enumerator's configuration"
 				}
 			]
 		}
