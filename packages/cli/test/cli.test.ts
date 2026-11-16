@@ -75,6 +75,7 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 // The goldens have no tsconfig.json, so tsc cannot check them, and Biome's defaults would add findings of their own.
 // Their tests keep the deterministic checks to guardrails; the static tools have a repository of their own below.
 const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
+const trustingPolicy = `${guardrailsOnly}trust:\n  writers: true\n`;
 
 // Every lens the default full tier runs, so a script can answer each.
 const builtinLenses = ["correctness", "contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"];
@@ -106,6 +107,18 @@ function userDirectory(secrets: string): { XDG_CONFIG_HOME: string } {
 
 function git(repo: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: repo, env: { ...process.env, ...gitEnv }, encoding: "utf8" }).trim();
+}
+
+// Commits `policy` as melian.yaml on a new branch, `name`, from main, and merges it into the checked-out branch, so a
+// review of `name` reads its policy from that commit.
+function policyBase(repo: string, name: string, policy: string): void {
+	const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+	git(repo, "checkout", "--quiet", "-b", name, "main");
+	writeFileSync(join(repo, "melian.yaml"), policy);
+	git(repo, "add", "melian.yaml");
+	git(repo, "commit", "--quiet", "-m", `${name} policy`);
+	git(repo, "checkout", "--quiet", feature);
+	git(repo, "merge", "--quiet", "--no-edit", name);
 }
 
 const tsconfig = JSON.stringify({
@@ -539,11 +552,12 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
-	it("exports the review's records to a directory store when the base trusts writers", async () => {
-		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+	it("exports the review's records to a directory store when the base sets trust.writers: true", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
 		const store = join(scratch, "records");
 
-		const review = melian(repo, ["review", "main", "--records", `dir:${store}`], env);
+		const review = melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
 
 		expect(review.status).toBe(0);
 		expect(review.stderr).not.toContain("records not exported");
@@ -556,17 +570,18 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	});
 
 	it("decides a round from the records a review exported, as the review decided it", () => {
-		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
 		const store = join(scratch, "records");
-		expect(melian(repo, ["findings", "main", "--records", `dir:${store}`], env)).toMatchObject({
+		expect(melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env)).toMatchObject({
 			status: 1,
 			stderr: `melian: no record store at ${store}\n`,
 		});
-		expect(melian(repo, ["review", "main", "--records", `dir:${store}`], env).status).toBe(0);
-		const host = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
 
-		const json = melian(repo, ["findings", "main", "--records", `dir:${store}`, "--json"], env);
-		const text = melian(repo, ["findings", "main", "--records", `dir:${store}`], env);
+		const json = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env);
+		const text = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
 
 		expect(json.status).toBe(0);
 		const rounds = JSON.parse(json.stdout) as { round: string; verdict: StoredVerdict }[];
@@ -574,20 +589,17 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(rounds[0]!.round).toMatch(/^[0-9a-f]{64}$/);
 		expect(text.status).toBe(0);
 		expect(text.stdout).toBe(
-			`Round ${rounds[0]!.round}\n${Verdict.from(host).render(new Rendering({ ids: true, decided: true, target: "main" }))}`,
+			`Round ${rounds[0]!.round}\n${Verdict.from(host).render(new Rendering({ ids: true, decided: true, target: "trusting" }))}`,
 		);
 	});
 
-	it("reads no record, and says why, when the base does not trust writers", () => {
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("reads no record, and says why, when the base %s", (_, trust) => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		const store = join(scratch, "records");
-		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
-		git(repo, "checkout", "--quiet", "-b", "untrusting", "main");
-		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}trust:\n  writers: false\n`);
-		git(repo, "add", "melian.yaml");
-		git(repo, "commit", "--quiet", "-m", "untrusting policy");
-		git(repo, "checkout", "--quiet", feature);
-		git(repo, "merge", "--quiet", "--no-edit", "untrusting");
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
 		mkdirSync(store);
 
 		expect(melian(repo, ["findings", "untrusting", "--records", `dir:${store}`], env)).toMatchObject({
@@ -597,15 +609,12 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(readdirSync(store)).toEqual([]);
 	});
 
-	it("exports nothing, and says why in one line, when the base does not trust writers", () => {
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("exports nothing, and says why in one line, when the base %s", (_, trust) => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
-		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
-		git(repo, "checkout", "--quiet", "-b", "untrusting", "main");
-		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}trust:\n  writers: false\n`);
-		git(repo, "add", "melian.yaml");
-		git(repo, "commit", "--quiet", "-m", "untrusting policy");
-		git(repo, "checkout", "--quiet", feature);
-		git(repo, "merge", "--quiet", "--no-edit", "untrusting");
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
 		const store = join(scratch, "records");
 
 		const review = melian(repo, ["review", "untrusting", "--records", `dir:${store}`], env);

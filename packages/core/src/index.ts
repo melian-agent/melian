@@ -112,6 +112,7 @@ export {
 	stricter,
 	type TscSettings,
 	thinkingLevelSchema,
+	writesWriterTrust,
 } from "./config.ts";
 export {
 	type ChoiceAnswer,

@@ -25,6 +25,7 @@ import {
 	userFiles,
 	type Verdict,
 	visibleText,
+	writesWriterTrust,
 } from "@melian-agent/core";
 import {
 	CallerContext,
@@ -272,7 +273,7 @@ export async function review(
 	const tier = loaded.stages["pull-request"] ?? "full";
 	// A record counts only from a writer the base trusts, so a store is opened only under that base's policy.
 	const trustsWriters =
-		options.records === undefined ? false : await ReviewSource.of(changeset, source).trustsWriters(loaded);
+		options.records === undefined ? false : await ReviewSource.of(changeset, source).trustsWriters();
 	if (options.records !== undefined && !trustsWriters)
 		io.stderr(
 			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them\n",
@@ -685,12 +686,11 @@ class ReviewSource {
 		);
 	}
 
-	// Whether the base's policy trusts writers' records, given the policy this source loaded. A working tree's
-	// melian.yaml is the reviewer's, never the base's.
-	async trustsWriters(loaded: MelianConfig): Promise<boolean> {
-		if (this.source.kind === "revision") return loaded.trust.writers;
+	// Whether the base's policy writes out trust in a record store's writers. A working tree's melian.yaml is the
+	// reviewer's, never the base's.
+	trustsWriters(): Promise<boolean> {
 		const { repoRoot, revision } = this.changeset;
-		return (await loadConfig(repoRoot, { kind: "revision", commit: revision.base }, ".")).config.trust.writers;
+		return writesWriterTrust(repoRoot, this.source.kind === "revision" ? this.source.commit : revision.base);
 	}
 }
 
@@ -802,7 +802,7 @@ async function recordedFindings(
 			: await ReviewSource.ofRange(changeset, io.env);
 	const { source } = reviewed;
 	const { config } = await loadConfig(repoRoot, source, ".");
-	if (!(await reviewed.trustsWriters(config)))
+	if (!(await reviewed.trustsWriters()))
 		throw new CliError("the base's melian.yaml does not set trust.writers: true, so no record in the store counts");
 	const path = resolve(io.cwd, store.slice("dir:".length));
 	if (!existsSync(path)) throw new CliError(`no record store at ${path}`);
