@@ -162,7 +162,9 @@ describe.each(shapes)("every reader of a level, for a route $name", (shape) => {
 		const chosenFor = shape.models.includes(running) ? running : routeOf(shape).model;
 		const expected =
 			bare && lowLevels.includes(level)
-				? [`heavy: fallback ${last} names no thinking level, so it runs at ${level}, which was chosen for ${chosenFor}`]
+				? [
+						`heavy: fallback ${last} names no thinking level, so it runs at ${level}, which was chosen for ${chosenFor}`,
+					]
 				: [];
 		expect(plan.warnings().filter((text) => text.startsWith("heavy: fallback"))).toEqual(expected);
 	});
