@@ -45,6 +45,7 @@ import type { TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
+import type * as Probing from "../src/probing.ts";
 import {
 	headTreeLimits,
 	ProbeReruns,
@@ -63,7 +64,7 @@ import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 // The evidence budget a test may lower, so one claim's least rendering passes it; every other test keeps the real one.
 const evidenceBudget = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
 vi.mock("../src/probing.ts", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../src/probing.ts")>();
+	const actual = await importOriginal<typeof Probing>();
 	return {
 		...actual,
 		get probeEvidenceBudget() {
@@ -455,7 +456,7 @@ describe("a level that probes", () => {
 								replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
 							},
 							// A lens without probes starts a wave, whose verifier judges the copy's claim alone first.
-							{ match: "Melian adversarial verifier", replies: [scriptVerifier] },
+							{ match: "Melian adversarial verifier", replies: [(messages) => scriptVerifier(messages)] },
 						],
 			},
 			{
