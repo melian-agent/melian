@@ -300,8 +300,9 @@ export class Miss {
 
 	/**
 	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
-	 * conversation, other than a prober, whose stored coverage holds the miss's file, and which its prompt showed the
-	 * file's diff whole, or `read_file` delivered it the miss's lines, or any line of the file for a miss without lines.
+	 * conversation, other than a prober, whose stored coverage holds the miss's file and which saw the defect: its prompt
+	 * showed the file's diff whole, or `read_file` delivered it the miss's lines, or any line of the file for a miss
+	 * without lines.
 	 * The diff has no context lines, so it shows a miss's lines only where a head-side hunk of `target`'s diff holds them.
 	 */
 	async unscoped(run: Pick<RangeRun, "telemetry">, target: Pick<ReviewTarget, "range">): Promise<string | undefined> {

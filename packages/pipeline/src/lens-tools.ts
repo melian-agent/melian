@@ -418,7 +418,7 @@ async function meter(
 	}, context);
 }
 
-/** What a lens tool's result records beside its text: `lineCut` when it showed only the start of its one line. */
+// `lineCut` marks a result that showed only the start of its one line.
 export type LensToolDetails = { lineCut: true };
 
 type ToolResult = {
