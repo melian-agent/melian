@@ -256,14 +256,16 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		);
 	});
 
-	it("says the sweep removed nothing when the process table cannot be read", async () => {
+	it("says the sweep removed nothing when the process table cannot be read, and names what it kept", async () => {
 		origin(remote.url);
+		const state = await stateDirectory(repo, io.env);
+		mkdirSync(join(state, "records.git.not-an-owner"), { recursive: true });
 		vi.spyOn(ProcessTable.prototype, "list").mockImplementation(() => {
 			throw new Error("ps failed: no ps here");
 		});
 		expect(await doctor(io)).toBe(0);
 		expect(line()).toBe(
-			`warn records ${clean}; the state directory was not swept, since the process table cannot be read: ps failed: no ps here; ${writersTrusted("origin/main", trusted)}`,
+			`warn records ${clean}; the state directory was not swept, since the process table cannot be read: ps failed: no ps here; the state directory keeps a leftover whose maker Melian cannot tell is gone, which a person may remove once no Melian uses the directory: records.git.not-an-owner; ${writersTrusted("origin/main", trusted)}`,
 		);
 	});
 

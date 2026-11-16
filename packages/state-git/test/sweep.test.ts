@@ -274,7 +274,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		});
 	});
 
-	it("sweeps nothing, and says why, when the process table cannot be read", async () => {
+	it("sweeps nothing, says why, and names what it kept, when the process table cannot be read", async () => {
 		const owner = await exited();
 		const suffix = owned(owner.pid);
 		plant(suffix);
@@ -289,9 +289,10 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 			},
 		});
 		expect(planted(suffix)).toEqual(there);
+		const [folder, index, lock, ref] = names(suffix);
 		expect(store.sweep).toEqual({
 			removed: [],
-			kept: [`records.git/melian-index-${unowned}`],
+			kept: [folder, ...[index, lock, `records.git/melian-index-${unowned}`].sort(), ref],
 			failed: [],
 			unread: "ps failed: no ps here",
 		});

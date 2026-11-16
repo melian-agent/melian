@@ -176,7 +176,7 @@ export class RecordRepository {
 		}
 		for (const leftover of leftovers) {
 			if (!leftover.fits || leftover.owner === undefined || !leftover.owner.isHere()) sweep.kept.push(leftover.name);
-			else if (table === undefined) continue;
+			else if (table === undefined) sweep.kept.push(leftover.name);
 			else if (!leftover.owner.isGone(table)) sweep.kept.push(leftover.name);
 			else if (deadline.left() <= 0) sweep.unswept = (sweep.unswept ?? 0) + 1;
 			else
