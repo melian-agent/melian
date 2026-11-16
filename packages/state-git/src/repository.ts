@@ -216,11 +216,8 @@ export class RecordRepository {
 			});
 		}
 		const fetch = "refs/melian/fetch/";
-		const refs = await this.#succeed(["for-each-ref", "--format=%(refname)", fetch], deadline);
-		for (const ref of refs
-			.split("\n")
-			.filter((line) => line !== "")
-			.sort())
+		const refs = await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline);
+		for (const ref of refs.split("\n").filter((line) => line !== ""))
 			leftovers.push({
 				name: ref,
 				owner: Owner.parse(ref.slice(fetch.length)),

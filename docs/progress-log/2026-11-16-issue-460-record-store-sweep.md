@@ -17,3 +17,5 @@ Next, `if (found === undefined) continue;` survived as `if (false)` in both list
 Then `force: true` on each leftover's removal survived as `false`: no test had a leftover vanish between the sweep's listing and its removal, as another call's sweep can make it. A test now removes the planted leftovers when the sweep reads the table, which it does after the listing, and asserts they count as removed, not failed. With either `force` set false it failed, naming them under `failed`; unmutated it passes.
 
 The `$` that anchors `.lock` to the end of an index's name survived: no name held `.lock` anywhere else. The unparsed-names test now holds `<host>-<pid>-.lock<uuid>`, which parses as an owner once a stray `.lock` is cut from its middle. With the anchor dropped the sweep removed it and the test failed; anchored it is kept and named.
+
+The `.sort()` on the fetch refs survived too, and it had to: `git for-each-ref` already sorts by refname, so the sort re-derived what git answers. The listing now asks git with `--sort=refname` and sorts nothing itself.
