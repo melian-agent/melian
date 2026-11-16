@@ -10,13 +10,14 @@ import {
 	SharedRecord,
 } from "@melian-agent/core";
 import {
+	type CheckRun,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	type Message,
 	openHarness,
-	type RunIdentity,
+	type ReviewOptions,
 	reviewChangeset,
 	summarizeReview,
 } from "@melian-agent/pipeline";
@@ -27,7 +28,7 @@ import {
 	scriptConversations,
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
 import { FindingsDocument } from "../src/findings.ts";
@@ -92,7 +93,7 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: RunIdentity; readonly checkRequest?: string } = {},
+	run: { readonly checkRun?: CheckRun } = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
@@ -145,8 +146,7 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => named.includes(name)),
 		standards: [],
 		models: fake.review,
-		checks: given,
-		...run,
+		...(run.checkRun === undefined ? { checks: given } : { checkRun: run.checkRun }),
 		...(store === undefined ? {} : { records: store }),
 		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
 		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),
@@ -298,7 +298,7 @@ describe("a review that names a record store", () => {
 
 describe("a check record's key", () => {
 	const requestKey = "a".repeat(64);
-	const checkKeys = async (run: { readonly checkRun?: RunIdentity; readonly checkRequest?: string }) => {
+	const checkKeys = async (run: { readonly checkRun?: CheckRun }) => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { stored } = await review(store, checks, undefined, ["correctness", "contracts"], run);
 		return stored
@@ -306,25 +306,29 @@ describe("a check record's key", () => {
 			.map(({ key }) => key)
 			.sort();
 	};
-	const identity = (task: number): RunIdentity => ({
-		base: "b".repeat(40),
-		head: "c".repeat(40),
-		tier: "full",
-		policy: requestKey.slice(0, 16),
-		task,
+	const runOf = (task: number, request = requestKey): CheckRun => ({
+		identity: {
+			base: "b".repeat(40),
+			head: "c".repeat(40),
+			tier: "full",
+			policy: request.slice(0, 16),
+			task,
+		},
+		request,
+		records: checks,
 	});
 
 	it("is the same for two runs of one request that differ only in their task", async () => {
-		const seven = await checkKeys({ checkRun: identity(7), checkRequest: requestKey });
-		const twelve = await checkKeys({ checkRun: identity(12), checkRequest: requestKey });
+		const seven = await checkKeys({ checkRun: runOf(7) });
+		const twelve = await checkKeys({ checkRun: runOf(12) });
 		expect(seven).toHaveLength(3);
 		expect(twelve).toEqual(seven);
 	});
 
 	it("differs for two runs whose requests differ past the identity's prefix", async () => {
 		const other = `${requestKey.slice(0, 16)}${"b".repeat(48)}`;
-		const one = await checkKeys({ checkRun: identity(7), checkRequest: requestKey });
-		const two = await checkKeys({ checkRun: identity(7), checkRequest: other });
+		const one = await checkKeys({ checkRun: runOf(7) });
+		const two = await checkKeys({ checkRun: runOf(7, other) });
 		expect(one).toHaveLength(3);
 		expect(two).toHaveLength(3);
 		expect(two.filter((key) => one.includes(key))).toEqual([]);
@@ -333,8 +337,7 @@ describe("a check record's key", () => {
 	it("is the key the record store derives from the request, the revision and the check's name", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { changeset, stored } = await review(store, checks, undefined, ["correctness", "contracts"], {
-			checkRun: identity(7),
-			checkRequest: requestKey,
+			checkRun: runOf(7),
 		});
 		const records = ReviewRecords.of(changeset.id, changeset.revision);
 		const biome = stored.find(
@@ -344,9 +347,30 @@ describe("a check record's key", () => {
 		expect(biome.key).toBe(records.check(requestKey, checks[1] as CheckRunRecord, []).key);
 	});
 
+	it("takes its request from the run it exports, which no option can pair with another run's", async () => {
+		expectTypeOf<ReviewOptions>().not.toHaveProperty("checkRequest");
+		const other = `${requestKey.slice(0, 16)}${"b".repeat(48)}`;
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { changeset, stored } = await review(store, checks, undefined, ["correctness", "contracts"], {
+			checkRun: runOf(7, other),
+		});
+		const records = ReviewRecords.of(changeset.id, changeset.revision);
+		expect(
+			stored
+				.filter(({ kind }) => kind === "check")
+				.map(({ key }) => key)
+				.sort(),
+		).toEqual(
+			checks
+				.filter(({ name }) => name !== "decisions.fast")
+				.map((check) => records.check(other, check as CheckRunRecord, []).key)
+				.sort(),
+		);
+	});
+
 	it("under no request never matches the key of a run under one", async () => {
 		const none = await checkKeys({});
-		const known = await checkKeys({ checkRun: identity(7), checkRequest: requestKey });
+		const known = await checkKeys({ checkRun: runOf(7) });
 		expect(none).toHaveLength(3);
 		expect(none.filter((key) => known.includes(key))).toEqual([]);
 	});
