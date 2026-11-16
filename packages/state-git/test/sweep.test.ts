@@ -298,6 +298,32 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it("sweeps nothing, says why, and names what it kept, when the process table does not list this process", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		plant(suffix);
+		const store = await remote.open({ directory, processes: { list: () => [] } });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep).toEqual({
+			removed: [],
+			kept: names(suffix),
+			failed: [],
+			unread: "it does not list this process",
+		});
+	});
+
+	it("sweeps nothing when the table lists this pid under another parent, as a table from another namespace can", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		plant(suffix);
+		const table = new ProcessTable()
+			.list()
+			.map((entry) => (entry.pid === process.pid ? { ...entry, ppid: entry.ppid + 1 } : entry));
+		const store = await remote.open({ directory, processes: { list: () => table } });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep.unread).toBe("it does not list this process");
+	});
+
 	it("lists the leftovers before it reads the table, so a call that starts in between keeps its own", async () => {
 		const table = new ProcessTable().list();
 		const late = owned(4_000_000);
@@ -371,6 +397,16 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		const store = await remote.open({ directory });
 		expect(fetchRefs()).toEqual([`refs/melian/fetch/${suffix}`, "refs/melian/last", "refs/melian/other"]);
 		expect(store.sweep).toEqual({ removed: [], kept: [`refs/melian/fetch/${suffix}`], failed: [] });
+	});
+
+	it("removes a stale fetch ref that is a symbolic ref, and leaves the ref it points at", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		git(["symbolic-ref", `refs/melian/fetch/${suffix}`, "refs/melian/last"]);
+		const store = await remote.open({ directory });
+		expect(fetchRefs()).toEqual(["refs/melian/last"]);
+		expect(git(["rev-parse", "refs/melian/last"])).toBe(commit);
+		expect(store.sweep).toEqual({ removed: [`refs/melian/fetch/${suffix}`], kept: [], failed: [] });
 	});
 
 	it("names a stale leftover it could not remove, and still opens", async () => {

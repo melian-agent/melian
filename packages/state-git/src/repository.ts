@@ -46,7 +46,7 @@ const lostRace =
  * What a store's sweep did with the leftovers of calls that ended before they removed what they made: the temporary
  * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
  * tell, which it kept; and those it found stale but could not remove. `unread` says why it swept nothing, when the
- * process table could not be read, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
+ * process table could not be read or did not list this process, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
  * which the next open removes. `unlisted` says it could not list every leftover: a listing failed, and it removed
  * nothing, or no time was left to list the fetch refs, and it counted the stale leftovers it had listed as unswept.
  */
@@ -180,6 +180,11 @@ export class RecordRepository {
 		let table: ReturnType<Processes["list"]> | undefined;
 		try {
 			table = processes.list();
+			// A table that parses to nothing, or was read from another pid namespace, would read every pid as gone.
+			if (!Owner.lists(table)) {
+				sweep.unread = "it does not list this process";
+				table = undefined;
+			}
 		} catch (error) {
 			sweep.unread = error instanceof Error ? error.message : String(error);
 		}
@@ -329,7 +334,7 @@ export class RecordRepository {
 
 	async #deleteRef(ref: string, deadline: Deadline): Promise<void> {
 		for (let attempt = 0; ; attempt++) {
-			const result = await this.run(["update-ref", "-d", ref], deadline);
+			const result = await this.run(["update-ref", "-d", "--no-deref", ref], deadline);
 			if (result.code === 0) return;
 			if (!contention.test(result.stderr) || attempt === 20)
 				throw unreachable(`deleting ${ref} failed in ${this.path}`, result);

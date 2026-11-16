@@ -27,8 +27,12 @@ export class Owner {
 	// This process, or `undefined` when `table` does not list it with its own parent, as a table read from another pid
 	// namespace would not, so the caller names what it makes by a UUID alone.
 	static current(table: readonly ProcessEntry[]): Owner | undefined {
-		const listed = table.some((entry) => entry.pid === process.pid && entry.ppid === process.ppid);
-		return listed ? new Owner(thisHost(), process.pid) : undefined;
+		return Owner.lists(table) ? new Owner(thisHost(), process.pid) : undefined;
+	}
+
+	// Whether `table` lists this process with its own parent, so it can say whether this host's pids are gone.
+	static lists(table: readonly ProcessEntry[]): boolean {
+		return table.some((entry) => entry.pid === process.pid && entry.ppid === process.ppid);
 	}
 
 	// The owner a leftover's name records, or `undefined` when the name records none, as an earlier build's did.
