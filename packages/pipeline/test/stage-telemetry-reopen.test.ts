@@ -133,7 +133,8 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		const second = await openHarness(storage, { models: fake.models, registry, env: undefined });
 		closes.push(() => second.close(context));
 		const settled = await second.waitForTask(id, context);
-		expect(settled.state.outcome.status).toBe(kind === "melian.adjudication" ? "failed" : "completed");
+		// The adjudication's stored `2:` fingerprint, under a commit's policy, decides again by the ruling of 2026-11-17.
+		expect(settled.state.outcome.status).toBe("completed");
 		const record = await storage.task(id, context);
 		expect(record!.version).toBe(
 			{ "melian.check": 4, "melian.decision": 2, "melian.adjudication": 7, "melian.publish": 7 }[kind],
