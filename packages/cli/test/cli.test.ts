@@ -18,8 +18,10 @@ import {
 	type DecisionRequest,
 	DirectoryRecordStore,
 	findingId,
+	type RecordEnvelope,
 	Rendering,
 	reviewPayloads,
+	SharedRecord,
 	type StoredVerdict,
 	standardsLimits,
 	Verdict,
@@ -591,6 +593,60 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(text.stdout).toBe(
 			`Round ${rounds[0]!.round}\n${Verdict.from(host).render(new Rendering({ ids: true, decided: true, target: "trusting" }))}`,
 		);
+	});
+
+	it("shows every round of the revision in ID order, and no round of another revision", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const exported = await records.list(changeset!);
+		const round = exported.find(({ kind }) => kind === "round")!;
+		const added: RecordEnvelope[] = [
+			{ ...round, key: `${round.key}-again` },
+			{ ...round, key: `${round.key}-elsewhere`, revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
+		];
+		await records.add(added);
+		await records.close();
+		const ids = [round, added[0]!].map((each) => SharedRecord.parse(each, reviewPayloads).id).sort();
+
+		const json = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env);
+		const text = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all", "--notes"], env);
+
+		expect(json.status).toBe(0);
+		expect(JSON.parse(json.stdout)).toEqual(ids.map((id) => ({ round: id, verdict: host })));
+		expect(text.status).toBe(0);
+		const rendered = Verdict.from(host).render(
+			new Rendering({ ids: true, decided: true, all: true, notes: true, target: "trusting" }),
+		);
+		expect(text.stdout).toBe(ids.map((id) => `Round ${id}\n${rendered}`).join("\n"));
+	});
+
+	it("refuses a store that holds no round of the revision, though it holds one of another", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const exported = join(scratch, "exported");
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${exported}`], env).status).toBe(0);
+		const [changeset] = readdirSync(join(exported, "changesets"));
+		const source = await DirectoryRecordStore.open(exported, reviewPayloads);
+		const records = (await source.list(changeset!)).map((each) =>
+			each.kind === "round" ? { ...each, revision: `${"0".repeat(40)}..${"1".repeat(40)}` } : each,
+		);
+		await source.close();
+		const target = await DirectoryRecordStore.open(store, reviewPayloads);
+		await target.add(records);
+		await target.close();
+		const head = git(repo, "rev-parse", "HEAD").slice(0, 12);
+
+		expect(melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stdout: "",
+			stderr: `melian: the record store holds no round of ${head}\n`,
+		});
 	});
 
 	it.each([

@@ -816,13 +816,7 @@ async function recordedFindings(
 	}
 	const revision = Revision.key(changeset.revision);
 	const rounds = stored
-		.flatMap((each) => {
-			try {
-				return [SharedRecord.parseEnvelope(each)];
-			} catch {
-				return [];
-			}
-		})
+		.map((each) => SharedRecord.parseEnvelope(each))
 		.filter((record) => record.kind === "round" && record.revision === revision)
 		.sort((left, right) => (left.id < right.id ? -1 : 1));
 	if (rounds.length === 0) throw new CliError(`the record store holds no round of ${short(changeset.revision.head)}`);
