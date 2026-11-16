@@ -319,7 +319,12 @@ describe("ProcessTable reads", () => {
 		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			expect(command).toBe("/bin/ps");
 			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="]);
-			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" } });
+			expect(options).toEqual({
+				encoding: "utf8",
+				env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
+				timeout: 5000,
+				killSignal: "SIGKILL",
+			});
 			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S ssh", stderr: "" } as ReturnType<
 				typeof spawnSync
 			>;

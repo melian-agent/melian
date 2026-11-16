@@ -120,12 +120,25 @@ export function stopTree(
 }
 
 export class ProcessTable implements ProcessControl {
+	readonly #ps: string;
+	readonly #limitMs: number;
+
+	// Only tests pass either: no configuration, environment variable or head reaches them.
+	constructor(ps = "/bin/ps", limitMs = 5000) {
+		this.#ps = ps;
+		this.#limitMs = limitMs;
+	}
+
 	list(): ProcessEntry[] {
 		// parseProcesses reads lstart as ctime's five fields, which only the C locale promises. A start is compared across
-		// processes, such as a record the mutation supervisor wrote, and ps prints it in the caller's time zone.
-		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="], {
+		// processes, such as a record the mutation supervisor wrote, and ps prints it in the caller's time zone. The read
+		// blocks the event loop, so a ps that stalls is ended by its own handle, with SIGKILL since it may ignore SIGTERM,
+		// and the read fails.
+		const result = spawnSync(this.#ps, ["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="], {
 			encoding: "utf8",
 			env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
+			timeout: this.#limitMs,
+			killSignal: "SIGKILL",
 		});
 		if (result.status !== 0) throw new Error(`ps failed: ${result.stderr}`);
 		return parseProcesses(result.stdout);

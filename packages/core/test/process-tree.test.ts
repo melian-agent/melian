@@ -1,7 +1,11 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ProcessControl, type ProcessEntry, ProcessTable, stopTree } from "../src/process-tree.ts";
 
-// stopTree on a fake process table and a fake kill: nothing here signals a real process. One test reads the real table.
+// stopTree on a fake process table and a fake kill: nothing here signals a real process but a stand-in for ps a test
+// started. One test reads the real table.
 
 class FakeTable implements ProcessControl {
 	entries: ProcessEntry[];
@@ -198,6 +202,58 @@ describe("ProcessTable", () => {
 		expect(own?.state).not.toMatch(/^Z/);
 		expect(own?.command).toMatch(/node/);
 	});
+
+	// A stand-in for ps that ignores SIGTERM, records its pid, waits `seconds`, then prints one entry and exits.
+	function standIn(seconds: number): { ps: string; recorded: string; directory: string } {
+		const directory = mkdtempSync(join(tmpdir(), "melian-ps-"));
+		const ps = join(directory, "ps");
+		const recorded = join(directory, "pid");
+		writeFileSync(
+			ps,
+			`#!/bin/sh\ntrap '' TERM\necho $$ > ${recorded}\nsleep ${seconds}\necho '  100     1 Thu Oct  8 10:00:00 2026 S    git'\n`,
+			{ mode: 0o755 },
+		);
+		return { ps, recorded, directory };
+	}
+
+	// Stops the stand-in by the pid it recorded, if it still runs, and removes its directory.
+	function cleanUp({ recorded, directory }: { recorded: string; directory: string }): void {
+		try {
+			const pid = Number(readFileSync(recorded, "utf8"));
+			if (Number.isSafeInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
+		} catch {}
+		rmSync(directory, { recursive: true, force: true });
+	}
+
+	it("fails a read whose ps runs past the limit, though ps ignores SIGTERM, and the stop then signals nothing", () => {
+		const stand = standIn(10);
+		const kills: [number, string][] = [];
+		const table = new ProcessTable(stand.ps, 500);
+		const control: ProcessControl = {
+			list: () => table.list(),
+			kill: (pid, signal) => void kills.push([pid, signal]),
+		};
+		const start = Date.now();
+		try {
+			expect(() => table.list()).toThrow("ps failed");
+			expect(stopTree(100, control, instant)).toBeUndefined();
+			expect(Date.now() - start).toBeLessThan(3000);
+			expect(kills).toEqual([]);
+		} finally {
+			cleanUp(stand);
+		}
+	}, 20_000);
+
+	it("reads a ps that answers inside the limit", () => {
+		const stand = standIn(1);
+		try {
+			expect(new ProcessTable(stand.ps, 4000).list()).toEqual([
+				{ pid: 100, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S", command: "git" },
+			]);
+		} finally {
+			cleanUp(stand);
+		}
+	}, 20_000);
 
 	it("reads the same start for this process whatever the caller's time zone", () => {
 		const zone = process.env.TZ;
