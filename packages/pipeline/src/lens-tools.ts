@@ -884,7 +884,7 @@ function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 		// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
 		// configuration cannot switch its own mutants off.
 		const enumeration = await enumerations.get(change, () =>
-			MutationEnumeration.open(review.repoRoot, `${review.base}..${review.head}`, {
+			MutationEnumeration.open(review.repoRoot, Revision.key({ base: review.base, head: review.head }), {
 				policy: { kind: "revision", commit: review.base },
 			}),
 		);
