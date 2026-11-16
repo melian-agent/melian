@@ -271,6 +271,27 @@ describe("built-in lenses", () => {
 		});
 	});
 
+	// The probing lens would inherit the reading lens's emoji, and two names may not share one.
+	it("load Melian's own lenses when the reading trust-boundary lens declares an emoji, since its probing half has its own", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		writeFiles(
+			repo,
+			Object.fromEntries(melianLensFiles(melian).map((path) => [path, readFileSync(join(melian, path), "utf8")])),
+		);
+		const reading = ".melian/lenses/trust-boundary/LENS.md";
+		const brick = "\u{1F9F1}";
+		writeFiles(repo, {
+			[reading]: readFileSync(join(melian, reading), "utf8").replace(/^---\n/, `---\nemoji: "${brick}"\n`),
+		});
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(
+			Object.fromEntries(lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [[lens.name, lens.emoji]]))),
+		).toEqual({
+			"trust-boundary": brick,
+			"trust-boundary-probes": "\u{1F52C}",
+		});
+	});
+
 	// A lens in the root tier with no `lenses` entry reviews its own default paths, and the golden corpus seeds defects on purpose.
 	it("gives every lens in Melian's root tier a `lenses` entry, unless the lens narrows its own paths", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));

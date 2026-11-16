@@ -1,6 +1,7 @@
 ---
 name: trust-boundary-probes
 extends: trust-boundary
+emoji: "\U0001F52C"
 levels:
   deep: { probe: { prober: medium }, budget: { tokens: 600000, tools: 90 } }
 budget: { findings: 8, tokens: 600000, tools: 90 }
