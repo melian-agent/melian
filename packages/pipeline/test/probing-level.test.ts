@@ -2976,9 +2976,18 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		};
 		const first = await review(scripts, options);
 		expect(record((await first.run).verdict)).toMatchObject({ status: "ran", level: "quick" });
+		const at = Revision.key(first.changeset.revision);
+		const task = async () => {
+			const reviewer = harness!.harness;
+			const root = await reviewer.root(backgroundContext);
+			return (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))?.reviews[at]?.task;
+		};
+		const attached = await task();
 		const again = await review(scripts, options);
 		expect(record((await again.run).verdict)).toMatchObject({ status: "ran", level: "quick" });
 		expect(again.requests[reviewer]).toHaveLength(0);
+		// The same task, not a new one that copied it: the run it never escalated to has no outcome to judge.
+		expect(await task()).toBe(attached);
 	});
 
 	it("runs a probing run a quick one escalates to again when its probing environment changes, as a first run does", async () => {
