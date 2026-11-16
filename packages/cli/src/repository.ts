@@ -55,17 +55,17 @@ function unwritable(path: string, error: Error): CliError {
 }
 
 // A sandbox that keeps .git read-only fails here, as SQLite's "unable to open database file".
-export function roundChangeset(round: string): string | undefined {
-	const match = /^([^.]+)\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
-	return match !== null && isChangesetId(match[1]!) ? match[1] : undefined;
-}
-
 export async function openStorage(path: string): ReturnType<typeof openSqliteStorage> {
 	try {
 		return await openSqliteStorage(path);
 	} catch (error) {
 		throw unwritable(path, error as Error);
 	}
+}
+
+export function roundChangeset(round: string): string | undefined {
+	const match = /^([^.]+)\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
+	return match !== null && isChangesetId(match[1]!) ? match[1] : undefined;
 }
 
 // Fixed ref names, so a pull request's changeset ID, which hashes them, survives every push.
