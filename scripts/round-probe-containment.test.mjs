@@ -463,7 +463,8 @@ describe("the probe script", () => {
 	});
 
 	// Runs the script outside the sandbox, on fake values, so what it detects is tested apart from what the sandbox hides.
-	function collect(env, byteLimit = 16 * 1024 ** 3) {
+	// With a sibling, another process holds the canary in its environment and its command line while the script runs.
+	function collect(env, byteLimit = 16 * 1024 ** 3, sibling = false) {
 		const dir = mkdtempSync(join(tmpdir(), "melian-containment-script-"));
 		dirs.push(dir);
 		const secret = `melian-canary-${randomBytes(16).toString("hex")}`;
@@ -494,17 +495,28 @@ describe("the probe script", () => {
 		};
 		writeFileSync(join(dir, "probe.mjs"), probeScript);
 		writeFileSync(targets.self, JSON.stringify(targets));
-		const run = spawnSync(process.execPath, [join(dir, "probe.mjs")], {
-			cwd: dir,
-			env: { PATH: process.env.PATH, ...env(secret) },
-			encoding: "utf8",
-			timeout: 120_000,
-		});
+		const holder = sibling
+			? spawn(process.execPath, ["-e", "setTimeout(() => {}, 120_000)", secret], {
+					env: { PATH: process.env.PATH, MELIAN_HELD: secret },
+					stdio: "ignore",
+				})
+			: undefined;
+		let run;
+		try {
+			run = spawnSync(process.execPath, [join(dir, "probe.mjs")], {
+				cwd: dir,
+				env: { PATH: process.env.PATH, ...env(secret) },
+				encoding: "utf8",
+				timeout: 120_000,
+			});
+		} finally {
+			holder?.kill("SIGKILL");
+		}
 		expect(run.status).toBe(0);
 		const bytes = Object.values(files)
 			.filter((file) => file.startsWith(walked))
 			.reduce((total, file) => total + readFileSync(file).length, 0);
-		return { report: JSON.parse(run.stdout.trim().split("\n").at(-1)), files, bytes, walked };
+		return { report: JSON.parse(run.stdout.trim().split("\n").at(-1)), files, bytes, walked, holder: holder?.pid };
 	}
 
 	it.runIf(process.platform === "linux")(
@@ -535,6 +547,16 @@ describe("the probe script", () => {
 			expect(under.report.walk[under.walked].cut).toBe(false);
 			const at = collect(() => ({}), whole.bytes);
 			expect(at.report.walk[at.walked].cut).toBe(true);
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"finds the canary in another process's environment and command line",
+		{ timeout: 300_000 },
+		() => {
+			const { report, holder } = collect(() => ({}), undefined, true);
+			expect(report.environmentCanary).toBe(false);
+			expect(report.environCanary).toEqual([`${holder}`, `${holder} cmdline`]);
 		},
 	);
 
