@@ -1,0 +1,7 @@
+On [issue #480](https://github.com/melian-agent/melian/issues/480)'s branch, [pull request #498](https://github.com/melian-agent/melian/pull/498), the two fixes for Codex's second review, `dd0f8167` and `508b9f4d`, have their mutants run by hand at `4094d0ae`. Stryker's instrumenter gave 21 on the lines they changed: 16 in `stopTree`'s new check of the root, 4 in the `maxBytes` stop and 1 in the warning's text. All 21 were killed, each by its one named test, run alone after it passed unmutated.
+
+- The `process-tree.ts` mutants ran on a copy whose `ProcessTable.kill` sent no signal, with tests on fake or recording tables.
+- The `git.ts` mutants change no pid or signal operand, and `git.ts` signals only through a bare `ChildProcess.kill()`, as the learning on such files allows. Their named tests' real signals went, through unmutated code, to children the test spawned. After every run the runner checked by recorded pid that none of them still ran.
+- Two mutants needed sharper tests, in `4094d0ae`. `endsWith("Z")` passed while the zombie root's state read `Z`; real `ps` adds flags, so the test now reads `Z+`. Marking a cut result timed out passed while no test checked `timedOut`; the `maxBytes` test now does.
+
+[The hand inventory](2026-11-16-pr-480-hand-mutants.json) now holds every mutant this pull request ran, 222 in all, with the head each ran at: 214 killed and 8 equivalent, each equivalent with its reason.
