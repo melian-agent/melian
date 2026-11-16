@@ -28,7 +28,7 @@ import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.
 import { ComparisonStores } from "./comparison-stores.ts";
 import { idleModels, isScripted } from "./models.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, roundChangeset, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
 export type ImportSource =
@@ -69,22 +69,22 @@ async function openComparison(io: Io, argument: string, round?: string) {
 			};
 		path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	} else {
-		const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
-		if (match === null) throw new CliError(`invalid round ID ${round}`);
+		const changesetId = roundChangeset(round);
+		if (changesetId === undefined) throw new CliError(`invalid round ID ${round}`);
 		// Pull-request membership arrives with step 23's builds 3 and 4; until then its store takes no comparison writes.
-		if (match[1]!.startsWith("pull-"))
+		if (changesetId.startsWith("pull-"))
 			throw new CliError(`${round} is a pull request's round, and #N writes come later; name a range round`);
 		const named = await StoredReview.open(io, argument).catch(() => undefined);
-		if (named !== undefined && named.changeset.id !== match[1])
-			throw new CliError(`round ${round} belongs to ${match[1]}, but ${argument} names ${named.changeset.id}`);
+		if (named !== undefined && named.changeset.id !== changesetId)
+			throw new CliError(`round ${round} belongs to ${changesetId}, but ${argument} names ${named.changeset.id}`);
 		if (named === undefined) target = undefined;
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-		path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
+		path = await storagePath(repoRoot, changesetId, io.env, isScripted(io.env));
 		if (!existsSync(path)) throw new CliError(`Melian has no round ${round}`);
 		const storage = await openStorage(path);
 		let selected: Round | undefined;
 		try {
-			selected = (await new RoundReader(storage).read(match[1]!)).find((each) => each.id === round);
+			selected = (await new RoundReader(storage).read(changesetId)).find((each) => each.id === round);
 		} finally {
 			await storage.close(context);
 		}
@@ -93,7 +93,7 @@ async function openComparison(io: Io, argument: string, round?: string) {
 		stored = {
 			changeset: {
 				repoRoot,
-				id: match[1]!,
+				id: changesetId,
 				revision: { base: selected.stored.base, head: selected.stored.head, round },
 			},
 			missing: () => new CliError(`Melian has no current, decided round ${round}`),

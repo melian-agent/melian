@@ -37,6 +37,7 @@ export interface GitOptions {
  * that write past this limit on purpose, no command in Melian's tests wrote more than 250 bytes there.
  */
 export const stderrLimit = 4 * 1024 * 1024;
+const stderrSlab = 64 * 1024;
 
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
 // them over `cwd`, so Melian run from a hook would read that repository instead of the one it was given.
@@ -73,6 +74,8 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// With no input, git's input ends at once, so a command or credential helper that reads it cannot wait forever.
 		child.stdin.on("error", () => {}).end(options.input);
 		const stdout: Buffer[] = [];
+		// Standard error is copied into slabs: a Buffer kept for each chunk costs a hundred bytes or more, so a remote that
+		// writes one byte at a time would hold many times the limit.
 		const stderr: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
@@ -90,9 +93,14 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		});
 		let stderrSize = 0;
 		child.stderr.on("data", (chunk: Buffer) => {
-			stderrSize += chunk.length;
-			if (stderrSize <= stderrLimit) {
-				stderr.push(chunk);
+			if (stderrSize + chunk.length <= stderrLimit) {
+				for (let offset = 0; offset < chunk.length; ) {
+					const used = stderrSize % stderrSlab;
+					if (used === 0) stderr.push(Buffer.allocUnsafe(stderrSlab));
+					const copied = chunk.copy(stderr[stderr.length - 1], used, offset);
+					offset += copied;
+					stderrSize += copied;
+				}
 				return;
 			}
 			// A cut stream is never resolved, so no caller can read part of a message as a failure it knows.
@@ -116,7 +124,7 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 				code,
 				stdout: stdoutBytes.toString("utf8"),
 				stdoutBytes,
-				stderr: Buffer.concat(stderr).toString("utf8"),
+				stderr: Buffer.concat(stderr, stderrSize).toString("utf8"),
 				...(truncated ? { truncated } : {}),
 				...(timedOut ? { timedOut } : {}),
 				...(childrenLeft ? { childrenLeft } : {}),

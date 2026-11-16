@@ -1,0 +1,1305 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "ab09fd509e166923d456e5554eec5269395e4c4b",
+    "head": "f3e11807a43355ff0ae3e3a03de36d6713cf54bd"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts",
+    "packages/pipeline/src/verification.ts",
+    "packages/pipeline/src/summarize.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "a94821384f8ab766c46fc37dd08b209e8ff00db8d3632ffcee4cc871b5ce7123",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2196,
+      "column": 6,
+      "endLine": 2196,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3fc8fd1fd7426f8cb5a39335ccee3e17023bc63766530bda03856f27def7850f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/triage.test.ts",
+          "path": [
+            "triage",
+            "attaching to a stored decision",
+            "unlocks credentials before triage asks, and only for a decision it must ask for"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2196,
+      "column": 6,
+      "endLine": 2196,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a157879c83525af7f32f133f0ec348226566b653a9a8693e1c5428535b917234",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks nothing for triage when the decision it read is the one it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 6,
+      "endLine": 2206,
+      "endColumn": 72,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "dc33b39123c908aabf960129821c59ca45df11c8e852e46a08d9d57903c97094",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 6,
+      "endLine": 2206,
+      "endColumn": 72,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d7732c9a8021f86f680a902a39ce3444e36248251f68a10c109161d13d8d4bc8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 6,
+      "endLine": 2206,
+      "endColumn": 72,
+      "mutatorName": "LogicalOperator",
+      "replacement": "attachesTo !== undefined || !(attach && known.task === attachesTo)",
+      "status": "generated",
+      "id": "bf8e70133a964e514220d8e36f82af52907aeb5127ead9b9be3e191cb33ea1d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 6,
+      "endLine": 2206,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "77ec77ef4590f570331b465f44ea6ba4b68dc0bacf1f9fbde369f247db1d1ef1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 6,
+      "endLine": 2206,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "attachesTo === undefined",
+      "status": "generated",
+      "id": "1754bfdaf9af661000f3e33dc525f7ba1390b0167bd3fded17421a0710c84503",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 34,
+      "endLine": 2206,
+      "endColumn": 72,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "attach && known.task === attachesTo",
+      "status": "generated",
+      "id": "1111a3151d510c5de5676e2894f419888c0095fed50973770a260962f1e212f7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 36,
+      "endLine": 2206,
+      "endColumn": 71,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "22c3317af35c0446b8f62e87038c53f7d5e7a3cb3cedc218a23c7d26ada94d9a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 36,
+      "endLine": 2206,
+      "endColumn": 71,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "37452680eda97e9855413fb563d6e8c55c9d69bec7ad71619181aedfb50e7e4e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks nothing for triage when the decision it read is the one it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 36,
+      "endLine": 2206,
+      "endColumn": 71,
+      "mutatorName": "LogicalOperator",
+      "replacement": "attach || known.task === attachesTo",
+      "status": "generated",
+      "id": "11175ceac61652d6c0931a91d5ff459eeb288852aeacf065e091eedf70d90161",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 46,
+      "endLine": 2206,
+      "endColumn": 71,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5f85b0a1b5a18ddc0c842009fee05e4bed5a04d8ec537243527cb71865d85d8e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2206,
+      "column": 46,
+      "endLine": 2206,
+      "endColumn": 71,
+      "mutatorName": "EqualityOperator",
+      "replacement": "known.task !== attachesTo",
+      "status": "generated",
+      "id": "0bf8f1037cf1a98cf770d136deb79156ba5830fcb89a8040f3e4d02fa857b90c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2239,
+      "column": 5,
+      "endLine": 2239,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0f84c54416b6ed5f9ecebda2c733fc24c7a8a54b704c5b2015761a82de152f6a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2239,
+      "column": 5,
+      "endLine": 2239,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8fa29d7bb29d8ff8cad670f709a016092c4e51e15439041245d2ba622a734a1e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2239,
+      "column": 5,
+      "endLine": 2239,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "taskId !== undefined",
+      "status": "generated",
+      "id": "c48e1010e9a67d2aa838bff5551eedd5696544269cbb93b93078b3b7037430f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2239,
+      "column": 27,
+      "endLine": 2243,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1860100cfbb4ed6523ec5a43179ed1ab936ac580b7532dcba3d8b703057037cf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/read-ahead-unlock.test.ts",
+          "path": [
+            "triage's read-ahead unlock",
+            "unlocks the decider's providers when it read a finished decision and a rerun meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 457,
+      "column": 15,
+      "endLine": 457,
+      "endColumn": 20,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d5e9511b224cd4854e7c1c324c3b2ca41075c353a4c7f8119fea7cab7a00c291",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 473,
+      "column": 17,
+      "endLine": 473,
+      "endColumn": 21,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "caa49bc7a4648136bb0712de4d136516a427c79e7fa1c86e7c2682359307e58f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 492,
+      "column": 8,
+      "endLine": 492,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ef695c1f66df91f03e27a96354a9ca287c66cb582036d88bfe009fceacb258ea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 492,
+      "column": 8,
+      "endLine": 492,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bfe94deb32b539f6ea95c035b667694378959f3c2c264f13d09d416e3718bbbc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 492,
+      "column": 16,
+      "endLine": 492,
+      "endColumn": 40,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "0cd9efad9251d631171fa88c6861aa0f309453a19085170b00446806396d3e15",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 508,
+      "column": 7,
+      "endLine": 508,
+      "endColumn": 13,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b53b494a9a529238e8a544df85f807ee8421439d4e716452de3b054a44a869a6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 508,
+      "column": 7,
+      "endLine": 508,
+      "endColumn": 13,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "01c9c5a1a41c9c94e5b52120e8c7dbe3e4d3a478569539f2be8f0874a3d35e00",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a failed rerun meanwhile left an attempt"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 508,
+      "column": 15,
+      "endLine": 508,
+      "endColumn": 39,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "219dd615b5c65d74ed2e5c997fcd1005441791cc56fc977c9b0336596ecf3304",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a failed rerun meanwhile left an attempt"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 527,
+      "column": 6,
+      "endLine": 529,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b07ddb98c37f505a4e759f60d8b70519be7f40e688af2f22c10f405bb1154554",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 529,
+      "column": 18,
+      "endLine": 534,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "97fd1feaf2fa213d8cae619f60346bba852ad9ed33301c1f341ca9bcfebd15cd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 530,
+      "column": 7,
+      "endLine": 530,
+      "endColumn": 38,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "error instanceof UnlockFirst",
+      "status": "generated",
+      "id": "3a1d9bdac92009b1642745325b9ce49589120cae6e9d0efd6708673dc7b8d8bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 530,
+      "column": 7,
+      "endLine": 530,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1990017befae4452c661071fcc64599fd4b7ca93b508ce4fcbfe6defd0db88a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 530,
+      "column": 7,
+      "endLine": 530,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "702348550eadcd8d58a256b6da5f750e90a2f7c86db6d6c513190d8ec480e299",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "stores the failure note, and runs no second credential command, when its commit fails for another reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 531,
+      "column": 31,
+      "endLine": 531,
+      "endColumn": 47,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "a9973050ecf572dd54abdff912dcd5705682c55cab1dcb32e419701b0e1e89a5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/summarize.ts",
+      "line": 532,
+      "column": 12,
+      "endLine": 532,
+      "endColumn": 17,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e60499669eb233ab7835c14025d34b78c1fecaf23663a6dac0107e4bc0483b12",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/summarize.test.ts",
+          "path": [
+            "walkthrough summaries",
+            "runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 317,
+      "column": 34,
+      "endLine": 317,
+      "endColumn": 95,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "9adbd5f72a683b81567e3bd2566a6d6ede3ecca523caff5a5af33e20e9c8f8f2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks a new verifier route when the indexed task is absent"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 317,
+      "column": 69,
+      "endLine": 317,
+      "endColumn": 94,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a337ec592b2a2b2f0477a075359998536ff3eb5a59f3b637f5b1399bb876e10d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks a new verifier route when the indexed task is absent"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 5,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6263b2f8f5acb87f299915df828363201acad29d05c3fd69c64913bba9ceed18",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 5,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d61de24b4a2973ff416d2232ea4ec3f2d83dca871c4899f85462112cb89ffa74",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "unlocks credentials before a new verification, and not for a repeat that attaches to a failed one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 5,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "LogicalOperator",
+      "replacement": "unlockModels !== undefined || asking.length > 0",
+      "status": "generated",
+      "id": "0949066aa90450bf7d2cb679fcfc2c2dbc0205094c7b3fc8d86a00f7c5bfafec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "reports a merged unverified speaker's family from another lens, accepted true"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 5,
+      "endLine": 322,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c365a2ddb9159b3ef11c724e2383bc5ab6576f38764616dcc6fb465f34b92411",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "reports a merged unverified speaker's family from another lens, accepted false"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 5,
+      "endLine": 322,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unlockModels === undefined",
+      "status": "generated",
+      "id": "4e26b19377290da78ed4a333a7b6939bff0c06d89f7f12636a7a802846d2eda2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "reports a merged unverified speaker's family from another lens, accepted true"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 35,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "bff641f9f2c16290870df81724241c4381d70779077737712b15d41fd1f96116",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "verifies through a subscription credential on openai-codex, with plan true"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 35,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "asking.length >= 0",
+      "status": "generated",
+      "id": "2cc23b9e19ae1299c7a95bf9c16b027765953584969572d0ef5e5263c8508f40",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "verifies through a subscription credential on openai-codex, with plan true"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 35,
+      "endLine": 322,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "asking.length <= 0",
+      "status": "generated",
+      "id": "5b75fa1c43208d927f1c499014db40ae4095afd100dc64e01ebd302006d930cf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "verifies through a subscription credential on openai-codex, with plan true"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 343,
+      "column": 6,
+      "endLine": 343,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e290ab1c0307e7599ef6e288112b0b86b1dd507ea014b32ba3273cb0cf5d2589",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks the candidates' routes for a revision's first verification"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 343,
+      "column": 6,
+      "endLine": 343,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "07bebf5dca2baac44fa62849c7bd9082ed7c9949b0e87e147ce3ba4d3525ac7e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks credentials for a verification task it creates, never for one it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 6,
+      "endLine": 370,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "32f26e144d71a3d427219202acd058a650b319e486d694365d3014d3c128f9e1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 6,
+      "endLine": 370,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d1a723330501622fbf8e7e089534247e82e314b4d5f0be5fb0dd4bc563b459b4",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks the candidates' routes when it read a failed task to attach to and a rerun meanwhile replaced it with a live one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 6,
+      "endLine": 370,
+      "endColumn": 63,
+      "mutatorName": "LogicalOperator",
+      "replacement": "attachesTo !== undefined || previous?.task !== attachesTo",
+      "status": "generated",
+      "id": "da23b327ec2427a6033bda04e8c769ad6da6d5e84fbae918114cbc796d46bced",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "reports the warning again for a repeat review, which loads the index to build its lens runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 6,
+      "endLine": 370,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0bebeda119429a9b14b106afac18dfd733b00d587f01029950ce5403122fa9d6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "reports the warning again for a repeat review, which loads the index to build its lens runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 6,
+      "endLine": 370,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "attachesTo === undefined",
+      "status": "generated",
+      "id": "ccf76ec6624dbc15eb09442bdb8de6a9d6693e622205fa3ec77624dc656f0f71",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "reports the warning again for a repeat review, which loads the index to build its lens runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 34,
+      "endLine": 370,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c6a0d3c2357eccf47734943704c6b043268c1246c4385e9becd6df49b6e01514",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks credentials for a verification task it creates, never for one it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 34,
+      "endLine": 370,
+      "endColumn": 63,
+      "mutatorName": "EqualityOperator",
+      "replacement": "previous?.task === attachesTo",
+      "status": "generated",
+      "id": "ab8ffbbd5dc5fed591a8e20918fd51922efaab1bc6954d07d10b6b499cdbdb76",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks credentials for a verification task it creates, never for one it attaches to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 370,
+      "column": 34,
+      "endLine": 370,
+      "endColumn": 48,
+      "mutatorName": "OptionalChaining",
+      "replacement": "previous.task",
+      "status": "generated",
+      "id": "920383adbadd7498db6128906c2d876a055fd8acc3225becda7d6b94e7b36283",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks the candidates' routes when it read a task to attach to and the index meanwhile lost its verification"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 377,
+      "column": 6,
+      "endLine": 377,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5d694591d2f315f5b2b235ded1e311e26477560e828b3687214f645059b197ee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 377,
+      "column": 6,
+      "endLine": 377,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "21d513e46da9da760693bf0a94221b5f4a9dc49275332449eef2900fa1a3deb6",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks the candidates' routes when it read a live task to attach to and that task meanwhile ended aborted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 377,
+      "column": 6,
+      "endLine": 377,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "attachesTo === undefined",
+      "status": "generated",
+      "id": "bd89b1950f45ee948de3875a9eab4b1e13f02bbde4569fb538d8d32265843706",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 416,
+      "column": 5,
+      "endLine": 416,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "83285a81de84b22f307052f3348870068fdf1b007c1924246317b5cd0e168db9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "verification ownership and budgets",
+            "unlocks the candidates' routes when it read a task to attach to and another verification meanwhile replaced it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 416,
+      "column": 5,
+      "endLine": 416,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4b18bf7e80c7a374ec27fc574f2da3178287d91474e290a04b3706ead5d21a1b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 416,
+      "column": 5,
+      "endLine": 416,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "committed === unlockFirst",
+      "status": "generated",
+      "id": "ac43dd5f522241568fc35f4e9ebdf418a04a1fe399ba78aab241d381285ef03b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "finder family notices",
+            "routes the verifier in the plan's family order, not the order the configuration lists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 58,
+  "omitted": 0,
+  "unmutated": []
+}
