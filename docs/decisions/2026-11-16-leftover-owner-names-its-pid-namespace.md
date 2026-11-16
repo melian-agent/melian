@@ -1,6 +1,6 @@
 # A leftover's owner names its pid namespace
 
-Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit, a stat that fails, and another user's leftovers
+Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit, a stat that fails, another user's leftovers, the listing's bound, and both rows of its table
 
 Status: for [issue #520](https://github.com/melian-agent/melian/issues/520), which the maintainer marked P0 on 2026-11-16, in the coordinator's session. The method is the one the issue sets out.
 
@@ -16,6 +16,8 @@ The sweep stats each entry it lists to learn its kind. A stat that fails because
 
 A process table can hide another user's processes: with `/proc` mounted `hidepid=2`, `ps` lists only the caller's own. The review of record on [pull request #533](https://github.com/melian-agent/melian/pull/533) showed a sweep run as one user removing a live call's half-made repository that root's call had made, since the table did not list root's pid. The maintainer ruled on 2026-11-17, in the coordinator's session, to fix it here. The sweep now removes only an entry whose `lstat` owner is this process's user. Another user's leftovers stay, named as kept, until that user sweeps. A fetch ref git has packed has no file of its own to say who owns it, so it stays too. Where the process has no user ID to compare, as on Windows, the sweep removes nothing and names every leftover as kept.
 
+One sweep lists at most 1,000 leftovers, `sweepBound`, across the state directory, `records.git` and the fetch refs. Before, it read, sorted and stat'ed every matching entry, and held them all, before it looked at its deadline, so the deadline bounded the removals but not the listing. The coordinator added this to [issue #520](https://github.com/melian-agent/melian/issues/520) on 2026-11-16, by the maintainer's read on [pull request #519](https://github.com/melian-agent/melian/pull/519), and chose on 2026-11-17 how to build it, which is a choice of approach, not a ruling. The sweep reads each directory with `opendir` and stops once it has filled its room, and asks `for-each-ref --count` for one more ref than there is room for. It sorts only what it listed and says it is `bounded`, which `melian doctor` names. Name order now holds within one sweep's listing alone. When the first 1,000 entries a directory gives are all kept, as live calls' or another user's are, a later open lists the same ones and the rest wait, and `melian doctor` says the sweep stopped at its bound on every open until fewer are left.
+
 ## Why
 
 A pid means something only inside the namespace whose table is read. The device and inode are what the kernel gives to tell one namespace from another, and reading them costs one `stat`. A failed read gives a key the sweep can never match, so a mistake costs disk, never a live call's index.
@@ -23,3 +25,12 @@ A pid means something only inside the namespace whose table is read. The device 
 One limit stays. Every Linux kernel gives its first pid namespace the same inode, so two separate machines with one host name and a shared state directory still read as one. Melian does not support sharing a state directory across hosts.
 
 Leftovers that an earlier build named on Linux, after the host's name alone, no longer match this host and are kept and named by `melian doctor`. That build was on `main` only from [pull request #519](https://github.com/melian-agent/melian/pull/519)'s merge until this change, so few exist, and a person removes any by hand.
+
+## The rows it replaces
+
+These replace both rows of [the sweep decision's table](2026-11-16-record-store-sweeps-what-a-killed-call-left.md#the-rows-it-replaces-and-adds).
+
+| Resource | What bounds it, or who accepted it | Test or issue |
+| --- | --- | --- |
+| The same, left by a process killed mid-call, and a fetch ref left by a call whose deadline ran out before it could delete the ref | Removed when a later handle opens the store on this host and pid namespace, once the process table lists no process with the pid its name records and this process's user owns the entry. Kept, and named by `melian doctor`, when that pid is listed, whether by the owner or by a process that reused it, when the owner is on another host or in another pid namespace or not recorded, when the name does not parse, when the entry is not the kind the store makes, when another user owns it or, for a packed fetch ref, no file says who does, when the process has no user ID, and when the table cannot be read or does not list this process | `sweep.test.ts`; `create.test.ts`, "names the repository it builds after this host and process, …"; `doctor-record-store.test.ts` |
+| The sweep each open runs over the state directory: listing its entries and the fetch refs, and removing the stale ones | It lists at most 1,000 leftovers, `sweepBound`, across both directories and the fetch refs, and says it is bounded, which `melian doctor` names. Removals stop once the open's deadline has none left, at most one removal past it; the rest are counted as unswept, `melian doctor` names the count, and the next open removes them. A listing of the fetch refs with no time left is not started, and any listing, or stat of a listed entry, that fails for any reason but the entry's being gone ends the sweep as unlisted, removing nothing, so neither fails the open. The two process-table reads are bounded by their own five seconds each, not by the deadline, until [issue #507](https://github.com/melian-agent/melian/issues/507) | `sweep.test.ts`, "the sweep's deadline", "the sweep's listing" and "the sweep's bound"; `doctor-record-store.test.ts`, "counts the leftovers the sweep left when its deadline ran out" and "says the sweep stopped listing at its bound" |

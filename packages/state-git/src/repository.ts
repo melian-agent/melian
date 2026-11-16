@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Stats } from "node:fs";
-import { lstat, mkdir, readdir, rename, rm } from "node:fs/promises";
+import { lstat, mkdir, opendir, rename, rm } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { ChangesetError, type GitResult, git, ProcessTable, RecordError, stderrLimit } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
@@ -43,6 +43,9 @@ const contention = /cannot lock ref|Unable to create '.*\.lock'/;
 const lostRace =
 	/\t\[rejected\] \((stale info|fetch first|non-fast-forward|already exists)\)|\t\[remote rejected\] \((failed to update ref|cannot lock ref|incorrect old value|reference already exists)/;
 
+/** The most leftovers one sweep lists, across the state directory, `records.git` and the fetch refs. */
+export const sweepBound = 1_000;
+
 /**
  * What a store's sweep did with the leftovers of calls that ended before they removed what they made: the temporary
  * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
@@ -50,6 +53,7 @@ const lostRace =
  * process table could not be read or did not list this process, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
  * which the next open removes. `unlisted` says it could not list every leftover: a listing failed, and it removed
  * nothing, or no time was left to list the fetch refs, and it counted the stale leftovers it had listed as unswept.
+ * `bounded` says it stopped listing at `sweepBound` leftovers, so more may wait for a later open.
  */
 export type Sweep = {
 	removed: string[];
@@ -58,6 +62,7 @@ export type Sweep = {
 	unread?: string;
 	unswept?: number;
 	unlisted?: true;
+	bounded?: true;
 };
 
 // A leftover as the sweep lists it: its name, the owner its name records, whether it is the kind of thing the store
@@ -100,6 +105,18 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 
 // An entry another call removed after the listing reads as gone; any other failure fails the listing, so the sweep
 // reports it rather than skipping an entry it could not inspect.
+// The names in `directory` that start with `prefix`, in name order, and whether more than `room` of them are there, in
+// which case it lists only the first `room` the directory gives and stops.
+async function namesIn(directory: string, prefix: string, room: number): Promise<{ names: string[]; more: boolean }> {
+	const names: string[] = [];
+	for await (const entry of await opendir(directory)) {
+		if (!entry.name.startsWith(prefix)) continue;
+		if (names.length === room) return { names: names.sort(), more: true };
+		names.push(entry.name);
+	}
+	return { names: names.sort(), more: false };
+}
+
 async function statIfThere(path: string) {
 	return lstat(path).catch((cause: unknown) => {
 		if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause;
@@ -184,8 +201,18 @@ export class RecordRepository {
 		// Listed before the table is read: a call still running when it is read made only what it is listed beside, and a
 		// call that starts later made nothing the listing holds.
 		// No failure inside the sweep fails the open: a listing that fails removes nothing and reports `unlisted`.
-		const { leftovers, unlisted } = await this.#leftovers(deadline).catch(() => ({ leftovers: [], unlisted: true }));
-		const sweep: Sweep = { removed: [], kept: [], failed: [], ...(unlisted ? { unlisted: true } : {}) };
+		const { leftovers, unlisted, bounded } = await this.#leftovers(deadline).catch(() => ({
+			leftovers: [],
+			unlisted: true,
+			bounded: false,
+		}));
+		const sweep: Sweep = {
+			removed: [],
+			kept: [],
+			failed: [],
+			...(unlisted ? { unlisted: true } : {}),
+			...(bounded ? { bounded: true } : {}),
+		};
 		let table: ReturnType<Processes["list"]> | undefined;
 		try {
 			table = processes.list();
@@ -213,15 +240,19 @@ export class RecordRepository {
 		return sweep;
 	}
 
-	async #leftovers(deadline: Deadline): Promise<{ leftovers: Leftover[]; unlisted: boolean }> {
+	async #leftovers(deadline: Deadline): Promise<{ leftovers: Leftover[]; unlisted: boolean; bounded: boolean }> {
 		const leftovers: Leftover[] = [];
+		// What the sweep lists is bounded, so a directory holding many leftovers costs one open a bounded time and memory.
+		let room = sweepBound;
 		// A table can hide another user's processes, as `/proc` mounted with `hidepid` does, so only this user's own
 		// entries are swept. Where the process has no user ID, as on Windows, nothing is.
 		const uid = process.getuid?.();
 		const ours = (found: Stats) => uid !== undefined && found.uid === uid;
 		const state = dirname(this.path);
 		const folder = `${basename(this.path)}.`;
-		for (const name of (await readdir(state)).filter((entry) => entry.startsWith(folder)).sort()) {
+		const folders = await namesIn(state, folder, room);
+		room -= folders.names.length;
+		for (const name of folders.names) {
 			const found = await statIfThere(join(state, name));
 			if (found === undefined) continue;
 			leftovers.push({
@@ -232,7 +263,9 @@ export class RecordRepository {
 			});
 		}
 		const index = "melian-index-";
-		for (const name of (await readdir(this.path)).filter((entry) => entry.startsWith(index)).sort()) {
+		const indexes = await namesIn(this.path, index, room);
+		room -= indexes.names.length;
+		for (const name of indexes.names) {
 			const found = await statIfThere(join(this.path, name));
 			if (found === undefined) continue;
 			leftovers.push({
@@ -243,10 +276,16 @@ export class RecordRepository {
 			});
 		}
 		// A listing with no time left is not started, so the sweep is unlisted rather than past its deadline.
-		if (deadline.left() <= 0) return { leftovers, unlisted: true };
+		const bounded = folders.more || indexes.more;
+		if (deadline.left() <= 0) return { leftovers, unlisted: true, bounded };
 		const fetch = "refs/melian/fetch/";
-		const refs = await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline);
-		for (const ref of refs.split("\n").filter((line) => line !== "")) {
+		// One more than there is room for says whether the refs run past the bound.
+		const listed = await this.#succeed(
+			["for-each-ref", "--sort=refname", "--format=%(refname)", `--count=${room + 1}`, fetch],
+			deadline,
+		);
+		const refs = listed.split("\n").filter((line) => line !== "");
+		for (const ref of refs.slice(0, room)) {
 			// A packed ref has no file of its own to say who owns it, so it is kept.
 			const found = await statIfThere(join(this.path, ref));
 			leftovers.push({
@@ -256,7 +295,7 @@ export class RecordRepository {
 				remove: () => this.#deleteRef(ref, deadline),
 			});
 		}
-		return { leftovers, unlisted: false };
+		return { leftovers, unlisted: false, bounded: bounded || refs.length > room };
 	}
 
 	async run(

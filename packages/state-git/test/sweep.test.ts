@@ -2,23 +2,33 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import type * as FsSync from "node:fs";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import type * as Fs from "node:fs/promises";
-import { lstat, readdir } from "node:fs/promises";
+import { lstat, opendir, readdir } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Clock } from "../src/deadline.ts";
 import { Owner } from "../src/owner.ts";
-import { RecordRepository } from "../src/repository.ts";
+import { RecordRepository, sweepBound } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
 // A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing, and others
 // make a listing or a stat fail.
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof Fs>();
-	return { ...actual, readdir: vi.fn(actual.readdir), lstat: vi.fn(actual.lstat) };
+	return { ...actual, opendir: vi.fn(actual.opendir), lstat: vi.fn(actual.lstat) };
 });
 
 // The owner key reads this process's pid namespace, so a test can stand another namespace in for it.
@@ -69,6 +79,20 @@ async function exited(): Promise<{ pid: number }> {
 	await stop(child);
 	if (new ProcessTable().list().some((entry) => entry.pid === pid)) throw new Error(`ps still lists pid ${pid}`);
 	return { pid };
+}
+
+// Stands in for the listing the sweep reads: `given` answers a directory's entries from those it really holds.
+function listing(given: (path: string, held: string[]) => string[]): () => void {
+	const real = vi.mocked(opendir).getMockImplementation() as typeof opendir;
+	vi.mocked(opendir).mockImplementation((async (path: string) => {
+		const names = given(path, await readdir(path));
+		return {
+			async *[Symbol.asyncIterator]() {
+				for (const name of names) yield { name };
+			},
+		};
+	}) as unknown as typeof opendir);
+	return () => vi.mocked(opendir).mockImplementation(real);
 }
 
 const git = (args: readonly string[], input?: string) =>
@@ -198,9 +222,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		const table = new ProcessTable().list();
 		const suffixes = [owned(4_000_000), owned(4_000_000)].sort();
 		for (const suffix of suffixes) plant(suffix);
-		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-		vi.mocked(readdir).mockImplementation((async (path: string) =>
-			((await listed(path)) as string[]).sort().reverse()) as unknown as typeof readdir);
+		const restore = listing((_path, held) => held.sort().reverse());
 		try {
 			const store = await remote.open({ directory, processes: { list: () => table } });
 			const [first, second] = suffixes.map(names);
@@ -210,23 +232,22 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 				failed: [],
 			});
 		} finally {
-			vi.mocked(readdir).mockImplementation(listed);
+			restore();
 		}
 	});
 
 	it("passes over an entry that another call removed between the listing and its read", async () => {
 		const table = new ProcessTable().list();
 		const suffix = owned(4_000_000);
-		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-		vi.mocked(readdir).mockImplementation((async (path: string) => [
-			...((await listed(path)) as string[]),
+		const restore = listing((path, held) => [
+			...held,
 			path === directory ? `records.git.${suffix}` : `melian-index-${suffix}`,
-		]) as unknown as typeof readdir);
+		]);
 		try {
 			const store = await remote.open({ directory, processes: { list: () => table } });
 			expect(store.sweep).toEqual({ removed: [], kept: [], failed: [] });
 		} finally {
-			vi.mocked(readdir).mockImplementation(listed);
+			restore();
 		}
 	});
 
@@ -572,17 +593,16 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 			const owner = await exited();
 			const suffix = owned(owner.pid);
 			plant(suffix);
-			const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-			vi.mocked(readdir).mockImplementation((async (path: string) => {
+			const restore = listing((path, held) => {
 				if (path === at()) throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
-				return listed(path);
-			}) as unknown as typeof readdir);
+				return held;
+			});
 			try {
 				const store = await remote.open({ directory });
 				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
 				expect(planted(suffix)).toEqual(there);
 			} finally {
-				vi.mocked(readdir).mockImplementation(listed);
+				restore();
 			}
 		});
 
@@ -607,6 +627,85 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 				vi.mocked(lstat).mockImplementation(stat);
 			}
 		});
+});
+
+describe("the sweep's bound", { timeout: 60_000 }, () => {
+	const gonePid = 4_000_000;
+	const indexes = () => readdirSync(records).filter((entry) => entry.startsWith("melian-index-"));
+	const folders = () => readdirSync(directory).filter((entry) => entry.startsWith("records.git."));
+	const plantIndexes = (count: number) => {
+		for (let i = 0; i < count; i++) writeFileSync(join(records, `melian-index-${owned(gonePid)}`), "index");
+	};
+	const fetched = () => fetchRefs().filter((ref) => ref.startsWith("refs/melian/fetch/"));
+	const plantRefs = (suffixes: readonly string[]) =>
+		git(
+			["update-ref", "--stdin"],
+			suffixes.map((suffix) => `create refs/melian/fetch/${suffix} ${commit}\n`).join(""),
+		);
+	const open = async () => {
+		const table = new ProcessTable().list();
+		return (await remote.open({ directory, deadlineMs: 120_000, processes: { list: () => table } })).sweep;
+	};
+
+	it(`lists and removes ${sweepBound} leftovers in one directory, and is not bounded`, async () => {
+		plantIndexes(sweepBound);
+		const all = indexes().map((entry) => `records.git/${entry}`);
+		const sweep = await open();
+		expect(indexes()).toEqual([]);
+		expect({ ...sweep, removed: [...sweep.removed].sort() }).toEqual({ removed: all.sort(), kept: [], failed: [] });
+	});
+
+	it(`lists ${sweepBound} of ${sweepBound + 1} leftovers in one directory, and says it stopped at the bound`, async () => {
+		plantIndexes(sweepBound + 1);
+		const all = indexes();
+		const sweep = await open();
+		const left = indexes();
+		expect(left).toHaveLength(1);
+		expect({ ...sweep, removed: [...sweep.removed].sort() }).toEqual({
+			removed: all
+				.filter((entry) => !left.includes(entry))
+				.map((entry) => `records.git/${entry}`)
+				.sort(),
+			kept: [],
+			failed: [],
+			bounded: true,
+		});
+	});
+
+	for (const extra of [0, 1])
+		it(`counts the bound across both directories and the fetch refs, at ${sweepBound + extra} leftovers`, async () => {
+			const folder = owned(gonePid);
+			mkdirSync(join(directory, `records.git.${folder}`));
+			plantIndexes(sweepBound - 2);
+			const refs = [owned(gonePid), owned(gonePid)].sort().slice(0, 1 + extra);
+			plantRefs(refs);
+			const listed = indexes().map((entry) => `records.git/${entry}`);
+			const sweep = await open();
+			expect(folders()).toEqual([]);
+			expect(indexes()).toEqual([]);
+			// The refs are listed in name order, so the one past the bound is the last.
+			expect(fetched()).toEqual(extra === 0 ? [] : [`refs/melian/fetch/${refs[1]}`]);
+			expect(sweep).toEqual({
+				removed: [`records.git.${folder}`, ...listed.sort(), `refs/melian/fetch/${refs[0]}`],
+				kept: [],
+				failed: [],
+				...(extra === 0 ? {} : { bounded: true }),
+			});
+		});
+
+	it(`stops at the bound in the state directory, and lists nothing in records.git or the fetch refs`, async () => {
+		for (let i = 0; i <= sweepBound; i++) mkdirSync(join(directory, `records.git.${owned(gonePid)}`));
+		plantIndexes(1);
+		const index = indexes();
+		const ref = owned(gonePid);
+		plantRefs([ref]);
+		const sweep = await open();
+		expect(folders()).toHaveLength(1);
+		expect(indexes()).toEqual(index);
+		expect(fetched()).toEqual([`refs/melian/fetch/${ref}`]);
+		expect(sweep.removed).toHaveLength(sweepBound);
+		expect(sweep.bounded).toBe(true);
+	});
 });
 
 describe("another user's leftovers", () => {
