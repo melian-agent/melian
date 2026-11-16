@@ -1534,6 +1534,43 @@ describe("a lens route", () => {
 		});
 	});
 
+	it("drops a moved route's accepted fallback at a level the guarded committed tier does not give it, and fails a run on it", () => {
+		const committed = {
+			heavy: {
+				model: opus,
+				fallbacks: [{ model: gpt, thinking: "medium" as const }],
+				accept: [opus, gpt],
+				acceptOverridden: false as const,
+			},
+		};
+		const at = (thinking?: "medium" | "high") =>
+			plan(committed, both, {
+				lensRoutePreferences: {
+					correctness: { model: opus, fallbacks: [thinking === undefined ? gpt : { model: gpt, thinking }] },
+				},
+			});
+		const models = (resolved: ReviewPlan) =>
+			resolved.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model);
+		expect(models(at("medium"))).toEqual([opus, gpt]);
+		expect(models(at("high"))).toEqual([opus]);
+		expect(models(at())).toEqual([opus]);
+		expect(at("medium").judge("correctness", "careful", gpt).refusal).toBeUndefined();
+		const rerouted = plan(committed, both, {
+			preferences: { heavy: { model: opus, fallbacks: [] } },
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(models(rerouted)).toEqual([opus]);
+		const [finished] = at("high").mark(
+			[{ name: "lens.correctness", status: "ran", level: "careful" }],
+			new Map([["correctness", [{ scope: "", version: "v", level: "careful" as const, model: gpt }]]]),
+		);
+		expect(finished).toMatchObject({
+			status: "failed",
+			reason:
+				"models.heavy.acceptOverridden is false, and melian.local.yaml runs openai/gpt-5.5 at thinking high; committed policy wants medium",
+		});
+	});
+
 	it("refuses a moved route whose thinking differs from a guarded committed tier's", () => {
 		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
 		const resolved = plan(committed, both, {

@@ -500,8 +500,8 @@ export class ReviewPlan {
 
 	/**
 	 * The route of the lens `name` that the folder `scope` defined, where it names its own, as the plan resolved it. With
-	 * `level`, a route a preference file gave the lens keeps only the models its committed tier at that level accepts,
-	 * where that tier says `acceptOverridden: false`.
+	 * `level`, a route a preference file gave the lens keeps only the models its committed tier at that level accepts, each
+	 * at the level that tier gives it, where that tier says `acceptOverridden: false`.
 	 */
 	lensRoute(name: string, scope: string, level?: ScrutinyLevel): PlannedLensRoute | undefined {
 		const route = this.lensRoutes.find((each) => each.lens === name && each.scope === scope);
@@ -509,9 +509,25 @@ export class ReviewPlan {
 			.find((lens) => lens.name === name && (lens.scope ?? "") === scope)
 			?.levels.find((each) => each.level === level);
 		if (route === undefined || entry?.by === undefined) return route;
-		const { accept = [], acceptOverridden } = this.tier(entry.tier);
+		const policy = this.tier(entry.tier);
+		const { accept = [], acceptOverridden } = policy;
 		if (acceptOverridden !== false) return route;
-		return { ...route, models: route.models.filter(({ model }) => accept.includes(model)) };
+		return {
+			...route,
+			models: route.models.filter(
+				({ model }) => accept.includes(model) && !ReviewPlan.relevelled(policy, route, model),
+			),
+		};
+	}
+
+	// Whether `model` runs on `route` at another level than `policy`, a committed tier's route, gives it. A tier a
+	// preference file, `--model` or a derivation rerouted holds no committed level for a model off its route, so such a
+	// model fails closed.
+	private static relevelled(policy: PlannedRoute, route: PlannedRoute, model: string): boolean {
+		const committed = policy.models.find((each) => each.model === model);
+		if (policy.by !== undefined && (committed === undefined || policy.status !== "routed")) return true;
+		const wanted = committed?.thinking ?? policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset";
+		return (route.models.find((each) => each.model === model)?.thinking ?? route.thinking ?? "unset") !== wanted;
 	}
 
 	/**
@@ -675,8 +691,11 @@ export class ReviewPlan {
 		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by, planned);
 		const lineage: CheckLineage | undefined =
 			left === undefined || moved === undefined ? left : { ...left, by: planned.by ?? "melian.yaml", moved };
+		const relevelled =
+			route !== undefined && !own && model !== undefined && ReviewPlan.relevelled(policy, planned, model);
 		const outside =
-			policy.acceptOverridden === false && (lineage?.outside === true || lineage?.thinking !== undefined);
+			policy.acceptOverridden === false &&
+			(lineage?.outside === true || lineage?.thinking !== undefined || relevelled);
 		const unlisted = `which ${at}.accept does not list`;
 		const why =
 			moved === undefined
@@ -687,9 +706,11 @@ export class ReviewPlan {
 		const refusal =
 			(route === undefined ? this.refusal(entry.tier) : ReviewPlan.refusalOf(route)) ??
 			(outside
-				? lineage?.thinking === undefined
-					? why
-					: `${at}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+				? lineage?.thinking !== undefined
+					? `${at}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+					: lineage?.outside !== true && relevelled
+						? `${at}.acceptOverridden is false, and ${by} runs ${model} at thinking ${planned.models.find((each) => each.model === model)?.thinking ?? planned.thinking ?? "unset"}; committed policy wants ${policy.models.find((each) => each.model === model)?.thinking ?? policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset"}`
+						: why
 				: undefined);
 		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
 	}
