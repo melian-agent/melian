@@ -32,3 +32,7 @@ Rule 6 gains a clause. The job that runs a writer's head may hand over an accoun
 ## What stays out, and why
 
 The account holds no lineage. The review plan adds lineage when it marks the lens records at adjudication, from the models each lens finished on, and the plan is the authority for it. The reader asks the plan again.
+
+## Where the reader takes its policy
+
+The reader reads policy from the source the review read, and the account holds no resolution. So in a range whose head is checked out, a `melian.yaml` edited after the review can change the verdict the reader prints. [The maintainer's ruling of 2026-11-16](https://github.com/melian-agent/melian/pull/476#issuecomment-6907010001) leaves that as designed in this build, whose store stays on the host that wrote it. [Issue #502](https://github.com/melian-agent/melian/issues/502) records the policy's fingerprint in the round, and lands before build 4, when records first reach other machines.
