@@ -532,7 +532,7 @@ function checkEmojiClashes(lenses: readonly LensFields[]): void {
 interface Layered {
 	readonly lens: LensFields;
 	readonly declared: Declared;
-	/** Whether the lens is the built-in of its name, or extends it under that name. */
+	// The built-in of its name, or a lens that extends it under that name.
 	readonly builtin: boolean;
 }
 
