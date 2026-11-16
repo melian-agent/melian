@@ -629,13 +629,25 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const records = await DirectoryRecordStore.open(store, reviewPayloads);
 		const exported = await records.list(changeset!);
 		const round = exported.find(({ kind }) => kind === "round")!;
-		const added: RecordEnvelope[] = [
-			{ ...round, key: `${round.key}-again` },
+		await records.add([
 			{ ...round, key: `${round.key}-elsewhere`, revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
-		];
-		await records.add(added);
+		]);
+		// The store lists in no order, so add rounds until it lists them in neither ID order nor its reverse, which a
+		// sort that ignores the IDs could produce.
+		const listed = async () =>
+			(await records.list(changeset!))
+				.filter(({ kind, revision }) => kind === "round" && revision === round.revision)
+				.map((each) => SharedRecord.parse(each, reviewPayloads).id);
+		let ids: string[] = [];
+		let mixed = false;
+		for (let n = 0; n < 20 && !mixed; n++) {
+			await records.add([{ ...round, key: `${round.key}-again-${n}` }]);
+			const order = await listed();
+			ids = [...order].sort();
+			mixed = order.join() !== ids.join() && order.join() !== [...ids].reverse().join();
+		}
 		await records.close();
-		const ids = [round, added[0]!].map((each) => SharedRecord.parse(each, reviewPayloads).id).sort();
+		expect(mixed).toBe(true);
 
 		const json = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env);
 		const text = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all", "--notes"], env);
@@ -675,6 +687,36 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(notes.stdout).toBe(shown({ notes: true }));
 		expect(all.stdout).not.toBe(plain.stdout);
 		expect(notes.stdout).not.toBe(plain.stdout);
+	});
+
+	// The base's committed policy shows the P1; the uncommitted melian.yaml silences it, and counts only on the head.
+	const silencing = `${guardrailsOnly}resolution:\n  P1: silent\n`;
+
+	it("reads a range's policy from the working tree when its head is checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			verdict: "Verdict: passed",
+		});
+	});
+
+	it("reads a range's policy from its base when its head is not checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		git(repo, "checkout", "--quiet", "plain");
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 1,
+			verdict: "Verdict: findings, blocking",
+		});
 	});
 
 	it("refuses a store that holds no round of the revision, though it holds one of another", async () => {

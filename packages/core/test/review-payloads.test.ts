@@ -570,6 +570,18 @@ describe("review payload checks", () => {
 		);
 	});
 
+	it("orders producers by check before version, though a later check's version text sorts first", () => {
+		// "lens.a-b" sorts after "lens.a", but "lens.a-b@" sorts before "lens.a@", since "-" sorts before "@".
+		const producers = [
+			{ check: "lens.a", version: null, ids: null },
+			{ check: "lens.a-b", version: null, ids: null },
+		];
+		expect(check("account", { ...account, producers })).toBeUndefined();
+		expect(check("account", { ...account, producers: [producers[1], producers[0]] } as RecordJson)).toBe(
+			"lists its producers out of order, or one twice",
+		);
+	});
+
 	it("names the kind when a record's payload is refused", () => {
 		const envelope: RecordEnvelope = {
 			v: 1,
