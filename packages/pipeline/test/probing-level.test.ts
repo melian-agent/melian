@@ -320,7 +320,8 @@ function withoutProbes(options: Parameters<typeof review>[1]) {
 	);
 }
 
-describe("a level that probes", () => {
+// The macOS runner takes four times as long as Linux here, so these pass five seconds there.
+describe("a level that probes", { timeout: 60_000 }, () => {
 	it("reports a finding only with a probe that failed, and the verifier judges the probe it ran again", async () => {
 		const { run, requests, heads } = await review({ planner: plan, prober: probing(failing) });
 		const { verdict } = await run;
@@ -601,11 +602,17 @@ describe("a level that probes", () => {
 					],
 				},
 				{
-					rewrite: (command) => (inHeadTree(command) ? `date +%s%3N >> '${log}'; ${command}` : command),
+					rewrite: (command) =>
+						inHeadTree(command)
+							? `'${process.execPath}' -e 'console.log(Date.now())' >> '${log}'; ${command}`
+							: command,
 				},
 			);
 			await run;
-			const [first, second] = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			const starts = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			expect(starts).toHaveLength(2);
+			expect(starts.every(Number.isFinite), `start times ${starts.join(", ")}`).toBe(true);
+			const [first, second] = starts;
 			expect(second! - first!).toBeGreaterThanOrEqual(500);
 		} finally {
 			rmSync(join(log, ".."), { recursive: true, force: true });
@@ -1096,6 +1103,42 @@ describe("a level that probes", () => {
 		);
 	});
 
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+		const { run, changeset } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			prober: [
+				// An attack skipped and then probed was probed, as the run's own record counts it.
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
+				call("run_probe", { attack: 2, script: passing }),
+				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
+				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const prober = telemetry.stages.find((stage) => stage.role === "prober");
+		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
+			id: expect.stringMatching(/^p[0-9]+$/),
+			attack,
+			ended,
+			exitCode,
+			signal: null,
+			timedOut: false,
+			truncated,
+			milliseconds: expect.any(Number),
+		});
+		expect(prober!.probes).toEqual({
+			count: 3,
+			milliseconds: expect.any(Number),
+			limit: 30_000,
+			attacks: 4,
+			skipped: [4],
+			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
+		});
+	});
+
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
 		const fake = createFakeModels();
 		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
@@ -1232,14 +1275,14 @@ describe("a level that probes", () => {
 		);
 		const firstDone = first.run.catch(() => undefined);
 		try {
-			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1));
+			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			const second = await review(
 				{ planner: plan, prober: probing(failing) },
 				{ fake, writer: { trusted: true, by: "writer" } },
 			);
 			second.run.catch(() => undefined);
 			// The probe environment names whose head it is, so the second review plans for itself rather than wait.
-			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 3_000 });
+			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 10_000 });
 			release();
 			await second.run.catch(() => undefined);
 		} finally {
@@ -1278,7 +1321,7 @@ describe("a level that probes", () => {
 					{ fake },
 				);
 				second.run.catch(() => undefined);
-				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 3_000 });
+				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			}
 			return record;
 		}) as typeof reviewer.waitForTask;
