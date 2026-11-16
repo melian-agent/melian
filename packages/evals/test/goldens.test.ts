@@ -24,6 +24,7 @@ import {
 	Merge,
 	type Severity,
 	type Verification,
+	visibleText,
 } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
@@ -1466,6 +1467,26 @@ describe("the syntax-check goldens' wrapper on a linked module", { timeout: 60_0
 			expect(findings(golden, "../../outside/missing.mjs"), golden).toEqual([
 				expect.objectContaining({ file: "src/vendor.mjs", line: 1, rule: "node/check-failed" }),
 			]);
+	});
+
+	it("escapes every character core's visibleText does in both twins' rendered file names", () => {
+		const codes = [0x1b, 0x9b, 0x61c, 0x200e, 0x200f, 0x2028, 0x2029, 0x202a, 0x202e, 0x2066, 0x2069];
+		const file = `src/evil-${String.fromCharCode(...codes)}.mjs`;
+		for (const golden of [
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
+		]) {
+			const wrapper = join(goldensDirectory, golden, "head/src/syntax-check.mjs");
+			const script = `const { render } = await import(${JSON.stringify(wrapper)}); process.stdout.write(JSON.stringify(render(${JSON.stringify([{ file, line: 1, rule: "node/SyntaxError", message: "x" }])})));`;
+			const rendered: string = JSON.parse(
+				execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" }),
+			);
+			expect(rendered, golden).toBe(`P1 ${visibleText(file)}:1 node/SyntaxError\n  x\n`);
+			expect(
+				[...rendered].filter((char) => codes.includes(char.charCodeAt(0))),
+				golden,
+			).toEqual([]);
+		}
 	});
 });
 
