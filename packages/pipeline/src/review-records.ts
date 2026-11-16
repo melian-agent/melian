@@ -286,7 +286,10 @@ export class ReviewRecords {
 		return this.#record("round", key, manifest);
 	}
 
-	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
+	/**
+	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
+	 * sighting, since a later round exports a dismissal made at an earlier head.
+	 */
 	dismissal(facts: DismissalFacts): SharedRecord {
 		const payload: DismissalPayload = {
 			v: 1,
@@ -295,7 +298,7 @@ export class ReviewRecords {
 			at: facts.at,
 			severity: facts.severity,
 			sighting: { revision: facts.sighting.revision, finding: facts.sighting.finding as unknown as RecordJson },
-			head: this.head,
+			head: Revision.parseKey(facts.sighting.revision)?.head ?? "",
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};

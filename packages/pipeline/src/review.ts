@@ -3104,6 +3104,43 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
+		// Each dismissal as `melian dismiss` stored it, so a later round adds the same bytes. One with no frozen sighting
+		// was stored before findings document version 11, and gets no record, and every reopen drops the sighting.
+		const dismissals =
+			state === undefined
+				? []
+				: Object.keys(state.items)
+						.sort()
+						.flatMap((id) => {
+							const {
+								dismissedBy,
+								dismissedReason,
+								dismissedAt,
+								dismissedSeverity,
+								dismissedSighting,
+								dismissedTrigger,
+							} = state.items[id]!.lifecycle;
+							if (dismissedSighting === undefined) return [];
+							return [
+								records.dismissal({
+									finding: id,
+									by: dismissedBy!,
+									reason: dismissedReason!,
+									at: dismissedAt!,
+									severity: dismissedSeverity!,
+									// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+									sighting: {
+										revision: dismissedSighting.revision,
+										finding: {
+											...dismissedSighting.sighting,
+											properties: { ...dismissedSighting.sighting.properties, status: "new" },
+										},
+									},
+									rounds: [],
+									trigger: dismissedTrigger!,
+								}),
+							];
+						});
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
@@ -3120,7 +3157,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.map((each) => SharedRecord.parseEnvelope(each).id),
 		);
 		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
+				record.toJSON(),
+			),
 		);
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:

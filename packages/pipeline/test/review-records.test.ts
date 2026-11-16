@@ -107,6 +107,22 @@ describe("ReviewRecords", () => {
 		expect((json.payload as { rounds: string[] }).rounds).toEqual(["1".repeat(64), "2".repeat(64)]);
 	});
 
+	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const earlier = "e".repeat(40);
+		const record = records().dismissal({
+			finding: sighting.properties.id,
+			by: "maintainer",
+			reason: "Accepted",
+			at: "2026-11-15T00:00:00.000Z",
+			severity: "P1",
+			sighting: { revision: `${base}..${earlier}`, finding: sighting },
+			rounds: [],
+			trigger: { hash: "h", proof: [] },
+		});
+		expect((record.toJSON().payload as { head: string }).head).toBe(earlier);
+	});
+
 	it("names each record a round read once, in order, and keys the round by what it read", () => {
 		const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
 		const check = records().check(
