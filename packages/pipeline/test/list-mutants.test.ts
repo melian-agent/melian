@@ -528,16 +528,22 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			this: EnumerationQueue,
 			worker: () => Promise<unknown>,
 		) {
-			return run.call(this, async () => {
+			// The hold ends when the queue's turn settles, so a call that works on before the queue lets go is caught.
+			const turn = run.call(this, () => {
 				held++;
 				scratch.held++;
-				try {
-					return await worker();
-				} finally {
+				return worker();
+			});
+			turn
+				.then(
+					() => {},
+					() => {},
+				)
+				.finally(() => {
 					held--;
 					scratch.held--;
-				}
-			});
+				});
+			return turn;
 		});
 		const reader: SourceReader = Object.getPrototypeOf(await openSource(repo, { kind: "revision", commit: base }));
 		const readText = reader.readText;
