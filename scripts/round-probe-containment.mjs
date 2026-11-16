@@ -378,8 +378,9 @@ export function recording(sandbox, argv) {
 	};
 }
 
-/** The line a probe that did not finish prints, or undefined when it exited 0 in time with its whole output. */
+/** The line a probe that did not finish, or whose processes could not be stopped, prints; undefined when it exited 0 in time with its whole output. */
 export function unfinished(result) {
+	if (result.error !== undefined) return `the containment probe's processes could not be stopped: ${result.error}`;
 	if (result.exitCode === 0 && !result.timedOut && !result.truncated) return undefined;
 	return `the containment probe did not finish: exit ${result.exitCode ?? result.signal}, timed out ${result.timedOut}, cut ${result.truncated}`;
 }
@@ -526,6 +527,7 @@ export async function main(probes = Probe) {
 		);
 		let report;
 		let plan;
+		let left;
 		const { policy } = probe;
 		try {
 			plan = containmentPlan({
@@ -552,8 +554,10 @@ export async function main(probes = Probe) {
 			report = JSON.parse(result.output);
 		} finally {
 			const cleanup = await probe.close();
-			if (!cleanup.removed) console.log(`the probe's scratch was left at ${cleanup.leftover}`);
+			left = !cleanup.removed;
+			if (left) console.log(`the probe's scratch was left at ${cleanup.leftover}`);
 		}
+		if (left) return 1;
 		for (const line of walked(report, plan)) console.log(line);
 		console.log(`environment: ${report.environment.join(" ")}`);
 		console.log(`processes visible: ${report.processes}; sudo: ${report.sudo}; dns: ${report.dns}`);

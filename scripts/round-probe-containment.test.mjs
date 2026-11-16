@@ -368,6 +368,12 @@ describe("unfinished", () => {
 			"the containment probe did not finish: exit 0, timed out false, cut true",
 		);
 	});
+
+	it("names a probe that exited 0 but whose processes could not be stopped", () => {
+		expect(unfinished({ ...done, error: "the process table could not be read" })).toBe(
+			"the containment probe's processes could not be stopped: the process table could not be read",
+		);
+	});
 });
 
 describe("observeHost", () => {
@@ -529,7 +535,7 @@ describe("main", () => {
 		}
 	});
 
-	function stoppedProbes(root, removed) {
+	function stoppedProbes(root, removed, result) {
 		const tree = join(root, "tree");
 		const run = join(root, "run");
 		mkdirSync(tree);
@@ -540,7 +546,8 @@ describe("main", () => {
 			sandbox: {},
 			open: async () => ({
 				policy: { read: [tree], write: [run] },
-				run: async () => ({ exitCode: null, signal: "SIGKILL", timedOut: true, truncated: false, output: "" }),
+				run: async () =>
+					result ?? { exitCode: null, signal: "SIGKILL", timedOut: true, truncated: false, output: "" },
 				close: async () => ({ removed, leftover: removed ? undefined : join(root, "left") }),
 			}),
 		};
@@ -594,6 +601,15 @@ describe("main", () => {
 			["the containment probe did not finish: exit SIGKILL, timed out true, cut false"],
 			[expect.stringMatching(/^the probe's scratch was left at \/.*\/left$/)],
 		]);
+	});
+
+	it.runIf(process.platform === "linux")("fails a probe that finished when closing it left its scratch", async () => {
+		const finished = { exitCode: 0, signal: null, timedOut: false, truncated: false, output: "{}" };
+		const result = await mainWith((root) => stoppedProbes(root, false, finished));
+		expect(result).toMatchObject({
+			code: 1,
+			logs: [[expect.stringMatching(/^the probe's scratch was left at \/.*\/left$/)]],
+		});
 	});
 
 	it("runs nothing when another module imports it", () => {
