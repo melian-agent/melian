@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Stats } from "node:fs";
 import { lstat, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { ChangesetError, type GitResult, git, ProcessTable, RecordError, stderrLimit } from "@melian-agent/core";
@@ -60,7 +61,7 @@ export type Sweep = {
 };
 
 // A leftover as the sweep lists it: its name, the owner its name records, whether it is the kind of thing the store
-// makes under that name, and how to remove it.
+// makes under that name and this process's user owns it, and how to remove it.
 type Leftover = { name: string; owner: Owner | undefined; fits: boolean; remove(): Promise<void> };
 
 // One entry of a commit's tree, as `ls-tree -r -z` gives it.
@@ -214,6 +215,10 @@ export class RecordRepository {
 
 	async #leftovers(deadline: Deadline): Promise<{ leftovers: Leftover[]; unlisted: boolean }> {
 		const leftovers: Leftover[] = [];
+		// A table can hide another user's processes, as `/proc` mounted with `hidepid` does, so only this user's own
+		// entries are swept. Where the process has no user ID, as on Windows, nothing is.
+		const uid = process.getuid?.();
+		const ours = (found: Stats) => uid !== undefined && found.uid === uid;
 		const state = dirname(this.path);
 		const folder = `${basename(this.path)}.`;
 		for (const name of (await readdir(state)).filter((entry) => entry.startsWith(folder)).sort()) {
@@ -222,7 +227,7 @@ export class RecordRepository {
 			leftovers.push({
 				name,
 				owner: Owner.parse(name.slice(folder.length)),
-				fits: found.isDirectory(),
+				fits: found.isDirectory() && ours(found),
 				remove: () => rm(join(state, name), { recursive: true, force: true }),
 			});
 		}
@@ -233,7 +238,7 @@ export class RecordRepository {
 			leftovers.push({
 				name: `${basename(this.path)}/${name}`,
 				owner: Owner.parse(name.slice(index.length).replace(/\.lock$/, "")),
-				fits: found.isFile(),
+				fits: found.isFile() && ours(found),
 				remove: () => rm(join(this.path, name), { force: true }),
 			});
 		}
@@ -241,13 +246,16 @@ export class RecordRepository {
 		if (deadline.left() <= 0) return { leftovers, unlisted: true };
 		const fetch = "refs/melian/fetch/";
 		const refs = await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline);
-		for (const ref of refs.split("\n").filter((line) => line !== ""))
+		for (const ref of refs.split("\n").filter((line) => line !== "")) {
+			// A packed ref has no file of its own to say who owns it, so it is kept.
+			const found = await statIfThere(join(this.path, ref));
 			leftovers.push({
 				name: ref,
 				owner: Owner.parse(ref.slice(fetch.length)),
-				fits: true,
+				fits: found?.isFile() === true && ours(found),
 				remove: () => this.#deleteRef(ref, deadline),
 			});
+		}
 		return { leftovers, unlisted: false };
 	}
 

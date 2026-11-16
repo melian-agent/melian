@@ -609,6 +609,77 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 		});
 });
 
+describe("another user's leftovers", () => {
+	const at = {
+		folder: (suffix: string) => join(directory, `records.git.${suffix}`),
+		index: (suffix: string) => join(records, `melian-index-${suffix}`),
+		lock: (suffix: string) => join(records, `melian-index-${suffix}.lock`),
+		ref: (suffix: string) => join(records, `refs/melian/fetch/${suffix}`),
+	};
+	const name = {
+		folder: (suffix: string) => `records.git.${suffix}`,
+		index: (suffix: string) => `records.git/melian-index-${suffix}`,
+		lock: (suffix: string) => `records.git/melian-index-${suffix}.lock`,
+		ref: (suffix: string) => `refs/melian/fetch/${suffix}`,
+	};
+
+	// Another user owns `paths`, as `lstat` reports them, the way a table that hides that user's processes would see it.
+	function ownedByAnother(paths: readonly string[]): () => void {
+		const stat = vi.mocked(lstat).getMockImplementation() as typeof lstat;
+		vi.mocked(lstat).mockImplementation((async (path: string) => {
+			const found = await stat(path);
+			if (!paths.includes(path)) return found;
+			return Object.assign(Object.create(Object.getPrototypeOf(found)), found, { uid: found.uid + 1 });
+		}) as unknown as typeof lstat);
+		return () => vi.mocked(lstat).mockImplementation(stat);
+	}
+
+	for (const what of ["folder", "index", "lock", "ref"] as const)
+		it(`keeps a ${what} another user owns, though its owner's pid is gone, and removes this user's`, async () => {
+			const suffix = owned((await exited()).pid);
+			plant(suffix);
+			const restore = ownedByAnother([at[what](suffix)]);
+			try {
+				const store = await remote.open({ directory });
+				expect(planted(suffix)).toEqual({ ...gone, [what]: there[what] });
+				expect(store.sweep).toEqual({
+					removed: names(suffix).filter((entry) => entry !== name[what](suffix)),
+					kept: [name[what](suffix)],
+					failed: [],
+				});
+			} finally {
+				restore();
+			}
+		});
+
+	it("keeps a fetch ref git has packed, since no file says who owns it", async () => {
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		git(["pack-refs", "--all"]);
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual({ ...gone, ref: true });
+		expect(store.sweep).toEqual({
+			removed: names(suffix).filter((entry) => entry !== name.ref(suffix)),
+			kept: [name.ref(suffix)],
+			failed: [],
+		});
+	});
+
+	it("keeps every leftover where the process has no user ID to compare, as on Windows", async () => {
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		const getuid = process.getuid;
+		process.getuid = undefined;
+		try {
+			const store = await remote.open({ directory });
+			expect(planted(suffix)).toEqual(there);
+			expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+		} finally {
+			process.getuid = getuid;
+		}
+	});
+});
+
 describe("the owner's process namespace", () => {
 	const other = { dev: 4, ino: 4026532000 };
 	const ours = { dev: 4, ino: 4026531836 };

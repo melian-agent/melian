@@ -1,6 +1,6 @@
 # A leftover's owner names its pid namespace
 
-Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit, and a stat that fails
+Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit, a stat that fails, and another user's leftovers
 
 Status: for [issue #520](https://github.com/melian-agent/melian/issues/520), which the maintainer marked P0 on 2026-11-16, in the coordinator's session. The method is the one the issue sets out.
 
@@ -13,6 +13,8 @@ The sweep's owner key hashed the host's name alone. A process table lists the pr
 On Linux the key hashes the host's name with the device and inode of `/proc/self/ns/pid`, which name this process's pid namespace. The name's format is unchanged. A container that shares the host's pid namespace reads the host's device and inode, which is right, since its table lists the host's processes. When Linux will not answer that read, a call names what it makes by a UUID alone, and the sweep keeps every owned leftover, since no name matches this host. macOS has no pid namespaces, so there the host's name alone stays the key, and the sweep still removes what an exited call left.
 
 The sweep stats each entry it lists to learn its kind. A stat that fails because the entry is gone, removed by another call after the listing, passes the entry over. A stat that fails for any other reason, such as EIO or EACCES, fails the listing, so the sweep removes nothing and reports `unlisted`, as a listing that fails does. Before, the sweep dropped such an entry and named it nowhere, so `melian doctor` said nothing about the disk it held.
+
+A process table can hide another user's processes: with `/proc` mounted `hidepid=2`, `ps` lists only the caller's own. The review of record on [pull request #533](https://github.com/melian-agent/melian/pull/533) showed a sweep run as one user removing a live call's half-made repository that root's call had made, since the table did not list root's pid. The maintainer ruled on 2026-11-17, in the coordinator's session, to fix it here. The sweep now removes only an entry whose `lstat` owner is this process's user. Another user's leftovers stay, named as kept, until that user sweeps. A fetch ref git has packed has no file of its own to say who owns it, so it stays too. Where the process has no user ID to compare, as on Windows, the sweep removes nothing and names every leftover as kept.
 
 ## Why
 
