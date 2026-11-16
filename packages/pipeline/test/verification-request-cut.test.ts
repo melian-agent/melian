@@ -64,7 +64,11 @@ describe("verificationRequest's cut of probe evidence", () => {
 	// Codex's third review on this pull request: evidence holding the key's fixed nonce, here a script of zeroes, renders
 	// shorter under it than under the review's own nonce, so the key saw no cut where the verifier was shown one.
 	it("keys the cut the verifier is shown under the review's nonce, whatever the head's text holds", () => {
-		const zeroes = cutCandidate("lens.trust-boundary@1@deep", "3123456789abcdef", "0".repeat(probeEvidenceBudget - 100));
+		const zeroes = cutCandidate(
+			"lens.trust-boundary@1@deep",
+			"3123456789abcdef",
+			"0".repeat(probeEvidenceBudget - 100),
+		);
 		const under = (nonce: string) => {
 			const request = cutRequest([zeroes]);
 			return verificationRequest({ ...request, revision: { ...request.revision, nonce } }, cutReruns([zeroes]));
