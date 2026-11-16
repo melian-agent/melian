@@ -878,7 +878,9 @@ export class TelemetryReader {
 			if (entries.next === undefined) break;
 			entries = await this.storage.scanEntries({ conversationId: id }, 200, entries.next, context);
 		}
-		const read = name !== "melian.lens" || policy?.lens === undefined ? [] : delivered(records, policy.lens);
+		// A stored policy that names no revision gives no paths or nonce to read against.
+		const read =
+			name !== "melian.lens" || policy?.lens?.revision === undefined ? [] : delivered(records, policy.lens);
 		return {
 			id: `conversation:${id}`,
 			name,
