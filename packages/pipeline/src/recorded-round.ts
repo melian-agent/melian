@@ -4,6 +4,7 @@ import {
 	type CheckPayload,
 	type CheckRecord,
 	type ConfigFor,
+	type FindingSource,
 	KeyedRequest,
 	type LensPayload,
 	type MelianConfig,
@@ -159,10 +160,21 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 			claims.push(...(judged as unknown as VerificationClaim[]));
 		}
 	}
+	// The host keeps one sighting, and one latest verdict, of a finding for each producer, so a round with two of either
+	// stands for no review, and merging would let whichever came last decide.
+	if (!once(sightings.map(({ properties }) => properties)))
+		return { refused: "names one finding twice from one producer" };
+	if (!once(claims)) return { refused: "judges one finding twice for one producer" };
 	checks.push(...account.filled.map((each) => present(each) as unknown as CheckRecord));
 	// The verifier's record follows every other check's, as the review appends it after the lenses.
 	const ordered = [...inManifestOrder(account.checks, checks), ...(verifier === undefined ? [] : [verifier])];
 	return { account, checks: ordered, sightings, claims };
+}
+
+function once(values: readonly { readonly id: string; readonly source: FindingSource }[]): boolean {
+	return (
+		new Set(values.map(({ id, source }) => `${id} ${source.check}@${source.version ?? ""}`)).size === values.length
+	);
 }
 
 // A stored value with each `null` field left out, as the check record it was written from left it out.

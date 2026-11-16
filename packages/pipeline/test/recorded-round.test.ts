@@ -434,6 +434,45 @@ describe("a round its records cannot stand for", () => {
 			"names a verification without the verifier's check",
 		],
 		[
+			"a lens sights one finding twice",
+			(reviewed, records, round) => {
+				const lens = sighting(records, round);
+				const payload = lens.payload as { sightings: { properties: object }[] };
+				return rebuilt(reviewed, records, round, lens, {
+					...payload,
+					sightings: [...payload.sightings, lowered(payload.sightings[0]!)],
+				} as unknown as RecordJson);
+			},
+			"names one finding twice from one producer",
+		],
+		[
+			"two lens records of one producer sight one finding",
+			(reviewed, records, round) => {
+				const lens = sighting(records, round);
+				const payload = lens.payload as { sightings: { properties: object }[] };
+				const other = SharedRecord.parseEnvelope({
+					...lens.toJSON(),
+					key: "k".repeat(64),
+					payload: { ...payload, sightings: [lowered(payload.sightings[0]!)] } as unknown as RecordJson,
+				});
+				return added(reviewed, records, round, other);
+			},
+			"names one finding twice from one producer",
+		],
+		[
+			"a verification judges one finding twice for one producer",
+			(reviewed, records, round) => {
+				const verification = namedOf(records, round, "verification");
+				const payload = verification.payload as { claims: { verification: object }[] };
+				const [claim] = payload.claims;
+				return rebuilt(reviewed, records, round, verification, {
+					...payload,
+					claims: [...payload.claims, { ...claim!, verification: { ...claim!.verification, verdict: "refuted" } }],
+				} as unknown as RecordJson);
+			},
+			"judges one finding twice for one producer",
+		],
+		[
 			"a record fails its kind's check",
 			(reviewed, records, round) => {
 				const check = namedOf(records, round, "check");
@@ -481,6 +520,42 @@ function namedOf(records: readonly SharedRecord[], round: SharedRecord, kind: st
 }
 
 type Rebuilt = { readonly records: RecordEnvelope[]; readonly round: string };
+
+// The named lens record that holds a sighting.
+function sighting(records: readonly SharedRecord[], round: SharedRecord): SharedRecord {
+	const named = new Set(round.manifest()!.read.map(({ id }) => id));
+	return records.find(
+		(record) =>
+			record.kind === "lens" &&
+			named.has(record.id) &&
+			(record.payload as { sightings: unknown[] }).sightings.length > 0,
+	)!;
+}
+
+// A copy of `sighting` at P3, which alone would leave the finding advisory.
+function lowered(sighting: { properties: object }): object {
+	return { ...sighting, level: "note", properties: { ...sighting.properties, severity: "P3" } };
+}
+
+// The records with `other` added, and the account and the round written again to name it beside the rest.
+function added(
+	reviewed: Reviewed,
+	records: readonly SharedRecord[],
+	round: SharedRecord,
+	other: SharedRecord,
+): Rebuilt {
+	const account = namedOf(records, round, "account");
+	const payload = account.payload as AccountPayload;
+	const counted = [...payload.records, other.id].sort();
+	const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+	const next = SharedRecord.parseEnvelope({ ...account.toJSON(), key, payload: { ...payload, records: counted } });
+	const all = [...records.filter((each) => each !== account), next, other];
+	return renamed(reviewed, all, round, (read) => [...read.map((each) => (each === account ? next : each)), other], [
+		...records,
+		next,
+		other,
+	]);
+}
 
 function without(payload: RecordJson, field: string): RecordJson {
 	const { [field]: _, ...rest } = payload as Record<string, RecordJson>;
