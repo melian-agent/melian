@@ -152,6 +152,24 @@ describe("git", () => {
 		const result = await git(repo, ["log"], { maxBytes: 4, env: { PATH: `${bin}:${process.env.PATH}` } });
 		expect(result).toMatchObject({ code: -1, truncated: true, stdout: "y\ny\n" });
 	});
+
+	it("stops the programs git started once its output reaches maxBytes, though one holds the output open", async () => {
+		// The stand-in starts a child that keeps git's output for ten seconds, then writes without end.
+		const bin = join(repo, "bin");
+		const recorded = join(repo, "child-pid");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), `#!/bin/sh\nsleep 10 &\necho $! > ${recorded}\nexec yes\n`, { mode: 0o755 });
+		const start = Date.now();
+		try {
+			const result = await git(repo, ["log"], { maxBytes: 4, env: { PATH: `${bin}:${process.env.PATH}` } });
+			expect(result).toMatchObject({ code: -1, truncated: true, stdout: "y\ny\n" });
+			expect(result.childrenLeft).toBeUndefined();
+			expect(Date.now() - start).toBeLessThan(5000);
+			await expectEnded(Number(readFileSync(recorded, "utf8")));
+		} finally {
+			stopRecorded(recorded);
+		}
+	}, 20_000);
 });
 
 describe("git with input it does not read", () => {

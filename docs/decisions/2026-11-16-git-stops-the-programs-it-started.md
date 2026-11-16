@@ -16,7 +16,7 @@ When core's `git` stops git, it reads the process table once, while git still ru
 
 The table is read at the stop, not on a timer. A transport still waiting at the deadline is still below git when the deadline fires. A scan on a timer would also record a helper that detaches on purpose, such as git's credential-cache daemon, and kill it. A program that left git's tree before the stop is therefore not stopped.
 
-The same stop runs when git writes more standard error than `stderrLimit`, since both are Melian stopping git before it ends.
+The same stop runs when git writes more standard error than `stderrLimit`, and when its standard output reaches a call's `maxBytes`, since all three are Melian stopping git before it ends. A cut result waits for the stop, as a timed-out one does, and carries `childrenLeft` when the stop could not find or end the tree.
 
 When the table cannot be read, with no `ps` or under a sandbox that refuses it, `git` stops git alone, as before. A timed-out result then carries `childrenLeft`, and the `gitOutputTooLarge` error ends by saying the programs git started were not stopped. No pid is guessed. The same holds when a later read fails, after the first one recorded the tree: the stop then signals nothing more, so the deadline's result and the overflow error wait for the stop, about a second at most, and report it. The same holds when the table no longer shows git, or shows it as a zombie: git has exited, so any program it started has been re-parented and no longer reads as below it. A git that exits while a program it started holds its output open reaches its deadline this way, and `stopTree` then signals nothing and says so. The record store does not yet repeat this in its own `unreachable` message.
 
@@ -30,4 +30,4 @@ A recorded process that `ps` shows as a zombie is neither signalled nor waited f
 
 | Resource | What bounds it, or who accepted it | Test or issue |
 | --- | --- | --- |
-| Child processes | One git at a time, stopped at the deadline with every process below it, by recorded pid and start time. A program that left git's tree before the deadline, such as a daemon a credential helper detached, is not stopped. Where the process table cannot be read, or no longer shows git, git alone is stopped and the result says so | `core/test/git.test.ts`, "stops the transport git started, which would outlive git"; `core/test/process-tree.test.ts` |
+| Child processes | One git at a time, stopped at the deadline or at either output bound with every process below it, by recorded pid and start time. A program that left git's tree before the deadline, such as a daemon a credential helper detached, is not stopped. Where the process table cannot be read, or no longer shows git, git alone is stopped and the result says so | `core/test/git.test.ts`, "stops the transport git started, which would outlive git"; `core/test/process-tree.test.ts` |

@@ -90,7 +90,7 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			}
 			stdout.push(chunk.subarray(0, room));
 			truncated = true;
-			child.kill();
+			void stop().then((all) => finish(-1, false, !all));
 		});
 		let stderrSize = 0;
 		child.stderr.on("data", (chunk: Buffer) => {
