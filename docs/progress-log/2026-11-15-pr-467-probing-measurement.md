@@ -4,11 +4,11 @@ Builder agent: [pull request #467](https://github.com/melian-agent/melian/pull/4
 
 ## Where its decisions are recorded
 
-- The coordinator runs the live measurement: [issue #356's comment of 2026-11-09](https://github.com/melian-agent/melian/issues/356#issuecomment-6734810559).
+- The coordinator runs the live measurement: [a comment of 2026-11-09 on issue #356](https://github.com/melian-agent/melian/issues/356#issuecomment-6734810559).
 - Which changed code needs hand mutant proof: [the narrowing decision](../decisions/2026-11-14-hand-mutation-proof-only-for-trust-and-durability.md).
 - The final rerun of earlier claims: [the decision of 2026-11-10](../decisions/2026-11-10-final-rerun-waived-until-mutants-verify.md) and [the decision of 2026-11-14](../decisions/2026-11-14-mutants-verify-is-not-built.md).
-- The order of the live runs, pair 1 first: [issue #356's comment of 2026-11-15](https://github.com/melian-agent/melian/issues/356#issuecomment-6891546646).
-- Only a hand-entered `lines` range scores a miss: [pull request #467's comment of 2026-11-15](https://github.com/melian-agent/melian/pull/467#issuecomment-6902198683).
+- The order of the live runs, pair 1 first: [a comment of 2026-11-15 on issue #356](https://github.com/melian-agent/melian/issues/356#issuecomment-6891546646).
+- Only a hand-entered `lines` range scores a miss: [a comment of 2026-11-15 on pull request #467](https://github.com/melian-agent/melian/pull/467#issuecomment-6902198683).
 - The coordinator chose the approach where this work asked. What it measures, below, states each choice.
 
 ## What it measures
