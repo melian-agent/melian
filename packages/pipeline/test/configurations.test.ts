@@ -248,6 +248,29 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			);
 		});
 
+		it("changes when two folder variants of one lens swap their declared resolutions, neither above the path", async () => {
+			const variants = (payments: string, billing: string) => ({
+				"services/payments/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${payments} }`),
+				"services/billing/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${billing} }`),
+			});
+			const reports = async (sha: string) =>
+				(await Lens.everywhere(repo, { kind: "revision", commit: sha }))
+					.filter((lens) => lens.name === "cleanup")
+					.map(({ version }, index) =>
+						finding({
+							file: "src/ledger.ts",
+							snippet: `return ${index};`,
+							source: { check: "lens.cleanup", version },
+						}),
+					);
+			const before = commit(repo, variants("block", "advisory"));
+			const swapped = commit(repo, variants("advisory", "block"));
+			expect(await reports(swapped)).toHaveLength(2);
+			expect(await fingerprintOf(swapped, await reports(swapped))).not.toBe(
+				await fingerprintOf(before, await reports(before)),
+			);
+		});
+
 		it("does not depend on the order of the findings, though their entries differ by path", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md":

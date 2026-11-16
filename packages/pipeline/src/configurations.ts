@@ -36,6 +36,7 @@ export async function configsFor(
 	const lookup = configLookup(repoRoot, policy);
 	const atPath = new Map<string, PolicyAt>();
 	const defaultsAt = new Map<string, Record<string, ResolutionEntry>>();
+	const nearestScopesAt = new Map<string, Record<string, string>>();
 	const judging = new Map<string, PolicyAt>();
 	const lensPaths = new Set(
 		findings
@@ -53,11 +54,14 @@ export async function configsFor(
 			? [[], {}]
 			: [await Lens.everywhere(repoRoot, policy), (await loadConfig(repoRoot, policy, ".")).config.lenses];
 	const lensVariants: Record<string, ResolutionEntry | null> = Object.create(null);
+	const variantScopes: Record<string, string> = Object.create(null);
 	for (const lens of variants) {
 		const settings = Object.hasOwn(tuning, lens.name) ? tuning[lens.name] : undefined;
 		for (const { version } of [lens, lens.configured(settings)]) {
 			for (const level of [undefined, ...scrutinyLevels]) {
-				lensVariants[`${lens.name}@${lensSource(lens.name, version, level).version}`] = lens.resolution ?? null;
+				const variant = `${lens.name}@${lensSource(lens.name, version, level).version}`;
+				lensVariants[variant] = lens.resolution ?? null;
+				variantScopes[variant] = lens.scope;
 			}
 		}
 	}
@@ -68,12 +72,15 @@ export async function configsFor(
 			// The nearest lens of a name, the one defined deepest above the path, gives the default for a report whose
 			// variant is none of those listed.
 			const lensDefaults: Record<string, ResolutionEntry> = Object.create(null);
+			const nearestScopes: Record<string, string> = Object.create(null);
 			const above = variants.filter((lens) => lens.scope === "" || path.startsWith(`${lens.scope}/`));
 			for (const lens of above.sort((left, right) => left.scope.length - right.scope.length)) {
+				nearestScopes[lens.name] = lens.scope;
 				if (lens.resolution === undefined) delete lensDefaults[lens.name];
 				else lensDefaults[lens.name] = lens.resolution;
 			}
 			defaultsAt.set(path, lensDefaults);
+			nearestScopesAt.set(path, nearestScopes);
 			atPath.set(path, {
 				resolution: config.resolution,
 				ruleAliases: config.ruleAliases,
@@ -99,9 +106,9 @@ export async function configsFor(
 	});
 	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
 	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
-	// variant maps to, or the nearest lens's where that variant is no longer defined. The lens's name stays with its
-	// entry: a file moved out of a folder keeps that folder's lenses, which no path default names, so two of them could
-	// otherwise swap their defaults unseen.
+	// variant maps to, or the nearest lens's where that variant is no longer defined. Each entry keeps the name and
+	// scope of the lens that gave it, which name a variant without its budget: a file moved out of a folder keeps that
+	// folder's lenses, which no path default names, so two of them could otherwise swap their defaults unseen.
 	const declared = findings
 		.flatMap(({ properties: { path, source, reportedBy = [source] } }) =>
 			reportedBy
@@ -109,8 +116,10 @@ export async function configsFor(
 				.map(({ check, version }) => {
 					const name = check.slice("lens.".length);
 					const variant = `${name}@${version}`;
-					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : defaultsAt.get(path)![name];
-					return JSON.stringify([path, name, entry]);
+					const [entry, scope] = Object.hasOwn(lensVariants, variant)
+						? [lensVariants[variant], variantScopes[variant]]
+						: [defaultsAt.get(path)![name], nearestScopesAt.get(path)![name]];
+					return JSON.stringify([path, name, scope ?? null, entry]);
 				}),
 		)
 		.sort();
