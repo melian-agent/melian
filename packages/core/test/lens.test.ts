@@ -9,6 +9,7 @@ import {
 	type LensNeighbour,
 	lensCovers,
 	lensGraphToolNames,
+	lensProbingWording,
 	lensToolNames,
 	loadConfig,
 	type MelianConfig,
@@ -969,6 +970,38 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			// A lens that reads its own name's wording records none, so its version is the one it had before.
 			expect(named(loaded, "trust-boundary")[0]!.probesAs).toBeUndefined();
 		}
+	});
+
+	it("probes in trust-boundary's wording through the two lens files pull request #494 adds, byte for byte", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary/LENS.md": [
+				"---",
+				"name: trust-boundary",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { budget: { tokens: 600000, tools: 90 } }",
+				"budget: { findings: 8, tokens: 600000, tools: 90 }",
+				"---",
+				"",
+			].join("\n"),
+			".melian/lenses/trust-boundary-probes/LENS.md": [
+				"---",
+				"name: trust-boundary-probes",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { probe: { prober: medium }, budget: { tokens: 600000, tools: 90 } }",
+				"budget: { findings: 8, tokens: 600000, tools: 90 }",
+				"---",
+				"The trust-boundary lens reviews this change by reading it. This lens is its second half: it tests the boundary with probes.",
+				"",
+			].join("\n"),
+		});
+		const loaded = await load(["src/index.ts"]);
+		const [probes] = named(loaded, "trust-boundary-probes");
+		expect(probes!.level("deep").probe).toEqual({ prober: "medium" });
+		expect(probes!.probesAs).toBe("trust-boundary");
+		expect(lensProbingWording.get(probes!.probesAs!)).toBe(lensProbingWording.get("trust-boundary"));
+		expect(named(loaded, "trust-boundary")[0]!.probesAs).toBeUndefined();
 	});
 
 	it("records no wording for a lens of another name that extends a built-in and does not probe", async () => {
