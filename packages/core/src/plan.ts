@@ -446,16 +446,13 @@ export class ReviewPlan {
 			// same credentials, including a level a promoted fallback passes on; it is dropped, as one outside accept is.
 			// Dropping a first model can change what the rest inherit, so the check repeats until nothing more drops.
 			const committedRoute =
-				policy.model === undefined
-					? (policy.accept ?? [])
-					: [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)];
+				policy.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)];
 			const committedAt = runsAt(
 				policy,
 				[...new Set([...committedRoute, ...accept])].filter((model) => usable(model) && accepted(model)),
 				(model) => ReviewPlan.ownLevel(policy, model),
 			);
-			const wanted = (model: string) =>
-				committedAt.has(model) ? committedAt.get(model) : (ReviewPlan.ownLevel(policy, model) ?? policy.thinking);
+			const wanted = (model: string) => committedAt.get(model);
 			let kept = thinkingChanged ? [] : chosen.filter((model) => accept.includes(model));
 			for (let dropped = true; dropped; ) {
 				const at = runsAt(effective, kept, own);

@@ -364,6 +364,48 @@ describe("a preference that changes a fallback's level", () => {
 		]);
 	});
 
+	it("judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits", async () => {
+		const { config, routes } = await loaded({
+			"melian.yaml":
+				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [faux/third, faux/second, nowhere/first]\n    acceptOverridden: false\n",
+		});
+		const plan = ReviewPlan.resolve({
+			config,
+			routes,
+			catalog,
+			credentials: { faux: "test" },
+			lenses: [],
+			checks: [],
+		});
+		expect(plan.tier("heavy")).toMatchObject({ status: "routed" });
+		expect(plan.tier("heavy").models).toEqual([
+			{ model: "faux/second", credential: "test", family: "second", thinking: "high" },
+			{ model: "faux/third", credential: "test", family: "third", thinking: "high" },
+		]);
+	});
+
+	it("refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops", async () => {
+		const { config, routes } = await loaded({
+			"melian.yaml":
+				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, { model: faux/first, thinking: medium }, faux/third]\n    accept: [nowhere/first, faux/second, faux/first, faux/third]\n    acceptOverridden: false\n",
+			"melian.local.yaml":
+				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/first, thinking: high }, faux/third]\n",
+		});
+		const plan = ReviewPlan.resolve({
+			config,
+			routes,
+			catalog,
+			credentials: { faux: "test" },
+			lenses: [],
+			checks: [],
+		});
+		expect(plan.tier("heavy")).toMatchObject({
+			status: "refused",
+			reason:
+				"models.heavy.acceptOverridden is false, and melian.local.yaml runs faux/first at thinking high; committed policy wants medium",
+		});
+	});
+
 	it("refuses the tier, naming the level, when the only accepted model left is relevelled", async () => {
 		const plan = await planWith(
 			"models:\n  heavy:\n    model: faux/second\n    fallbacks: [{ model: faux/first, thinking: high }]\n",
