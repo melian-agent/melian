@@ -178,7 +178,7 @@ import {
 import { inManifestOrder, ReviewRecords } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
-import { SummaryTask, summarizeExtension } from "./summarize.ts";
+import { exportedWalkthrough, SummaryTask, summarizeExtension } from "./summarize.ts";
 import { triageRequest } from "./triage-request.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 import {
@@ -1336,9 +1336,16 @@ interface ReviewSettings {
 	/**
 	 * Called once the review has recorded its lens run, and aborted any run it replaced, before it waits for that run.
 	 * A host starts work there that needs the change but not the verdict, such as the walkthrough; anything that resumes
-	 * the harness then cannot restart a replaced run. A review that runs no lens, or fails earlier, never calls it.
+	 * the harness then cannot restart a replaced run. A review that runs no lens, or fails earlier, never calls it. What
+	 * it returns stands for the walkthrough: a review that names {@link ReviewOptions.records} waits for it, within
+	 * {@link ReviewOptions.walkthroughWait}, before it exports its round.
 	 */
-	readonly lensesStarted?: () => void;
+	readonly lensesStarted?: () => unknown;
+	/**
+	 * How long, in milliseconds from the call to {@link ReviewOptions.lensesStarted}, a review that names a record store
+	 * waits for what that call returned before it exports a round with no walkthrough. Three minutes by default.
+	 */
+	readonly walkthroughWait?: number;
 	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
@@ -1679,7 +1686,7 @@ async function runLenses(
 	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
-	started?: () => void,
+	started?: () => unknown,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
@@ -3029,6 +3036,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		verification: SharedRecord | undefined,
 		accounted: Manifest,
 		producers: readonly Producer[],
+		walkthrough: SharedRecord | undefined,
 	) => {
 		const state = await harness.snapshot(FindingsDocument, root, context);
 		const records = ReviewRecords.of(changeset.id, { base, head });
@@ -3087,13 +3095,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		const round = records.round(
 			read,
-			undefined,
+			walkthrough,
 			roundsAt(reviewed)
 				.filter((each) => each.key !== own)
 				.map((each) => SharedRecord.parseEnvelope(each).id),
 			previous === undefined ? [] : roundsAt(previous).map((each) => SharedRecord.parseEnvelope(each).id),
 		);
-		await store.add([...read, round].map((record) => record.toJSON()));
+		await store.add(
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
+		);
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
 	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
@@ -3138,6 +3148,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			await watch.stop();
 		}
 	};
+	// What the host's `lensesStarted` returned, which settles once its walkthrough has, and when the host was called.
+	let walkthrough: { at: number; done: Promise<unknown> } | undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	spans.end();
 	const {
@@ -3160,7 +3172,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				unlockModels,
 				(task, done) =>
 					Promise.all([verifyAsLensesEnd(task, done), exportAsLensesEnd(task, done)]).then(() => undefined),
-				request.lensesStarted,
+				request.lensesStarted === undefined
+					? undefined
+					: () => {
+							const at = Date.now();
+							const done = Promise.resolve(request.lensesStarted!()).catch(() => undefined);
+							walkthrough = { at, done };
+						},
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	// Every wave this review started settles before the next step starts, so no step of the host's overlaps its
@@ -3582,6 +3600,22 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						})),
 						check: verificationCheck,
 					});
+		// The round waits for the walkthrough for what is left of the wait, and a walkthrough that has not settled by then,
+		// or that failed or is not the one publication posts, leaves it with none.
+		const written =
+			walkthrough === undefined
+				? undefined
+				: await new Promise<boolean>((resolve) => {
+						const timer = setTimeout(
+							() => resolve(false),
+							Math.max(0, walkthrough!.at + (request.walkthroughWait ?? 180_000) - Date.now()),
+						);
+						void walkthrough!.done.then(() => {
+							clearTimeout(timer);
+							resolve(true);
+						});
+					});
+		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
 		await exportRound(
 			request.records,
 			JSON.stringify(checked?.identity ?? request.checkRun ?? null),
@@ -3591,6 +3625,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			verification,
 			accounted,
 			producers,
+			summary === undefined
+				? undefined
+				: ReviewRecords.of(changeset.id, { base, head }).walkthrough(
+						summary.key,
+						summary.route,
+						summary.walkthrough,
+					),
 		);
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>

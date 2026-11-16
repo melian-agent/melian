@@ -400,6 +400,7 @@ export async function review(
 					}
 				},
 			});
+			return walkthrough;
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;

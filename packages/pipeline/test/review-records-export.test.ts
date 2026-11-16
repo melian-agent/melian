@@ -17,6 +17,7 @@ import {
 	type Message,
 	openHarness,
 	reviewChangeset,
+	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -63,13 +64,35 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(store: MemoryRecordStore, given: typeof checks = checks) {
-	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+const walkthroughPrompt = "You write Melian's walkthrough";
+const recorded = fauxAssistantMessage(
+	[
+		fauxToolCall("record_walkthrough", {
+			summary: "Changes a.",
+			files: [{ path: "src/a.ts", summary: "Sets a to 2." }],
+		}),
+	],
+	{ stopReason: "toolUse" },
+);
+
+type Walkthrough = {
+	// What the review's `lensesStarted` returns, given a call that writes the walkthrough on the given origin.
+	readonly started: (summarize: (origin: "pull-request" | "range") => Promise<void>) => unknown;
+	readonly reply?: ReturnType<typeof fauxAssistantMessage>;
+	readonly wait?: number;
+};
+
+async function review(store: MemoryRecordStore | undefined, given: typeof checks = checks, walkthrough?: Walkthrough) {
+	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
+	const light = fake.ref("light");
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: twoLensTiers,
-		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+		models: {
+			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+			light: { model: `${light.provider}/${light.modelId}` },
+		},
 	};
 	harness ??= await openHarness(createMemoryStorage(), {
 		models: fake.models,
@@ -83,8 +106,27 @@ async function review(store: MemoryRecordStore, given: typeof checks = checks) {
 	scriptConversations(fake, [
 		{ match: correctness, replies: [answer, answer] },
 		{ match: contracts, replies: [answer, answer, answer] },
+		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
+	const open = harness;
+	const summarize = (origin: "pull-request" | "range") =>
+		summarizeReview({
+			harness: open,
+			changeset,
+			config,
+			models: fake.review,
+			origin:
+				origin === "range"
+					? { kind: "range" }
+					: {
+							kind: "pull-request",
+							repository: { owner: "melian-agent", name: "example" },
+							pullRequest: 7,
+							base: changeset.revision.base,
+							head: changeset.revision.head,
+						},
+		});
 	const result = await reviewChangeset({
 		harness,
 		changeset,
@@ -93,10 +135,15 @@ async function review(store: MemoryRecordStore, given: typeof checks = checks) {
 		standards: [],
 		models: fake.review,
 		checks: given,
-		records: store,
+		...(store === undefined ? {} : { records: store }),
+		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
+		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),
 	});
-	return { changeset, verdict: result.verdict, stored: await store.list(changeset.id) };
+	return { changeset, verdict: result.verdict, stored: (await store?.list(changeset.id)) ?? [] };
 }
+
+const roundOf = (stored: RecordEnvelope[]) =>
+	stored.find(({ kind }) => kind === "round")!.payload as { walkthrough: { key: string; id: string } | null };
 
 describe("a review that names a record store", () => {
 	it("exports each check, lens run and verification, the account, and a round that names them all", async () => {
@@ -234,5 +281,71 @@ describe("a review that names a record store", () => {
 		const first = (await review(store)).stored;
 		const second = (await review(store)).stored;
 		expect(second).toEqual(first);
+	});
+});
+
+describe("a review that names a record store and writes a walkthrough", () => {
+	it("exports the walkthrough publication would post, and the round names it", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { stored } = await review(store, checks, { started: (summarize) => summarize("pull-request") });
+
+		const walkthroughs = stored.filter(({ kind }) => kind === "walkthrough");
+		expect(walkthroughs).toHaveLength(1);
+		const [written] = walkthroughs;
+		expect(written!.payload).toEqual({
+			v: 1,
+			route: "faux/light@",
+			summary: "Changes a.",
+			files: [{ path: "src/a.ts", summary: "Sets a to 2." }],
+			diagram: null,
+			note: null,
+		});
+		expect(roundOf(stored).walkthrough).toEqual({ key: written!.key, id: SharedRecord.parseEnvelope(written!).id });
+	});
+
+	it.each([
+		[
+			"the summariser records nothing",
+			{ started: (summarize) => summarize("pull-request"), reply: fauxAssistantMessage("No summary.") },
+		],
+		["the walkthrough's promise rejects", { started: () => Promise.reject(new Error("the summariser failed")) }],
+		["the review is of a range", { started: (summarize) => summarize("range") }],
+	] satisfies [string, Walkthrough][])("writes the round with no walkthrough when %s", async (_, walkthrough) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { stored, verdict } = await review(store, checks, walkthrough);
+
+		expect(stored.filter(({ kind }) => kind === "walkthrough")).toEqual([]);
+		expect(roundOf(stored).walkthrough).toBeNull();
+		expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
+	});
+
+	it("writes the round with no walkthrough once the wait has passed, though the walkthrough was stored", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let finished: Promise<void> | undefined;
+		const { stored } = await review(store, checks, {
+			// The walkthrough is stored before the round, and what the host returned settles only after it.
+			started: (summarize) => {
+				finished = summarize("pull-request").then(() => gate);
+				return finished;
+			},
+			wait: 50,
+		});
+		release();
+		await finished;
+
+		expect(stored.filter(({ kind }) => kind === "walkthrough")).toEqual([]);
+		expect(roundOf(stored).walkthrough).toBeNull();
+	});
+
+	it("waits for no walkthrough when no store is named", async () => {
+		const began = Date.now();
+		const { verdict } = await review(undefined, checks, { started: () => new Promise(() => {}), wait: 60_000 });
+
+		expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
+		expect(Date.now() - began).toBeLessThan(30_000);
 	});
 });
