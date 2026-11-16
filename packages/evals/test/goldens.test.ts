@@ -1530,6 +1530,29 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("records the tier each lens ran on, after the golden's policy retiers a lens", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-retiered-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const policy = readFileSync(join(copy, "melian.golden.yaml"), "utf8");
+			writeFileSync(join(copy, "melian.golden.yaml"), `${policy}  tests:\n    tier: light\n`);
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted", probes: "unconfined" });
+			expect(run.tiers).toEqual({
+				"lens.contracts": "heavy",
+				"lens.conventions": "heavy",
+				"lens.correctness": "heavy",
+				"lens.design": "heavy",
+				"lens.removed-behaviour": "heavy",
+				"lens.tests": "light",
+				"lens.trust-boundary": "heavy",
+			});
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it("fails a scripted run whose lens ends at its budget", async () => {
 		const golden = claim();
 		const many = Array.from({ length: 200 }, () => ({ name: "list_files", arguments: {} }));
