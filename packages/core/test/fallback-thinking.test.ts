@@ -158,7 +158,8 @@ describe("a fallback's own thinking level", () => {
 			thinking: "high",
 			route: [{ model: "faux/second" }, { model: "faux/third", thinking: "low" }],
 		});
-		expect(routeInOrder([{ model: "faux/third" }], undefined)).toStrictEqual({ route: [{ model: "faux/third" }] });
+		const bare: { model: string; thinking?: ModelRoute["thinking"] }[] = [{ model: "faux/third" }];
+		expect(routeInOrder(bare, undefined)).toStrictEqual({ route: [{ model: "faux/third" }] });
 		expect(writtenRoute({ route: [{ model: "faux/second" }, { model: "faux/third" }] })).toStrictEqual({
 			model: "faux/second",
 			fallbacks: ["faux/third"],
