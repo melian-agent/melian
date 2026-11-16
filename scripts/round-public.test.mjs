@@ -132,6 +132,38 @@ describe("what of a round leaves the job", () => {
 		});
 	});
 
+	it("keeps every field of a check's route that core names, and none that it does not", () => {
+		const route = {
+			model: "anthropic/claude-opus-5-5",
+			wanted: "openai-codex/gpt-5.6-sol",
+			by: "melian.local.yaml",
+			outside: true,
+			moved: { by: "melian.local.yaml", from: "full", to: "light" },
+			thinking: { level: "low", wanted: "high", by: "melian.local.yaml" },
+		};
+		const value = {
+			status: "clean",
+			blocking: "no",
+			findings: { block: [], acknowledge: [] },
+			notRun: [],
+			ran: [
+				{
+					name: "lens.design",
+					status: "ran",
+					lineage: {
+						...route,
+						note: token,
+						moved: { ...route.moved, note: token },
+						thinking: { ...route.thinking, note: token },
+					},
+				},
+			],
+		};
+		const published = run("--public", file("verdict.json", JSON.stringify(value)));
+		expect(published.stdout).not.toContain(token);
+		expect(JSON.parse(published.stdout).ran).toStrictEqual([{ name: "lens.design", status: "ran", lineage: route }]);
+	});
+
 	it("keeps a lens finding's explanation, failure scenario and fix, and withholds a static finding's", () => {
 		const lens = {
 			ruleId: "stale-cache",

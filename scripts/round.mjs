@@ -196,6 +196,19 @@ function readOr(path, fallback) {
 	}
 }
 
+// A check's route, by the fields core's CheckLineage names, so a field a later build adds stays in the job until this
+// copies it.
+function routeOf({ model, wanted, by, outside, moved, thinking }) {
+	return {
+		model,
+		wanted,
+		by,
+		outside,
+		moved: moved && { by: moved.by, from: moved.from, to: moved.to },
+		thinking: thinking && { level: thinking.level, wanted: thinking.wanted, by: thinking.by },
+	};
+}
+
 // What of a verdict may leave the job: the fields the comment renders, and nothing a static tool printed. A head's
 // tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
 // tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
@@ -208,7 +221,7 @@ export function publicVerdict(text) {
 	try {
 		const verdict = JSON.parse(text);
 		spend = spendOf(verdict);
-		const check = ({ name, status, lineage }) => ({ name, status, lineage });
+		const check = ({ name, status, lineage }) => ({ name, status, lineage: lineage && routeOf(lineage) });
 		const finding = ({ ruleId, message, locations, properties }) => {
 			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
 			const region = locations[0]?.physicalLocation.region;
