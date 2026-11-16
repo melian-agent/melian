@@ -929,6 +929,8 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			});
 			const [lens] = named(await load(["src/index.ts"]), name);
 			expect(lens!.level(level).probe).toEqual({});
+			// It probes in its own name's wording, so it records none and keeps the version it had before.
+			expect(Object.keys(lens!.toJSON())).not.toContain("probesAs");
 		}
 	});
 
@@ -962,9 +964,22 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			const [probes] = named(loaded, "trust-boundary-probes");
 			expect(probes!.level("deep").probe).toEqual({});
 			expect(probes!.probesAs).toBe("trust-boundary");
+			expect(Lens.from(probes!.toJSON())).toEqual(probes);
+			expect(probes!.toJSON().probesAs).toBe("trust-boundary");
 			// A lens that reads its own name's wording records none, so its version is the one it had before.
 			expect(named(loaded, "trust-boundary")[0]!.probesAs).toBeUndefined();
 		}
+	});
+
+	it("records no wording for a lens of another name that extends a built-in and does not probe", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary-notes/LENS.md": lensFile([
+				"name: trust-boundary-notes",
+				"extends: trust-boundary",
+			]),
+		});
+		const [notes] = named(await load(["src/index.ts"]), "trust-boundary-notes");
+		expect(Object.keys(notes!.toJSON())).not.toContain("probesAs");
 	});
 
 	it("refuses a level that probes in a lens of another name whose `extends` reaches no built-in with probing wording", async () => {
