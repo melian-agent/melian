@@ -1029,6 +1029,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				ran(3, "inconclusive", 1, { script: long, files: [], output: "x".repeat(16 * 1024) }, true),
 			],
 		});
+		const { runs, milliseconds } = prober!.probes!;
+		expect(runs.every((probe) => probe.milliseconds > 0)).toBe(true);
+		expect(milliseconds).toBe(runs.reduce((sum, probe) => sum + probe.milliseconds, 0));
 	});
 
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
