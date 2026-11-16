@@ -1215,8 +1215,9 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				);
 			const lensRun = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
 				ran(defect, { telemetry: telemetry(...stages) });
-			const read = (path: string, first: number, last: number) =>
-				({ read: [{ path, ranges: [[first, last]] }] }) as const;
+			const read = (path: string, first: number, last: number) => ({
+				read: [{ path, ranges: [[first, last] as [number, number]] }],
+			});
 			const cases: [string, RangeRun, boolean, string][] = [
 				["older", lensRun({}), true, "unadjudicated"],
 				["unshown", lensRun({ shown: [] }), true, "unadjudicated"],

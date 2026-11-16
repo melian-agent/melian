@@ -86,7 +86,7 @@ describe("a store main wrote before lens runs had request keys", () => {
 				expect(stage).not.toHaveProperty("shown");
 			}
 		} finally {
-			await storage.close();
+			await storage.close(context);
 		}
 	});
 
