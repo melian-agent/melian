@@ -44,7 +44,8 @@ const verification = {
 	model: "anthropic/opus",
 	version: "v1",
 };
-const lineage = {
+// A lineage as version 1 wrote it, and as version 2 writes it, naming the level its model answered at.
+const legacyLineage = {
 	model: "openai/terra",
 	thinking: { level: "low", wanted: "high", by: "melian.local.yaml" },
 	wanted: "anthropic/opus",
@@ -52,8 +53,9 @@ const lineage = {
 	moved: { by: "lenses.security.route", from: "careful", to: "own route" },
 	outside: true,
 };
+const lineage = { ...legacyLineage, answeredAt: "medium" };
 // A check as the review decided it, with every field present.
-const decided = (name: string, version: string, level: string | null) => ({
+const decided = (name: string, version: string, level: string | null, line: RecordJson = lineage) => ({
 	name,
 	status: "ended",
 	reason: "its budget ran out",
@@ -63,10 +65,10 @@ const decided = (name: string, version: string, level: string | null) => ({
 	budgetEnded,
 	caveats: ["no lens saw callers"],
 	coverage: { graph: "g", review: "r", test: "t" },
-	lineage,
+	lineage: line,
 });
-const lens = (outcome: RecordJson, check: RecordJson | null = decided("lens.security", "abc", "careful")) => ({
-	v: 1,
+const lens = (outcome: RecordJson, check: RecordJson | null = decided("lens.security", "abc", "careful"), v = 2) => ({
+	v,
 	name: "security",
 	version: "abc",
 	level: "careful",
@@ -141,6 +143,10 @@ const samples: [string, RecordJson][] = [
 	["lens", lens({ status: "unanswered", reason: "no answer" }, null)],
 	[
 		"lens",
+		lens({ status: "unanswered", reason: "no answer" }, decided("lens.security", "abc", "careful", legacyLineage), 1),
+	],
+	[
+		"lens",
 		lens(
 			{ status: "exhausted", tried: ["anthropic/opus"], reason: "every model failed" },
 			{
@@ -160,7 +166,7 @@ const samples: [string, RecordJson][] = [
 	[
 		"verification",
 		{
-			v: 1,
+			v: 2,
 			claims: [{ id: dismissed, source: { check: "lens.security", version: "abc@careful" }, verification }],
 			dismissals: [{ finding: dismissed, record: dismissalRecord }],
 			outcomes: [
@@ -169,6 +175,20 @@ const samples: [string, RecordJson][] = [
 				{ candidate: "three", outcome: { status: "unanswered", reason: "no answer" } },
 			],
 			check: decided("verifier", "v1", null),
+		},
+	],
+	[
+		"verification",
+		{
+			v: 1,
+			claims: [{ id: dismissed, source: { check: "lens.security", version: "abc@careful" }, verification }],
+			dismissals: [{ finding: dismissed, record: dismissalRecord }],
+			outcomes: [
+				{ candidate: "one", outcome: { status: "done", model: "anthropic/opus" } },
+				{ candidate: "two", outcome: { status: "ended", budgetEnded } },
+				{ candidate: "three", outcome: { status: "unanswered", reason: "no answer" } },
+			],
+			check: decided("verifier", "v1", null, legacyLineage),
 		},
 	],
 	[
@@ -253,8 +273,8 @@ const account = {
 			coverage: null,
 			lineage: null,
 		},
-		{ ...decided("lens.design", "abc", "careful"), status: "failed" },
-		{ ...decided("lens.design", "abc", "careful"), status: "failed", reason: "refused" },
+		{ ...decided("lens.design", "abc", "careful", legacyLineage), status: "failed" },
+		{ ...decided("lens.design", "abc", "careful", legacyLineage), status: "failed", reason: "refused" },
 	],
 	allowSkip: ["decisions.triage", "lens.design"],
 	producers: [
@@ -300,6 +320,9 @@ const bounds: readonly [string, string, RecordJson][] = [
 	["check", "result/findings", -1],
 	["lens", "level", "loud"],
 	["lens", "outcome/escalation/carried/0", "0123456789abcdeg"],
+	["lens", "check/lineage/answeredAt", "loud"],
+	["lens", "check/lineage/answeredAt", ""],
+	["verification", "check/lineage/answeredAt", "loud"],
 	["dismissal", "rounds/0", "c".repeat(63)],
 	["dismissal", "sighting/revision", `${"a".repeat(40)}.${head}`],
 	["dismissal", "head", "x"],
@@ -312,6 +335,9 @@ const bounds: readonly [string, string, RecordJson][] = [
 // Each other value an enumerated field takes, so every one the schema lists is accepted.
 const variants: readonly [string, string, RecordJson][] = [
 	["lens", "outcome/budgetEnded/budget", "tools"],
+	...["off", "minimal", "low", "high", "xhigh", "max", null].map(
+		(level) => ["lens", "check/lineage/answeredAt", level] as [string, string, RecordJson],
+	),
 	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tokens" }],
 	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tools" }],
 	["verification", "outcomes/2/outcome", { status: "exhausted", reason: "every model failed" }],
@@ -348,7 +374,21 @@ describe("review payload checks", () => {
 	});
 
 	it.each(samples)("refuses a %s payload of another version, sample %#", (kind, payload) => {
-		expect(check(kind, { ...(payload as Record<string, RecordJson>), v: 2 })).toMatch(/schema/);
+		const known = kind === "lens" || kind === "verification" ? 2 : 1;
+		for (const v of [0, known + 1])
+			expect(check(kind, { ...(payload as Record<string, RecordJson>), v })).toMatch(/schema/);
+	});
+
+	it.each(["lens", "verification"])("reads a %s lineage's answeredAt only in version 2", (kind) => {
+		const [, payload] = samples.find(([each]) => each === kind) as [string, Record<string, RecordJson>];
+		const at = (v: number, line: RecordJson) =>
+			check(kind, { ...payload, v, check: { ...(payload.check as object), lineage: line } });
+		expect(at(2, lineage)).toBeUndefined();
+		expect(at(2, { ...legacyLineage, answeredAt: null })).toBeUndefined();
+		expect(at(2, legacyLineage)).toMatch(/schema/);
+		expect(at(1, legacyLineage)).toBeUndefined();
+		expect(at(1, lineage)).toMatch(/schema/);
+		expect(at(1, { ...legacyLineage, answeredAt: null })).toMatch(/schema/);
 	});
 
 	it.each(bounds)("refuses a %s payload whose %s is %j", (kind, path, value) => {

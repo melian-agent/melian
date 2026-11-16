@@ -1,4 +1,12 @@
-import { Finding, RecordError, reviewPayloads, SharedRecord, type StoredFinding } from "@melian-agent/core";
+import { readFileSync } from "node:fs";
+import {
+	Finding,
+	type RecordEnvelope,
+	RecordError,
+	reviewPayloads,
+	SharedRecord,
+	type StoredFinding,
+} from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { ReviewRecords } from "../src/review-records.ts";
 
@@ -43,7 +51,7 @@ describe("ReviewRecords", () => {
 			kind: "lens",
 			key: request,
 			payload: {
-				v: 1,
+				v: 2,
 				name: "security",
 				version: "abc",
 				level: "careful",
@@ -61,6 +69,95 @@ describe("ReviewRecords", () => {
 				check: null,
 			},
 		});
+	});
+
+	it("writes the level a lineage's model answered at, and null where it names none", () => {
+		const lineage = { model: "openai/terra", by: "melian.local.yaml", outside: true } as const;
+		const check = (answeredAt?: "high") =>
+			({
+				name: "lens.security",
+				status: "ran",
+				version: "abc",
+				level: "careful",
+				lineage: { ...lineage, ...(answeredAt === undefined ? {} : { answeredAt }) },
+			}) as const;
+		const written = (answeredAt?: "high") => {
+			const record = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, [], check(answeredAt));
+			expect(SharedRecord.parse(record.toJSON(), reviewPayloads).id).toBe(record.id);
+			return (record.toJSON().payload as { check: { lineage: unknown } }).check.lineage;
+		};
+		const expected = { ...lineage, thinking: null, wanted: null, moved: null };
+		expect(written("high")).toEqual({ ...expected, answeredAt: "high" });
+		expect(written()).toEqual({ ...expected, answeredAt: null });
+		const verification = records().verification(request, {
+			claims: [],
+			dismissals: [],
+			outcomes: [],
+			check: { name: "verifier", status: "ran", lineage: { ...lineage, answeredAt: "high" } },
+		});
+		expect(SharedRecord.parse(verification.toJSON(), reviewPayloads).id).toBe(verification.id);
+		expect(verification.toJSON().payload).toMatchObject({
+			v: 2,
+			check: { lineage: { ...expected, answeredAt: "high" } },
+		});
+	});
+
+	it("writes an account's lineage as version 1 did, and refuses one that names the level its model answered at", () => {
+		const lineage = { model: "openai/terra", by: "melian.local.yaml", outside: true } as const;
+		const filled = (answeredAt?: "high") => [
+			{
+				name: "lens.design",
+				status: "failed",
+				reason: "refused",
+				lineage: { ...lineage, ...(answeredAt === undefined ? {} : { answeredAt }) },
+			} as const,
+		];
+		const account = (answeredAt?: "high") =>
+			records().account({
+				checks: ["lens.design"],
+				records: [],
+				filled: filled(answeredAt),
+				allowSkip: [],
+				producers: [],
+				resolutionPolicy: null,
+			});
+		const written = account();
+		expect(SharedRecord.parse(written.toJSON(), reviewPayloads).id).toBe(written.id);
+		expect(written.toJSON().payload).toMatchObject({
+			filled: [{ lineage: { ...lineage, thinking: null, wanted: null, moved: null } }],
+		});
+		expect((written.toJSON().payload as { filled: { lineage: object }[] }).filled[0]?.lineage).not.toHaveProperty(
+			"answeredAt",
+		);
+		expect(() => account("high")).toThrow(
+			"lens.design's lineage names the level its model answered at, which an account cannot hold",
+		);
+	});
+
+	it("reads the version-1 lens and verification records main wrote, whose lineage names no answeredAt", () => {
+		const recorded = JSON.parse(
+			readFileSync(new URL("./fixtures/lineage-v1-main/recorded.json", import.meta.url), "utf8"),
+		) as { records: RecordEnvelope[] };
+		const lineage = {
+			model: "faux/backup",
+			wanted: "faux/heavy",
+			by: "melian.local.yaml",
+			moved: null,
+			outside: true,
+		};
+		const read = recorded.records
+			.filter(({ kind }) => kind === "lens" || kind === "verification")
+			.map((each) => SharedRecord.parse(each, reviewPayloads))
+			.flatMap(({ kind, payload }) => {
+				const { v, check } = payload as { v: number; check: { lineage: unknown } | null };
+				return check === null ? [] : [{ kind, v, lineage: check.lineage }];
+			});
+		const lowered = { ...lineage, thinking: { level: "low", wanted: "high", by: "melian.yaml" } };
+		expect(read).toEqual([
+			{ kind: "lens", v: 1, lineage: lowered },
+			{ kind: "lens", v: 1, lineage: lowered },
+			{ kind: "verification", v: 1, lineage: { ...lineage, thinking: null } },
+		]);
 	});
 
 	it("gives the same bytes and ID when a record is built twice", () => {
