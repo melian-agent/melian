@@ -1,0 +1,2098 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "512c8ae29c582f376691365fb9dff1f064c602ea",
+    "head": "43dc27fbf0dd0f5592fc38d9344e72323384d7a3"
+  },
+  "claimsIn": [
+    "packages/cli/src/doctor.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 394,
+      "column": 5,
+      "endLine": 394,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1cbfb122e308892fd4d2e8f35cc2fbbe190c6c633b00711d9801b79ce4333a76",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "reads the policy from the same base as the trust line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 394,
+      "column": 5,
+      "endLine": 394,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f4a5b155292eb88f56a15631058403e9c775e03183bd9a034cf1d5283ff2b450",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 394,
+      "column": 5,
+      "endLine": 394,
+      "endColumn": 14,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9a2e2f6e91ab8b89bdc722c5b0d6b617cf8389dc99325ca264b782d61d5b5d8b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 394,
+      "column": 33,
+      "endLine": 394,
+      "endColumn": 80,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a5aeb3d047ba821bf0d62d2cb405333a8d3c3a7ebe6c3587851b966357300982",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 394,
+      "column": 48,
+      "endLine": 394,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "234a22451d300103540b041754aa85b91ac5e95c2b6262d39c04e0683ad5def2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor trust boundaries",
+            "warns when no committed policy is available"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 29,
+      "endLine": 396,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fdc1295ef35f521f5546455ff34c52cd0cf03a7460ff399b41d2fd719b57f985",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 29,
+      "endLine": 396,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "049e749967e84a7fe2d793bbc014945afeb7b80f5822c0e13a2365ea8fbba6e1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reports admin permission without failing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 29,
+      "endLine": 396,
+      "endColumn": 60,
+      "mutatorName": "LogicalOperator",
+      "replacement": "writers || caveat === undefined",
+      "status": "generated",
+      "id": "b0fd0219d7fc8c1f94a85d9d9144bdb9af4c7489a35340b8b298310c0caf6450",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 40,
+      "endLine": 396,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2bc479617bd034793e27c209f8a79caca9a86fdf02dd3140ff279d51771af57f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "warns that local main may be stale when no remote base ref exists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 40,
+      "endLine": 396,
+      "endColumn": 60,
+      "mutatorName": "EqualityOperator",
+      "replacement": "caveat !== undefined",
+      "status": "generated",
+      "id": "4addff154e0f2507992812d814413dd9fba6e752355402315e0abf82ddcf2c91",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reports admin permission without failing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 63,
+      "endLine": 396,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "82f92dcb94795715e8cba32a0be51399d2013a7ddbfae61c6945ae117ccad39a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reports admin permission without failing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 396,
+      "column": 70,
+      "endLine": 396,
+      "endColumn": 76,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ed515e8f86a36bf09c5a9502dd9e0d2b9023457c24fa9f0ff346c16fe8cf7859",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 399,
+      "column": 5,
+      "endLine": 399,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1c2fe266a9ea486e9b682c8baf8e3aa1b729f555769107456fb2472d6a206d41",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 399,
+      "column": 5,
+      "endLine": 399,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c14d83abb2304c4aeea3e77cf5a3588e5dbdbadac7f74e614f0c23aa5d0d9765",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "warns that local main may be stale when no remote base ref exists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 399,
+      "column": 5,
+      "endLine": 399,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "caveat === undefined",
+      "status": "generated",
+      "id": "a3b214545db70c99c98e25a208d3a5ba6cc157a3a44a6959c9aa70522fdc7548",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 399,
+      "column": 27,
+      "endLine": 399,
+      "endColumn": 48,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "6721297f9a1fec06bc97f6d3ec9f7e14ab793cab7727d1646223417d2b8b7e02",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "warns that local main may be stale when no remote base ref exists"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 460,
+      "column": 111,
+      "endLine": 480,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c2ca2794ec36e074fec6ccaa526bb236bccf6f018380092739cc27dd3d6ae3fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "leaves the line out with no origin"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 19,
+      "endLine": 462,
+      "endColumn": 65,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "8c5dbc7a432a9ee465d7de8156eaaec9f9b173776af87ac5973c187dabb1658a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 20,
+      "endLine": 462,
+      "endColumn": 33,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ebd16c74b792468a8ac3c06e06966099a9a5ab65dc85b83b28c559814ab8d03b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor writer trust",
+            "reads the committed default base despite head and worktree edits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 35,
+      "endLine": 462,
+      "endColumn": 48,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ff7e3e7c8309c0c7468b64b430910cc59069975c65278f16e75163c24468d27d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 50,
+      "endLine": 462,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "62ff18361beadd7838008e7e899cf47349e1bea02f3b38776d448ed536f7bad0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 58,
+      "endLine": 462,
+      "endColumn": 64,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c6668f119b107eb4a6713455c808c79c8ae30dfca76cb59cd64182b0210c97c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 462,
+      "column": 67,
+      "endLine": 468,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fe73ceac7550f5b1571b41c26757f8272bec3d6845f076679245b3b8199b86b7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 463,
+      "column": 33,
+      "endLine": 463,
+      "endColumn": 77,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "863fb269056953b24cb73d9f39c738bc4c8c14a9086b513ac18e752b172418a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 463,
+      "column": 34,
+      "endLine": 463,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3d7461c16882f6fd92cd4eff8ed3215b78122ae16c387a02296d9aa570ddf3f9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 463,
+      "column": 47,
+      "endLine": 463,
+      "endColumn": 57,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fb1618b1a4e2123b0056915642724174313c8e87632d1be26a12c7c1bc35288c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 463,
+      "column": 59,
+      "endLine": 463,
+      "endColumn": 76,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cc16d86cb23c3be8d181161e4fac10ef67b8b3f034868994c30ba787b89b23e2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 464,
+      "column": 6,
+      "endLine": 464,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d28a1203d03a1c46158b088769f91c7d8aec279cda5b6a400422b2a6089ed4be",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 464,
+      "column": 6,
+      "endLine": 464,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b46d4b916f368746658e0fbb4044881f9c972ff947600deb406fe3feb07c3822",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 464,
+      "column": 6,
+      "endLine": 464,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "commit === undefined",
+      "status": "generated",
+      "id": "b269e57d8a01b4fa19fcf7a14bccb8e6d3f825dcb71d86277f01d7c1e13d06fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 464,
+      "column": 28,
+      "endLine": 467,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c13dff4b244b72babbdfe1e21a08efee5e79ec2b60a78452e87697fb997e8e6d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 465,
+      "column": 10,
+      "endLine": 465,
+      "endColumn": 25,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "42d5f1016c8333f4f25a873fbb54d4b02fecfc5636bbba3272f0ce914ab84aa8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 469,
+      "column": 5,
+      "endLine": 469,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "49faae677d2055dc21e66c6c99482ed7f64ac5519147bd0b8895149d1a65067f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 469,
+      "column": 5,
+      "endLine": 469,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "383a7b848830ae21aba280cc1494de49ced0e3c263fd7852c568849c657ade18",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 469,
+      "column": 5,
+      "endLine": 469,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "base !== undefined",
+      "status": "generated",
+      "id": "f60be771b2fa18ab818932465f9c6fd3eac9ed61639d424180ffe0292a75639f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 469,
+      "column": 32,
+      "endLine": 469,
+      "endColumn": 84,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bf26058591b37b84ef4fc63fa9f9ae26456a01b8b1bff9966174a60260802860",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 469,
+      "column": 43,
+      "endLine": 469,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b6ff63f146d122d383edfdb5b9e4b7ea69822f6643b7e5da73ed38604ab4a434",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 470,
+      "column": 5,
+      "endLine": 477,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "dff6deb7775659ca6a5dfc11ecd84529a07ff3760446b6387761572f05f03bfa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "leaves the line out with no origin"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 471,
+      "column": 9,
+      "endLine": 476,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "dd4ee2476789b4fa4db33baaa15c497216b41e0bb1bea8054399467083e6a033",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "leaves the line out with no origin"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 473,
+      "column": 36,
+      "endLine": 473,
+      "endColumn": 77,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f3134d7e5343f3a6aff4235bff76437a6a7154a859268a2e522b8a210effc35b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 473,
+      "column": 44,
+      "endLine": 473,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d7bc4bfa26813f530dfdad85b9e9d9f83a75a7a6c4c51aed9aa815dabfa587b9",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "source.ts:77 opens a revision for every kind but \"worktree\", and loadLayers adds the worktree-only preference layers only for \"worktree\", so kind \"\" reads the same commit with the same layers; only tsc rejects it"
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 473,
+      "column": 79,
+      "endLine": 473,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1657b01b950bf4ee25df9f568819142a06b5104546de90b4d1a77962352462ae",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "repoPath (paths.ts:84) resolves \"\" and \".\" against the root to the same path, so both give target \"\" and loadConfig reads only the root melian.yaml"
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 7,
+      "endLine": 474,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "da68fe8ef54820cfe86e3218d55ad1a0c3d55f742ce87070b7718d546596311e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 7,
+      "endLine": 474,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e397e450eaa4a2c782f05c488d201da15f1438e8c18e3261b595f38870e279fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 7,
+      "endLine": 474,
+      "endColumn": 88,
+      "mutatorName": "LogicalOperator",
+      "replacement": "base.ref === \"HEAD\" || {\n  caveat: \"base policy is unknown; using committed HEAD\"\n}",
+      "status": "generated",
+      "id": "316cab2ec8013586a265407ab668d36f9ead9d33e17f0a28c71a4827f6b5fab4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 7,
+      "endLine": 474,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "78b4c85e2b3192a6f663877bb2d5275d06cd9f07a0d9196699fd40f9fccdf9f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 7,
+      "endLine": 474,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "base.ref !== \"HEAD\"",
+      "status": "generated",
+      "id": "a9ff47b72375ad38154d31599ef2e79e795630b94d2def3ce2632dcf23981a87",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 20,
+      "endLine": 474,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4df9317310b12d909971bc0bd6d839b68b4d508a873f116722cb25754851c34f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 30,
+      "endLine": 474,
+      "endColumn": 88,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a02eb0f26aad5e3766a7fa5f7bd7a18141797f6f434693cde1052cb91b5ace35",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 474,
+      "column": 40,
+      "endLine": 474,
+      "endColumn": 86,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4ef3f22081243b3ee1344c259120a66cbfb99e81710509317448cb7d88cb8144",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the base policy is unknown when it comes from HEAD"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 7,
+      "endLine": 475,
+      "endColumn": 86,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0422305fb95c331d38ca5a41af561279b78f7d0cbe4846bfa27b68001641ec55",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 7,
+      "endLine": 475,
+      "endColumn": 86,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6ef08736150f61c2f7f714202987309d915152ad3462719837f7b8878fb7b1ca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 7,
+      "endLine": 475,
+      "endColumn": 86,
+      "mutatorName": "LogicalOperator",
+      "replacement": "base.ref === \"main\" || {\n  caveat: \"base policy may be stale; using local main\"\n}",
+      "status": "generated",
+      "id": "1359ddf0532046e48ff53a4e7ca9e18ed8ab0b058b48e51087e106368f33790e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 7,
+      "endLine": 475,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a590fea9daddd272440c6b391e87a5f08c0c1fc587ef886155bd47e59bca9f5a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 7,
+      "endLine": 475,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "base.ref !== \"main\"",
+      "status": "generated",
+      "id": "1aa21f1d800d3830ca52f6cae325a1f26eeea91d940595817bdfbbebc61a43ad",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 20,
+      "endLine": 475,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "34a3c6946bc2a4bff268b25ffce2f2299487fd1a52f63a66091e7afa4a102be0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 30,
+      "endLine": 475,
+      "endColumn": 86,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8409033d9d8008b3311bdf8e3a9bdb059abafe4dd448a8f5fdc13bc08b1b8360",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 475,
+      "column": 40,
+      "endLine": 475,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9629fe5098f836c8b574a739dd88ff6a36e8cc24824f3dac92cffa629915abd0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 477,
+      "column": 17,
+      "endLine": 479,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "feda0e0a14720189ae3d90e8be864b50d7b191e13be952be4e3811b3fb84ae4f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor trust boundaries",
+            "renders policy failures as visible warning text: Error: failed\n\u001b[31m"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 478,
+      "column": 9,
+      "endLine": 478,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "43b55f0f0c5c8b3f2dfbe892f698e1624b9c5e3364ba57d9f8ccc4da431366ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor.test.ts",
+          "path": [
+            "doctor trust boundaries",
+            "renders policy failures as visible warning text: Error: failed\n\u001b[31m"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 484,
+      "column": 93,
+      "endLine": 498,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "18b0c0d8e52e385f94a31ada887e7ab127161383fa2251606e70c21e35363c3e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 486,
+      "column": 5,
+      "endLine": 486,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "aedbf1eb4fbcfb83e93185be02523b589b4aa2218d2af12cdf7b04847fed6cda",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 486,
+      "column": 5,
+      "endLine": 486,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a3e715376674ed6ddfd54436f0c435a1fb3f9ccead1badbe55e644c1a4945977",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 486,
+      "column": 5,
+      "endLine": 486,
+      "endColumn": 14,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c63aaaca742acaedb9bb8235a30d7cfc102d77ef994fa9bfcce632c0c17bc71d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 487,
+      "column": 9,
+      "endLine": 490,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "29c8c7679d55e878d115789aca02c47035417b7e7666f3c072bfad771441ce9a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 488,
+      "column": 10,
+      "endLine": 488,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4de24cefe10977464d6fabbd334f99cc0b67256b4edaefd746c3e9afde1f85dc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 489,
+      "column": 11,
+      "endLine": 489,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8287f0949307fe2cb547d87d5abb0e2c2ccebb82ac6b08ec16ac893c143a0151",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that who may write the branch is unknown when no policy is committed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 491,
+      "column": 16,
+      "endLine": 491,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ecdc654f51619d743a2fb417fcb784366b1de191d35d692d765e6b9a30be1ca2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "names a file Melian did not write, and leaves the exit code alone"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 491,
+      "column": 56,
+      "endLine": 491,
+      "endColumn": 86,
+      "mutatorName": "MethodExpression",
+      "replacement": "policy.base.commit",
+      "status": "generated",
+      "id": "124b4234fc7d7d4a6b916169c31ae6b0e0eca1a2cfb8109bb6d386df0863b002",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "names a file Melian did not write, and leaves the exit code alone"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 493,
+      "column": 4,
+      "endLine": 493,
+      "endColumn": 71,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "aebffcac8ae7ca77075fddd6e84d4741b23eb3b407cd74c31e8660f43ecf6cff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 494,
+      "column": 4,
+      "endLine": 494,
+      "endColumn": 111,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9e2f7c18187ee0769b725e31d7f750004ffebd6b63512de45467e5d8fef78fce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that only the trusted host may write the branch when trust.writers is off"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 495,
+      "column": 8,
+      "endLine": 495,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2157cb318851d14ccdd5d0ed783cea73c3918e4e8f0afdf30b5417afb8da2723",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 495,
+      "column": 8,
+      "endLine": 495,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "97e985dffc228fd078274de8e71a5e1c12fcbc1c77fa922d70cd0ea3ea6c4622",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 495,
+      "column": 8,
+      "endLine": 495,
+      "endColumn": 35,
+      "mutatorName": "EqualityOperator",
+      "replacement": "policy.caveat !== undefined",
+      "status": "generated",
+      "id": "cae2f0eff5cdd82cea6185798884939d38505e388dc053ae57adcf5ddb9c7a9f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 496,
+      "column": 4,
+      "endLine": 496,
+      "endColumn": 53,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0c85d9cb82552b9ff3138e72bc4e3757ad2421b9413fa1456699aa46a1aabe39",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 496,
+      "column": 30,
+      "endLine": 496,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "33ead6426d4c38eb6307b8b8ee60af62f9771d05630651b84f1c57d8e3778f74",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 496,
+      "column": 37,
+      "endLine": 496,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a77f9d4dbeba28950134db683878c9f6b35cb3897a23316119225e15fc8cdbab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that only the trusted host may write the branch when trust.writers is off"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 497,
+      "column": 4,
+      "endLine": 497,
+      "endColumn": 60,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b8a34d32f3b6aa3a9ffcbbe92a7e5ec001a58deeb1ab6356c7abae84726efbb8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 497,
+      "column": 13,
+      "endLine": 497,
+      "endColumn": 19,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bbef90631991dc63f108a9dbb50c07d188c4f7fc8198ff4046d85b58dec60384",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 497,
+      "column": 29,
+      "endLine": 497,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d078abbfd92fc1332c068a07e9d931cc088f9b00c852ac1ab4144da3f5c766d2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns that the policy may be stale when it comes from local main"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 509,
+      "column": 8,
+      "endLine": 513,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9970d76a3fa7f0a32e9d394326609dd15aad612027d3af5e32593b7b8fd8fefe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 511,
+      "column": 9,
+      "endLine": 511,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "532f406066ad4f8629368eb7a0f9a67de6f014fefcdedc1c9ffd26b2a5f3f454",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 511,
+      "column": 9,
+      "endLine": 511,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2718824cc961d59d2ac9f4ba6a0de84e959e70fb742018bcafbedcca6dd6ef59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 511,
+      "column": 9,
+      "endLine": 511,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "branch.state !== \"ok\"",
+      "status": "generated",
+      "id": "82a9664da393c4bdb45d4320fd30e648bd1bb83891fbf1477bd0119ca67fedb9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 511,
+      "column": 26,
+      "endLine": 511,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "642c195760c8d1f61950ca1c473d21c440f250081e7249d3a44b7cc37f3e8577",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 511,
+      "column": 47,
+      "endLine": 511,
+      "endColumn": 53,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d8bc80995b5aa66e1cfe27564887e54e027c5f82ea690c74ce19a4f8c1c2bf57",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 512,
+      "column": 10,
+      "endLine": 512,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "28eca4a76fd93a24de24ac96e63e2d1c5c5a71e5172a67f1b1826c8a91c7cc57",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 530,
+      "column": 10,
+      "endLine": 530,
+      "endColumn": 112,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b8fcd901dd1dc4128caec428dbc13a34ac6872037432b956129c54959a8fea07",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 530,
+      "column": 19,
+      "endLine": 530,
+      "endColumn": 23,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dbcc0166b1a7b20d98bb8e6a8fbb2ef9876a8d220e1f79d6d938c3c6c9a07948",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 530,
+      "column": 33,
+      "endLine": 530,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a8fca0ce092dc6cd9643e1c8a30618229723fc620469e201cd7159d3335ec2c0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "says the branch holds only what Melian wrote, when it is absent or clean"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 538,
+      "column": 9,
+      "endLine": 538,
+      "endColumn": 103,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "63b13f8ee62220bda59c0b73fcfe1f6139a8684fd0d23ea2a27b007b9c42f636",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/doctor-record-store.test.ts",
+          "path": [
+            "doctor's record store line",
+            "warns when the store's own repository cannot be opened"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 538,
+      "column": 18,
+      "endLine": 538,
+      "endColumn": 24,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ea270f07619de4fe447d68d6503c4dcca6421c2e8b87bf706e8003c2d5fe1e4c",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "branchContents state is read only by recordStoreCheck as branch.state === \"ok\", so \"\" and \"warn\" both give the line warn"
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 92,
+  "omitted": 0,
+  "unmutated": []
+}
