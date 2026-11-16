@@ -127,6 +127,10 @@ afterEach(async () => {
 
 type Messages = Parameters<typeof scriptVerifier>[0];
 
+// How many times the verifier was asked to judge: each judgement opens with a request that holds no tool result.
+const judgements = (requests: readonly Messages[]) =>
+	requests.filter((messages) => !messages.some((message) => message.role === "toolResult")).length;
+
 const report = (args: Parameters<typeof fauxToolCall>[1]) =>
 	fauxAssistantMessage(fauxToolCall("report_finding", args), { stopReason: "toolUse" });
 
@@ -387,15 +391,15 @@ describe("a dismissal carrying to a restatement", () => {
 		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
 	});
 
-	// Codex's adversarial review of round four: the verifier judged one dismissal, and the link must not bind to another.
-	it("links nothing when the root's dismissal is replaced while the verifier judges it", async () => {
+	// The maintainer's ruling of 2026-11-16 on issue #481: a replaced dismissal is another verification request, so the
+	// same review asks the verifier again and the restatement carries the dismissal that stands.
+	it("asks the verifier again when the root's dismissal is replaced while it judges, and carries the new dismissal", async () => {
 		const root = await dismissedRoot();
 		const first = await revision();
 		pushElsewhere("other");
 		const replaced = { ...dismissal, reason: "Only staff reach this path." };
 		let pending = true;
 		const verify = async (messages: Messages) => {
-			console.log("VERIFY", pending, systemPromptOf(messages).match(/Dismissed d1 finding [0-9a-f]+/)?.[0]);
 			if (pending)
 				await recordDismissal({ harness, revision: first, id: root, dismissal: replaced, repoRoot: repo });
 			pending = false;
@@ -408,20 +412,23 @@ describe("a dismissal carrying to a restatement", () => {
 				),
 			);
 		};
-		scriptConversations(fake, [
+		const asked = scriptConversations(fake, [
 			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
 		]);
 		const second = await review();
+		const [restated] = second.findings;
+		expect(judgements(asked[verifierMarker]!)).toBe(2);
+		expect(second.verdict.attention()).toEqual([]);
+		expect(second.verdict.dismissed.map((each) => [each.id, each.properties.dismissal])).toEqual([
+			[restated!.id, { by: "melian", reason: replaced.reason, at: replaced.at, inheritedFrom: root }],
+		]);
 		const owner = (await harness.root(context)).id;
-		expect((await harness.snapshot(FindingsDocument, owner, context))!.items[root]!.lifecycle.dismissedReason).toBe(
-			replaced.reason,
-		);
-		expect(second.verdict.attention().map((each) => each.id)).toEqual([second.findings[0]!.id]);
-		expect(
-			(await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[Revision.key(await revision())],
-		).toBeUndefined();
+		const links = (await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[
+			Revision.key(await revision())
+		];
+		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
 	});
 
 	// A review that attaches to a finished lens task starts no wave, so its own final task is what another review replaces.
@@ -567,8 +574,9 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	// The round on 14f2d16 (lens.durability): a call that crashed after its wave judged the root, and before its final
-	// step, leaves a retry nothing in memory to say which dismissal that wave was shown.
-	it("links nothing when the root's dismissal is replaced after a wave judged it and a retry reuses that wave", async () => {
+	// step, leaves a retry nothing in memory to say which dismissal that wave was shown. Under the ruling of 2026-11-16
+	// on issue #481, the replaced dismissal is another request, so the retry asks the verifier again.
+	it("asks the verifier again when the root's dismissal is replaced after a wave judged it and the call died", async () => {
 		const root = await dismissedRoot();
 		const first = await revision();
 		pushElsewhere("other");
@@ -639,9 +647,18 @@ describe("a dismissal carrying to a restatement", () => {
 		const options = { changeset, config, lenses, standards: [], models: fake.review, checks: [...deterministicRan] };
 		await expect(reviewChangeset({ ...options, harness: gated })).rejects.toThrow("the process died");
 		const retry = await reviewChangeset({ ...options, harness });
-		expect(asked[verifierMarker]).toHaveLength(2);
-		expect(retry.verdict.attention().map((each) => each.id)).toEqual([retry.findings[0]!.id]);
-		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
+		expect(judgements(asked[verifierMarker]!)).toBe(2);
+		const [restated] = retry.findings;
+		expect(retry.verdict.attention()).toEqual([]);
+		expect(retry.verdict.dismissed.map((each) => [each.id, each.properties.dismissal])).toEqual([
+			[restated!.id, { by: "melian", reason: replaced.reason, at: replaced.at, inheritedFrom: root }],
+		]);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]?.[restated!.id]).toMatchObject(
+			{
+				from: root,
+				kind: "inherited",
+			},
+		);
 	});
 
 	it("clears the links when a later round on the head has no verifier with credentials", async () => {
