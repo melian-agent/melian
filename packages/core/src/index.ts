@@ -555,6 +555,7 @@ export {
 	loweringSchema,
 	type StoredLowering,
 	type StoredVerificationState,
+	trustFloorChecks,
 	type Verification,
 	VerificationRecord,
 	VerificationState,

@@ -41,6 +41,7 @@ import * as testing from "@melian-agent/pipeline/testing";
 import { parseAst } from "vite";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { parse } from "yaml";
+import { probingGoldenPrefix } from "../src/probing.ts";
 import { GoldenRunError } from "../src/run-error.ts";
 
 const goldens = loadGoldens();
@@ -482,10 +483,17 @@ describe("a golden's standards and policy", () => {
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
 		expect(copies.length - tiered.length).toBe(exempt.length);
+		// A probing golden measures one prober, its own trust-boundary's, so it leaves out the lens that probes beside it.
+		const probing = tiered.filter((copy) => basename(copy.parentPath).startsWith(probingGoldenPrefix));
+		expect(probing).toHaveLength(6);
 		for (const copy of tiered) {
 			const path = join(copy.parentPath, copy.name);
-			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
+			const expected = probing.includes(copy)
+				? root.filter((check) => check !== "lens.trust-boundary-probes")
+				: root;
+			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(expected);
 		}
+		expect(root).toContain("lens.trust-boundary-probes");
 	});
 
 	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
@@ -1513,6 +1521,29 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 			await expect(runGolden({ ...golden, directory: copy }, { kind: "scripted" })).rejects.toThrow(
 				/^Not reviewed: .*lens\.conventions skipped \(lenses\.conventions\.enabled is false\)/,
 			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("records the tier each lens ran on, after the golden's policy retiers a lens", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-retiered-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const policy = readFileSync(join(copy, "melian.golden.yaml"), "utf8");
+			writeFileSync(join(copy, "melian.golden.yaml"), `${policy}  tests:\n    tier: light\n`);
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted", probes: "unconfined" });
+			expect(run.tiers).toEqual({
+				"lens.contracts": "heavy",
+				"lens.conventions": "heavy",
+				"lens.correctness": "heavy",
+				"lens.design": "heavy",
+				"lens.removed-behaviour": "heavy",
+				"lens.tests": "light",
+				"lens.trust-boundary": "heavy",
+			});
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}
