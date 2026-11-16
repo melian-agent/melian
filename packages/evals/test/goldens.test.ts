@@ -512,6 +512,38 @@ describe("a golden's standards and policy", () => {
 		}
 	});
 
+	// scoreGolden counts an expectation found when any finding fits it, so one broad finding fits two expectations that
+	// share a file, a rule and a source, whatever their lines, and counts both found.
+	it("hold no two expectations that one finding could answer from one source", () => {
+		const overlap = (one: readonly string[], other: readonly string[]) => one.some((each) => other.includes(each));
+		const shared = (one: GoldenComment, other: GoldenComment) =>
+			one.source === other.source &&
+			overlap([one.file, ...(one.alternativeFiles ?? [])], [other.file, ...(other.alternativeFiles ?? [])]) &&
+			overlap([one.rule, ...(one.alternativeRules ?? [])], [other.rule, ...(other.alternativeRules ?? [])]);
+		const pairs = (comments: readonly GoldenComment[]) =>
+			comments.flatMap((comment, index) => comments.slice(index + 1).filter((other) => shared(comment, other)));
+		const comment = goldens.flatMap((golden) => golden.expected.comments)[0];
+		expect(
+			pairs([
+				{ ...comment!, lines: [1, 2] },
+				{ ...comment!, lines: [5, 6] },
+			]),
+		).toHaveLength(1);
+		expect(
+			pairs([
+				comment!,
+				{ ...comment!, alternativeFiles: [comment!.file], file: "y", alternativeRules: [comment!.rule], rule: "z" },
+			]),
+		).toHaveLength(1);
+		expect(pairs([comment!, { ...comment!, file: "y" }])).toEqual([]);
+		expect(pairs([comment!, { ...comment!, rule: "z" }])).toEqual([]);
+		expect(pairs([comment!, { ...comment!, source: "lens.elsewhere" }])).toEqual([]);
+		expect(
+			goldens.filter((golden) => pairs(golden.expected.comments).length > 0).map((golden) => golden.name),
+			"one finding would count as found for both expectations. If a golden needs two, make scoreGolden count found from its one-to-one matching, and let a finding answer more than one expectation only where they differ by source alone",
+		).toEqual([]);
+	});
+
 	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
 		const melian = join(goldensDirectory, "../../..");
 		const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-policy-")));
