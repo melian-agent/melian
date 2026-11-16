@@ -1462,10 +1462,11 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				);
 				return git(repo, "rev-parse", branch);
 			};
-			// The range changes line 30 alone; one fix changes 40-42 and 80, another changes 30.
+			// The range changes line 30 alone; one fix changes 40-42 and 80, one changes 30, and one changes 30 and 80.
 			const head = commit("ranged", base, [30]);
 			commit("apart", head, [40, 41, 42, 80]);
 			commit("inside", head, [30]);
+			commit("both", head, [30, 80]);
 			const [stage] = paid.stages;
 			const lensRun = (fields: Partial<typeof stage>) =>
 				ran([], { telemetry: new StageTelemetry("base..head", [{ ...stage!, shown: [], ...fields }]) });
@@ -1479,6 +1480,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				["fix's other hunk", "apart", reading(80, 80), "missed"],
 				["shown off the fix", "apart", lensRun({ shown: [at.file] }), "unadjudicated"],
 				["shown on the fix", "inside", lensRun({ shown: [at.file] }), "missed"],
+				["shown on one of the fix's hunks", "both", lensRun({ shown: [at.file] }), "missed"],
 			];
 			const range = vi.fn();
 			for (const [, , run] of cases) range.mockResolvedValueOnce(run);
