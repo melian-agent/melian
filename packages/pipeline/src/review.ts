@@ -3108,11 +3108,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			resolutionPolicy,
 		});
 		const dismissals =
-			state === undefined
-				? []
-				: Object.keys(state.items)
-						.sort()
-						.flatMap((id) => records.dismissalOf(state, id) ?? []);
+			state === undefined ? [] : Object.keys(state.items).flatMap((id) => records.dismissalOf(state, id) ?? []);
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);

@@ -191,12 +191,13 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 // round, so every round of the changeset reads it.
 function dismissalsOf(set: RecordSet, changeset: string): Map<string, SharedDismissal> {
 	const latest = new Map<string, SharedDismissal>();
-	const records = set
-		.records()
-		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
-		.map((record) => ({ id: record.key, ...(record.payload as DismissalPayload) }))
-		.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
-	for (const { id, by, reason, at, trigger } of records) latest.set(id, { by, reason, at, trigger });
+	// Records come in ID order, so of two made at one time the greater ID stands.
+	for (const record of set.records()) {
+		if (record.kind !== "dismissal" || record.changeset !== changeset) continue;
+		const { by, reason, at, trigger } = record.payload as DismissalPayload;
+		const held = latest.get(record.key);
+		if (held === undefined || held.at <= at) latest.set(record.key, { by, reason, at, trigger });
+	}
 	return latest;
 }
 
