@@ -75,6 +75,7 @@ const paid = new StageTelemetry("base..head", [
 		subject: "trust-boundary@1@deep",
 		outcome: "completed",
 		coverage: { scope: "", paths: ["**"], nearer: [] },
+		shown: [".github/workflows/claim.yml", "moved/claim.yml", ".github/root.txt"],
 		timing: "unavailable",
 		reused: false,
 		resumed: false,
@@ -1191,6 +1192,96 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 one of two: found, /));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 6 reviews had none/));
 			expect(status).toBe(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("scores a miss only where a trust-boundary run was shown its file or read its lines", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			// Lines wider than the defect's one, so each end of the overlap decides a case of its own.
+			const [start, line] = defect[0]!.lines();
+			const end = line + 3;
+			expect(start).toBeGreaterThan(1);
+			const [stage] = paid.stages;
+			const { shown: _, ...unseen } = stage!;
+			const telemetry = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				new StageTelemetry(
+					"base..head",
+					stages.map((fields) => ({ ...unseen, ...fields })),
+				);
+			const lensRun = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				ran(defect, { telemetry: telemetry(...stages) });
+			const read = (path: string, first: number, last: number) =>
+				({ read: [{ path, ranges: [[first, last]] }] }) as const;
+			const cases: [string, RangeRun, boolean, string][] = [
+				["older", lensRun({}), true, "unadjudicated"],
+				["unshown", lensRun({ shown: [] }), true, "unadjudicated"],
+				["shown another", lensRun({ shown: ["elsewhere.ts"] }), true, "unadjudicated"],
+				["read another", lensRun({ shown: [], ...read("elsewhere.ts", start, end) }), true, "unadjudicated"],
+				["read before", lensRun({ shown: [], ...read(at.file, 1, start - 1) }), true, "unadjudicated"],
+				["read after", lensRun({ shown: [], ...read(at.file, end + 1, end + 9) }), true, "unadjudicated"],
+				[
+					"prober shown",
+					lensRun({ shown: [] }, { role: "prober", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				[
+					"ended shown",
+					lensRun({ shown: [] }, { outcome: "ended", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				["shown", lensRun({ shown: [at.file] }), true, "found"],
+				["read to start", lensRun({ shown: [], ...read(at.file, 1, start) }), true, "found"],
+				["read from end", lensRun({ shown: [], ...read(at.file, end, end + 9) }), true, "found"],
+				[
+					"read, missed",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, start, start) }) }),
+					true,
+					"missed",
+				],
+				["unread, no lines", ran([], { telemetry: telemetry({ shown: [] }) }), false, "unadjudicated"],
+				[
+					"read, no lines",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, end + 1, end + 1) }) }),
+					false,
+					"missed",
+				],
+			];
+			const runs = cases.map(([, run]) => run);
+			const range = vi.fn(async () => runs.shift()!);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, , lined]) => ({
+							name,
+							repo,
+							base,
+							head,
+							...at,
+							...(lined ? { lines: [start, end] } : {}),
+						})),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, run, lined, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or ${lined ? `read lines ${start}-${end} of it` : "read it"}`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

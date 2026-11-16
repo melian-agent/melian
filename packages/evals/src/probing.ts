@@ -300,10 +300,11 @@ export class Miss {
 
 	/**
 	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
-	 * conversation, other than a prober, whose stored coverage holds the miss's file.
+	 * conversation, other than a prober, whose stored coverage holds the miss's file, and which its prompt showed the
+	 * file's diff whole, or `read_file` delivered it the miss's lines, or any line of the file for a miss without lines.
 	 */
 	unscoped(run: Pick<RangeRun, "telemetry">): string | undefined {
-		const looked = run.telemetry.stages.some(
+		const scoped = run.telemetry.stages.filter(
 			(stage) =>
 				stage.name === "melian.lens" &&
 				stage.subject.startsWith(`${probingLens}@`) &&
@@ -312,7 +313,20 @@ export class Miss {
 				stage.coverage !== undefined &&
 				lensCovers(stage.coverage, this.file),
 		);
-		return looked ? undefined : `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
+		if (scoped.length === 0) return `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
+		const lines = this.lines;
+		const seen = scoped.some(
+			(stage) =>
+				stage.shown?.includes(this.file) ||
+				stage.read?.some(
+					(read) =>
+						read.path === this.file &&
+						(lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])),
+				),
+		);
+		return seen
+			? undefined
+			: `the review shows no completed ${probingLens} run that was shown ${this.file} or ${lines === undefined ? "read it" : `read lines ${lines[0]}-${lines[1]} of it`}`;
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
