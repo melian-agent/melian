@@ -954,9 +954,9 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 
 	// A lens that takes a built-in's name without extending it has a purpose of its own, which the built-in's probing
 	// wording was not written for.
-	it("refuses a level that probes in a lens that takes a built-in's name without extending it", async () => {
+	it("refuses a level that probes in a lens that takes a built-in's name without extending the built-in", async () => {
 		const refusal = (file: string, name: string) =>
-			`${file}: lens ${name}, level deep: "probe" reads the built-in ${name} lens's probing wording, which this lens does not extend; add "extends: ${name}" to probe under it`;
+			`${file}: lens ${name}, level deep: "probe" reads the built-in ${name} lens's probing wording, and this lens does not extend the built-in; give it and every farther ${name} lens "extends: ${name}"`;
 		for (const [file, files] of [
 			[
 				".melian/lenses/trust-boundary/LENS.md",
@@ -987,6 +987,21 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 						...security.map((line) => line.replace("name: security", "name: correctness")),
 						"levels:",
 						"  deep: { tier: heavy, probe: {} }",
+					]),
+					"pkg/x.ts": lines("export {};"),
+				},
+			],
+			[
+				"pkg/.melian/lenses/correctness/LENS.md",
+				{
+					".melian/lenses/correctness/LENS.md": lensFile(
+						security.map((line) => line.replace("name: security", "name: correctness")),
+					),
+					"pkg/.melian/lenses/correctness/LENS.md": lensFile([
+						"name: correctness",
+						"extends: correctness",
+						"levels:",
+						"  deep: { probe: {} }",
 					]),
 					"pkg/x.ts": lines("export {};"),
 				},

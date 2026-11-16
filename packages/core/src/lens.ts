@@ -433,7 +433,7 @@ function resolveLevels(file: string, name: string, declared: Declared, builtin: 
 			throw new LensError(
 				"missingField",
 				file,
-				`${file}: lens ${name}, level ${level}: "probe" reads the built-in ${name} lens's probing wording, which this lens does not extend; add "extends: ${name}" to probe under it`,
+				`${file}: lens ${name}, level ${level}: "probe" reads the built-in ${name} lens's probing wording, and this lens does not extend the built-in; give it and every farther ${name} lens "extends: ${name}"`,
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
