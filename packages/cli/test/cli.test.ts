@@ -668,6 +668,36 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(notes.stdout).not.toBe(plain.stdout);
 	});
 
+	// The base's committed policy shows the P1; the uncommitted melian.yaml silences it, and counts only on the head.
+	const silencing = `${guardrailsOnly}resolution:\n  P1: silent\n`;
+
+	it("reads a range's policy from the working tree when its head is checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			verdict: "Verdict: passed",
+		});
+	});
+
+	it("reads a range's policy from its base when its head is not checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		git(repo, "checkout", "--quiet", "plain");
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 1,
+			verdict: "Verdict: findings, blocking",
+		});
+	});
+
 	it("refuses a store that holds no round of the revision, though it holds one of another", async () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		policyBase(repo, "trusting", trustingPolicy);
