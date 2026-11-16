@@ -267,18 +267,19 @@ export class Miss {
 		if (changed === undefined) return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
 		const policy = { kind: "revision", commit: target.base } as const;
 		const paths = revision.paths();
-		const selection = Lens.select(
+		// A rename can put the file in two lenses' coverage, the old path's and the new one's, and the review runs both.
+		const selections = Lens.select(
 			await Lens.load(this.repo, policy, paths),
 			(await loadConfig(this.repo, policy, ".")).config,
 			paths,
-		).find(
+		).filter(
 			({ lens, files }) =>
 				lens.name === probingLens &&
 				(files.includes(this.file) || (changed.oldPath !== undefined && files.includes(changed.oldPath))),
 		);
-		if (selection === undefined)
+		if (selections.length === 0)
 			return `${this.name}: the base's policy does not let the ${probingLens} lens review ${this.file}`;
-		if (!selection.lens.rules.some(({ id }) => id === this.rule))
+		if (!selections.some(({ lens }) => lens.rules.some(({ id }) => id === this.rule)))
 			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
 		// The lens's own reader, so the file is refused, or cut, as `report_finding` would refuse or cut it.
 		const read = await readRevisionFile(this.repo, target.head, this.file).catch((error: unknown) => {

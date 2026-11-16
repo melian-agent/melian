@@ -1505,6 +1505,60 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("accepts a renamed miss's rule when either trust-boundary lens that reviews the file declares it, and refuses one neither does", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const commit = (message: string) =>
+				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
+			git(repo, "checkout", "--quiet", "-b", "two-lenses", "feature");
+			const lens = join(repo, ".github/.melian/lenses/trust-boundary/LENS.md");
+			mkdirSync(dirname(lens), { recursive: true });
+			writeFileSync(
+				lens,
+				"---\nname: trust-boundary\nextends: trust-boundary\nrules:\n  - id: nested-only\n    description: A rule only this folder declares.\n---\n",
+			);
+			writeFileSync(join(repo, "root.txt"), "one\ntwo\nthree\nfour\nfive\nsix\n");
+			git(repo, "add", "--all");
+			commit("nested lens and a root file");
+			const base = git(repo, "rev-parse", "HEAD");
+			git(repo, "mv", "root.txt", ".github/root.txt");
+			writeFileSync(join(repo, ".github/root.txt"), "one\ntwo\nthree\nfour\nfive\nsix\nseven\n");
+			git(repo, "add", "--all");
+			commit("rename into the nested folder");
+			const head = git(repo, "rev-parse", "HEAD");
+			const run = (rule: string) => {
+				const using = runners();
+				const result = measure(
+					{
+						...env,
+						MELIAN_EVAL_MISSES: missesFile([{ name: rule, repo, base, head, file: ".github/root.txt", rule }]),
+						MELIAN_EVAL_PROBE_SET: "misses",
+						MELIAN_EVAL_PROBE_PASSES: "1",
+						MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+					},
+					using,
+				);
+				return { using, result };
+			};
+			for (const rule of ["nested-only", "fail-open"]) {
+				const accepted = run(rule);
+				const { status, errors } = await accepted.result;
+				expect({ rule, status, errors }).toEqual({ rule, status: 0, errors: [] });
+				expect(accepted.using.range).toHaveBeenCalledTimes(1);
+			}
+			const refused = run("neither");
+			expect(await refused.result).toMatchObject({
+				status: 2,
+				errors: [
+					"The misses file cannot be scored: neither: neither is not a rule the base's trust-boundary lens declares",
+				],
+			});
+			expect(refused.using.range).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses, before any provider, a miss on a file the base's policy keeps from trust-boundary, and one empty or gone at the head", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
