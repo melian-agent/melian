@@ -19,7 +19,7 @@ A re-derives what the host already decided, so two hosts can disagree at the edg
 
 ## Choice
 
-B. A review writes a sixth kind, the account: `checks`, the tier's checks in tier order; `records`, the IDs of the check and lens records it counts; `filled`, the skipped or failed records the review made itself, such as a lens with no paths; `allowSkip`; and `producers`, each check and version whose sightings count, with the IDs a quick run kept. Each list is sorted and holds each entry once, and core's payload check refuses any other form, so one account has one set of bytes.
+B. A review writes a sixth kind, the account. It holds five lists. `checks` is the tier's checks in tier order, and `records` the IDs of the check and lens records it counts. `filled` is the skipped or failed records the review made itself, such as a lens with no paths. Then come `allowSkip`, and `producers`: each check and version whose sightings count, with the IDs a quick run kept. Each list is sorted and holds each entry once, and core's payload check refuses any other form, so one account has one set of bytes.
 
 The account carries a revision, and its key is the request key of that revision and the records it counts. `filled`, `allowSkip`, `producers` and `checks` stay out of the key, since they follow from those records and the base's policy. The round names the account in its `read`.
 

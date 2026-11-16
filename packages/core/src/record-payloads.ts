@@ -92,15 +92,9 @@ const decidedFields = {
 	),
 };
 
-/**
- * The check record a run decided, as the review that ran it counted it, with `null` where the record leaves a field out:
- * a lens's after the plan judged its model, or the verifier's. A reader takes it as the run's result, so a record
- * without one reads as not reviewed.
- */
-export const decidedCheckSchema = Type.Object(
-	{ ...decidedFields, status: literals(["ran", "ended", "failed"]) },
-	strict,
-);
+// The check record a run decided, with `null` where the record leaves a field out. A reader takes it as the run's
+// result, so a record that must hold one and does not reads as not reviewed.
+const decidedCheckSchema = Type.Object({ ...decidedFields, status: literals(["ran", "ended", "failed"]) }, strict);
 
 const trigger = Type.Union([
 	Type.Object({ kind: Type.Literal("severity"), severity: severitySchema }, strict),
