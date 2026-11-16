@@ -8,6 +8,7 @@ import {
 	readFileSync,
 	realpathSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1413,6 +1414,30 @@ describe("scripting a prober", () => {
 			"trust-boundary/proberx",
 		);
 		expect(() => testing.scriptLenses(fake, lenses, { "trust-boundary/prober": [] })).not.toThrow();
+	});
+});
+
+// Node names a linked module by its target, so a parse that expects the path it was given reads neither twin's place.
+describe("the syntax-check goldens' wrapper on a linked module", { timeout: 60_000 }, () => {
+	const findings = (golden: string) => {
+		const scratch = realpathSync(mkdtempSync(join(tmpdir(), "melian-syntax-check-")));
+		onTestFinished(() => rmSync(scratch, { recursive: true, force: true }));
+		mkdirSync(join(scratch, "checkout/src"), { recursive: true });
+		mkdirSync(join(scratch, "outside"));
+		writeFileSync(join(scratch, "outside/types.mjs"), 'export const token = "SECRET-TOKEN" +;\n');
+		symlinkSync("../../outside/types.mjs", join(scratch, "checkout/src/vendor.mjs"));
+		const wrapper = join(goldensDirectory, golden, "head/src/syntax-check.mjs");
+		const script = `const { checkFindings } = await import(${JSON.stringify(wrapper)}); console.log(JSON.stringify(checkFindings(${JSON.stringify(join(scratch, "checkout"))})));`;
+		return JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" }));
+	};
+
+	it("keeps the place and rule in both twins, and the quoted line only in the defect twin, as its cause says", () => {
+		const [leak] = findings("trust-boundary-probe-syntax-check-outside-text");
+		expect(leak).toMatchObject({ file: "src/vendor.mjs", line: 1, rule: "node/SyntaxError" });
+		expect(leak.message).toContain("SECRET-TOKEN");
+		const [clean] = findings("trust-boundary-probe-syntax-check-outside-text-clean");
+		expect(clean).toMatchObject({ file: "src/vendor.mjs", line: 1, rule: "node/SyntaxError" });
+		expect(clean.message).not.toContain("SECRET-TOKEN");
 	});
 });
 

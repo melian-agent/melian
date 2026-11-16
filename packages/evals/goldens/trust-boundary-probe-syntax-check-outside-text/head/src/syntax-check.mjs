@@ -1,7 +1,7 @@
 // Runs `node --check` on every JavaScript module of a checkout and turns each syntax error into a finding, which the
 // review stores and publishes on the pull request.
 import { spawnSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readdirSync, realpathSync } from "node:fs";
 import { join, relative } from "node:path";
 
 function modules(root, directory = root) {
@@ -15,9 +15,9 @@ function modules(root, directory = root) {
 	return found.sort();
 }
 
-// Node prints the path it was given and the failing line, the source line with a caret under it, a blank line, then
-// the error. A file name can hold a newline and the source line can look like an error, so the place is read after
-// the known path, and the rule after the blank line, only from Node's own error names.
+// Node prints the module's real path, a link's target, with the failing line, the source line with a caret under it, a
+// blank line, then the error. A file name can hold a newline and the source line can look like an error, so the place
+// is read after the known path, and the rule after the blank line, only from Node's own error names.
 const errorNames = ["SyntaxError", "ReferenceError", "TypeError", "RangeError", "Error"];
 
 export function parseCheck(output, path) {
@@ -41,7 +41,7 @@ export function checkFindings(root) {
 	for (const path of modules(root)) {
 		const run = spawnSync(process.execPath, ["--check", path], { encoding: "utf8" });
 		if (run.status === 0) continue;
-		const parsed = parseCheck(run.stderr, path);
+		const parsed = parseCheck(run.stderr, realpathSync(path));
 		const file = relative(root, path);
 		if (parsed === undefined) {
 			findings.push({ file, line: 1, rule: "node/check-failed", message: `node --check failed: ${run.stderr}` });
