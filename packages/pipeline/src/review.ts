@@ -1327,7 +1327,8 @@ interface ReviewSettings {
 	 */
 	readonly rerun?: boolean;
 	/**
-	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing.
+	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing, unless another
+	 * review committed between a step's read and its commit: the step then unlocks every provider it could ask first.
 	 * Before any wait, hosts also unlock {@link ReviewHarness.resumedProviders}, which uses stored routes.
 	 */
 	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
@@ -2212,21 +2213,27 @@ async function triage(
 		request: structuredClone(request) as DecisionTaskInput["request"],
 		...(inputCut ? { inputCut: true } : {}),
 	};
+	// The finished decision the read below found to attach to without unlocking. The commit acts on that alone: any
+	// other outcome writes nothing, and the commit runs again with the decider's providers unlocked, since another
+	// review can commit between the read and the commit.
+	let attachesTo: number | undefined;
 	if (unlockModels !== undefined) {
 		// What the commit below decides, read ahead of it: only a finished decision of these questions is attached to
 		// without asking a model, and a rerun asks again after one that recorded none.
 		const entry = (await harness.snapshot(DecisionDocument, root.id, context))?.decisions[revision]?.[set];
 		const record = entry === undefined ? undefined : await harness.getTask(entry.task as TaskId, context);
 		const attaches = entry?.key === key && !(rerun && entry.decision === undefined) && finished(record, undecided);
-		if (!attaches) await unlockModels(providers);
+		if (attaches) attachesTo = entry.task;
+		else await unlockModels(providers);
 	}
 	let replaced: number | undefined;
-	const taskId = await root.commit(async (tx) => {
+	const decide = async (tx: Tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
 		const known = document.decisions[revision]?.[set];
 		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
 		const retry = rerun && known?.decision === undefined;
 		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
+		if (attachesTo !== undefined && !(attach && known.task === attachesTo)) return undefined;
 		const index = await tx.doc(ReviewIndex, root.id);
 		const previous = index.reviews[revision];
 		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
@@ -2257,7 +2264,13 @@ async function triage(
 			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
 		}
 		return task;
-	}, context);
+	};
+	let taskId = await root.commit(decide, context);
+	if (taskId === undefined) {
+		await unlockModels!(providers);
+		attachesTo = undefined;
+		taskId = (await root.commit(decide, context))!;
+	}
 	// A live replaced task would still ask its decider, and its answer lands nowhere.
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);

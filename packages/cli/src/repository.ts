@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { isChangesetId } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
@@ -60,6 +61,11 @@ export async function openStorage(path: string): ReturnType<typeof openSqliteSto
 	} catch (error) {
 		throw unwritable(path, error as Error);
 	}
+}
+
+export function roundChangeset(round: string): string | undefined {
+	const match = /^([^.]+)\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
+	return match !== null && isChangesetId(match[1]!) ? match[1] : undefined;
 }
 
 // Fixed ref names, so a pull request's changeset ID, which hashes them, survives every push.

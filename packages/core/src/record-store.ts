@@ -11,8 +11,11 @@ export type RecordCell = { value?: string; version?: string };
  * more: `add` can be repeated, and a batch that landed in part is completed by a repeat; `list` and `readCell` are
  * fresh, or fail; `writeCell` succeeds only while the cell's version is still the expected one, and every successful
  * write changes the version; `dispose` first marks the cell, after which `add` and `writeCell` refuse the changeset for
- * good. `add` checks each record whole, its payload included; `list` checks envelopes only, and leaves payloads to the
- * caller's `RecordSet`, so a record set aside as untrusted never fails the listing. No ordering of records, no
+ * good. A `writeCell` that fails `unreachable` may have landed, so a repeat with the same expected version can answer
+ * `false` for the caller's own write. A caller that repeats one reads the cell, and a cell holding the value it wrote
+ * means its write landed. Only a value that names its writer, as a lease's incarnation does, tells the two apart. `add`
+ * checks each record whole, its payload included; `list` checks envelopes only, and leaves payloads to the caller's
+ * `RecordSet`, so a record set aside as untrusted never fails the listing. No ordering of records, no
  * history, no transaction across records, no secrecy, and no identity for a writer.
  * Every adapter passes the conformance suite in `@melian-agent/core/testing`.
  */
@@ -30,13 +33,17 @@ export const disposalMark = '{"disposed":true}';
 
 const changesetName = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 
+/** Throws `RecordError` `invalidChangeset` for a changeset name no envelope could hold, as every adapter call must. */
 export function checkChangeset(changeset: string): void {
 	if (!changesetName.test(changeset)) {
 		throw new RecordError("invalidChangeset", `"${changeset}" is not a changeset name`);
 	}
 }
 
-// A file-backed adapter writes UTF-8, which cannot hold a lone surrogate, so no adapter takes one. A cell holds one JSON value, by rule 3.
+/**
+ * Throws `RecordError` `invalidCell` for a value `writeCell` must refuse: the disposal mark, which only `dispose` writes;
+ * a lone surrogate, which a file-backed adapter's UTF-8 cannot hold; or anything but one JSON value, by rule 3.
+ */
 export function checkCellValue(value: string): void {
 	if (value === disposalMark) throw new RecordError("invalidCell", "only dispose writes the disposal mark");
 	if (!value.isWellFormed()) throw new RecordError("invalidCell", "a cell holds no lone surrogate");
@@ -51,6 +58,7 @@ function strayError(changeset: string, kind: string): RecordError {
 	return new RecordError("unknownFile", `changeset ${changeset} holds a ${kind} entry no handle wrote`);
 }
 
+/** The `RecordError` `disposed` an adapter throws for an `add` or `writeCell` on a disposed changeset. */
 export function disposedError(changeset: string): RecordError {
 	return new RecordError("disposed", `changeset ${changeset} is disposed`);
 }

@@ -213,6 +213,7 @@ describe("stored round findings", () => {
 		`${changesetId}.k0`,
 		`${changesetId}.r0`,
 		`${changesetId}.r1x`,
+		`x.${roundId}`,
 	])("rejects malformed round ID %s before reading the repository", async (id) => {
 		await expect(findings(io, "", { ...options, round: id })).rejects.toMatchObject({
 			name: "CliError",

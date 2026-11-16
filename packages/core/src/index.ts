@@ -27,6 +27,7 @@ export type {
 export {
 	Changeset,
 	type ChangesetFields,
+	isChangesetId,
 	parseRangeSpec,
 	pullRequestChangesetId,
 	type RangeMode,
@@ -433,7 +434,7 @@ export {
 	type EnolaReference,
 } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes } from "./git.ts";
+export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes, stderrLimit } from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -527,7 +528,10 @@ export {
 	walkthroughPayloadSchema,
 } from "./record-payloads.ts";
 export {
+	checkCellValue,
+	checkChangeset,
 	disposalMark,
+	disposedError,
 	MemoryRecordSpace,
 	MemoryRecordStore,
 	type RecordCell,

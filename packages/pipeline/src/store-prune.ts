@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { isChangesetId } from "@melian-agent/core";
 import { running, scratchName } from "./cache-scratch.ts";
 import { GraphCache } from "./graph-cache.ts";
 
@@ -173,7 +174,8 @@ export class StorePrune {
 			const top = await children(root);
 			const coverageLinked = top.some((node) => node.name === "coverage" && node.link);
 			for (const node of top) {
-				if (/^(?:pull|range)-[0-9a-f]{16}\.sqlite(?:-wal|-shm)?$/.test(node.name) && node.file) {
+				const store = /^(.*)\.sqlite(?:-wal|-shm)?$/.exec(node.name);
+				if (store !== null && isChangesetId(store[1]!) && node.file) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
 				} else if (

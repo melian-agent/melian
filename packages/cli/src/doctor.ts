@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, sep } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
@@ -25,6 +25,7 @@ import {
 	providersWithCredentials,
 	staticToolSource,
 } from "@melian-agent/pipeline";
+import { GitRecordStore } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
@@ -389,26 +390,13 @@ async function trustCheck(
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined)
 		return { name, state: "warn", detail: "not inside a git repository; root policy is unknown" };
-	let base: { ref: string; commit: string } | undefined;
-	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
-		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
-		if (commit !== undefined) {
-			base = { ref, commit };
-			break;
-		}
-	}
-	if (base === undefined) return { name, state: "warn", detail: "no committed root policy is available" };
-	let writers: boolean;
-	try {
-		writers = (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers;
-	} catch (error) {
-		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
-	}
-	let state: Check["state"] = writers && base.ref !== "HEAD" && base.ref !== "main" ? "ok" : "warn";
+	const policy = await committedTrust(root);
+	if ("unknown" in policy) return { name, state: "warn", detail: policy.unknown };
+	const { base, writers, caveat } = policy;
+	let state: Check["state"] = writers && caveat === undefined ? "ok" : "warn";
 	const details = [`writers trusted: ${writers ? "yes" : "no"}; policy ${base.ref} (${base.commit.slice(0, 7)})`];
 	if (!writers) details.push("a trusted host must set the status");
-	if (base.ref === "HEAD") details.push("base policy is unknown; using committed HEAD");
-	if (base.ref === "main") details.push("base policy may be stale; using local main");
+	if (caveat !== undefined) details.push(caveat);
 	if (token === undefined) return { name, state: "warn", detail: `${details.join("; ")}; no GitHub token` };
 	const url = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
 	let repository: { owner: string; repo: string };
@@ -465,6 +453,102 @@ async function trustCheck(
 	}
 }
 
+// The committed root policy's `trust.writers`, from the first base ref that resolves. Doctor never fetches the refs.
+// Local main may lag the remote, and HEAD is the branch's own policy, so either carries a caveat.
+async function committedTrust(
+	root: string,
+): Promise<{ base: { ref: string; commit: string }; writers: boolean; caveat?: string } | { unknown: string }> {
+	let base: { ref: string; commit: string } | undefined;
+	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
+		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
+		if (commit !== undefined) {
+			base = { ref, commit };
+			break;
+		}
+	}
+	if (base === undefined) return { unknown: "no committed root policy is available" };
+	try {
+		return {
+			base,
+			writers: (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers,
+			...(base.ref === "HEAD" && { caveat: "base policy is unknown; using committed HEAD" }),
+			...(base.ref === "main" && { caveat: "base policy may be stale; using local main" }),
+		};
+	} catch (error) {
+		return { unknown: visibleText(error instanceof Error ? error.message : String(error)) };
+	}
+}
+
+// Whoever can push to the record branch can add, rewind or remove what a review and the merge gate read, so the line
+// says whom the committed policy trusts to write it. Doctor cannot read who may push, so trust off is a warning.
+async function recordTrust(root: string): Promise<{ state: Check["state"]; detail: string }> {
+	const policy = await committedTrust(root);
+	if ("unknown" in policy)
+		return {
+			state: "warn",
+			detail: `who may write it is unknown, since the trust policy cannot be read: ${policy.unknown}`,
+		};
+	const source = `trust.writers in ${policy.base.ref} (${policy.base.commit.slice(0, 7)})`;
+	const detail = policy.writers
+		? `its writers are trusted as the repository's writers, by ${source}`
+		: `${source} is off, so only the trusted host may write melian/state; doctor cannot check who may push to it`;
+	return policy.caveat === undefined
+		? { state: policy.writers ? "ok" : "warn", detail }
+		: { state: "warn", detail: `${detail}; ${policy.caveat}` };
+}
+
+// A file on the record branch that Melian did not write refuses calls until a writer removes it, so the line names it.
+async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const name = "records";
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const remote = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
+	if (remote === undefined) return undefined;
+	const trust = await recordTrust(root);
+	const branch = await branchContents(root, remote, env);
+	return {
+		name,
+		state: branch.state === "ok" ? trust.state : "warn",
+		detail: `${branch.detail}; ${trust.detail}`,
+	};
+}
+
+async function branchContents(
+	root: string,
+	remote: string,
+	env: NodeJS.ProcessEnv,
+): Promise<{ state: Check["state"]; detail: string }> {
+	let store: GitRecordStore | undefined;
+	try {
+		store = await GitRecordStore.open({
+			directory: await stateDirectory(root, env),
+			remote: fromCheckout(root, remote),
+			deadlineMs: 20_000,
+		});
+		const strays = await store.strays();
+		if (strays.length === 0)
+			return { state: "ok", detail: "melian/state holds only records and cells Melian wrote, or is not there yet" };
+		const shown = strays.slice(0, 5).map((path) => visibleText(path));
+		const more = strays.length > shown.length ? `, and ${strays.length - shown.length} more` : "";
+		return {
+			state: "warn",
+			detail: `melian/state holds ${strays.length === 1 ? "a file" : `${strays.length} files`} Melian did not write, which a writer must remove: ${shown.join(", ")}${more}`,
+		};
+	} catch (error) {
+		return { state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
+	} finally {
+		await store?.close();
+	}
+}
+
+// Git reads a remote with no colon, or a slash before its first colon, as a path relative to the checkout, by
+// url_is_local_not_ssh in its connect.c, which no command answers; the store runs git in its own repository instead.
+function fromCheckout(root: string, url: string): string {
+	const colon = url.indexOf(":");
+	const slash = url.indexOf("/");
+	return colon === -1 || (slash !== -1 && slash < colon) ? resolve(root, url) : url;
+}
+
 // Runs an empty probe, so the line says whether one runs here, not only whether the parts are installed.
 async function probeCheck(): Promise<Check> {
 	const availability = await Probe.availability();
@@ -509,6 +593,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await executableCheck(io.cwd, io.executable),
 			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
+			await recordStoreCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
 			await mutationCheck(io.cwd, io.env),
