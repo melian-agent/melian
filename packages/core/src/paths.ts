@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import { enolaPolicyPattern } from "./enola-paths.ts";
+import { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
@@ -46,12 +46,9 @@ export const analyserConfigNames = [
 	"vitest.setup*",
 	"stryker.setup*",
 	"stryker-test-names.*",
-	"enola.yaml",
-	"mcp-arch.yaml",
-	"enola-intent.yaml",
-	"enola/constraints/**",
-	".enola/suppressions.yaml",
-] as const;
+	...enolaPolicyFiles,
+	...enolaPolicyDirectories.map((directory) => `${directory}/**`),
+];
 
 const analyserConfig =
 	/^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*|stryker\.config\..*|vitest\.stryker\.config\..*|vitest\.stryker\.setup.*|vitest\.config\..*|vitest\.setup.*|stryker\.setup.*|stryker-test-names\..*)$/;
