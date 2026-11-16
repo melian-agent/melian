@@ -353,7 +353,7 @@ describe("git with a deadline", () => {
 
 	// A stand-in git that keeps running, and a fake table that shows it with one child. A kill is recorded, never sent, so
 	// both stay in the table and the stop runs its whole course: SIGTERM to each, a second of grace, SIGKILL to each.
-	function budgetStop(jumpAfterThirdRead?: number) {
+	function budgetStop(jumpAfterThirdRead?: number, blockMs?: (read: number) => number) {
 		const bin = join(repo, "bin");
 		const gitPid = join(repo, "git-pid");
 		mkdirSync(bin);
@@ -365,6 +365,8 @@ describe("git with a deadline", () => {
 			list: () => {
 				reads++;
 				if (reads === 3 && jumpAfterThirdRead !== undefined) now = jumpAfterThirdRead;
+				const block = blockMs?.(reads) ?? 0;
+				if (block > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, block);
 				const pid = Number(readFileSync(gitPid, "utf8"));
 				return [
 					{ pid, ppid: process.pid, start: "Mon Nov 16 03:00:00 2026", command: "git" },
@@ -397,6 +399,14 @@ describe("git with a deadline", () => {
 			[pid, "SIGKILL"],
 			[pid + 100_000, "SIGKILL"],
 		]);
+	}, 20_000);
+
+	it("gives up on the real clock once the stop's reads have taken three seconds", async () => {
+		// The second and third reads each take 1.6 seconds, as a slow ps would, so the fourth would start past the budget.
+		const stop = budgetStop(undefined, (read) => (read === 2 || read === 3 ? 1600 : 0));
+		const result = await stop.run();
+		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+		expect(stop.kills).toEqual([[stop.pid(), "SIGTERM"]]);
 	}, 20_000);
 
 	it("reads the table at the end of the stop's three-second budget", async () => {
