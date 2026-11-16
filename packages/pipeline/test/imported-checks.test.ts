@@ -134,7 +134,13 @@ describe("ImportedRecords.check", () => {
 	const changeset = "c".repeat(64);
 	const request = "d".repeat(64);
 	const records = ReviewRecords.of(changeset, { base, head });
-	const ran = (name: string): CheckRunRecord & { status: "ran" } => ({ name, status: "ran", version: "1", findings: 0, notes: [] });
+	const ran = (name: string): CheckRunRecord & { status: "ran" } => ({
+		name,
+		status: "ran",
+		version: "1",
+		findings: 0,
+		notes: [],
+	});
 
 	it("answers a check that ran, under its request, revision and name", () => {
 		const imported = ImportedRecords.from(changeset, [records.check(request, ran("static.biome"), []).toJSON()]);
