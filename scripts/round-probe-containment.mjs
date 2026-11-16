@@ -233,11 +233,10 @@ try {
 const buffer = Buffer.alloc(1048576);
 // Each read after a file's first starts with the last bytes of the one before, so a match across two reads is whole.
 const overlap = 4096;
-const byteLimit = 16 * 1024 ** 3;
 function walk(root, maxDepth, readBytes) {
 	const summary = { files: 0, directories: 0, unreadable: 0, bytes: 0, top: [], matches: [] };
 	const stack = [[root, 0]];
-	while (stack.length > 0 && summary.files + summary.directories < 400000 && summary.bytes < byteLimit) {
+	while (stack.length > 0 && summary.files + summary.directories < 400000 && summary.bytes < t.byteLimit) {
 		const [path, depth] = stack.pop();
 		let stat;
 		try { stat = lstatSync(path); } catch { summary.unreadable++; continue; }
@@ -257,7 +256,7 @@ function walk(root, maxDepth, readBytes) {
 		try {
 			let at = 0;
 			let carried = "";
-			while (at < readBytes && summary.bytes < byteLimit) {
+			while (at < readBytes && summary.bytes < t.byteLimit) {
 				const size = readSync(fd, buffer, 0, Math.min(readBytes - at, buffer.length), at);
 				if (size === 0) break;
 				at += size;
@@ -270,7 +269,7 @@ function walk(root, maxDepth, readBytes) {
 		} catch { summary.unreadable++; } finally { closeSync(fd); }
 		for (const kind of found) summary.matches.push({ kind, path });
 	}
-	summary.cut = stack.length > 0 || summary.bytes >= byteLimit;
+	summary.cut = stack.length > 0 || summary.bytes >= t.byteLimit;
 	summary.top = summary.top.slice(0, 40);
 	summary.matches = summary.matches.slice(0, 200);
 	return summary;
@@ -490,6 +489,8 @@ export function containmentPlan({
 			...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
 		],
 		walk: policy.read,
+		// Bytes each walk reads before it stops, and the check fails; far above what a runner's roots hold.
+		byteLimit: 16 * 1024 ** 3,
 		own: [tree, run, probeDirectory],
 		// A probe's own directories are never public, wherever they sit.
 		public: policy.read.filter(

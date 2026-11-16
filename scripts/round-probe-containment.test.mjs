@@ -357,7 +357,7 @@ describe("the probe script", () => {
 	});
 
 	// Runs the script outside the sandbox, on fake values, so what it detects is tested apart from what the sandbox hides.
-	function collect(env) {
+	function collect(env, byteLimit = 16 * 1024 ** 3) {
 		const dir = mkdtempSync(join(tmpdir(), "melian-containment-script-"));
 		dirs.push(dir);
 		const secret = `melian-canary-${randomBytes(16).toString("hex")}`;
@@ -382,6 +382,7 @@ describe("the probe script", () => {
 			write: [],
 			network: [],
 			walk: [walked],
+			byteLimit,
 			self: join(dir, "targets.json"),
 		};
 		writeFileSync(join(dir, "probe.mjs"), probeScript);
@@ -415,6 +416,18 @@ describe("the probe script", () => {
 				{ kind: "canary", path: files.late },
 				{ kind: "github token", path: files.straddle },
 			]);
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"marks a walk cut once it reads its byte limit, and not one whose files end a byte short of it",
+		{ timeout: 300_000 },
+		() => {
+			const whole = collect(() => ({}));
+			const under = collect(() => ({}), whole.bytes + 1);
+			expect(under.report.walk[under.walked].cut).toBe(false);
+			const at = collect(() => ({}), whole.bytes);
+			expect(at.report.walk[at.walked].cut).toBe(true);
 		},
 	);
 
@@ -577,6 +590,7 @@ describe("containmentPlan", () => {
 				{ host: "169.254.169.254", port: 80 },
 			],
 			walk: input.policy.read,
+			byteLimit: 17_179_869_184,
 			own: ["/r/tree", "/usr/x/run", "/usr/x/probe"],
 			public: ["/usr/lib"],
 			self: "/usr/x/probe/targets.json",
