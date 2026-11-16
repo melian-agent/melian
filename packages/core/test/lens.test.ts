@@ -254,7 +254,7 @@ describe("built-in lenses", () => {
 			durability: "2d013afa303b",
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
-			"trust-boundary": "aa43d0a6aa3c",
+			"trust-boundary": "e78af31b1e01",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
@@ -265,7 +265,7 @@ describe("built-in lenses", () => {
 			design: "be363583ad90",
 			"removed-behaviour": "0885fd05330f",
 			tests: "a9ed7d3ea22c",
-			"trust-boundary": "673d0a07e11d",
+			"trust-boundary": "7d072a9e5e2c",
 		});
 	});
 
