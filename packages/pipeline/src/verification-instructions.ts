@@ -7,7 +7,7 @@ import {
 	verificationSchema,
 } from "@melian-agent/core";
 import Type, { type Static } from "typebox";
-import { probeEvidenceRenderings, probeEvidenceWording, probingWording } from "./probing.ts";
+import { evidenceWordingOf, probeEvidenceRenderings, probingWording } from "./probing.ts";
 
 const answer = Type.Union([Type.Literal("yes"), Type.Literal("no"), Type.Literal("unknown")]);
 const strict = { additionalProperties: false } as const;
@@ -52,12 +52,14 @@ export const verifierInstructions = [
 	"Call report_verdict once per claim with its label, the three answers, verdict, reason and any correction. A correction is shown beside the finding and changes none of its fields. You may read_file, search and list_files. You cannot report findings. Finish only after judging every claim.",
 ].join("\n\n");
 
+// The probe evidence the version hashes is the trust-boundary lens's, whose wording was the only one when the version
+// first hashed evidence, so its value stands; a verification of claims with probe evidence keys its own lenses'.
 export function computeVerifierVersion(
 	instructions = verifierInstructions,
 	schema = reportVerdictSchema,
 	questions = verificationQuestions,
 	probeEvidence: unknown = {
-		...probeEvidenceWording,
+		...evidenceWordingOf("trust-boundary"),
 		planRow: probingWording.planRow,
 		renderings: probeEvidenceRenderings(),
 	},

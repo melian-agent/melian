@@ -8,6 +8,8 @@ import {
 	Lens,
 	type LensBudget,
 	type LensProbing,
+	type LensProbingWording,
+	lensProbingWording,
 	type MelianConfig,
 	MemoryRecordStore,
 	ReviewPlan,
@@ -49,7 +51,14 @@ import type { TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingHost, probingLimits, probingWording } from "../src/probing.ts";
+import {
+	headTreeLimits,
+	ProbeReruns,
+	probingHost,
+	probingLimits,
+	probingWording,
+	probingWordingOf,
+} from "../src/probing.ts";
 import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -887,7 +896,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(probed[4]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[5]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[6]).toContain("a probe's files hold at most 131072 bytes; these hold 131073");
-		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so the boundary held/);
+		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so it showed no defect/);
 		expect(probed[7]).toContain("65536");
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["melian/injection-attempt"]);
 	});
@@ -987,6 +996,17 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(telemetry.runDetails().stages.map((stage) => stage.name)).toEqual(
 			expect.arrayContaining(["lens trust-boundary planner", "lens trust-boundary prober"]),
 		);
+	});
+
+	it("names the files the planner's prompt showed, and none for the prober, which reads the plan alone", async () => {
+		const { run, changeset } = await review({ planner: plan, prober: probing(failing) });
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const [planner, prober] = telemetry.stages.filter((stage) => stage.name === "melian.lens");
+		expect(planner!.shown).toEqual(changeset.revision.files.map((file) => file.path));
+		expect(planner!.shown).not.toEqual([]);
+		expect(prober).toMatchObject({ role: "prober" });
+		expect(prober).not.toHaveProperty("shown");
 	});
 
 	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
@@ -2263,7 +2283,13 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			messages.some((message) => message.role === "assistant")
 				? fauxAssistantMessage("Planned 1 attack.")
 				: call("record_plan", { attacks: [attack] });
-		// A copy of trust-boundary shares its rules, so the two lenses' reports of one defect merge into one finding.
+		// A copy of trust-boundary shares its rules and its probing wording, so the two lenses' reports of one defect merge
+		// into one finding.
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		words.set("boundary-copy", words.get("trust-boundary")!);
+		onTestFinished(() => {
+			words.delete("boundary-copy");
+		});
 		const copy = (loaded: readonly Lens[]) => [
 			probingWith({ timeout: 40_000 })(
 				Lens.from({ ...loaded.find((lens) => lens.name === "trust-boundary")!.toJSON(), name: "boundary-copy" }),
@@ -3367,7 +3393,7 @@ describe("the turns a lens run is sent", () => {
 		);
 		for (const section of ["instructions", injectionPolicySection.key])
 			keyed.add(`<${section}>`).add(`</${section}>`);
-		const templates = Object.values(probingWording).flatMap(linesOf).map(template);
+		const templates = Object.values(probingWordingOf("trust-boundary")).flatMap(linesOf).map(template);
 		const sent = [reviewer, planner, prober].flatMap((who) =>
 			requests[who]!.flatMap((messages) =>
 				messages
@@ -3378,8 +3404,104 @@ describe("the turns a lens run is sent", () => {
 		// The script reached each kind of turn it claims to: the carried findings, the plan, and both reminders.
 		expect(sent).toContain(probingWording.carriedHeading);
 		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
-		expect(sent).toContain(probingWording.recordPlan);
+		expect(sent).toContain(probingWordingOf("trust-boundary").recordPlan);
 		expect(sent.some((line) => line.startsWith("Attack 2 has neither a probe nor a skip"))).toBe(true);
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
+	});
+});
+
+// The turns a planner and prober of the trust-boundary lens's wording were sent through an escalation, a plan and both
+// reminders, with the nonce and commits written as names. `proberOf` is the text that finds the prober's conversation.
+async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, proberOf: string): Promise<string> {
+	const { probe: _, ...plain } = finding("p0");
+	const proberReplies: ScriptedReply[] = [
+		call("run_probe", { attack: 1, script: failing }),
+		(messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) =>
+			call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0")),
+		fauxAssistantMessage("Done."),
+		call("skip_attack", { attack: 2, reason: "it needs the network" }),
+		fauxAssistantMessage("Reported 1 finding."),
+	];
+	const scripts = {
+		planner: [],
+		prober: proberOf === prober ? proberReplies : [],
+		others: [
+			...(proberOf === prober ? [] : [{ match: proberOf, replies: proberReplies }]),
+			{
+				match: planner,
+				replies: [
+					fauxAssistantMessage("Nothing."),
+					call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }),
+					plan[1]!,
+				],
+			},
+			{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+		],
+	};
+	const { run, requests, changeset } = await review(scripts, options);
+	// The review blocks on its finding; anything else it throws is the failure to show.
+	await run.catch((error: unknown) => {
+		if (!(error instanceof ReviewError)) throw error;
+	});
+	const store = harness!.harness;
+	const root = await store.root(backgroundContext);
+	const task = (await store.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[
+		Revision.key(changeset.revision)
+	]!.task;
+	const { nonce } = (
+		(await store.getTask(task as TaskId, backgroundContext))!.input as { revision: { nonce: string } }
+	).revision;
+	const turns = [planner, proberOf].flatMap((who) =>
+		requests[who]!.map((messages, index) =>
+			[
+				`=== ${who === planner ? "planner" : "prober"} request ${index + 1} ===`,
+				...messages
+					.filter(({ role }) => role === "system" || role === "user")
+					.map((message) => `--- ${message.role} ---\n${textOf(message)}`),
+			].join("\n"),
+		),
+	);
+	// The nonce is drawn afresh and the commits are dated, so each is written as a name.
+	const { base, head } = changeset.revision;
+	const shown = turns
+		.join("\n\n")
+		.replaceAll(nonce, "NONCE")
+		.replaceAll(base.slice(0, 12), "BASE")
+		.replaceAll(head.slice(0, 12), "HEAD");
+	return shown;
+}
+
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
+// trust-boundary lens's planner and prober must still be shown what they were shown then.
+describe("the trust-boundary lens's probing turns", () => {
+	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+		const shown = await probingTurns(escalating(createFakeModels()), prober);
+		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
+	});
+
+	// The maintainer ruled on 2026-11-16 that Melian's own rounds probe through a lens that extends trust-boundary
+	// under another name, so that lens's planner and prober read trust-boundary's wording, and only its name differs.
+	it("are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name", async () => {
+		const name = "trust-boundary-probes";
+		const options = escalating(createFakeModels());
+		const shown = await probingTurns(
+			{
+				...options,
+				decider: new RecordedDecider(
+					{ triage: { version: "1", answers: { [name]: { distribution: { quick: 1 } } } } },
+					{ name: "recorded" },
+				),
+				lens: (lens: Lens) => Lens.from({ ...options.lens(lens).toJSON(), name, probesAs: "trust-boundary" }),
+				config: {
+					...options.config,
+					tiers: { full: [`lens.${name}`] },
+					lenses: { [name]: options.config.lenses["trust-boundary"] },
+				},
+			},
+			`You are the prober for the ${name} lens`,
+		);
+		expect(shown).toContain(name);
+		const golden = readFileSync(new URL("golden/trust-boundary-probing-turns.txt", import.meta.url), "utf8");
+		expect(`${shown.replaceAll(name, "trust-boundary")}\n`).toBe(golden);
 	});
 });
