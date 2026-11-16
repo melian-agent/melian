@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
 	Changeset,
 	defaultConfig,
+	type EnolaSnapshot,
 	Finding,
 	KeyedRequest,
 	normaliseEnolaSarif,
@@ -322,5 +323,50 @@ describe("an exported record keeps what a static finding shares", () => {
 		const longest = { ...fields, enola_version: `0${"1".repeat(63)}` };
 		expect(exported(JSON.stringify(longest))).toBe(JSON.stringify(longest));
 		expect(exported(JSON.stringify({ ...fields, enola_version: `0${"1".repeat(64)}` }))).toBe(withheld);
+	});
+	describe("Enola's snapshot identities, which Melian computes as hashes", () => {
+		const records = ReviewRecords.of("c".repeat(64), { base: "a".repeat(40), head: "b".repeat(40) });
+		const hash = "a".repeat(64);
+		const receipt = JSON.stringify({ format_version: 1, snapshot_id: `sha256:${hash}`, enola_version: "0.4.37" });
+		const snapshot: EnolaSnapshot = {
+			commit: "b".repeat(40),
+			snapshotId: `sha256:${hash}`,
+			receipt,
+			cacheKey: hash,
+			coverage: { graph: hash, review: hash, test: hash },
+		};
+		const exported = (each: EnolaSnapshot) =>
+			records.check("e".repeat(64), { ...ran("static.enola", 1), snapshots: [each] }, []).toJSON().payload as {
+				result: { status: string; reason?: string; snapshots?: unknown };
+				sightings: unknown[];
+			};
+
+		it("keeps a snapshot whose identities are hashes, and the hashes at their full length", () => {
+			expect(exported(snapshot).result).toEqual(
+				expect.objectContaining({ status: "ran", snapshots: [{ ...snapshot, receipt }] }),
+			);
+			expect(exported({ commit: snapshot.commit, snapshotId: snapshot.snapshotId, receipt }).result.status).toBe(
+				"ran",
+			);
+		});
+
+		it.each<[string, EnolaSnapshot]>([
+			["its snapshot ID", { ...snapshot, snapshotId: `sha256:${token}` }],
+			["its snapshot ID past the hash", { ...snapshot, snapshotId: `sha256:${hash} ${token}` }],
+			["its snapshot ID before the hash", { ...snapshot, snapshotId: `${token} sha256:${hash}` }],
+			["its cache key", { ...snapshot, cacheKey: token }],
+			["its cache key past the hash", { ...snapshot, cacheKey: `${hash}${token}` }],
+			["its graph coverage", { ...snapshot, coverage: { ...snapshot.coverage, graph: token } }],
+			["its review coverage", { ...snapshot, coverage: { ...snapshot.coverage, review: token } }],
+			["its test coverage", { ...snapshot, coverage: { ...snapshot.coverage, test: token } }],
+		])("withholds the check when a snapshot holds text in %s", (_, each) => {
+			const payload = exported(each);
+			expect(JSON.stringify(payload)).not.toContain(token);
+			expect(payload).toEqual({
+				v: 1,
+				result: { name: "static.enola", status: "failed", reason: "withheld", error: expect.any(String) },
+				sightings: [],
+			});
+		});
 	});
 });

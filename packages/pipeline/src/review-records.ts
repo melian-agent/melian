@@ -151,6 +151,10 @@ export class ReviewRecords {
 	 */
 	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
 		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
+		if (result.status === "ran" && result.snapshots?.some((each) => !hashed(each))) {
+			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
+			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
+		}
 		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
 	}
 
@@ -434,6 +438,12 @@ function receipt(text: string): string {
 	)
 		return withheld;
 	return JSON.stringify({ format_version, snapshot_id, enola_version });
+}
+
+// Melian computes each of a snapshot's identities as a SHA-256 hash, so anything else in one is text it did not write.
+function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
+	const ids = [cacheKey, coverage?.graph, coverage?.review, coverage?.test].filter((id) => id !== undefined);
+	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
 }
 
 function snapshot(each: EnolaSnapshot): RecordJson {
