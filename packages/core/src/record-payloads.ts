@@ -354,8 +354,7 @@ function ordered<T>(values: readonly T[], compare: (a: T, b: T) => number): bool
 }
 
 // The version a payload names, read only to pick its schema, which then checks the whole payload.
-const versioned = (payload: RecordJson) =>
-	typeof payload === "object" && payload !== null && !Array.isArray(payload) ? payload.v : undefined;
+const versioned = (payload: RecordJson) => (payload as { v?: RecordJson } | null)?.v;
 
 const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 

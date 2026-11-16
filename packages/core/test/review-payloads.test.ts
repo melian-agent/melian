@@ -379,6 +379,10 @@ describe("review payload checks", () => {
 			expect(check(kind, { ...(payload as Record<string, RecordJson>), v })).toMatch(/schema/);
 	});
 
+	it.each(["lens", "verification"])("refuses a %s payload that is not an object", (kind) => {
+		for (const payload of [null, [], "v", 1]) expect(check(kind, payload)).toMatch(/schema/);
+	});
+
 	it.each(["lens", "verification"])("reads a %s lineage's answeredAt only in version 2", (kind) => {
 		const [, payload] = samples.find(([each]) => each === kind) as [string, Record<string, RecordJson>];
 		const at = (v: number, line: RecordJson) =>
