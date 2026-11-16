@@ -369,6 +369,42 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(list).toHaveBeenCalledTimes(2);
 	});
 
+	it("runs one enumeration worker at a time, across parallel calls and concurrent reviews", async () => {
+		const paths = Array.from({ length: 3 }, (_, index) => `src/file${index}.ts`);
+		const head = commit(repo, Object.fromEntries(paths.map((path) => [path, flags(1)])));
+		const list = MutationEnumeration.prototype.list;
+		let active = 0;
+		let most = 0;
+		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
+			this: MutationEnumeration,
+			options,
+		) {
+			most = Math.max(most, ++active);
+			try {
+				return await list.call(this, options);
+			} finally {
+				active--;
+			}
+		});
+		const results = await Promise.all([
+			...paths.map((path) => call(head, { path })),
+			...paths.map((path) => call(head, { path }, "c".repeat(24))),
+		]);
+		expect(results.map(({ details }) => details?.mutants.length)).toEqual([1, 1, 1, 1, 1, 1]);
+		expect(most).toBe(1);
+	});
+
+	it("lists the next file after an enumeration fails", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
+		vi.spyOn(MutationEnumeration.prototype, "list").mockRejectedValueOnce(new Error("worker failed"));
+		const [failed, next] = await Promise.allSettled([
+			call(head, { path: "src/a.ts" }),
+			call(head, { path: "src/b.ts" }),
+		]);
+		expect(failed.status === "rejected" || failed.value.isError).toBe(true);
+		expect(next.status === "fulfilled" && next.value.details?.mutants).toHaveLength(1);
+	});
+
 	it("enumerates again for a review of another head", async () => {
 		const first = commit(repo, { "src/value.ts": "export const value = (n: number) => n >= 0;\n" });
 		await call(first, { path: "src/value.ts" });

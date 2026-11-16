@@ -879,20 +879,29 @@ export function verifierInjectionPolicy(nonce: string): string {
 // hold up to the enumerator's 64 MiB response, so the memo holds four: paging reads one file at a time.
 const enumerations = new GraphMemo<MutationEnumeration>(2);
 const listings = new GraphMemo<MutantListing>(4);
+// Each listing's worker may take 512 MiB, and Pi runs a turn's tool calls in parallel, as it runs lenses, so the
+// process enumerates one listing at a time.
+let enumerating: Promise<unknown> = Promise.resolve();
 
 function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	const change = [review.nonce, review.repoRoot, review.base, review.head].join("\0");
-	return listings.get([change, path].join("\0"), async () => {
-		// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
-		// configuration cannot switch its own mutants off.
-		const enumeration = await enumerations.get(change, () =>
-			MutationEnumeration.open(review.repoRoot, Revision.key({ base: review.base, head: review.head }), {
-				policy: { kind: "revision", commit: review.base },
-			}),
-		);
-		const inventory = (await enumeration.list({ all: true, limitedTo: [path] })).toJSON();
-		return MutantListing.of(inventory, path);
+	return listings.get([change, path].join("\0"), () => {
+		const turn = enumerating.then(() => enumerate(review, change, path));
+		enumerating = turn.catch(() => {});
+		return turn;
 	});
+}
+
+async function enumerate(review: ReviewState, change: string, path: string): Promise<MutantListing> {
+	// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
+	// configuration cannot switch its own mutants off.
+	const enumeration = await enumerations.get(change, () =>
+		MutationEnumeration.open(review.repoRoot, Revision.key({ base: review.base, head: review.head }), {
+			policy: { kind: "revision", commit: review.base },
+		}),
+	);
+	const inventory = (await enumeration.list({ all: true, limitedTo: [path] })).toJSON();
+	return MutantListing.of(inventory, path);
 }
 
 function changedRanges(file: ReviewState["files"][number]): string {
