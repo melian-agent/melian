@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	type AccountPayload,
@@ -65,6 +65,7 @@ const checks: CheckRunRecord[] = [
 	{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
 ];
 
+const worktree: RepositorySource = { kind: "worktree" };
 let repo: string;
 let harness: Harness | undefined;
 
@@ -97,8 +98,8 @@ type Scenario = {
 	readonly standards?: (changeset: Changeset) => Promise<Standards>;
 	// Triage's answer for contracts, so it can run at quick and escalate.
 	readonly triage?: RecordedDecider;
-	// Where the review reads per-path policy; without it, `config` applies to every path.
-	readonly policy?: RepositorySource;
+	// Where the review reads per-path policy, the working tree by default; with `null`, `config` applies to every path.
+	readonly policy?: RepositorySource | null;
 };
 
 // One review of the fixture under `scenario`, exporting to `store`. A review that throws carries the verdict it
@@ -141,7 +142,7 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		checks: [...(scenario.given ?? checks)],
 		records: store,
 		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
-		...(scenario.policy === undefined ? {} : { policy: scenario.policy }),
+		...(scenario.policy === null ? {} : { policy: scenario.policy ?? worktree }),
 	}).then(
 		(result) => result.verdict,
 		(error: unknown) => {
@@ -166,6 +167,8 @@ function read(reviewed: Reviewed, records: readonly RecordEnvelope[] = reviewed.
 	return RecordedRound.of(records, id, everyRecordCounts).verdict({
 		revision: reviewed.changeset.revision,
 		config: reviewed.config,
+		repoRoot: repo,
+		policy: worktree,
 	});
 }
 
@@ -431,7 +434,7 @@ describe("a round read with the dismissals shared beside it", () => {
 			reviewed.stored,
 			roundOf(reviewed.stored),
 			(record) => record.kind !== "dismissal",
-		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config });
+		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config, repoRoot: repo, policy: worktree });
 		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
 		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
 	});
@@ -556,7 +559,6 @@ describe("the dismissal records a reader applies", () => {
 });
 
 describe("a round decided under another policy", () => {
-	const worktree: RepositorySource = { kind: "worktree" };
 	const accountOf = (reviewed: Reviewed) =>
 		reviewed.stored.find(({ kind }) => kind === "account")!.payload as AccountPayload;
 	const refusedWith = (verdict: Verdict, round: string, reason: string) => {
@@ -586,40 +588,52 @@ describe("a round decided under another policy", () => {
 		);
 	});
 
-	it("reads not reviewed when the review read a policy source and the reader reads none", async () => {
-		const reviewed = await review(exported(), { policy: worktree });
-		refusedWith(
-			await read(reviewed),
-			roundOf(reviewed.stored),
-			`was decided under resolution policy ${accountOf(reviewed).resolutionPolicy}, and the reader reads none`,
-		);
-	});
-
-	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>]>([
-		["a checkout and no policy source", { repoRoot: "." }],
-		["a policy source and no checkout", { policy: worktree }],
-	])("reads under the configuration alone, as the review did, when the reader holds %s", async (_, given) => {
+	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>, boolean]>([
+		["no checkout and no policy source", {}, false],
+		["a checkout and no policy source", { repoRoot: "." }, false],
+		["a policy source and no checkout", { policy: worktree }, false],
+		["no policy source, once melian.yaml makes P2 advisory", {}, true],
+	])("reads not reviewed when the reader holds %s", async (_, given, advisory) => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: block"));
 		const reviewed = await review(exported());
+		expect(reviewed.verdict.findings.block.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+		if (advisory) writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
 		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
 			revision: reviewed.changeset.revision,
 			config: reviewed.config,
 			...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
 			...(given.policy === undefined ? {} : { policy: given.policy }),
 		});
-		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+		refusedWith(verdict, roundOf(reviewed.stored), "is read with no resolution policy to decide under");
 	});
 
-	it("reads not reviewed when the review read no policy source and the reader reads one", async () => {
-		const reviewed = await review(exported());
+	it.each<[string, RepositorySource | undefined]>([
+		["one", worktree],
+		["none", undefined],
+	])("reads not reviewed when the review read no policy source and the reader reads %s", async (_, policy) => {
+		const reviewed = await review(exported(), { policy: null });
 		expect(accountOf(reviewed).resolutionPolicy).toBeNull();
-		const verdict = await readUnder(reviewed, worktree);
-		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
+		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			...(policy === undefined ? {} : { repoRoot: repo, policy }),
+		});
 		refusedWith(
 			verdict,
 			roundOf(reviewed.stored),
-			`was decided under no resolution policy, and this checkout's reads ${readsUnder}`,
+			"was decided under no resolution policy, so no reader can decide it",
 		);
-		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
+	});
+
+	it("refuses an account main wrote before accounts named their resolution policy", () => {
+		const recorded = JSON.parse(
+			readFileSync(new URL("./fixtures/account-v1/recorded.json", import.meta.url), "utf8"),
+		) as { records: RecordEnvelope[] };
+		const account = recorded.records.find(({ kind }) => kind === "account")!;
+		expect(account.payload).toMatchObject({ v: 1 });
+		expect(account.payload).not.toHaveProperty("resolutionPolicy");
+		const round = RecordedRound.of(recorded.records, roundOf(recorded.records), everyRecordCounts);
+		expect(round.refusal()).toBe("names an account written before accounts named their resolution policy");
 	});
 });
 

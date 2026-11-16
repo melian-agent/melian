@@ -83,6 +83,21 @@ describe("step 29: lowered and refuted trust objections", () => {
 		});
 	});
 
+	it.each([
+		["lens.trust-boundary", "lowered"],
+		["lens.trust-boundary-probes", "lowered"],
+		["lens.trust-boundary", "refuted"],
+		["lens.trust-boundary-probes", "refuted"],
+	] as const)("holds a %s claim the verifier %s at acknowledge", (check, action) => {
+		const judgement = action === "lowered" ? lowered : refuted;
+		expect(
+			report({ source: { check, version: "1@deep" } }, judgement).resolved(defaultConfig).properties,
+		).toMatchObject({
+			resolution: "acknowledge",
+			decidedBy: { floor: `${action}-trust` },
+		});
+	});
+
 	it.each(["confirmed", "plausible"] as const)("holds the floor for a %s lowering", (verdict) => {
 		expect(report({}, { ...lowered, verdict }).resolve(defaultConfig)).toBe("acknowledge");
 	});

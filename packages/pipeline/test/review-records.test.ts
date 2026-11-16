@@ -177,7 +177,7 @@ describe("ReviewRecords", () => {
 		expect(SharedRecord.parse(account.toJSON(), reviewPayloads).id).toBe(account.id);
 		expect(account.revision).toBe(`${base}..${head}`);
 		expect(account.toJSON().payload).toEqual({
-			v: 1,
+			v: 2,
 			checks: ["static.biome", "lens.security", "decisions.triage"],
 			records: [check.id, lens.id].sort(),
 			filled: [

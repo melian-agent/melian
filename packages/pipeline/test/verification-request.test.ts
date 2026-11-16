@@ -1,13 +1,14 @@
-import { KeyedRequest } from "@melian-agent/core";
+import { KeyedRequest, type LensProbingWording, lensProbingWording } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
-import { probeEvidenceWording } from "../src/probing.ts";
+import { type ClaimProbe, evidenceWordingOf, probeClaimKey } from "../src/probing.ts";
 import {
 	candidateKey,
 	type VerificationCandidate,
 	type VerificationInput,
 	verificationRequest,
 } from "../src/verification.ts";
+import { verifierVersion } from "../src/verification-instructions.ts";
 
 const location = {
 	file: "src/a.ts",
@@ -158,12 +159,26 @@ describe("verificationRequest", () => {
 	});
 });
 
+// Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
+// that rests on a probe is asked under the key, and the verifier's version, it had then.
+describe("a verification no probe evidence reaches", () => {
+	it("keeps the key and the verifier's version main gave it", () => {
+		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
+		// Main's sample showed a dismissal with no record, as a task version 4 stored it.
+		const { record: _, ...shown } = candidate.dismissed![0]!;
+		const asMainWroteIt: VerificationInput = { ...sample, candidates: [{ ...candidate, dismissed: [shown] }] };
+		expect(verificationRequest(asMainWroteIt).key).toBe(
+			"04364f1f6900da045e954f73d88effad517136b83cbe312329af2947b7bc3708",
+		);
+	});
+});
+
 describe("verificationRequest's probe evidence", () => {
 	// Pull request #436, on merging the probing level: the verifier is shown a block of evidence per probing claim, and its
 	// headings and wording reached no key, so a changed wording reused a verification judged under the old one.
 	it("keys the probe evidence's wording and the blocks it renders", () => {
 		const keyed = JSON.stringify(verificationRequest(sample).request);
-		for (const wording of Object.values(probeEvidenceWording))
+		for (const wording of Object.values(evidenceWordingOf("trust-boundary")))
 			expect(keyed).toContain(JSON.stringify(wording).slice(1, -1));
 		const { text } = verificationRequest(sample).request as { text: { prompt: string } };
 		const rests = (label: string, outcome: string, rerun: string) =>
@@ -173,6 +188,86 @@ describe("verificationRequest's probe evidence", () => {
 			rests("c2", "failed, exiting 1", "Melian could not run it again; why is in the probe's block below."),
 		);
 		expect(text.prompt).toContain(rests("c3", "passed, exiting 0", "When Melian ran it again it failed, exiting 1."));
+	});
+});
+
+const claimProbe: ClaimProbe = {
+	id: "p1",
+	attack: 1,
+	plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
+	probe: {
+		attack: 1,
+		script: "process.exit(1)",
+		files: [],
+		result: { exitCode: 1, signal: null, output: "", truncated: false, timedOut: false },
+		milliseconds: 1,
+	},
+	environment: {
+		writer: { trusted: true, by: "reviewer" },
+		trustWriters: true,
+		read: [],
+		host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.0.0" },
+	},
+};
+
+// A candidate whose first claim, from `lens`, rests on a probe, beside a correctness claim that does not.
+function probed(lens: string): VerificationInput {
+	const [claim] = candidate.state.claims;
+	const own = { ...claim!, id: "1111111111111111", source: { check: `lens.${lens}`, version: "1@deep" } };
+	return {
+		...sample,
+		candidates: [
+			{
+				...candidate,
+				state: { ...candidate.state, claims: [own, claim!] },
+				probes: { [probeClaimKey(own)]: claimProbe },
+			},
+		],
+	};
+}
+
+// Each lens that probes words how its verifier judges a probe, so a verification whose claims rest on probes keys the
+// judgement of each claim's own lens, and one whose claims do not keys none.
+describe("a verification of claims that rest on probes", () => {
+	const words = lensProbingWording as Map<string, LensProbingWording>;
+	const judgedBy = (lens: string) => lensProbingWording.get(lens)!.judge;
+
+	it("keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe", () => {
+		expect(verificationRequest(probed("tests")).request).toHaveProperty("judges", { tests: judgedBy("tests") });
+		expect(verificationRequest(probed("trust-boundary")).request).toHaveProperty("judges", {
+			"trust-boundary": judgedBy("trust-boundary"),
+		});
+		expect(verificationRequest(sample).request).not.toHaveProperty("judges");
+		const both = probed("tests");
+		const [first] = both.candidates;
+		const second = probed("correctness").candidates[0]!;
+		const keyed = verificationRequest({ ...both, candidates: [first!, { ...second, key: "second" }] });
+		expect(keyed.request).toHaveProperty("judges", {
+			correctness: judgedBy("correctness"),
+			tests: judgedBy("tests"),
+		});
+	});
+
+	it("changes the key when the probed claim's lens changes its judgement, and no other lens's key", () => {
+		const tests = verificationRequest(probed("tests")).key;
+		const trustBoundary = verificationRequest(probed("trust-boundary")).key;
+		const plain = verificationRequest(sample).key;
+		const own = words.get("tests")!;
+		words.set("tests", { ...own, judge: `${own.judge} Judge it again.` });
+		try {
+			expect(verificationRequest(probed("tests")).key).not.toBe(tests);
+			expect(verificationRequest(probed("trust-boundary")).key).toBe(trustBoundary);
+			expect(verificationRequest(sample).key).toBe(plain);
+		} finally {
+			words.set("tests", own);
+		}
+		expect(verificationRequest(probed("tests")).key).toBe(tests);
+	});
+
+	it("refuses to key a probed claim of a lens with no probing wording of its own", () => {
+		expect(() => verificationRequest(probed("security"))).toThrow(
+			"the security lens has no probing wording of its own, so it cannot probe",
+		);
 	});
 });
 

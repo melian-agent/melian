@@ -1,0 +1,385 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "8330416d8efa14d224135ba1254b215ee84c3675",
+    "head": "e07294958a1b9b728a08bcc6046f834a5f79cf79"
+  },
+  "claimsIn": [
+    "packages/core/src/lens.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 17,
+      "endLine": 484,
+      "endColumn": 91,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "389a11acbb8036776788160c8f1606025c82f317d3511824a99baca60fc8837b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 17,
+      "endLine": 484,
+      "endColumn": 91,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9d3f327c08d8660434e1933a60243942b7709839cd1a3f5fe94f1a2eb7f5de01",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 17,
+      "endLine": 484,
+      "endColumn": 91,
+      "mutatorName": "LogicalOperator",
+      "replacement": "definition.builtin && own.extends === own.name && base?.builtin === true",
+      "status": "generated",
+      "id": "36411750237071cf79a13f93f8c45b87d5df3de8f5485014d3c8e868ace051ca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 40,
+      "endLine": 484,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ae6692f9db0d8bd6f2b71a220773193d2821785e3d60f5c868773356df590ad0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 40,
+      "endLine": 484,
+      "endColumn": 90,
+      "mutatorName": "LogicalOperator",
+      "replacement": "own.extends === own.name || base?.builtin === true",
+      "status": "generated",
+      "id": "305e099b1f2dd510185644b4b4c4b00945e0a9b9cfd4578ac17d4fce1d0e4062",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 40,
+      "endLine": 484,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2ff3f5458c94ff6bc92e37d316654770ea8e39d6b8f96e2c484c14cceeb514e2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 40,
+      "endLine": 484,
+      "endColumn": 64,
+      "mutatorName": "EqualityOperator",
+      "replacement": "own.extends !== own.name",
+      "status": "generated",
+      "id": "6657c830d1d5b37f60345e0b660382fb95cdff1c21da2146320450175462b927",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 68,
+      "endLine": 484,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2cc18cf1b27c9a474d849cdb9d4c927d7709a36983991ac1514661424610daf7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 68,
+      "endLine": 484,
+      "endColumn": 90,
+      "mutatorName": "EqualityOperator",
+      "replacement": "base?.builtin !== true",
+      "status": "generated",
+      "id": "0b05fdb924415e52e6d3c18bbefb2dfff0c00573083fa9994254652b13a16066",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 68,
+      "endLine": 484,
+      "endColumn": 81,
+      "mutatorName": "OptionalChaining",
+      "replacement": "base.builtin",
+      "status": "generated",
+      "id": "e184e25102480bda94cb896b03043319f2d8cfb84c5a4ea80729576994ac76a1",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "layer() throws unknownLens before resolve() when extends names no farther lens, so base is defined wherever own.extends === own.name lets base?.builtin be read"
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 484,
+      "column": 86,
+      "endLine": 484,
+      "endColumn": 90,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f9cd4f42ebdb1b283f6f5401f156248745d6574f59eebd16ae87d82d1508871f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 555,
+      "column": 10,
+      "endLine": 555,
+      "endColumn": 77,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3bc97d485c9fb81919910a5dfb531d7f8566894aa1c6734dc93b47cb898bc8b4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 555,
+      "column": 25,
+      "endLine": 555,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b54e290a49e5cd2b3cf89cc16f697af9658238b396726c51cb74a79fad3f4350"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 555,
+      "column": 38,
+      "endLine": 555,
+      "endColumn": 42,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b4836d10a531c7bfc3191f31b6c598ab2480a7f016ba494c96d7b4baea7cedbc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 586,
+      "column": 20,
+      "endLine": 586,
+      "endColumn": 62,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c3d0a09ed8d052b38e8a28b1ff1093c77a80d3991a242deae3963fb03b42ec38",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "discovers .melian/lenses and .agents/lenses beside the built-ins"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 586,
+      "column": 44,
+      "endLine": 586,
+      "endColumn": 49,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e046015f511b1653dcdde30a8f838f9d681367e7dec48664f1fe0bc4b93ceef4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 16,
+  "omitted": 0,
+  "unmutated": []
+}
