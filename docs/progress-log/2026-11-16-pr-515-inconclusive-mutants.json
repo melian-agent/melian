@@ -1,0 +1,709 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "31868088732ba742138295a9736789d26c2aac25",
+    "head": "e9b9afefc8037d75b7bffc8fb3bcfefb9ce67469"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 373,
+      "column": 2,
+      "endLine": 373,
+      "endColumn": 120,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3b2eb1443801db1f80525060ccb2d48261bc66ba3023d6b03f478d3968c6adbc"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3407,
+      "column": 33,
+      "endLine": 3407,
+      "endColumn": 51,
+      "mutatorName": "LogicalOperator",
+      "replacement": "state.probes && {}",
+      "status": "generated",
+      "id": "805c8f99b470c384e7ab9f8290d171ce01bcc99988db4489ccd70cada3524334",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3408,
+      "column": 29,
+      "endLine": 3411,
+      "endColumn": 5,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "6e718ead432aa5f7f234167df60e5f310603bdb91ccc0d783638b7f0f17f3f70",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3409,
+      "column": 20,
+      "endLine": 3409,
+      "endColumn": 37,
+      "mutatorName": "LogicalOperator",
+      "replacement": "state.skips && {}",
+      "status": "generated",
+      "id": "eb5ebe9c678f57fd0ae7bcfbc636a39b77625789297f0a0fdbe4594e2510ac7b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3410,
+      "column": 8,
+      "endLine": 3410,
+      "endColumn": 63,
+      "mutatorName": "MethodExpression",
+      "replacement": "probes",
+      "status": "generated",
+      "id": "f7ac58459b4c69f7dd9de95ea1f315cfe06a6642e680dae4de58c1fa91562dfa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3410,
+      "column": 22,
+      "endLine": 3410,
+      "endColumn": 62,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ef8c6bc0e4094a80374d1885133261f6bc558b9a53c5f9ff0c4829e101006779",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3410,
+      "column": 68,
+      "endLine": 3410,
+      "endColumn": 91,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "cda9847bd3504d3ac60fc681cac473746d654519090628c3541a21f62519f040",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3412,
+      "column": 33,
+      "endLine": 3412,
+      "endColumn": 110,
+      "mutatorName": "MethodExpression",
+      "replacement": "probes.map(probe => probe.attack)",
+      "status": "generated",
+      "id": "79a02999952f70e1903cd8103ac04168ab14d45f4ed41ec4df4441cff5630f79",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3412,
+      "column": 44,
+      "endLine": 3412,
+      "endColumn": 67,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "d72b7b804c9db9134768dfc5337b22252fa5e2b29ef7f67f55e8e67db201a409",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3412,
+      "column": 76,
+      "endLine": 3412,
+      "endColumn": 109,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "5b1f6cd86f161351bdb38a2fa3c0c9daf4df67290b8de4fbd4cac8e73bd7aba0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3412,
+      "column": 88,
+      "endLine": 3412,
+      "endColumn": 109,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "answered.has(attack)",
+      "status": "generated",
+      "id": "4b6c4ebbd3f2addf5aecf1b00e720af5077d08d13e6d1b80b2246d850f04799a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 8,
+      "endLine": 3414,
+      "endColumn": 43,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d227ada4c07368c0fbafb371f95c1ab33a11767d0585d31e6c4a56f12516e065",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 8,
+      "endLine": 3414,
+      "endColumn": 43,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "26373bc729ab06648d34c99d3b8b836b2dbdd1fa0b3357a4555822a86f89e83f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 8,
+      "endLine": 3414,
+      "endColumn": 43,
+      "mutatorName": "LogicalOperator",
+      "replacement": "refused === 0 || inconclusive === 0",
+      "status": "generated",
+      "id": "07c9a42710d5b5294bebad3ce458cfbdc002b789c302a560f0540524e6104e39",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 8,
+      "endLine": 3414,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "eb6dccbdce38e9bfb32b46d75d13af211ff1181a3f35b9b7f917f690d199f7f2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 8,
+      "endLine": 3414,
+      "endColumn": 21,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused !== 0",
+      "status": "generated",
+      "id": "175387acc8f0316d8299331d92cb63399c2c2ef50042c9b48c12d2b3c764ea50",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 25,
+      "endLine": 3414,
+      "endColumn": 43,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d48c862d719bf3e4e9be171db2b8464fbd8b4463f59b1a594422279d8971d2a0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3414,
+      "column": 25,
+      "endLine": 3414,
+      "endColumn": 43,
+      "mutatorName": "EqualityOperator",
+      "replacement": "inconclusive !== 0",
+      "status": "generated",
+      "id": "1cdaffbbf2eeaf7c574edb2b176d71db8cc88f49bf2d3724ac03a4b64baad154",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "passes a level whose probes ran, and one whose planner found nothing to probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3417,
+      "column": 5,
+      "endLine": 3417,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4dcea2d8d33f81eae2c32e8febc9502f9598600eaf4be8d3364002a3065ca778",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3417,
+      "column": 5,
+      "endLine": 3417,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2447660d6a91427c1137dd6d86d751bb90781cfd9b7532bc2e7d09f69edfdfcf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3417,
+      "column": 5,
+      "endLine": 3417,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused >= 0",
+      "status": "generated",
+      "id": "9afa246af4708f69010bfaba718e107465f105291ed3cabefed4799d60f66d56",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3417,
+      "column": 5,
+      "endLine": 3417,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused <= 0",
+      "status": "generated",
+      "id": "7168a0ec4abda88caeae40e24074eb6e42fce9f54d410e754dc63cb71d5ab78c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3418,
+      "column": 8,
+      "endLine": 3418,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f92d4e97650fab69f029bd420a86ffe2d34862f0f066620f504f4e8cfc1d2c21"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3418,
+      "column": 52,
+      "endLine": 3418,
+      "endColumn": 59,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8cd9b66ed156921d08a71feb4125dea4dd4989d99049174d7f0034f84f63a8a0"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3419,
+      "column": 8,
+      "endLine": 3419,
+      "endColumn": 127,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0fc3e6138e0c9805811182c07287a72af64da2f7ddc4abea0216f9403ef96a0f"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3419,
+      "column": 101,
+      "endLine": 3419,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7900a8986e861715d6d8c47ed32a6505c93ac0cc585679a67b8b86373cfb4ca8"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3425,
+      "column": 4,
+      "endLine": 3429,
+      "endColumn": 6,
+      "mutatorName": "OptionalChaining",
+      "replacement": "options.probeGap({\n  check: record.name,\n  level: ran.level,\n  cause: refused > 0 ? \"probe-refused\" : \"probe-inconclusive\"\n})",
+      "status": "generated",
+      "id": "da4208afda76f0d16362edf911021bdb81eee915b367155a054aa4bede510372",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober's probe could not run when the host takes no gaps"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3425,
+      "column": 23,
+      "endLine": 3429,
+      "endColumn": 5,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "cb4f657080b1955eb1d489adc4e2f02478fa48282452ad997ff36e110086ee63",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 12,
+      "endLine": 3428,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2200f11eac0b01d4f753175922f1a1a42378cc75a188474e5c53be721e15bf05",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 12,
+      "endLine": 3428,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c1b48648aca26e83d15814521dede51516567db589243d27e9fcd667dea35da4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 12,
+      "endLine": 3428,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused >= 0",
+      "status": "generated",
+      "id": "3a4eba1a43f13cd4a937f9b83c479d85b2940b9d5e86b8f1205a3c365c32b27d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose only probe of an attack timed out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 12,
+      "endLine": 3428,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused <= 0",
+      "status": "generated",
+      "id": "7a417e71b11f9d907f582103d957ddf114be5b86de4ac29ba0a0d1c0e51a25f5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a review that requires probes",
+            "fails a level whose prober asked for a probe that could not run, keeping the level's own reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 26,
+      "endLine": 3428,
+      "endColumn": 41,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ae2cd0475915dd7617e07b38d2f90976d7a854db5ecdbf1548ddbe7ee168f65d"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3428,
+      "column": 44,
+      "endLine": 3428,
+      "endColumn": 64,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f41844a79019c4fe71627dfd96bdde28f388872814cc85c34b50f92f1d5f92fe"
+    }
+  ],
+  "total": 34,
+  "omitted": 0,
+  "unmutated": []
+}
