@@ -1538,6 +1538,7 @@ describe("a lens route", () => {
 		const committed = {
 			heavy: {
 				model: opus,
+				thinking: "low" as const,
 				fallbacks: [{ model: gpt, thinking: "medium" as const }],
 				accept: [opus, gpt],
 				acceptOverridden: false as const,
@@ -1546,7 +1547,11 @@ describe("a lens route", () => {
 		const at = (thinking?: "medium" | "high") =>
 			plan(committed, both, {
 				lensRoutePreferences: {
-					correctness: { model: opus, fallbacks: [thinking === undefined ? gpt : { model: gpt, thinking }] },
+					correctness: {
+						model: opus,
+						thinking: "low",
+						fallbacks: [thinking === undefined ? gpt : { model: gpt, thinking }],
+					},
 				},
 			});
 		const models = (resolved: ReviewPlan) =>
@@ -1557,7 +1562,7 @@ describe("a lens route", () => {
 		expect(at("medium").judge("correctness", "careful", gpt).refusal).toBeUndefined();
 		const rerouted = plan(committed, both, {
 			preferences: { heavy: { model: opus, fallbacks: [] } },
-			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+			lensRoutePreferences: { correctness: { model: opus, thinking: "low", fallbacks: [gpt] } },
 		});
 		expect(models(rerouted)).toEqual([opus]);
 		const [finished] = at("high").mark(
@@ -1573,13 +1578,19 @@ describe("a lens route", () => {
 
 	it("names the level a guarded tier's relevelled fallback runs at, and the level policy gives it", () => {
 		const committed = (fallback: string | { model: string; thinking: "medium" }) => ({
-			heavy: { model: opus, fallbacks: [fallback], accept: [opus, gpt], acceptOverridden: false as const },
+			heavy: {
+				model: opus,
+				thinking: "low" as const,
+				fallbacks: [fallback],
+				accept: [opus, gpt],
+				acceptOverridden: false as const,
+			},
 		});
 		const unset = plan(committed({ model: gpt, thinking: "medium" }), both, {
 			preferences: { heavy: { model: gpt, fallbacks: [] } },
 		});
 		expect(unset.refusal("heavy")).toBe(
-			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking unset; committed policy wants medium`,
+			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking low; committed policy wants medium`,
 		);
 		const high = plan(
 			committed(gpt),
@@ -1589,7 +1600,7 @@ describe("a lens route", () => {
 			},
 		);
 		expect(high.refusal("heavy")).toBe(
-			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking high; committed policy wants unset`,
+			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking high; committed policy wants low`,
 		);
 	});
 
@@ -1985,17 +1996,18 @@ describe("a fallback's level in melian doctor", () => {
 		]);
 	});
 
-	it("warns when a bare fallback on another provider inherits a low level from a fallback promoted to first", () => {
+	it("names the committed route's model as the one a low level was chosen for, when a fallback promoted to first names its own", () => {
 		const unreachable = "nowhere/first";
 		const promoted = plan(
-			{ heavy: { model: unreachable, fallbacks: [{ model: opus, thinking: "low" }, gpt] } },
+			{ heavy: { model: unreachable, thinking: "low", fallbacks: [{ model: opus, thinking: "high" }, gpt] } },
 			both,
 		);
-		expect(promoted.lines()).toContainEqual({ state: "warn", text: warning("heavy", gpt, "low", opus) });
+		expect(promoted.lines()).toContainEqual({ state: "warn", text: warning("heavy", gpt, "low", unreachable) });
 		const named = plan(
 			{
 				heavy: {
 					model: unreachable,
+					thinking: "low",
 					fallbacks: [
 						{ model: opus, thinking: "low" },
 						{ model: gpt, thinking: "low" },

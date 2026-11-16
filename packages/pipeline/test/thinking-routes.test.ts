@@ -719,6 +719,7 @@ it("asks a fallback promoted past a first model no credential reaches at its own
 			models: {
 				verifier: {
 					model: "nowhere/judge-first",
+					thinking: "low",
 					fallbacks: [{ model: "faux/judge-spare", thinking: "medium" }, "faux/judge"],
 				},
 			},
@@ -749,14 +750,14 @@ it("asks a fallback promoted past a first model no credential reaches at its own
 			config,
 			plan,
 		});
-		expect([...asked].sort()).toEqual(["judge medium", "judge-spare medium", "spare high", "third low"]);
+		expect([...asked].sort()).toEqual(["judge low", "judge-spare medium", "spare high", "third low"]);
 	} finally {
 		await opened.close();
 		rmSync(repo, { recursive: true, force: true });
 	}
 });
 
-it("asks a later bare fallback at a promoted fallback's level when a route names none, with no plan", async () => {
+it("asks a later bare fallback at the route's level, never a promoted fallback's, with no plan", async () => {
 	const repo = crashRepository();
 	const fake = createFakeModels({
 		models: [{ id: "spare" }, { id: "third" }, { id: "judge-spare" }, { id: "judge" }],
@@ -791,6 +792,7 @@ it("asks a later bare fallback at a promoted fallback's level when a route names
 					correctness: {
 						route: {
 							model: "nowhere/first",
+							thinking: "minimal",
 							fallbacks: [{ model: "faux/spare", thinking: "high" }, "faux/third"],
 						},
 					},
@@ -798,12 +800,13 @@ it("asks a later bare fallback at a promoted fallback's level when a route names
 				models: {
 					verifier: {
 						model: "nowhere/judge-first",
+						thinking: "low",
 						fallbacks: [{ model: "faux/judge-spare", thinking: "medium" }, "faux/judge"],
 					},
 				},
 			},
 		});
-		expect([...asked].sort()).toEqual(["judge medium", "judge-spare medium", "spare high", "third high"]);
+		expect([...asked].sort()).toEqual(["judge low", "judge-spare medium", "spare high", "third minimal"]);
 	} finally {
 		await opened.close();
 		rmSync(repo, { recursive: true, force: true });

@@ -27,14 +27,6 @@ const shapes: {
 	asked: [string, Level | undefined][];
 }[] = [
 	{
-		name: "first unreachable, no level",
-		models: ["nowhere/a", { model: "b", thinking: "high" }, "c"],
-		asked: [
-			["b", "high"],
-			["c", "high"],
-		],
-	},
-	{
 		name: "first unreachable, at low",
 		thinking: "low",
 		models: ["nowhere/a", { model: "b", thinking: "high" }, "c"],
@@ -44,11 +36,12 @@ const shapes: {
 		],
 	},
 	{
-		name: "first two unreachable, no level",
-		models: ["nowhere/a", { model: "nowhere/b", thinking: "high" }, { model: "c", thinking: "medium" }, "d"],
+		name: "first unreachable, at high, promoted low",
+		thinking: "high",
+		models: ["nowhere/a", { model: "b", thinking: "low" }, "c"],
 		asked: [
-			["c", "medium"],
-			["d", "medium"],
+			["b", "low"],
+			["c", "high"],
 		],
 	},
 	{
@@ -61,11 +54,10 @@ const shapes: {
 		],
 	},
 	{
-		name: "first reachable, no level",
-		models: ["a", { model: "b", thinking: "high" }, "c"],
+		name: "first unreachable, no level",
+		models: ["nowhere/a", "b", "c"],
 		asked: [
-			["a", undefined],
-			["b", "high"],
+			["b", undefined],
 			["c", undefined],
 		],
 	},

@@ -150,10 +150,6 @@ describe("a fallback's own thinking level", () => {
 
 	it("turns a route's reachable models into the route that runs, naming a level only where it differs from the route's", () => {
 		const models = [{ model: "faux/second", thinking: "high" as const }, { model: "faux/third" }];
-		expect(routeInOrder(models, undefined)).toStrictEqual({
-			thinking: "high",
-			route: [{ model: "faux/second" }, { model: "faux/third" }],
-		});
 		expect(routeInOrder(models, "low")).toStrictEqual({
 			thinking: "high",
 			route: [{ model: "faux/second" }, { model: "faux/third", thinking: "low" }],
@@ -163,6 +159,20 @@ describe("a fallback's own thinking level", () => {
 		expect(writtenRoute({ route: [{ model: "faux/second" }, { model: "faux/third" }] })).toStrictEqual({
 			model: "faux/second",
 			fallbacks: ["faux/third"],
+		});
+	});
+
+	it("refuses a route that names no level when one of its models names one, so no model inherits another's", () => {
+		const models: { model: string; thinking?: ModelRoute["thinking"] }[] = [
+			{ model: "faux/second" },
+			{ model: "faux/third", thinking: "high" },
+		];
+		expect(() => routeInOrder(models, undefined)).toThrow(
+			"a model names a thinking level on a route that names none; the route must name its own",
+		);
+		expect(routeInOrder(models, "low")).toStrictEqual({
+			thinking: "low",
+			route: [{ model: "faux/second" }, { model: "faux/third", thinking: "high" }],
 		});
 	});
 
@@ -181,28 +191,11 @@ describe("a fallback's own thinking level", () => {
 		});
 	});
 
-	it("says a fallback that names no level runs at a promoted fallback's, when the route names none", () => {
-		const plan = planOf({
-			heavy: { model: "nowhere/first", fallbacks: [{ model: "faux/second", thinking: "medium" }, "faux/third"] },
-		});
-		expect(plan.tier("heavy").models).toEqual([
-			{ model: "faux/second", credential: "test", family: "second", thinking: "medium" },
-			{ model: "faux/third", credential: "test", family: "third", thinking: "medium" },
-		]);
-		expect(plan.routes().heavy).toEqual({
-			model: "faux/second",
-			thinking: "medium",
-			fallbacks: [{ model: "faux/third", thinking: "medium" }],
-		});
-		expect(plan.lines().map((line) => line.text)).toContain(
-			"heavy: faux/second at medium with test, then faux/third at medium with test; routed by melian.yaml",
-		);
-	});
-
-	it("names a promoted fallback's level as the one a later bare fallback answered at, when the route names none", () => {
+	it("names the route's level, not a promoted fallback's, as the one a later bare fallback answered at", () => {
 		const plan = planOf({
 			verifier: {
 				model: "nowhere/first",
+				thinking: "low",
 				fallbacks: [{ model: "faux/second", thinking: "medium" }, "faux/third"],
 				accept: ["nowhere/first"],
 			},
@@ -212,7 +205,6 @@ describe("a fallback's own thinking level", () => {
 			wanted: "nowhere/first",
 			by: "melian.yaml",
 			outside: true,
-			answeredAt: "medium",
 		});
 	});
 
@@ -343,10 +335,10 @@ describe("a preference that changes a fallback's level", () => {
 		expect(plan.tier("heavy").models.map(({ model }) => model)).toEqual(["faux/first"]);
 	});
 
-	it("drops a fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it would lose the level it inherits", async () => {
+	it("keeps a bare fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it runs at the route's level wherever it stands", async () => {
 		const { config, routes } = await loaded({
 			"melian.yaml":
-				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [nowhere/first, faux/second, faux/third]\n    acceptOverridden: false\n",
+				"models:\n  heavy:\n    model: nowhere/first\n    thinking: low\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [nowhere/first, faux/second, faux/third]\n    acceptOverridden: false\n",
 			"melian.local.yaml":
 				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [faux/third, { model: faux/second, thinking: high }]\n",
 		});
@@ -360,14 +352,15 @@ describe("a preference that changes a fallback's level", () => {
 		});
 		expect(plan.tier("heavy")).toMatchObject({ status: "routed" });
 		expect(plan.tier("heavy").models).toEqual([
+			{ model: "faux/third", credential: "test", family: "third" },
 			{ model: "faux/second", credential: "test", family: "second", thinking: "high" },
 		]);
 	});
 
-	it("judges a guarded route's models in its own order, not accept's, so a fallback keeps the level it inherits", async () => {
+	it("judges a guarded route's models in its own order, not accept's", async () => {
 		const { config, routes } = await loaded({
 			"melian.yaml":
-				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [faux/third, faux/second, nowhere/first]\n    acceptOverridden: false\n",
+				"models:\n  heavy:\n    model: nowhere/first\n    thinking: low\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [faux/third, faux/second, nowhere/first]\n    acceptOverridden: false\n",
 		});
 		const plan = ReviewPlan.resolve({
 			config,
@@ -380,14 +373,14 @@ describe("a preference that changes a fallback's level", () => {
 		expect(plan.tier("heavy")).toMatchObject({ status: "routed" });
 		expect(plan.tier("heavy").models).toEqual([
 			{ model: "faux/second", credential: "test", family: "second", thinking: "high" },
-			{ model: "faux/third", credential: "test", family: "third", thinking: "high" },
+			{ model: "faux/third", credential: "test", family: "third" },
 		]);
 	});
 
 	it("judges a guarded route that names no model in accept's order, not its fallbacks'", async () => {
 		const { config, routes } = await loaded({
 			"melian.yaml":
-				"models:\n  heavy:\n    accept: [faux/second, faux/third]\n    fallbacks: [{ model: faux/third, thinking: high }]\n    acceptOverridden: false\n",
+				"models:\n  heavy:\n    thinking: low\n    accept: [faux/second, faux/third]\n    fallbacks: [{ model: faux/third, thinking: high }]\n    acceptOverridden: false\n",
 		});
 		const plan = ReviewPlan.resolve({
 			config,
@@ -402,28 +395,6 @@ describe("a preference that changes a fallback's level", () => {
 			{ model: "faux/second", credential: "test", family: "second" },
 			{ model: "faux/third", credential: "test", family: "third", thinking: "high" },
 		]);
-	});
-
-	it("refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops", async () => {
-		const { config, routes } = await loaded({
-			"melian.yaml":
-				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, { model: faux/first, thinking: medium }, faux/third]\n    accept: [nowhere/first, faux/second, faux/first, faux/third]\n    acceptOverridden: false\n",
-			"melian.local.yaml":
-				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/first, thinking: high }, faux/third]\n",
-		});
-		const plan = ReviewPlan.resolve({
-			config,
-			routes,
-			catalog,
-			credentials: { faux: "test" },
-			lenses: [],
-			checks: [],
-		});
-		expect(plan.tier("heavy")).toMatchObject({
-			status: "refused",
-			reason:
-				"models.heavy.acceptOverridden is false, and melian.local.yaml runs faux/first at thinking high; committed policy wants medium",
-		});
 	});
 
 	it("refuses the tier, naming the level, when the only accepted model left is relevelled", async () => {

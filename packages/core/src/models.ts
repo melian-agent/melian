@@ -32,15 +32,16 @@ export type AtLevel<T> = Omit<T, "thinking"> & { readonly thinking?: ModelRoute[
 
 /**
  * The route that runs `models`, a route's models at `thinking` that a credential reaches, in order: the level it runs
- * at, and each model naming its own where it differs. The first model's own level, a fallback's promoted past models
- * no credential reaches, becomes the route's, so a later model that names none keeps `thinking` by naming it, or runs
- * at the first model's when `thinking` is absent. Every place that drops a model from a route takes the route that runs
- * from here.
+ * at, and each model naming its own where it differs. A model that names no level runs at `thinking`, so a route whose
+ * model names one must name its own, as configuration requires; one that does not is refused, never inherited. Every
+ * place that drops a model from a route takes the route that runs from here.
  */
 export function routeInOrder<T extends { readonly thinking?: ModelRoute["thinking"] }>(
 	models: readonly T[],
 	thinking: ModelRoute["thinking"],
 ): { readonly thinking?: ModelRoute["thinking"]; readonly route: AtLevel<T>[] } {
+	if (thinking === undefined && models.some((each) => each.thinking !== undefined))
+		throw new Error("a model names a thinking level on a route that names none; the route must name its own");
 	const level = models[0]?.thinking ?? thinking;
 	const at = ({ thinking: _own, ...model }: T, own: ModelRoute["thinking"]): AtLevel<T> =>
 		own === undefined ? model : { ...model, thinking: own };

@@ -5,7 +5,8 @@ import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "./fixtur
 type Level = NonNullable<ModelRoute["thinking"]>;
 
 // Each shape is a route whose `nowhere/` models no credential reaches, and the models that run, in order, at the levels
-// they run at. Its last model is on another provider, so doctor's warning about an inherited low level reads it too.
+// they run at. A model that names no level runs at the route's; a route whose model names one names its own, as
+// configuration requires. Its last model is on another provider, so doctor's warning about a low level reads it too.
 // Every reader of a model's level must agree with `runs`, so one that reads a raw entry, or the route's level alone,
 // fails here: the plan's models, its routes, doctor's route line and warning, the verifier's lineage, and the guard.
 const shapes: {
@@ -14,14 +15,6 @@ const shapes: {
 	models: (string | { model: string; thinking: Level })[];
 	runs: [string, Level | undefined][];
 }[] = [
-	{
-		name: "first unreachable, no level",
-		models: ["nowhere/a", { model: "faux/b", thinking: "high" }, "other/c"],
-		runs: [
-			["faux/b", "high"],
-			["other/c", "high"],
-		],
-	},
 	{
 		name: "first unreachable, at low",
 		thinking: "low",
@@ -32,24 +25,12 @@ const shapes: {
 		],
 	},
 	{
-		name: "first unreachable, promoted low",
+		name: "first unreachable, at high, promoted low",
+		thinking: "high",
 		models: ["nowhere/a", { model: "faux/b", thinking: "low" }, "other/c"],
 		runs: [
 			["faux/b", "low"],
-			["other/c", "low"],
-		],
-	},
-	{
-		name: "first two unreachable, no level",
-		models: [
-			"nowhere/a",
-			{ model: "nowhere/b", thinking: "high" },
-			{ model: "faux/c", thinking: "medium" },
-			"other/d",
-		],
-		runs: [
-			["faux/c", "medium"],
-			["other/d", "medium"],
+			["other/c", "high"],
 		],
 	},
 	{
@@ -67,11 +48,10 @@ const shapes: {
 		],
 	},
 	{
-		name: "first reachable, no level",
-		models: ["faux/a", { model: "faux/b", thinking: "high" }, "other/c"],
+		name: "first unreachable, no level",
+		models: ["nowhere/a", "faux/b", "other/c"],
 		runs: [
-			["faux/a", undefined],
-			["faux/b", "high"],
+			["faux/b", undefined],
 			["other/c", undefined],
 		],
 	},
@@ -177,11 +157,12 @@ describe.each(shapes)("every reader of a level, for a route $name", (shape) => {
 	it("warns of a bare fallback on another provider only where it runs at a low level", () => {
 		const [last, level] = shape.runs.at(-1)!;
 		const bare = typeof shape.models.at(-1) === "string";
+		// A first model that runs at a level of its own was not the one the route's level was chosen for.
+		const [running] = shape.runs[0]!;
+		const chosenFor = shape.models.includes(running) ? running : routeOf(shape).model;
 		const expected =
 			bare && lowLevels.includes(level)
-				? [
-						`heavy: fallback ${last} names no thinking level, so it runs at ${level}, which was chosen for ${shape.runs[0]![0]}`,
-					]
+				? [`heavy: fallback ${last} names no thinking level, so it runs at ${level}, which was chosen for ${chosenFor}`]
 				: [];
 		expect(plan.warnings().filter((text) => text.startsWith("heavy: fallback"))).toEqual(expected);
 	});

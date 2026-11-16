@@ -61,9 +61,6 @@ export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable
  */
 export type PlannedModel = { model: string; credential: string; family?: string; thinking?: ModelRoute["thinking"] };
 
-// Planned models whose level a fallback promoted to first passed on, for doctor's warning; a stored plan holds none.
-const inheritedLevels = new WeakSet<PlannedModel>();
-
 /** One route of a {@link ReviewPlan}, a tier's or a lens's, as stored. */
 export type PlannedRoute = {
 	/** The route's requested reasoning level and the file that set it; absent when Pi keeps its default. */
@@ -351,21 +348,15 @@ export class ReviewPlan {
 			return catalog.find((model) => model.provider === provider && model.id === modelId);
 		};
 		const usable = (name: string) => entry(name) !== undefined && Object.hasOwn(credentials, entry(name)!.provider);
-		// A route with no level of its own runs at its first model's, so a fallback promoted to first with a level gives
-		// it to each later model that names none.
-		const planned = (names: readonly string[]) => {
-			const inherited = effective?.thinking === undefined && names[0] !== undefined ? own(names[0]) : undefined;
-			return names.map((model) => {
-				const plannedModel: PlannedModel = {
+		const planned = (names: readonly string[]) =>
+			names.map(
+				(model): PlannedModel => ({
 					model,
 					credential: credentials[parse(model).provider] ?? "none",
 					...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
-					...((own(model) ?? inherited) === undefined ? {} : { thinking: own(model) ?? inherited }),
-				};
-				if (own(model) === undefined && inherited !== undefined) inheritedLevels.add(plannedModel);
-				return plannedModel;
-			});
-		};
+					...(own(model) === undefined ? {} : { thinking: own(model) }),
+				}),
+			);
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>
 			name === policy?.model ||
@@ -443,8 +434,7 @@ export class ReviewPlan {
 		}
 		if (policy?.acceptOverridden === false && accept.length > 0) {
 			// A model runs outside policy when it would run at another level than committed policy runs it at, over the
-			// same credentials, including a level a promoted fallback passes on; it is dropped, as one outside accept is.
-			// Dropping a first model can change what the rest inherit, so the check repeats until nothing more drops.
+			// same credentials; it is dropped, as one outside accept is.
 			const committedRoute =
 				policy.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)];
 			const committedAt = runsAt(
@@ -453,13 +443,10 @@ export class ReviewPlan {
 				(model) => ReviewPlan.ownLevel(policy, model),
 			);
 			const wanted = (model: string) => committedAt.get(model);
-			let kept = thinkingChanged ? [] : chosen.filter((model) => accept.includes(model));
-			for (let dropped = true; dropped; ) {
-				const at = runsAt(effective, kept, own);
-				const next = kept.filter((model) => at.get(model) === wanted(model));
-				dropped = next.length < kept.length;
-				kept = next;
-			}
+			const runs = runsAt(effective, chosen, own);
+			const kept = thinkingChanged
+				? []
+				: chosen.filter((model) => accept.includes(model) && runs.get(model) === wanted(model));
 			if (kept.length === 0) {
 				return {
 					...base,
@@ -470,7 +457,7 @@ export class ReviewPlan {
 					reason: thinkingChanged
 						? `${at}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
 						: accept.includes(chosen[0]!)
-							? `${at}.acceptOverridden is false, and ${by} runs ${chosen[0]} at thinking ${runsAt(effective, chosen, own).get(chosen[0]!) ?? "unset"}; committed policy wants ${wanted(chosen[0]!) ?? "unset"}`
+							? `${at}.acceptOverridden is false, and ${by} runs ${chosen[0]} at thinking ${runs.get(chosen[0]!) ?? "unset"}; committed policy wants ${wanted(chosen[0]!) ?? "unset"}`
 							: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
 				};
 			}
@@ -935,15 +922,16 @@ export class ReviewPlan {
 	}
 
 	// A low level is chosen for the route's first model; a fallback on another provider that names no level of its own
-	// runs at it too.
-	private static inheritedLow(label: string, { status, models, thinking }: PlannedRoute): string[] {
+	// runs at it too. A fallback promoted to first with a level of its own does not run at the route's, so the level
+	// was chosen for the model the committed route names.
+	private static inheritedLow(label: string, { status, models, thinking, wanted }: PlannedRoute): string[] {
 		if (status !== "routed") return [];
-		const first = models[0]!.model;
+		const first = models[0]!.thinking === undefined ? models[0]!.model : wanted;
+		if (first === undefined) return [];
 		const provider = (model: string) => parseModelReference(model, label).provider;
 		return models.slice(1).flatMap((model) => {
 			const level = model.thinking ?? thinking;
-			const inherits = model.thinking === undefined || inheritedLevels.has(model);
-			if (!inherits || provider(model.model) === provider(first)) return [];
+			if (model.thinking !== undefined || provider(model.model) === provider(first)) return [];
 			if (level !== "off" && level !== "minimal" && level !== "low") return [];
 			return [
 				`${label}: fallback ${model.model} names no thinking level, so it runs at ${level}, which was chosen for ${first}`,
