@@ -21,6 +21,7 @@ import {
 	probeScript,
 	publicRoots,
 	recording,
+	reportFields,
 	shmId,
 	tokenShapes,
 	unfinished,
@@ -61,6 +62,7 @@ function report() {
 		sudo: "refused",
 		udp: "ENETUNREACH",
 		ipc: { listed: false, removed: false },
+		processes: 1,
 		walk: { "/tree": walkSummary(3), "/usr": walkSummary(5) },
 		sys: walkSummary(2),
 	};
@@ -101,16 +103,28 @@ describe("judge", () => {
 			expect(judge(report(), plan(), argv, { ...host(), listener })).toEqual([failure]);
 	});
 
-	it("fails a probe that did not try DNS", () => {
+	it.each([
+		"dns",
+		"environCanary",
+		"environment",
+		"environmentCanary",
+		"httpProxy",
+		"ipc",
+		"listings",
+		"processes",
+		"reads",
+		"selfEnviron",
+		"socksProxy",
+		"sudo",
+		"sys",
+		"tcp",
+		"udp",
+		"walk",
+		"writes",
+	])("fails, and judges nothing else, a probe that did not report %s", (field) => {
 		const r = report();
-		delete r.dns;
-		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try DNS"]);
-	});
-
-	it("fails a probe that sent no datagram", () => {
-		const r = report();
-		delete r.udp;
-		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try UDP"]);
+		delete r[field];
+		expect(judge(r, plan(), argv, host())).toEqual([`the probe did not report ${field}`]);
 	});
 
 	it("names each variable outside the expected set, and passes every expected one", () => {
@@ -440,7 +454,7 @@ describe("the probe script", () => {
 			const report = JSON.parse(output);
 			expect(report.tcp).toEqual({ [`127.0.0.1:${targets.network[0].port}`]: "connected" });
 			expect(report.udp).toBe("sent");
-			expect(report.dns).toEqual(expect.any(String));
+			expect(Object.keys(report).sort()).toEqual([...reportFields]);
 			expect(seen).toEqual({ connections: 1, datagrams: 1 });
 		} finally {
 			await new Promise((resolve) => tcp.close(resolve));

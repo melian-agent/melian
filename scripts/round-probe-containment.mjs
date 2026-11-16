@@ -290,6 +290,27 @@ report.sys = walk("/sys", 8, 4096);
 console.log(JSON.stringify(report));
 `;
 
+/** Every field the probe reports, so a step the script lost fails the judge rather than read as shut. */
+export const reportFields = Object.freeze([
+	"dns",
+	"environCanary",
+	"environment",
+	"environmentCanary",
+	"httpProxy",
+	"ipc",
+	"listings",
+	"processes",
+	"reads",
+	"selfEnviron",
+	"socksProxy",
+	"sudo",
+	"sys",
+	"tcp",
+	"udp",
+	"walk",
+	"writes",
+]);
+
 /**
  * What the probe's report shows getting through, as one line each. An empty list is containment. `report` is the probe's
  * printed JSON, `plan` the targets the host gave it, `argv` every command line the sandbox was given, and `host` what the
@@ -297,6 +318,8 @@ console.log(JSON.stringify(report));
  * the probe was refused but that were `written` on the host after it ran.
  */
 export function judge(report, plan, argv, host) {
+	const unreported = reportFields.filter((field) => report[field] === undefined);
+	if (unreported.length > 0) return unreported.map((field) => `the probe did not report ${field}`);
 	const failures = [];
 	const unexpected = report.environment.filter((name) => !plan.environment.includes(name));
 	if (unexpected.length > 0)
@@ -339,8 +362,6 @@ export function judge(report, plan, argv, host) {
 	for (const [target, outcome] of Object.entries(report.tcp))
 		if (outcome === "connected") failures.push(`a TCP connection to ${target} opened`);
 	if (report.dns === "resolved") failures.push("a DNS lookup resolved");
-	if (report.dns === undefined) failures.push("the probe did not try DNS");
-	if (report.udp === undefined) failures.push("the probe did not try UDP");
 	const { connections, datagrams } = host.listener;
 	if (connections > 0) failures.push(`${plural(connections, "connection")} reached the host's listener`);
 	if (datagrams > 0) failures.push(`${plural(datagrams, "datagram")} reached the host's listener`);
