@@ -106,8 +106,9 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 	name: "melian.verification",
 	// Version 3, on main, lets a task reuse a wave's outcomes. Version 4 lets a candidate carry its claims' probes, so a
 	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
-	// optional, so a version 2 or 3 task reads unchanged.
-	version: 4,
+	// optional, so a version 2 or 3 task reads unchanged. Version 5 lets each model of a candidate's route name its own
+	// thinking level, so a build that knows version 4 alone, which would ask every model at the route's, refuses it.
+	version: 5,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
