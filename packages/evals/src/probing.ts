@@ -252,22 +252,26 @@ export class Miss {
 
 	/**
 	 * Why the miss cannot be scored on `target`, or `undefined` when it can: its file must be one the range changes and
-	 * the base's policy lets `trust-boundary` review, its rule one that lens declares, and its lines inside the file,
-	 * which must hold some at the head.
+	 * the base's policy lets `trust-boundary` review, by its path or, for a rename, its old one, its rule one that lens
+	 * declares, and its lines inside the file, which must hold some at the head.
 	 */
 	async refusal(
 		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
 	): Promise<string | undefined> {
 		const { revision } = await Changeset.resolve(this.repo, target.range);
-		if (!revision.files.some((file) => file.path === this.file))
-			return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
+		const changed = revision.files.find((file) => file.path === this.file);
+		if (changed === undefined) return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
 		const policy = { kind: "revision", commit: target.base } as const;
 		const paths = revision.paths();
 		const selection = Lens.select(
 			await Lens.load(this.repo, policy, paths),
 			(await loadConfig(this.repo, policy, ".")).config,
 			paths,
-		).find(({ lens, files }) => lens.name === probingLens && files.includes(this.file));
+		).find(
+			({ lens, files }) =>
+				lens.name === probingLens &&
+				(files.includes(this.file) || (changed.oldPath !== undefined && files.includes(changed.oldPath))),
+		);
 		if (selection === undefined)
 			return `${this.name}: the base's policy does not let the ${probingLens} lens review ${this.file}`;
 		if (!selection.lens.rules.some(({ id }) => id === this.rule))

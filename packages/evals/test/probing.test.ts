@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
 	defaultConfig,
 	Finding,
@@ -1340,6 +1340,47 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(errors).toEqual([]);
 			expect(status).toBe(0);
+			expect(using.range).toHaveBeenCalledTimes(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("accepts a miss on a file the head renamed, when the base's policy lets trust-boundary review its old path, as the review does", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const file = defect[0]!.properties.path!;
+			const rule = defect[0]!.ruleId;
+			const renamed = `moved/${basename(file)}`;
+			const commit = (message: string) =>
+				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
+			const floor = "    level: { floor: deep }\n";
+			git(repo, "checkout", "--quiet", "-b", "narrowed", "feature");
+			const policy = readFileSync(join(repo, "melian.yaml"), "utf8");
+			writeFileSync(join(repo, "melian.yaml"), policy.replace(floor, `${floor}    paths: ["**", "!moved/**"]\n`));
+			git(repo, "add", "--all");
+			commit("narrowed");
+			const narrowed = git(repo, "rev-parse", "HEAD");
+			mkdirSync(join(repo, "moved"));
+			git(repo, "mv", file, renamed);
+			writeFileSync(join(repo, renamed), `${readFileSync(join(repo, renamed), "utf8")}# moved\n`);
+			git(repo, "add", "--all");
+			commit("rename");
+			const moved = git(repo, "rev-parse", "HEAD");
+			const using = runners();
+			const { status, errors } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "renamed", repo, base: narrowed, head: moved, file: renamed, rule },
+					]),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${narrowed},${moved}`,
+				},
+				using,
+			);
+			expect({ status, errors }).toEqual({ status: 0, errors: [] });
 			expect(using.range).toHaveBeenCalledTimes(1);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
