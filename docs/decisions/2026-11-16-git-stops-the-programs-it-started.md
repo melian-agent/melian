@@ -18,7 +18,7 @@ The table is read at the stop, not on a timer. A transport still waiting at the 
 
 The same stop runs when git writes more standard error than `stderrLimit`, since both are Melian stopping git before it ends.
 
-When the table cannot be read, with no `ps` or under a sandbox that refuses it, `git` stops git alone, as before. A timed-out result then carries `childrenLeft`, and the `gitOutputTooLarge` error ends by saying the programs git started were not stopped. No pid is guessed. The record store does not yet repeat this in its own `unreachable` message.
+When the table cannot be read, with no `ps` or under a sandbox that refuses it, `git` stops git alone, as before. A timed-out result then carries `childrenLeft`, and the `gitOutputTooLarge` error ends by saying the programs git started were not stopped. No pid is guessed. The same holds when a later read fails, after the first one recorded the tree: the stop then signals nothing more, so the deadline's result and the overflow error wait for the stop, about a second at most, and report it. The record store does not yet repeat this in its own `unreachable` message.
 
 `ProcessTable`, `terminateRecorded`, `parseProcesses` and their types moved from `packages/pipeline/src/mutation-process.ts` to `packages/core/src/process-tree.ts`, unchanged, so one copy of the code chooses which pids every part of Melian signals. The new file is in the mutation check's signal set.
 

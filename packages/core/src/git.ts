@@ -104,11 +104,12 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 				return;
 			}
 			// A cut stream is never resolved, so no caller can read part of a message as a failure it knows.
-			const left = stop() ? "" : `; ${unstopped}`;
-			reject(
-				new ChangesetError(
-					"gitOutputTooLarge",
-					`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it${left}`,
+			void stop().then((all) =>
+				reject(
+					new ChangesetError(
+						"gitOutputTooLarge",
+						`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it${all ? "" : `; ${unstopped}`}`,
+					),
 				),
 			);
 		});
@@ -131,21 +132,31 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			});
 		};
 		// Git and every program below it, such as ssh waiting at a passphrase prompt, by the pids one read of the process
-		// table recorded while git still ran, and git again through its own handle. The result does not wait for them: a
-		// transport can hold the output pipes open, so this end of stderr is closed. Returns false when the table could not
-		// be read, and git alone was stopped.
+		// table recorded while git still ran, and git again through its own handle. A transport can hold the output pipes
+		// open, so this end of stderr is closed and git's close no longer settles the call; the stop does, within about a
+		// second. Resolves false when any read of the table failed, so programs below git may still run.
+		let stopped: Promise<boolean> | undefined;
 		const stop = () => {
+			if (stopped !== undefined) return stopped;
+			clearTimeout(deadline);
 			const stopping =
 				child.pid === undefined ? undefined : stopTree(child.pid, options.processes ?? new ProcessTable());
-			// A table that fails on a later read leaves the rest of the tree; git itself ends below either way.
-			void stopping?.catch(() => {});
 			child.kill();
 			child.stderr.destroy();
-			return stopping !== undefined;
+			const all = stopping?.then(
+				() => true,
+				() => false,
+			);
+			stopped = all ?? Promise.resolve(false);
+			return stopped;
 		};
 		const deadline =
-			options.deadlineMs === undefined ? undefined : setTimeout(() => finish(-1, true, !stop()), options.deadlineMs);
-		child.on("close", (code) => finish(code ?? -1, false));
+			options.deadlineMs === undefined
+				? undefined
+				: setTimeout(() => void stop().then((all) => finish(-1, true, !all)), options.deadlineMs);
+		child.on("close", (code) => {
+			if (stopped === undefined) finish(code ?? -1, false);
+		});
 	});
 }
 

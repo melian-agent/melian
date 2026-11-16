@@ -51,6 +51,17 @@ class RecordingTable implements ProcessControl {
 	}
 }
 
+// A process table whose first read works and whose later reads fail, so the stop records the tree but cannot check a
+// pid again before it signals it.
+class FailsAfterFirstRead extends RecordingTable {
+	reads = 0;
+	override list() {
+		this.reads++;
+		if (this.reads > 1) throw new Error("ps failed");
+		return super.list();
+	}
+}
+
 // A process table that cannot be read, as with no ps or a sandbox that refuses it.
 const unreadable: ProcessControl = {
 	list: () => {
@@ -173,6 +184,18 @@ describe("git with a deadline", () => {
 		await expectEnded(Number(readFileSync(recorded, "utf8")));
 	});
 
+	it("says the programs git started were not stopped when the process table fails after its first read", async () => {
+		const transport = join(repo, "transport.sh");
+		writeFileSync(transport, "exec sleep 10\n");
+		const processes = new FailsAfterFirstRead();
+		const result = await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], {
+			deadlineMs: 500,
+			processes,
+		});
+		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+		expect(processes.kills).toEqual([]);
+	});
+
 	it("stops the git process itself, not only the wait for it", async () => {
 		// The transport's parent is git's remote helper, whose parent is the git process the deadline must stop; the
 		// transport records that pid, and exits on its own later.
@@ -258,6 +281,18 @@ describe("git with a standard error past its limit", () => {
 		expect(error.message).toBe(
 			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read, so the programs git started were not stopped`,
 		);
+	});
+
+	it("says the programs git started were not stopped on a flood, when the process table fails after its first read", async () => {
+		const processes = new FailsAfterFirstRead();
+		const error = await rejection(
+			git(repo, ["fetch"], { env: standIn(writes(stderrLimit + 1)), processes }),
+			ChangesetError,
+		);
+		expect(error.message).toBe(
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read, so the programs git started were not stopped`,
+		);
+		expect(processes.kills).toEqual([]);
 	});
 
 	it("stops git itself by its own pid, not only the stream", async () => {
