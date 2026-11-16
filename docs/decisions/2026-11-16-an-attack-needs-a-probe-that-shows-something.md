@@ -19,6 +19,8 @@ What the record fixes, and what it does not:
 - It fixes the ambiguity of 128+n. A probe that exits 137 reads as a failure, and one SIGKILL ended reads as ended by it.
 - A probe cannot write the record through its own file descriptor 3: that is Node's, not the pipe. `probe-endings.test.ts` asserts the write fails. A probe could still forge it by another route, such as opening its parent's descriptor through `/proc` on Linux. The coordinator accepted that on 2026-11-16, since a probe that forges its ending gains nothing a probe could not get by exiting with that code.
 
+The tests lens may probe. [Pull request #490](https://github.com/melian-agent/melian/pull/490) refused `probe` there, and in any lens that extends it, because an attack its prober answered counted as answered whatever its probe showed, so a test that already failed left the lens clean. That refusal is lifted: an attack now needs a probe that shows something.
+
 Measured: the endings, 0, 137, 125, SIGKILL, SIGABRT, a timeout, a cut, and a write to file descriptor 3, under bubblewrap on Linux in a cloud container on 2026-11-16. macOS runs the same file in CI's macOS job, and on the host: `MELIAN_PROBE_SANDBOX=1 npx vitest run packages/pipeline/test/probe-endings.test.ts`.
 
 What it gives up: a prober that cannot get a conclusive probe for an attack must skip it with a reason, or its lens ends. A flaky probe that timed out under load costs the review that lens.
