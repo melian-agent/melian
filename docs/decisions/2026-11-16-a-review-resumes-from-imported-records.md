@@ -49,7 +49,7 @@ A record counts because the store accepted it, by rule 6, so anyone who can writ
 - keep a clean check it never ran;
 - stand on verdicts the verifier never gave, confirming or refuting a finding;
 - post a walkthrough no model wrote;
-- take a triage decision of `skip`, which runs no lens at all.
+- take a triage decision this host never made, where this host has made none for the revision: any option each lens's band offers, the lowest level included, and `skip` for a lens whose band's floor is `skip`, which then does not run. A lens whose floor is above `skip` still runs at its floor or above, since a record that chooses an option its question does not offer answers nothing.
 
 That is the trust a writer already holds: the same writer can push the code under review. A base that sets `trust.writers: false` imports nothing, and the CLI says so. Signatures, [issue #371](https://github.com/melian-agent/melian/issues/371), close the gap for a repository that does not trust its writers, since such a base counts only records its pinned key signed.
 

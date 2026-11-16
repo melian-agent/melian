@@ -47,6 +47,8 @@ beforeEach(async () => {
 	config = {
 		...defaultConfig,
 		tiers: { ...defaultConfig.tiers, full: ["standard"] },
+		// Triage may skip the lens, so a record can choose skip.
+		lenses: { correctness: { level: { floor: "skip" } } },
 		models: { light: route("light"), medium: route("medium"), heavy: route("heavy") },
 	};
 	lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
@@ -101,12 +103,12 @@ const level = (review: Review) =>
 
 const triageOf = (stored: readonly RecordEnvelope[]) => stored.filter(({ kind }) => kind === "triage");
 
-// Another host's review at `quick`, and the records it exported.
-async function exported() {
-	const decider = choosing("quick");
+// Another host's review at `chosen`, `quick` by default, and the records it exported.
+async function exported(chosen: "skip" | ScrutinyLevel = "quick") {
+	const decider = choosing(chosen);
 	const store = new MemoryRecordStore({ payloads: reviewPayloads });
 	const { result, stored } = await review(await host(decider), decider, { store });
-	expect(level(result)).toBe("quick");
+	expect(level(result)).toBe(chosen === "skip" ? undefined : chosen);
 	return stored;
 }
 
@@ -192,13 +194,24 @@ describe("a review that imports a triage record", () => {
 		},
 	);
 
-	it("keeps the decision this host already made for the revision", async () => {
-		const stored = await exported();
+	it("runs no lens when the record it stands on chose skip, and this host made no decision", async () => {
+		const stored = await exported("skip");
 		const decider = choosing("deep");
-		const harness = await host(decider);
-		expect(level((await review(harness, decider)).result)).toBe("deep");
-		const { result } = await review(harness, decider, { imported: stored });
-		expect(decider.requests).toHaveLength(1);
-		expect(level(result)).toBe("deep");
+		const { result } = await review(await host(decider), decider, { imported: stored });
+		expect(decider.requests).toHaveLength(0);
+		expect(level(result)).toBeUndefined();
 	});
+
+	it.each(["quick", "skip"] as const)(
+		"keeps the decision this host already made over an imported %s",
+		async (chosen) => {
+			const stored = await exported(chosen);
+			const decider = choosing("deep");
+			const harness = await host(decider);
+			expect(level((await review(harness, decider)).result)).toBe("deep");
+			const { result } = await review(harness, decider, { imported: stored });
+			expect(decider.requests).toHaveLength(1);
+			expect(level(result)).toBe("deep");
+		},
+	);
 });
