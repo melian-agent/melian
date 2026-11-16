@@ -27,6 +27,14 @@ describe("each lens's probing wording", () => {
 			expect(correctness?.[field], field).toContain("refuses an input it does not accept");
 	});
 
+	it("lets a correctness attack name a sequence of calls and the state it must leave, not only a result or a throw", () => {
+		const correctness = lensProbingWording.get("correctness");
+		for (const field of ["plannerPlan", "earlierSome", "probes", "judge"] as const) {
+			expect(correctness?.[field], field).toContain("sequence of calls");
+			expect(correctness?.[field], field).toMatch(/state it (leaves|must leave)/);
+		}
+	});
+
 	it("names no boundary, nothing untrusted and no hostile input in the words of a lens that is not about them", () => {
 		for (const lens of ["tests", "correctness"])
 			expect(JSON.stringify(lensProbingWording.get(lens)), lens).not.toMatch(/boundary|untrusted|hostile/i);
