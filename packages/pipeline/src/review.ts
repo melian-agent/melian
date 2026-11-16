@@ -3174,12 +3174,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				};
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	spans.end();
+	if (lenses.length === 0) startWalkthrough?.();
 	const {
 		result: lensResult,
 		ran,
 		task: lensTask,
 	} = lenses.length === 0
-		? (startWalkthrough?.(), { result: {} as LensResult, ran: lensInput, task: undefined })
+		? { result: {} as LensResult, ran: lensInput, task: undefined }
 		: await runLenses(
 				harness,
 				lensInput,
