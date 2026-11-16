@@ -310,6 +310,34 @@ export class ReviewRecords {
 	}
 }
 
+/**
+ * `records` in one order a round's records can rebuild: by the check's place in the tier's `checks`, then by name for a
+ * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
+ * records order checks alike, so both write the same verdict.
+ */
+export function inManifestOrder(checks: readonly string[], records: readonly CheckRecord[]): CheckRecord[] {
+	const at = (name: string) => {
+		const index = checks.indexOf(name);
+		return index < 0 ? checks.length : index;
+	};
+	return [...records].sort(
+		(a, b) => at(a.name) - at(b.name) || compare(a.name, b.name) || compare(sortedJson(a), sortedJson(b)),
+	);
+}
+
+// A record's JSON with its keys sorted and `undefined` and `null` fields left out, so a stored record and the one it was
+// written from compare alike. Unlike `canonicalJson`, it never throws on the free text a record holds.
+function sortedJson(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(sortedJson).join(",")}]`;
+	if (typeof value === "object" && value !== null)
+		return `{${Object.keys(value)
+			.filter((key) => (value as Record<string, unknown>)[key] != null)
+			.sort()
+			.map((key) => `${JSON.stringify(key)}:${sortedJson((value as Record<string, unknown>)[key])}`)
+			.join(",")}}`;
+	return JSON.stringify(value) ?? "null";
+}
+
 function compare(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }

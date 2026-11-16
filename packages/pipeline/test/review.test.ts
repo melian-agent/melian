@@ -1484,8 +1484,8 @@ describe("reviewChangeset", () => {
 			status: "not-reviewed",
 			blocking: true,
 			notRun: [
-				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 				allowedDecisionSkip,
+				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 			],
 		});
 		const root = (await harness.root(context)).id;
@@ -1503,14 +1503,14 @@ describe("reviewChangeset", () => {
 		expect(verdict.ran).toEqual([
 			...deterministicRan,
 			{
-				name: "lens.contracts",
-				version: lenses.find(({ name }) => name === "contracts")!.version,
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
 				status: "ran",
 				level: "careful",
 			},
 			{
-				name: "lens.correctness",
-				version: lenses.find(({ name }) => name === "correctness")!.version,
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "ran",
 				level: "careful",
 			},
@@ -2157,7 +2157,10 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 		const error = (await review().catch((caught: unknown) => caught)) as ReviewError;
-		expect(error.verdict?.notRun[0]).toMatchObject({ name: "lens.correctness", status: "failed", level: "careful" });
+		expect(error.verdict?.notRun.find(({ name }) => name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			level: "careful",
+		});
 	});
 
 	it("refuses the reads past the tools budget, lets the lens report, and ends it at its next read", async () => {
@@ -3144,7 +3147,7 @@ describe("adjudication", () => {
 
 			expect(verdict).toMatchObject({
 				status: "passed",
-				notRun: [skipped, { name: "lens.contracts", status: "skipped" }],
+				notRun: [{ name: "lens.contracts", status: "skipped" }, skipped],
 			});
 		});
 

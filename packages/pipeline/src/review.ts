@@ -175,7 +175,7 @@ import {
 	stillOwns,
 	undecided,
 } from "./review-index.ts";
-import { ReviewRecords } from "./review-records.ts";
+import { inManifestOrder, ReviewRecords } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
@@ -2130,7 +2130,10 @@ function account(
 			return version === undefined ? { check } : { check, version };
 		}),
 	];
-	return { manifest, producers };
+	return {
+		manifest: new Manifest(checks, inManifestOrder(checks, manifest.records()), manifest.skippable()),
+		producers,
+	};
 }
 
 // The band each selected lens's level must lie in, per selection, so two folder variants of one name keep their own:

@@ -765,6 +765,41 @@ export function verificationClaims(
 		});
 }
 
+/**
+ * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
+ * the sightings `producers` select. Each reads `new`: the sightings carry no lifecycle, so no dismissal reaches them.
+ */
+export function mergeSightings(
+	sightings: readonly StoredFinding[],
+	claims: readonly VerificationClaim[],
+	producers: readonly Producer[],
+): Finding[] {
+	const at = "revision";
+	const items: Record<string, Pick<FindingRecord, "sightings" | "verifications">> = {};
+	for (const sighting of sightings) {
+		const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = sighting.properties;
+		const item = items[properties.id] ?? { sightings: { [at]: {} } };
+		items[properties.id] = item;
+		item.sightings[at]![producerKey(properties.source)] = JSON.parse(JSON.stringify({ ...sighting, properties }));
+	}
+	for (const [index, { id, source, verification }] of claims.entries()) {
+		const item = items[id];
+		if (item === undefined) continue;
+		const verified = item.verifications ?? { [at]: {} };
+		item.verifications = verified;
+		verified[at]![producerKey(source)] = { [String(index)]: JSON.parse(JSON.stringify(verification)) };
+	}
+	const counts = selected(producers);
+	return Object.keys(items)
+		.sort()
+		.flatMap((id) => {
+			const atHead = judgedAt(items[id]!, at, counts);
+			if (Object.keys(atHead).length === 0) return [];
+			const { winner, reportedBy } = adjudicate(atHead, true);
+			return [Finding.from({ ...winner, properties: { ...winner.properties, status: "new", reportedBy } })];
+		});
+}
+
 // The link of a finding to its root while it holds: the root's own dismissal still stands as it was made, and the
 // finding has no dismissal of its own, which always speaks first.
 function standing(

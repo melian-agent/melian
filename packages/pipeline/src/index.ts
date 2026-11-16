@@ -55,6 +55,7 @@ export {
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
+export { RecordedRound, type RecordedRoundContext } from "./recorded-round.ts";
 export {
 	contextOverflowed,
 	type PlanSources,
