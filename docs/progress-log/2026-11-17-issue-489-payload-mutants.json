@@ -1,0 +1,763 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "2b8f1a0853304c96bbd7d2fed150ee76e9d1e75a",
+		"head": "fc3dc5de4259eb5e6d481759150afeae55c293d5"
+	},
+	"claimsIn": [
+		"packages/core/src/record-payloads.ts",
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 70,
+			"column": 22,
+			"endLine": 77,
+			"endColumn": 1,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5c7e16fb5873904cd6d66a73f9d7d9481bf3b4e2f1bfbeaed78ef16b7cc45d73",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 72,
+			"column": 32,
+			"endLine": 72,
+			"endColumn": 71,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "96a5a4d87129f1cf4976d1041bb4941fca17f0e237382e1b0d79f9c2c0b307f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 75,
+			"column": 29,
+			"endLine": 75,
+			"endColumn": 63,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "905bb9a5cd413bd78696a0ebfb030b916f4f48f579ffe3e56c44096a6938e110",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 79,
+			"column": 28,
+			"endLine": 79,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "39ec2ebacd65e4f4097229a442650b36e580bfde111ad4ac27109870b5c07cb3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 97,
+			"column": 31,
+			"endLine": 97,
+			"endColumn": 57,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "0e7f929ee9d6eb078fdd3d9ada65998039d467e07aed3696707d93e883c58740",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 97,
+			"column": 32,
+			"endLine": 97,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3ef68d4ebf76ed3259a6d4943b64ee1f2cb8fd42b860461f631ccf12b4520c88"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 97,
+			"column": 39,
+			"endLine": 97,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ab1eee9a3923f8b7bb038e99c0c344c827501ffc43bf356fa226cc5394104c54"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 97,
+			"column": 48,
+			"endLine": 97,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b7620511f51b3b62318909e95ef543a4bd8fa36c6529859eb2835ec4d1d5b374"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 98,
+			"column": 39,
+			"endLine": 98,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a7a818115e7eabb0b983f8fae274f78d3f9856c327df01995b8f4dfd93107724",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 99,
+			"column": 45,
+			"endLine": 99,
+			"endColumn": 103,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2ab72b7e79f8c145bf7ed1e9a484748a72427939fd48a81343ebe1c56488c72f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 6"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 158,
+			"column": 1,
+			"endLine": 158,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1b208a8e1cf4a5ca61ca9bc7b3b1210261027e8fad8fc35254bb2bc76c9bc947",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 6"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 196,
+			"column": 1,
+			"endLine": 196,
+			"endColumn": 90,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5ef083b75310d6c5720dc558574ddfda7ceb0526ca9bd05dd44150208d73f17b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole verification payload, sample 9"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 304,
+			"column": 15,
+			"endLine": 304,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0094adc69541ffc4a2774b4e3f8a10f3e92c85f392ac95ad235ae6cfceb0431e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 14"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 304,
+			"column": 67,
+			"endLine": 304,
+			"endColumn": 88,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4bb239950fe8722fc26aed863e21c3ff4a3b9667b275c3d218cd5ae05faddc4a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 14"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 304,
+			"column": 68,
+			"endLine": 304,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ecd9556ac51de7ec12bbdd2bc8306389794ac79c0a49b668491246dceea1543f"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 304,
+			"column": 79,
+			"endLine": 304,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "040ad55780837ff11bcade9881a4152f722532c5c9489f325a9b61733064916f"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 357,
+			"column": 18,
+			"endLine": 357,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "f2b7c2c14d8e85ff7d349bb17e0cd6b5b98a9f14a63c734712b71eff84440361",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 6"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 357,
+			"column": 43,
+			"endLine": 357,
+			"endColumn": 84,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(payload as {\n  v?: RecordJson;\n} | null).v",
+			"status": "generated",
+			"id": "a777f81cbbe9535c985fafe0d67ee8ce82e8352dd8aa4c60e624c90058a4d2d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"refuses a lens payload that is not an object"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 376,
+			"column": 24,
+			"endLine": 376,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "10cdd866dfc50c71655dfd15f1c737ab04944a76b6f81f144c1009b24587d3be",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 376,
+			"column": 24,
+			"endLine": 376,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6f95823585baa713cd64adec7354eb5b4c33a560742d19d745694361be5aef8f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 6"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 376,
+			"column": 24,
+			"endLine": 376,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "versioned(payload) !== 1",
+			"status": "generated",
+			"id": "68f9852adc9617ce30d0c7f9dc0aeeb73e208a5d9cf607d257797d9e592720a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole lens payload, sample 4"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 385,
+			"column": 3,
+			"endLine": 385,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f7765274e7ca32c7d8acd59d34fa79124f5cdb39a2e4a0f48eed7f956a1f730b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole verification payload, sample 8"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 385,
+			"column": 3,
+			"endLine": 385,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c6b99476889c23a812261178051325a1aad0b08fb22cdff9bc296d8ee8d021b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole verification payload, sample 9"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 385,
+			"column": 3,
+			"endLine": 385,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "versioned(payload) !== 1",
+			"status": "generated",
+			"id": "eaf0285efe237ca27bc322cb227135c64fa62da94aef7ef302e2a1771c783b22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole verification payload, sample 8"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 252,
+			"column": 20,
+			"endLine": 252,
+			"endColumn": 73,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f25c898b8cdf75b87683f377fdd1744bcc38534c921665f6e2705eed366d28b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 479,
+			"column": 88,
+			"endLine": 485,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9dc8a291372d97997aa204e3aaf7109e08c481ae341e349ca622f9643c3ec277",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 480,
+			"column": 5,
+			"endLine": 480,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d846e2f1f8d6a09a94b280f221e3a46868be377e98f3f4752b3507370165709a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 480,
+			"column": 5,
+			"endLine": 480,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5af5a7b1ad8eaed0ada4f4258b4b4b812e17f09aaed69f933a7be65d8f47b5d8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account in one form, keyed by the revision and the records it counts"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 480,
+			"column": 5,
+			"endLine": 480,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check.lineage !== null",
+			"status": "generated",
+			"id": "70ac2ce6966e9836278943847040ca84fb020fd4ea49c21594c3a6031ddabe62",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 480,
+			"column": 36,
+			"endLine": 480,
+			"endColumn": 63,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6db556f609ff5690bc406b7643b03bc187749e34fdeaf05703c07bb19457a85e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account in one form, keyed by the revision and the records it counts"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 482,
+			"column": 5,
+			"endLine": 482,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8a92ec0e6f5b23aee56d998c157f0fd609ac4519c21d06bacd5acb733be336ea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 482,
+			"column": 5,
+			"endLine": 482,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "867c0299307d4d35836984fa7d694e7ac7568903c79323c86c44ef6117112b23",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 482,
+			"column": 5,
+			"endLine": 482,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answeredAt === null",
+			"status": "generated",
+			"id": "16159eda421b2e8cb5bd55d3f78fafd5db2bac19d66e6ed7dc92f506a2b3d0e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 483,
+			"column": 2,
+			"endLine": 483,
+			"endColumn": 113,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "9d767ef50269065d706745f7817c14d5cbc97694a16d90eecfb4fb849dae7dcf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 483,
+			"column": 18,
+			"endLine": 483,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f1d8d42218261ccb9088ae48344ba06772d12a67508b19a60f6849f0dbd700c1"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 484,
+			"column": 8,
+			"endLine": 484,
+			"endColumn": 29,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2901d3c15356fde3f9212221d462aa483c4b2c07ae1a3acc8717cd93fa3777b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes an account's lineage as version 1 did, and refuses one that names the level its model answered at"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 36,
+	"omitted": 0,
+	"unmutated": []
+}
