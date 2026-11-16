@@ -1337,6 +1337,8 @@ function describeProbe(id: string, result: ProbeRecord["result"], timeout: numbe
 			? `probe ${id} ended with no record of how, which shows nothing`
 			: `probe ${id} was ended by ${result.signal}, which shows nothing`;
 	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so the boundary held`;
+	if (result.exitCode === 125)
+		return `probe ${id} exited 125, which says it could not test its attack, so it shows nothing`;
 	return `probe ${id} failed: it exited ${result.exitCode}, so it shows the defect if it exercises the attack. Report a finding it shows with probe "${id}"`;
 }
 

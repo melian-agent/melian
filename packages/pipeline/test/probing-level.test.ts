@@ -2099,6 +2099,29 @@ describe("a level that probes", () => {
 		expect(spoke).not.toContain("[the probe printed nothing]");
 	});
 
+	it("says a probe that exits 125 could not test its attack, beside 124 and 126, which failed", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				round([
+					["run_probe", { attack: 1, script: "process.exit(124);\n" }],
+					["run_probe", { attack: 1, script: "process.exit(125);\n" }],
+					["run_probe", { attack: 1, script: "process.exit(126);\n" }],
+				]),
+				call("skip_attack", { attack: 1, reason: "its probes show nothing it can report" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		const [exited124, untested, exited126] = resultsOf(requests[prober]![1]!);
+		expect(untested).toMatch(
+			/probe p[0-9]+ exited 125, which says it could not test its attack, so it shows nothing/,
+		);
+		expect(untested).not.toContain("Report a finding");
+		for (const failed of [exited124, exited126])
+			expect(failed).toMatch(/probe p[0-9]+ failed: it exited 12[46], .*Report a finding it shows/);
+	});
+
 	it("tells the prober a probe the sandbox refused did not run", async () => {
 		const base = unconfinedSandbox();
 		const { run, requests } = await review(
