@@ -11,7 +11,7 @@ import {
 	describeLineage,
 	EscalationRule,
 	type EscalationTrigger,
-	type Finding,
+	Finding,
 	type FindingSource,
 	GraphSnapshot,
 	Lens,
@@ -97,6 +97,7 @@ import {
 	type SightedFinding,
 	sightedBy,
 	sightingIn,
+	upsertFinding,
 	verificationClaims,
 } from "./findings.ts";
 import {
@@ -120,7 +121,7 @@ import {
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
-import type { ImportedRecords } from "./imported-records.ts";
+import type { ImportedLens, ImportedRecords } from "./imported-records.ts";
 import { continuePrompt, lensRequest } from "./lens-request.ts";
 import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
@@ -334,6 +335,8 @@ type LensOutcome =
 			readonly probing?: ProbingOutcome;
 			// The task that asked this run, when this task copied it rather than ask it again.
 			readonly reused?: number;
+			// The ID of the record of another host's that this task imported the run from, which no model of its asked.
+			readonly imported?: string;
 	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
@@ -541,8 +544,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// prober's conversation in the checkpoint under `<key>/prober` and what it did in the outcome's `probing`; an older
 	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
 	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
-	// runs have no request key, so no later task copies them, and it copies none.
-	version: 7,
+	// runs have no request key, so no later task copies them, and it copies none. Version 8 lets a copy name the record
+	// of another host's run it imported, in `record`, with no task or nonce, and an outcome name it as `imported`; an
+	// older task imported none, so its input reads as it is.
+	version: 8,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -1671,6 +1676,25 @@ function copiesFrom(
 	);
 }
 
+// The lenses of `lenses` that `imported`'s records answer at `revision`, by each lens's first run, but those in `copied`,
+// which this host's own task answers.
+function importsFor(
+	imported: ImportedRecords | undefined,
+	revision: string,
+	lenses: readonly LensRun[],
+	copied: Readonly<Record<string, unknown>>,
+	refused: (key: string, model: string) => boolean,
+): Record<string, ImportedLens> {
+	if (imported === undefined) return {};
+	return Object.fromEntries(
+		lenses.flatMap((lens) => {
+			if (copied[lens.key] !== undefined) return [];
+			const found = imported.lens(revision, lens, refused);
+			return found === undefined ? [] : [[lens.key, found] as const];
+		}),
+	);
+}
+
 // Every run of `lenses`: each first run, and the run a quick one escalates to.
 function runsOf(lenses: readonly LensRun[]): LensRun[] {
 	return lenses.flatMap((lens) => [lens, ...(lens.escalation?.next === undefined ? [] : [lens.escalation.next])]);
@@ -1694,6 +1718,7 @@ async function runLenses(
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
 	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
 	started?: () => unknown,
+	imported?: ImportedRecords,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
@@ -1718,7 +1743,8 @@ async function runLenses(
 			!(rerun && lensFailed(record!, refused));
 		if (attaches) attachesTo = known.task;
 		else {
-			const copied = copiesFrom(record, input.lenses, input.callers, refused);
+			const own = copiesFrom(record, input.lenses, input.callers, refused);
+			const copied = { ...own, ...importsFor(imported, revision, input.lenses, own, refused) };
 			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
 			unlockedFor = Object.keys(copied).join("\n");
 		}
@@ -1740,7 +1766,15 @@ async function runLenses(
 		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused = copiesFrom(previous, input.lenses, input.callers, refused);
+		const copies = copiesFrom(previous, input.lenses, input.callers, refused);
+		// A lens another host's records answer is imported, and asks no model, unless this host's own task answers it.
+		const imports = importsFor(imported, revision, input.lenses, copies, refused);
+		const reused: Record<string, LensCopy<LensResult[string]>> = {
+			...copies,
+			...Object.fromEntries(
+				Object.entries(imports).map(([key, { record, outcomes }]) => [key, { record, outcomes }] as const),
+			),
+		};
 		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
 		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
@@ -1763,13 +1797,16 @@ async function runLenses(
 					};
 		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
 		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
-		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
-		const asked = input.lenses.filter((lens) => reused[lens.key] === undefined);
-		const sources = runsOf(asked).flatMap((run) => [
+		// one. An imported lens's findings take their place in that commit, so a resume after a crash finds both or
+		// neither. Each run names its producer with its level, and a run an older Melian stored named the bare version.
+		const sources = runsOf(input.lenses.filter((lens) => copies[lens.key] === undefined)).flatMap((run) => [
 			lensSource(run.name, run.version, run.level),
 			{ check: `lens.${run.name}`, version: run.version },
 		]);
 		await clearSightings(tx, root.id, revision, sources);
+		for (const { sightings } of Object.values(imports))
+			for (const found of Object.values(sightings).flat())
+				await upsertFinding(tx, root.id, Finding.from(found), revision);
 		const copying = new LensTaskInput(
 			input.root,
 			input.revision,
@@ -3250,6 +3287,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				(task, done) =>
 					Promise.all([verifyAsLensesEnd(task, done), exportAsLensesEnd(task, done)]).then(() => undefined),
 				startWalkthrough,
+				request.imported,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	// Every wave this review started settles before the next step starts, so no step of the host's overlaps its
@@ -3291,7 +3329,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					),
 					lenses: ran.lenses.flatMap((lens) => {
 						const next = lens.escalation?.next;
-						const nonce = ran.reused?.[lens.key]?.nonce;
+						const copy = ran.reused?.[lens.key];
+						// An imported lens ran in no conversation of this host's, so it covers no line here.
+						if (copy !== undefined && "record" in copy) return [];
+						const nonce = copy?.nonce;
 						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])].map((run) =>
 							nonce === undefined ? run : { ...run, nonce },
 						);
@@ -3626,7 +3667,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
 				...(lineageOf(name, level) === undefined ? {} : { lineage: describeLineage(lineageOf(name, level)!) }),
 				// A copied run cost this review nothing.
-				...(lensRan(key)?.usage === undefined || lensRan(key)?.reused !== undefined
+				...(lensRan(key)?.usage === undefined ||
+				lensRan(key)?.reused !== undefined ||
+				lensRan(key)?.imported !== undefined
 					? {}
 					: { usage: structuredClone(lensRan(key)?.usage) }),
 				budget: {

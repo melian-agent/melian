@@ -2,7 +2,7 @@
 
 Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 4's import of several records under the key a host's own run would use
 
-Status: for [issue #475](https://github.com/melian-agent/melian/issues/475). A builder's design. The coordinator answered its questions of approach on 2026-11-16, in the coordinator's session; those answers are not rulings. The amendment of rule 4 is put to the coordinator with the pull request.
+Status: for [issue #475](https://github.com/melian-agent/melian/issues/475). A builder's design. The coordinator answered its questions of approach on 2026-11-16, in the coordinator's session; those answers are not rulings. The amendment of rule 4 is the maintainer's: the maintainer ruled on 2026-11-16, in the coordinator's session, that the import runs a producer again when two records under one key disagree, as [the coordinator's comment on issue #475](https://github.com/melian-agent/melian/issues/475#issuecomment-6913031913) records.
 
 ## Problem
 
@@ -27,7 +27,7 @@ These are additions: no clause of the shared record decision spoke to a payload'
 
 A producer matches a record by its kind, its revision, `base..head`, and its key. So a record of another base or head under the same key answers nothing. A key is the hash of the request, so a record whose key names another request answers nothing either.
 
-Rule 4 said a host that finds several trusted records under its key imports all of them and merges their sightings. This build runs the producer instead, unless the records agree on everything but the check a review decided for them. Two runs of one lens can differ, and merging needs the lens task's new input form, which reads imported outcomes; until a producer can merge, a clean record must never hide one with findings, and running again is the one answer that cannot. This is the amendment above.
+Rule 4 said a host that finds several trusted records under its key imports all of them and merges their sightings. This build runs the producer instead, unless the records agree on everything but the check a review decided for them. Two runs of one lens can differ, and a clean record must never hide one with findings; running again is the one answer that cannot. Merging can come for a lens run once its stored form holds several outcomes. This is the amendment above, by the maintainer's ruling.
 
 ### What each producer stands on
 
@@ -35,6 +35,7 @@ Rule 4 said a host that finds several trusted records under its key imports all 
 - **Verification** stands on one record only when it answers the request whole: every candidate done, by a model this host does not refuse, and every claim judged. Short of that the verifier runs for every candidate. While such a record covers the revision, the waves that verify as each lens ends are skipped, since their keys differ from the final request's.
 - **Triage** stands on a record only when its answers still parse against the request's questions and each chooses what its distribution favours, and only when this host has made no decision of its own for the revision. A decider that failed answers nothing. The import writes no entry in this host's decisions, and clears what a new decision would, so a repeat review on that host asks again rather than trusting a choice it never made.
 - **A walkthrough** stands on a record written on the light route this host would ask, and never under `--rerun`, which asks for a walkthrough of its own.
+- **A lens** stands on records only when every run it ended on has one: a run of the same lens, version and level under its request's key, which finished within its budgets, was not capped at its findings budget, did not probe, and ran on a model this host does not refuse. A quick run that escalated stands only beside a record of the run it escalated to. A lens this host's own earlier task already answers copies from that task instead. The lens task's input names an imported copy by its record's ID, with no task or nonce, and each imported outcome names that record as `imported`; lens task version 8 adds that form, and its migration is the identity. The import writes the record's findings under the lens's source, charges the lens nothing, and leaves it out of the coverage this host records, since no conversation of its read a line.
 
 A host exports the record it stood on, byte for byte, so its round's `read` names the same ID the first host's did.
 
@@ -49,6 +50,7 @@ A record counts because the store accepted it, by rule 6, so anyone who can writ
 - keep a clean check it never ran;
 - stand on verdicts the verifier never gave, confirming or refuting a finding;
 - post a walkthrough no model wrote;
+- stand on a lens run no model made, with the findings the record lists or none, so that lens asks no model;
 - take a triage decision this host never made, where this host has made none for the revision: any option each lens's band offers, the lowest level included, and `skip` for a lens whose band's floor is `skip`, which then does not run. A lens whose floor is above `skip` still runs at its floor or above, since a record that chooses an option its question does not offer answers nothing.
 
 That is the trust a writer already holds: the same writer can push the code under review. A base that sets `trust.writers: false` imports nothing, and the CLI says so. Signatures, [issue #371](https://github.com/melian-agent/melian/issues/371), close the gap for a repository that does not trust its writers, since such a base counts only records its pinned key signed.
@@ -64,4 +66,4 @@ Unit tests plant each record the coordinator named, and show what each answer is
 - an imported kind written with a round's or an account's key answers no producer's request;
 - a payload of a later version is set aside, and one of a known version that breaks its shape fails the set.
 
-Per producer, a planted record under another key, or one that does not answer whole, makes the producer run. A test in the CLI runs a second clone from the first's store and shows its round reads a check record the first never wrote.
+Per producer, a planted record under another key, or one that does not answer whole, makes the producer run. For a lens, so does a record that ended at a budget, was capped, probed, ran at another level, or did not finish. A lens copy that names a record and no task or nonce covers no line, and a review killed after it imported a lens resumes with the imported outcomes and asks that lens nothing. A version-7 lens task, recorded by main, reopens under version 8 and a new task copies its run. A test in the CLI runs a second clone from the first's store and shows its round reads a check record the first never wrote.

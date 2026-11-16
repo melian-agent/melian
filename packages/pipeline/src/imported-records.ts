@@ -4,6 +4,7 @@ import {
 	Decision,
 	type DecisionRequest,
 	KeyedRequest,
+	type LensPayload,
 	type RecordEnvelope,
 	type RecordJson,
 	RecordSet,
@@ -18,6 +19,28 @@ import {
 	type WalkthroughPayload,
 } from "@melian-agent/core";
 import type { CheckRunRecord } from "./checks.ts";
+import type { LensRunOutcome } from "./review-records.ts";
+
+/** A lens run as an import reads it: its key, lens, level, request's key, whether it probes, and the run it escalates to. */
+export type ImportableRun = {
+	readonly key: string;
+	readonly name: string;
+	readonly version: string;
+	readonly level: string;
+	readonly request?: string;
+	readonly probe?: unknown;
+	readonly escalation?: { readonly next?: ImportableRun };
+};
+
+/**
+ * A lens's runs that an import answers: the ID of the record of its first run, each run's outcome, which names that
+ * record's ID as `imported`, and the findings each run reported.
+ */
+export type ImportedLens = {
+	readonly record: string;
+	readonly outcomes: Record<string, Extract<LensRunOutcome, { status: "done" }> & { readonly imported: string }>;
+	readonly sightings: Record<string, readonly StoredFinding[]>;
+};
 
 // The kinds a review reuses, each with the one payload version this build reads. A round, an account and the kinds a
 // command writes, a dismissal among them, answer no request a producer asks.
@@ -201,6 +224,67 @@ export class ImportedRecords {
 			files: payload.files.map(({ path, summary }) => ({ path, summary })),
 			...(payload.diagram === null ? {} : { diagram: payload.diagram }),
 			...(payload.note === null ? {} : { note: payload.note }),
+		};
+	}
+
+	/**
+	 * The runs of the lens whose first run is `first` that records at `revision` answer, or `undefined` unless every run
+	 * the lens ended on has one: a record of a run of the same lens, version and level under its request's key that
+	 * finished as asked, within its budgets, on a model `refused` does not refuse, and did not probe. A quick run that
+	 * escalated answers only beside a record of the run it escalated to. A probing run is never imported.
+	 */
+	lens(
+		revision: string,
+		first: ImportableRun,
+		refused: (key: string, model: string) => boolean,
+	): ImportedLens | undefined {
+		const answer = (run: ImportableRun) => {
+			if (run.request === undefined || run.probe !== undefined) return undefined;
+			const record = this.match("lens", revision, run.request);
+			if (record === undefined) return undefined;
+			const payload = record.payload as unknown as LensPayload;
+			const { outcome } = payload;
+			if (payload.name !== run.name || payload.version !== run.version || payload.level !== run.level)
+				return undefined;
+			if (payload.probe || outcome.status !== "done" || outcome.budgetEnded !== null || outcome.capped !== null)
+				return undefined;
+			if (outcome.model !== null && refused(run.key, outcome.model)) return undefined;
+			const { escalation, usage } = outcome;
+			const stored: Extract<LensRunOutcome, { status: "done" }> & { readonly imported: string } = {
+				status: "done",
+				...(outcome.model === null ? {} : { model: outcome.model }),
+				...(escalation === null
+					? {}
+					: {
+							escalation: {
+								trigger: { ...escalation.trigger },
+								...(escalation.to === null ? {} : { to: escalation.to }),
+								carried: [...escalation.carried],
+								kept: [...escalation.kept],
+								refuted: [...escalation.refuted],
+							},
+						}),
+				...(usage === null
+					? {}
+					: { usage: { models: [...usage.models], tokens: usage.tokens, cost: usage.costMicros / 1_000_000 } }),
+				imported: record.id,
+			};
+			return { id: record.id, outcome: stored, sightings: payload.sightings as unknown as StoredFinding[] };
+		};
+		const opening = answer(first);
+		if (opening === undefined) return undefined;
+		const runs = [[first.key, opening] as const];
+		const to = opening.outcome.escalation?.to;
+		if (to !== undefined) {
+			const next = first.escalation?.next;
+			const escalated = next === undefined || next.key !== to ? undefined : answer(next);
+			if (escalated === undefined) return undefined;
+			runs.push([to, escalated]);
+		}
+		return {
+			record: opening.id,
+			outcomes: Object.fromEntries(runs.map(([key, { outcome }]) => [key, outcome])),
+			sightings: Object.fromEntries(runs.map(([key, { sightings }]) => [key, sightings])),
 		};
 	}
 }

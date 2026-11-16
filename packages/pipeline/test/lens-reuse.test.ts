@@ -48,7 +48,26 @@ describe("lensCopies", () => {
 			[renamed, other],
 			never,
 		);
-		expect([copies[renamed.key]?.nonce, copies[other.key]?.nonce]).toEqual(["n4", "n9"]);
+		expect(copies[renamed.key]).toMatchObject({ nonce: "n4" });
+		expect(copies[other.key]).toMatchObject({ nonce: "n9" });
+	});
+
+	it("keeps a copy of an imported lens an import, naming its record and no task or nonce", () => {
+		const outcome = done({ imported: "record-1" });
+		const copies = lensCopies(
+			{
+				task: 9,
+				nonce: "n9",
+				lenses: [careful],
+				result: { [careful.key]: outcome },
+				reused: { [careful.key]: { record: "record-1" } },
+			},
+			[careful],
+			never,
+		);
+		expect(copies).toEqual({
+			[careful.key]: { record: "record-1", outcomes: { [careful.key]: { ...outcome, reused: 9 } } },
+		});
 	});
 
 	it("matches by the request's key, not the lens's", () => {

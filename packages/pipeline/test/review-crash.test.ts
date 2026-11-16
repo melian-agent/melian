@@ -1,10 +1,20 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, type Decider, defaultConfig, Lens, type ReviewProvider, Revision } from "@melian-agent/core";
+import {
+	Changeset,
+	type Decider,
+	defaultConfig,
+	Lens,
+	MemoryRecordStore,
+	type ReviewProvider,
+	Revision,
+	reviewPayloads,
+	SharedRecord,
+} from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -96,15 +106,25 @@ async function killWhen(
 		| "replacement"
 		| "lens-failover"
 		| "verifier-failover"
-		| "wave",
+		| "wave"
+		| "imported",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
+	records?: string,
 ): Promise<void> {
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
-		["--conditions=@melian-agent/source", crashScript, scenario, repo, database, log],
+		[
+			"--conditions=@melian-agent/source",
+			crashScript,
+			scenario,
+			repo,
+			database,
+			log,
+			...(records === undefined ? [] : [records]),
+		],
 		{
 			stdio: ["ignore", "ignore", "pipe"],
 		},
@@ -1805,5 +1825,113 @@ describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
 		expect(recorded!.decisions[reviewedRevision()]!.triage).toMatchObject({ task: 999_999 });
 		expect(recorded!.decisions[reviewedRevision()]!.triage!.decision).toBeUndefined();
 		expect(recorded!.decisions[reviewedRevision()]!.triage!.failure).toBeUndefined();
+	});
+});
+
+describe("an imported lens across a real kill", { timeout: 60_000 }, () => {
+	// One host's review of the crash repository on `fake`, at the routes the crash script reviews on.
+	const reviewOn = async (fake: ReturnType<typeof createFakeModels>, store?: MemoryRecordStore) => {
+		const heavy = fake.ref("heavy");
+		const medium = fake.ref("medium");
+		return await reviewChangeset({
+			harness: harness!,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			// The lenses' own budgets: a run its findings budget capped is never reused.
+			lenses: await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]),
+			standards: [],
+			checks: [],
+			models: fake.review,
+			...(store === undefined ? {} : { records: store }),
+		});
+	};
+	const verifying = {
+		match: "Melian adversarial verifier",
+		replies: Array.from(
+			{ length: 4 },
+			() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+		),
+	};
+
+	it("resumes a lens task that imported a lens, asking that lens nothing and keeping the finding it imported", async () => {
+		const first = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		scriptConversations(first, [
+			{
+				match: "You are the correctness reviewer",
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+			verifying,
+		]);
+		harness = await openHarness(createMemoryStorage(), {
+			models: first.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const exported = await reviewOn(first, store);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		// Only correctness's record, so contracts runs, and parks, in the process the test kills.
+		const lensRecords = (await store.list(changeset.id)).filter(
+			({ kind, payload }) => kind === "lens" && (payload as { name: string }).name === "correctness",
+		);
+		await harness.close(context);
+		harness = undefined;
+		const records = join(dir, "records.json");
+		writeFileSync(records, JSON.stringify(lensRecords));
+
+		const database = join(dir, "imported.sqlite");
+		const log = join(dir, "imported.jsonl");
+		await killWhen(
+			"imported",
+			(events) => events.some((event) => event.event === "model-request" && event.lens === "contracts"),
+			database,
+			log,
+			records,
+		);
+		expect(
+			readEvents(log).filter((event) => event.event === "model-request" && event.lens === "correctness"),
+		).toEqual([]);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+			verifying,
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const { verdict } = await reviewOn(fake);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(0);
+		expect(requests["You are the contracts reviewer"]).toHaveLength(1);
+		expect(exported.verdict.all().map((finding) => finding.toJSON().ruleId)).toEqual([
+			expect.stringContaining("null-dereference"),
+		]);
+		expect(verdict.all().map((finding) => finding.id)).toEqual(exported.verdict.all().map((finding) => finding.id));
+		// The task the crash left imported correctness: its input names the record, and no task or nonce of this host's.
+		// The lens's two records, as it ended and with its decided check, agree, so the import stands on the first by ID.
+		const [id] = lensRecords.map((each) => SharedRecord.parseEnvelope(each).id).sort();
+		const root = (await harness.root(context)).id;
+		const [known] = Object.values((await harness.snapshot(ReviewIndex, root, context))!.reviews);
+		const task = await harness.getTask(known!.task as TaskId, context);
+		const { reused } = task!.input as { reused?: Record<string, unknown> };
+		const key = Object.keys(reused ?? {}).find((each) => each.startsWith("correctness@"))!;
+		expect(lensRecords).toHaveLength(2);
+		expect(reused).toEqual({
+			[key]: { record: id, outcomes: { [key]: expect.objectContaining({ status: "done", imported: id }) } },
+		});
 	});
 });

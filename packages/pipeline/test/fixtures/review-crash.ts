@@ -16,7 +16,10 @@
 // committed, before the tool's result is stored and before adjudication.
 // `wave` lets correctness finish while contracts parks in its first model request, and parks once the wave that verifies
 // correctness's claim has committed its report_verdict, before the tool's result is stored.
-import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
+// `imported` imports correctness from the records in the file its fifth argument names, and parks in contracts' first
+// model request, after the commit that created the lens task.
+import { readFileSync } from "node:fs";
+import { Changeset, type Decider, defaultConfig, Lens, type RecordEnvelope, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
 import { CallerContext } from "../../src/callers.ts";
@@ -31,6 +34,7 @@ import {
 	openSqliteStorage,
 	Type,
 } from "../../src/harness.ts";
+import { ImportedRecords } from "../../src/imported-records.ts";
 import { lensReadTools, reportFinding, reportVerdict } from "../../src/lens-tools.ts";
 import { lensExtension, reviewChangeset } from "../../src/review.ts";
 import {
@@ -52,7 +56,7 @@ import {
 	twoLensTiers,
 } from "./review-scenario.ts";
 
-const [scenario, repo, database, log] = process.argv.slice(2) as [
+const [scenario, repo, database, log, records] = process.argv.slice(2) as [
 	(
 		| "finding"
 		| "legacy"
@@ -73,10 +77,12 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "lens-failover"
 		| "verifier-failover"
 		| "wave"
+		| "imported"
 	),
 	string,
 	string,
 	string,
+	string?,
 ];
 const park = () => new Promise<never>(() => setInterval(() => {}, 60_000));
 Object.assign(process.env, isolatedGitEnv);
@@ -216,6 +222,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	decision: [done],
 	replacement: [done],
 	wave: [toolUse("report_finding", crashFinding), done],
+	imported: [requested("correctness")],
 };
 scriptConversations(fake, [
 	...(["verifier", "verdict", "conflicting-verdict", "lowered-verdict", "verifier-failover", "wave"].includes(scenario)
@@ -258,14 +265,12 @@ scriptConversations(fake, [
 	{
 		match: "You are the contracts reviewer",
 		replies: [
-			scenario === "request" || scenario === "callers" || scenario === "functions" || scenario === "wave"
-				? requested("contracts")
-				: done,
+			["request", "callers", "functions", "wave", "imported"].includes(scenario) ? requested("contracts") : done,
 		],
 	},
 ]);
 function lensesFor(lenses: Lens[]) {
-	if (scenario === "escalation" || scenario === "decision") return lenses;
+	if (scenario === "escalation" || scenario === "decision" || scenario === "imported") return lenses;
 	if (scenario === "spent" || scenario === "tokens") return budgetLenses(lenses, endingBudgets[scenario]);
 	return scenario === "read" ? budgetLenses(lenses) : crashLenses(lenses);
 }
@@ -336,6 +341,11 @@ const options = {
 	checks: [],
 	standards: [],
 	models: fake.review,
+	...(records === undefined
+		? {}
+		: {
+				imported: ImportedRecords.from(changeset.id, JSON.parse(readFileSync(records, "utf8")) as RecordEnvelope[]),
+			}),
 	...(scenario === "replacement"
 		? {
 				policy: { kind: "revision" as const, commit: changeset.revision.base },

@@ -14,17 +14,17 @@ export type ReusableOutcome = {
 	readonly capped?: number;
 	readonly escalation?: { readonly to?: string };
 	readonly reused?: number;
+	readonly imported?: string;
 };
 
 /**
  * A lens's runs copied from an earlier task: that task, the nonce its conversations were rendered under, and the outcome
- * of each run it copies, by key.
+ * of each run it copies, by key. A lens imported from another host's records names the record of its first run instead,
+ * since no conversation of this host's holds it.
  */
-export type LensCopy<Outcome> = {
-	readonly task: number;
-	readonly nonce: string;
-	readonly outcomes: Record<string, Outcome>;
-};
+export type LensCopy<Outcome> =
+	| { readonly task: number; readonly nonce: string; readonly outcomes: Record<string, Outcome> }
+	| { readonly record: string; readonly outcomes: Record<string, Outcome> };
 
 // A run that ended as asked: answered, on a model the plan accepts, within its budgets, and not a probe. A probing run is
 // never copied, so every finding it reports rests on a probe of its own review.
@@ -56,7 +56,7 @@ export function lensCopies<Outcome extends ReusableOutcome>(
 		readonly nonce: string;
 		readonly lenses: readonly ReusableRun[];
 		readonly result: Record<string, Outcome>;
-		readonly reused?: Readonly<Record<string, { readonly nonce: string }>>;
+		readonly reused?: Readonly<Record<string, { readonly nonce: string } | { readonly record: string }>>;
 	},
 	lenses: readonly ReusableRun[],
 	refused: (key: string, model: string) => boolean,
@@ -75,13 +75,15 @@ export function lensCopies<Outcome extends ReusableOutcome>(
 			if (next === undefined || next.key !== to || !finished(next, previous.result[to], refused)) continue;
 			runs.push([next, previous.result[to]!]);
 		}
-		copies[first.key] = {
-			task: previous.task,
-			nonce: previous.reused?.[earlier.key]?.nonce ?? previous.nonce,
-			outcomes: Object.fromEntries(
-				runs.map(([run, each]) => [run.key, { ...each, reused: each.reused ?? previous.task }]),
-			),
-		};
+		const outcomes = Object.fromEntries(
+			runs.map(([run, each]) => [run.key, { ...each, reused: each.reused ?? previous.task }]),
+		);
+		// A copy of an imported lens stays an import, since the earlier task held no conversation of it either.
+		const copied = previous.reused?.[earlier.key];
+		copies[first.key] =
+			copied !== undefined && "record" in copied
+				? { record: copied.record, outcomes }
+				: { task: previous.task, nonce: copied?.nonce ?? previous.nonce, outcomes };
 	}
 	return copies;
 }

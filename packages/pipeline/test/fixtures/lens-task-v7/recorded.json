@@ -1,0 +1,18 @@
+{
+  "commit": "374fdaf7",
+  "base": "653d2f2f1e3aeaee50ca6b95bae23d829d3400f6",
+  "head": "8335949a8be5e1d573a0e2b51f10c5c16a9e7b31",
+  "revision": "653d2f2f1e3aeaee50ca6b95bae23d829d3400f6..8335949a8be5e1d573a0e2b51f10c5c16a9e7b31",
+  "lensTask": {
+    "version": 7
+  },
+  "verdict": "findings",
+  "findings": [
+    "8f3f919a7c886b44"
+  ],
+  "lenses": [
+    "contracts@dd8fb36095b4@careful request 7d0f1d40b70ef3016ed036e3180c51e4519c86760700911f49959010a1d08978",
+    "correctness@18c49f913df8@careful request eb0ac5b3c4c7def4d5651a622f48fcd190c1a616f5d1524a4cf33e871b909996"
+  ],
+  "task": 9
+}
