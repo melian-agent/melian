@@ -2,6 +2,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import type * as Fs from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
@@ -10,6 +12,12 @@ import type { Clock } from "../src/deadline.ts";
 import { Owner } from "../src/owner.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
+
+// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing.
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const actual = await importOriginal<typeof Fs>();
+	return { ...actual, readdir: vi.fn(actual.readdir) };
+});
 
 let remote: Remote;
 let directory: string;
@@ -167,6 +175,26 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		const store = await remote.open({ directory, processes: { list: () => table } });
 		expect(planted(suffix)).toEqual(gone);
 		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
+	});
+
+	it("sweeps in name order whatever order the directory lists its entries", async () => {
+		const table = new ProcessTable().list();
+		const suffixes = [owned(4_000_000), owned(4_000_000)].sort();
+		for (const suffix of suffixes) plant(suffix);
+		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
+		vi.mocked(readdir).mockImplementation((async (path: string) =>
+			((await listed(path)) as string[]).sort().reverse()) as unknown as typeof readdir);
+		try {
+			const store = await remote.open({ directory, processes: { list: () => table } });
+			const [first, second] = suffixes.map(names);
+			expect(store.sweep).toEqual({
+				removed: [first[0], second[0], first[1], first[2], second[1], second[2], first[3], second[3]],
+				kept: [],
+				failed: [],
+			});
+		} finally {
+			vi.mocked(readdir).mockImplementation(listed);
+		}
 	});
 
 	it("keeps and names what another host made, whose processes it cannot see", async () => {
