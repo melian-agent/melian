@@ -114,7 +114,7 @@ import {
 	UsageDoc,
 } from "./harness.ts";
 import { continuePrompt, lensRequest } from "./lens-request.ts";
-import { judgedModels, type LensCopy, lensCopies } from "./lens-reuse.ts";
+import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
 	budgetEnded,
 	findingsCapped,
@@ -145,6 +145,7 @@ import {
 	type EarlierFinding,
 	headRefusal,
 	ProbeReruns,
+	type ProbesTried,
 	ProbingDocument,
 	type ProbingEnvironment,
 	plannerContext,
@@ -152,6 +153,7 @@ import {
 	probeClaimKey,
 	probeConclusive,
 	proberInstructions,
+	probesConclusive,
 	probingHost,
 	recordPlanPrompt,
 	renderPlan,
@@ -1256,6 +1258,34 @@ function planned(options: ReviewOptions): ReviewOptions {
 	return { ...options, config: { ...options.config, models: plan.routes() }, checks };
 }
 
+// The models a run's check is judged by: the one it finished on, and its prober's when the prober answers to the level's
+// own tier, as its planner does. A prober on a tier of its own is not yet judged, by the prober-tier lineage limit.
+function judgedModels(
+	outcome: { readonly model?: string; readonly probing?: { readonly model?: string } },
+	probe: LensRun["probe"],
+): string[] {
+	const prober = probe?.onLevelTier === true ? outcome.probing?.model : undefined;
+	return [outcome.model, prober].filter((model) => model !== undefined);
+}
+
+/**
+ * Whether a finished run may stand for its lens in a later review, by copy, by attachment or past `--rerun`. Two halves:
+ * the record it gives reads ran, on models the plan accepts, and every probe its prober tried, `tried`, ended
+ * conclusively. A run whose record reads ended or failed, for any reason the record knows, or that holds a probe that
+ * says nothing, is asked again.
+ */
+export function runStands(
+	run: LensRun,
+	outcome: LensOutcome | undefined,
+	refused: (key: string, model: string) => boolean,
+	tried: ProbesTried | undefined,
+): boolean {
+	if (lensRecord(run, outcome, true, [], []).status !== "ran" || !probesConclusive(tried)) return false;
+	// Only a done outcome's record reads ran.
+	const done = outcome as Extract<LensOutcome, { status: "done" }>;
+	return !judgedModels(done, run.probe).some((model) => refused(run.key, model));
+}
+
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
 // names the model that ran.
 function ranOn(
@@ -1635,19 +1665,32 @@ function callersShown(callers: StoredCallers | undefined): string | undefined {
 	]);
 }
 
+// Reads the probes a prober's conversation tried.
+type ProbeReader = (prober: ConversationId) => Promise<ProbesTried | undefined>;
+
+// The probes each run of `result` tried, by run key, from its prober's conversation; nothing for a run without one.
+async function probesTriedIn(result: LensResult, read: ProbeReader): Promise<Record<string, ProbesTried | undefined>> {
+	const tried: Record<string, ProbesTried | undefined> = {};
+	for (const [key, outcome] of Object.entries(result))
+		if (outcome.prober !== undefined) tried[key] = await read(outcome.prober);
+	return tried;
+}
+
 // The lenses of `lenses` a new lens task copies from `previous`, the task the review's index entry names, when it
 // completed and its runs were shown the callers `callers` shows.
-function copiesFrom(
+async function copiesFrom(
 	previous: TaskRecord<unknown, unknown, unknown> | undefined,
 	lenses: readonly LensRun[],
 	callers: StoredCallers | undefined,
 	refused: (key: string, model: string) => boolean,
-): Record<string, LensCopy<LensResult[string]>> {
+	read: ProbeReader,
+): Promise<Record<string, LensCopy<LensResult[string]>>> {
 	if (previous?.state.status !== "terminal") return {};
 	const { outcome } = previous.state;
 	if (outcome.status !== "completed") return {};
 	const earlier = previous.input as StoredLensTaskInput;
 	if (callersShown(earlier.callers) !== callersShown(callers)) return {};
+	const tried = await probesTriedIn(outcome.result as LensResult, read);
 	return lensCopies(
 		{
 			task: previous.id,
@@ -1657,7 +1700,7 @@ function copiesFrom(
 			reused: earlier.reused,
 		},
 		lenses,
-		refused,
+		(run, each) => runStands(run, each, refused, tried[run.key]),
 	);
 }
 
@@ -1702,10 +1745,12 @@ async function runLenses(
 			known.lenses.join("\n") === selection.join("\n") &&
 			record !== undefined &&
 			(record.state.status !== "terminal" || finished(record, undecided)) &&
-			!(rerun && lensFailed(record!, refused));
+			!(await lensFailed(record!, refused, (id) => harness.snapshot(ProbingDocument, id, context), !rerun));
 		if (attaches) attachesTo = known.task;
 		else {
-			const copied = copiesFrom(record, input.lenses, input.callers, refused);
+			const copied = await copiesFrom(record, input.lenses, input.callers, refused, (id) =>
+				harness.snapshot(ProbingDocument, id, context),
+			);
 			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
 			unlockedFor = Object.keys(copied).join("\n");
 		}
@@ -1721,12 +1766,14 @@ async function runLenses(
 		const attach =
 			same &&
 			(await attachable(tx, known.task, undecided)) &&
-			!(rerun && (await anyLensFailed(tx, known.task, refused)));
+			!(await anyLensFailed(tx, known.task, refused, !rerun));
 		// A task other than the one the read found asks lenses whose providers this review left locked, so commit again.
 		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused = copiesFrom(previous, input.lenses, input.callers, refused);
+		const reused = await copiesFrom(previous, input.lenses, input.callers, refused, (id) =>
+			tx.doc(ProbingDocument, id),
+		);
 		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
 		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
@@ -1801,19 +1848,24 @@ async function runLenses(
 	};
 }
 
-// Whether a finished lens task left a lens without an answer, which `rerun` asks to try again.
-// A lens that finished on a model the plan refuses, such as a fallback outside a guarded accept, counts as failed, as
-// its record does once `plan.mark` judges it, so `rerun` runs it again rather than reuse the refused result.
+// Whether a finished lens task holds a run that may not stand, by `runStands`, so a repeat review replaces the task
+// rather than attach to it. Under `--rerun` every run is asked. Otherwise, with `probingOnly`, only a run that probes:
+// a repeat review attaches to a task whose other lenses failed and shows what it stored, as it always has, and only
+// a probing run is new to reuse.
 async function anyLensFailed(
 	tx: Tx,
 	id: number | undefined,
 	refused: (key: string, model: string) => boolean,
+	probingOnly: boolean,
 ): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
-	return record !== undefined && lensFailed(record, refused);
+	return (
+		record !== undefined &&
+		(await lensFailed(record, refused, (prober) => tx.doc(ProbingDocument, prober), probingOnly))
+	);
 }
 
-function lensFailed(
+async function lensFailed(
 	record: {
 		readonly input: unknown;
 		readonly state: {
@@ -1822,14 +1874,19 @@ function lensFailed(
 		};
 	},
 	refused: (key: string, model: string) => boolean,
-): boolean {
+	read: ProbeReader,
+	probingOnly: boolean,
+): Promise<boolean> {
 	const { outcome } = record.state;
 	if (record.state.status !== "terminal" || outcome === undefined) return false;
-	if (outcome.status !== "completed") return true;
-	const runs = new Map(runsOf((record.input as StoredLensTaskInput).lenses).map((run) => [run.key, run]));
-	return Object.entries(outcome.result as LensResult).some(
-		([key, lens]) =>
-			lens.status !== "done" || judgedModels(lens, runs.get(key)?.probe).some((model) => refused(key, model)),
+	if (outcome.status !== "completed") return !probingOnly;
+	const result = outcome.result as LensResult;
+	const tried = await probesTriedIn(result, read);
+	return runsOf((record.input as StoredLensTaskInput).lenses).some(
+		(run) =>
+			result[run.key] !== undefined &&
+			!(probingOnly && run.probe === undefined) &&
+			!runStands(run, result[run.key], refused, tried[run.key]),
 	);
 }
 

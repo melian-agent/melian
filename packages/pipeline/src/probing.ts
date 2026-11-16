@@ -264,6 +264,23 @@ export function probingHost(sandbox: ProbeSandbox): ProbingHost {
 	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node };
 }
 
+/** The probes a prober's conversation tried, by the ID each run_probe call took, and the result of each that ran. */
+export type ProbesTried = {
+	readonly attempts?: readonly string[];
+	readonly probes?: Readonly<Record<string, { readonly result: StoredProbeResult }>>;
+};
+
+/**
+ * Whether every probe a prober tried ended conclusively, by {@link probeConclusive}: one the sandbox refused left no
+ * result, and one that timed out, was cut or was ended by a signal says nothing.
+ */
+export function probesConclusive(tried: ProbesTried | undefined): boolean {
+	return (tried?.attempts ?? []).every((id) => {
+		const probe = tried?.probes?.[id];
+		return probe !== undefined && probeConclusive(probe.result);
+	});
+}
+
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
 export function probeFailed(result: StoredProbeResult): boolean {
 	return probeConclusive(result) && result.exitCode !== 0;

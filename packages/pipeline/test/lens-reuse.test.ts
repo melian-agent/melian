@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { lensCopies, type ReusableOutcome, type ReusableRun } from "../src/lens-reuse.ts";
+import { lensCopies, type ReusableOutcome } from "../src/lens-reuse.ts";
 
-const never = () => false;
+type Run = { readonly key: string; readonly request?: string; readonly escalation?: { readonly next?: Run } };
+type Outcome = ReusableOutcome & { readonly model?: string };
 
-const done = (extra: Partial<ReusableOutcome> = {}): ReusableOutcome => ({
-	status: "done",
-	model: "anthropic/claude-a",
-	...extra,
-});
+// The review decides which runs may stand; here, every done one.
+const never = (_run: Run, outcome: Outcome | undefined) => outcome?.status === "done";
 
-const careful: ReusableRun = { key: "a@1@careful", request: "r-careful" };
-const quick: ReusableRun = { key: "a@1@quick", request: "r-quick", escalation: { next: careful } };
-const other: ReusableRun = { key: "b@1@careful", request: "r-other" };
+const done = (extra: Partial<Outcome> = {}): Outcome => ({ status: "done", model: "anthropic/claude-a", ...extra });
+
+const careful: Run = { key: "a@1@careful", request: "r-careful" };
+const quick: Run = { key: "a@1@quick", request: "r-quick", escalation: { next: careful } };
+const other: Run = { key: "b@1@careful", request: "r-other" };
 
 describe("lensCopies", () => {
 	it("copies a lens whose request matches a finished run, naming the task that asked it", () => {
@@ -62,69 +62,23 @@ describe("lensCopies", () => {
 		expect(Object.keys(copies[renamed.key]!.outcomes)).toEqual([careful.key]);
 	});
 
+	it("copies only a run the review says may stand, and only with the run it escalated to standing too", () => {
+		const result = { [quick.key]: done({ escalation: { to: careful.key } }), [careful.key]: done() };
+		const asked: string[] = [];
+		const stands = (run: Run) => {
+			asked.push(run.key);
+			return run.key !== careful.key;
+		};
+		expect(lensCopies({ task: 3, nonce: "n3", lenses: [quick], result }, [quick], stands)).toEqual({});
+		expect(asked).toEqual([quick.key, careful.key]);
+		expect(lensCopies({ task: 3, nonce: "n3", lenses: [careful], result }, [careful], () => false)).toEqual({});
+	});
+
 	it("copies nothing for a run with no request key, as an older task's runs have", () => {
 		const { request: _, ...unkeyed } = careful;
 		expect(
 			lensCopies({ task: 3, nonce: "n3", lenses: [unkeyed], result: { [careful.key]: done() } }, [unkeyed], never),
 		).toEqual({});
-	});
-
-	it.each([
-		["a failed run", { status: "failed" }],
-		["a run whose budget ended", { budgetEnded: "tokens" }],
-		["a capped run", { capped: 8 }],
-	])("never copies %s", (_, extra) => {
-		const result = { [careful.key]: done(extra as Partial<ReusableOutcome>) };
-		expect(lensCopies({ task: 3, nonce: "n3", lenses: [careful], result }, [careful], never)).toEqual({});
-	});
-
-	it("never copies a run that ended on a model the plan now refuses", () => {
-		const result = { [careful.key]: done() };
-		const refused = (key: string, model: string) => key === careful.key && model === "anthropic/claude-a";
-		expect(lensCopies({ task: 3, nonce: "n3", lenses: [careful], result }, [careful], refused)).toEqual({});
-		expect(
-			lensCopies({ task: 3, nonce: "n3", lenses: [careful], result }, [careful], (key) => key !== careful.key),
-		).not.toEqual({});
-	});
-
-	it("copies a run with no model recorded, since nothing names one to refuse", () => {
-		const { model: _, ...unnamed } = done();
-		expect(
-			Object.keys(
-				lensCopies(
-					{ task: 3, nonce: "n3", lenses: [careful], result: { [careful.key]: unnamed } },
-					[careful],
-					() => true,
-				),
-			),
-		).toEqual([careful.key]);
-	});
-
-	it("copies a probing run that finished as asked, as it copies any run", () => {
-		const probing = { ...careful, probe: {} };
-		expect(
-			lensCopies({ task: 3, nonce: "n3", lenses: [probing], result: { [careful.key]: done() } }, [probing], never),
-		).toEqual({ [careful.key]: { task: 3, nonce: "n3", outcomes: { [careful.key]: { ...done(), reused: 3 } } } });
-	});
-
-	it.each([
-		["on its level's own tier, by the level's policy", { onLevelTier: true as const }, {}],
-		["on a tier of its own, which its check is not judged by", {}, { [careful.key]: "copied" }],
-	])("judges a probing run's prober %s", (_, probe, expected) => {
-		const probing = { ...careful, probe };
-		const result = { [careful.key]: { ...done(), probing: { model: "anthropic/claude-b" } } };
-		const refused = (key: string, model: string) => key === careful.key && model === "anthropic/claude-b";
-		const copies = lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], refused);
-		expect(Object.fromEntries(Object.keys(copies).map((key) => [key, "copied"]))).toEqual(expected);
-	});
-
-	it("copies a probing run whose planner and prober both finished on models the plan accepts", () => {
-		const probing = { ...careful, probe: { onLevelTier: true as const } };
-		const result = { [careful.key]: { ...done(), probing: { model: "anthropic/claude-b" } } };
-		const refused = (_key: string, model: string) => model === "anthropic/claude-z";
-		expect(Object.keys(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], refused))).toEqual([
-			careful.key,
-		]);
 	});
 
 	it("copies a quick run that did not escalate on its own", () => {
@@ -155,21 +109,6 @@ describe("lensCopies", () => {
 	])("never copies a quick run whose escalated run %s", (_, rest) => {
 		const result = { [quick.key]: done({ escalation: { to: careful.key } }), ...rest };
 		expect(lensCopies({ task: 3, nonce: "n3", lenses: [quick], result }, [quick], never)).toEqual({});
-	});
-
-	it("copies a quick run with the probing run it escalated to", () => {
-		const probing = { ...quick, escalation: { next: { ...careful, probe: {} } } };
-		const result = { [quick.key]: done({ escalation: { to: careful.key } }), [careful.key]: done() };
-		expect(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], never)).toEqual({
-			[quick.key]: {
-				task: 3,
-				nonce: "n3",
-				outcomes: {
-					[quick.key]: { ...result[quick.key], reused: 3 },
-					[careful.key]: { ...result[careful.key], reused: 3 },
-				},
-			},
-		});
 	});
 
 	it("never copies a quick run that escalated to a run other than the one it names", () => {

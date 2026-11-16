@@ -74,6 +74,10 @@ type Second = {
 	readonly plain?: typeof contracts & { readonly extra?: string };
 	// Runs once the first review has ended.
 	readonly before?: () => void;
+	// What the second review's models answer, when it differs from the first's.
+	readonly plan?: typeof planOne;
+	// The first review's sandbox refuses every probe of the head.
+	readonly refuseFirst?: boolean;
 };
 
 // Reviews one head twice, each on its own harness over one SQLite store, and says what each review asked, how many
@@ -87,17 +91,32 @@ async function twice(plan: typeof planOne, plain?: typeof contracts, second: Sec
 		const lens = index === 1 && second.plain !== undefined ? second.plain : plain;
 		let probes = 0;
 		// A probe runs in a tree of the head; the empty probe that checks the sandbox runs in one that holds nothing.
+		const inHead = (command: string) => {
+			const tree = /^cd '([^']+\/tree)'/.exec(command)?.[1];
+			return tree !== undefined && readdirSync(tree).length > 0;
+		};
+		const healthy = unconfinedSandbox((command) => {
+			if (inHead(command)) probes++;
+			return command;
+		});
+		const refusing = {
+			...healthy,
+			wrap: async (command: string, policy: Parameters<typeof healthy.wrap>[1]) => {
+				if (inHead(command)) throw new Error("the sandbox refused the probe");
+				return healthy.wrap(command, policy);
+			},
+		};
 		const sandbox = {
-			...unconfinedSandbox((command) => {
-				const tree = /^cd '([^']+\/tree)'/.exec(command)?.[1];
-				if (tree !== undefined && readdirSync(tree).length > 0) probes++;
-				return command;
-			}),
+			...(index === 0 && second.refuseFirst === true ? refusing : healthy),
 			...(index === 1 ? second.sandbox : {}),
 		};
-		const { harness, review, requests } = await probingReview(repo, database, plan(), sandbox, lens);
+		const replies = index === 1 && second.plan !== undefined ? second.plan() : plan();
+		const { harness, review, requests } = await probingReview(repo, database, replies, sandbox, lens);
 		try {
-			const { verdict } = await review();
+			const verdict = await review().then(
+				(done) => done.verdict,
+				(error: { verdict: Awaited<ReturnType<typeof review>>["verdict"] }) => error.verdict,
+			);
 			const asked = (match: string) => (requests[match] ?? []).length;
 			reviews.push({
 				planner: asked(plannerMatch),
@@ -141,6 +160,54 @@ describe("a repeat review of a level that probes", { timeout: 60_000 }, () => {
 			first.findings.map((each) => [each.id, "confirmed"]),
 		);
 		expect(again.reruns).toEqual(first.reruns);
+	});
+
+	it("plans and probes again when every probe of the first run was refused, and finds what it missed", async () => {
+		// The prober's probe is refused, and it skips the attack, so the first run reads as ran and clean.
+		const planRefused = () => ({
+			first: {
+				planner: planOne().first.planner,
+				prober: [
+					call("run_probe", { attack: 1, script: 'console.log("crashed");\nprocess.exit(1);\n' }),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Reported 0 findings."),
+				],
+			},
+			second: { planner: [], prober: [] },
+		});
+		const [first, again] = await twice(planRefused, undefined, { refuseFirst: true, plan: planOne });
+		expect(first).toMatchObject({ planner: 2, prober: 3, probes: 0, findings: [] });
+		expect(again).toMatchObject({ planner: 2, prober: 3, probes: 2 });
+		expect(again.findings.map((each) => each.properties.verification?.verdict)).toEqual(["confirmed"]);
+	});
+
+	it("plans and probes again beside a changed lens when the first run left an attack unanswered", async () => {
+		// The planner records two attacks; the prober answers only the first, even once reminded, so the lens ended.
+		const planOpen = () => ({
+			first: {
+				planner: [
+					call("record_plan", {
+						attacks: [
+							{ target: "src/user.ts managerName()", reason: "r", passing: "held", failing: "crashed" },
+							{ target: "src/user.ts User", reason: "r", passing: "held", failing: "crashed" },
+						],
+					}),
+					fauxAssistantMessage("Planned 2 attacks."),
+				],
+				prober: [
+					call("run_probe", { attack: 1, script: 'console.log("held");\n' }),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage("Still done."),
+				],
+			},
+			second: { planner: [], prober: [] },
+		});
+		const [first, again] = await twice(planOpen, contracts, {
+			plain: { ...contracts, extra: "Read every caller." },
+			plan: planOne,
+		});
+		expect(first).toMatchObject({ planner: 2, prober: 3 });
+		expect(again).toMatchObject({ planner: 2, prober: 3, plain: 1 });
 	});
 
 	it("copies the review's other lens beside the probing run, and asks neither again", async () => {

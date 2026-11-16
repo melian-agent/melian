@@ -2457,6 +2457,29 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 	});
 
 	it.each([
+		["--rerun", true],
+		["a plain repeat", false],
+	])("runs a lens again on %s once its prober left an attack unanswered", async (_, rerun) => {
+		const fake = createFakeModels();
+		const first = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage("Still done."),
+				],
+			},
+			{ fake },
+		);
+		expect(record((await first.run).verdict)).toMatchObject({ status: "ended" });
+		const again = await review({ planner: plan, prober: probing(passing) }, { fake, rerun });
+		const { verdict } = await again.run;
+		expect(again.requests[planner]).toHaveLength(2);
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+	});
+
+	it.each([
 		["the root's", false],
 		["the scoped variant's", true],
 	])("fails a moved lens when %s prober alone finished on a model the committed tier refuses", async (_, scoped) => {
