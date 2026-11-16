@@ -1,0 +1,1124 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "44db99f910f7ea0c34ffdf527c9e8e0d2854ed0a",
+    "head": "3b3fa94cf3160abb623d9cea4c48463df7c93f67"
+  },
+  "claimsIn": [
+    "packages/core/src/static.ts",
+    "packages/pipeline/src/review-records.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/core/src/static.ts",
+      "line": 398,
+      "column": 9,
+      "endLine": 398,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "978e4c40a4fe44e3b70e22fb047d1ec21cf3e13ee2ca4781fccff35c3c916703"
+    },
+    {
+      "file": "packages/core/src/static.ts",
+      "line": 398,
+      "column": 31,
+      "endLine": 398,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9683336e7c4d7f97995211e0bc57d5667825b2a17c6dd50f9f7308783b456ae9"
+    },
+    {
+      "file": "packages/core/src/static.ts",
+      "line": 398,
+      "column": 76,
+      "endLine": 398,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8e207975c26bfe91fc2da0400000b5f873eff70d9e72d2be0ac6ca8bad637333"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 334,
+      "column": 13,
+      "endLine": 337,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "928c715f7a673e5510e370b43de0a04515fdd72602a581e700df68c14385479c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as the dismissed sighting of a static finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 398,
+      "column": 53,
+      "endLine": 398,
+      "endColumn": 83,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "442cf325d20f61f8afc43b1a78ba8eac249213fcc1fdcb41f68cc2887ad76d57",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps a Biome or tsc finding, and a lens's, as they are"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 398,
+      "column": 54,
+      "endLine": 398,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3653ea0d13ba08f4ff51445c84c151b5a4579b2459288e5ea143dfb6e2cb49d5"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 398,
+      "column": 70,
+      "endLine": 398,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "88c65d900520538632cc0a892caa5efc0fc50c92af16b303973172ede82e9f19"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 401,
+      "column": 57,
+      "endLine": 410,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0397a793a14c40ce9097bd72e4f7d2b7103d141bfe7131af9b5781b2cfb16bb1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 5,
+      "endLine": 403,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e152c65203662d76ed0d15b999eb9b08afae4e6c768c12766c93abddb9033880",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 5,
+      "endLine": 403,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "58d21f2d84ff99337ec21a4f1332451605bd80e4315b0c91d479350947f27605",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps a Biome or tsc finding, and a lens's, as they are"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 5,
+      "endLine": 403,
+      "endColumn": 63,
+      "mutatorName": "LogicalOperator",
+      "replacement": "!check.startsWith(\"static.\") && fixedStaticText.has(check)",
+      "status": "generated",
+      "id": "24ed050d100a30192fa24261155675302b4159794f8ce34a5b077bef5dc6caf0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps a Biome or tsc finding, and a lens's, as they are"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 5,
+      "endLine": 403,
+      "endColumn": 33,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "check.startsWith(\"static.\")",
+      "status": "generated",
+      "id": "84a1e78933a1c643216a8a96c510550f154ccbded3ad36f9a5ab15d4e5519353",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 6,
+      "endLine": 403,
+      "endColumn": 33,
+      "mutatorName": "MethodExpression",
+      "replacement": "check.endsWith(\"static.\")",
+      "status": "generated",
+      "id": "5641a34e44c45bc9aac20a581e56b0741fea364fd18b805573ee5fa03726baf4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 403,
+      "column": 23,
+      "endLine": 403,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "639028a6d1a793bd8857fabdca5403d01f40e8bca2bc38009d484aa77a41229f"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 404,
+      "column": 14,
+      "endLine": 404,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "596eeb092bace8263940dbe2556a3058f7422d26a01373d4c49e86da24a1d4d5"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 405,
+      "column": 8,
+      "endLine": 409,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7f3359c763f35fe909cc3741c48539db84d8f2e186909e5a6393fa6668042eeb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 407,
+      "column": 11,
+      "endLine": 407,
+      "endColumn": 45,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "aa2e66ed18248cd207e26b92513a57423a2cb5bf2fcfa6b42fb4cce0d9879659",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 408,
+      "column": 14,
+      "endLine": 408,
+      "endColumn": 101,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0bf1a0d2ae3a9a70d148e1353c72b5b03bd57c1abb8767966e8a4efc9afca775",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 408,
+      "column": 52,
+      "endLine": 408,
+      "endColumn": 99,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b24b05d7bbee91abd6c317f74dc59a8357a262225a424150c3ecc319f7c746c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record holds no text Enola or the mutation check wrote",
+            "as Enola's message on a located finding"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 415,
+      "column": 5,
+      "endLine": 417,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8c1fca6551751db5269499573ae3d5ae4e96cd402dc1c916c6c9ad9dca788d9e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 417,
+      "column": 9,
+      "endLine": 419,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ac439e1d457c3df8b4bc17cc1c975158a50339bda034a1ba0ecd9b64cf705c00",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "An emptied catch leaves parsed unset, so parsed ?? {} has no format_version and receipt() returns withheld, as the catch does."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 420,
+      "column": 56,
+      "endLine": 420,
+      "endColumn": 68,
+      "mutatorName": "LogicalOperator",
+      "replacement": "parsed && {}",
+      "status": "generated",
+      "id": "1a86eb500798aa62beb34f821d3cd31d1a8ec8b36e62d6b896deed02c3e6a79f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 426,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "765deb954cc31f31324ce0e38338bfb8bf12570f3627bc2b44ba0b572c49d908",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 426,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b75957a1b4214bb6140e9847591abb05ebfec846fa40b81fe7062d18f7710c5d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 426,
+      "endColumn": 52,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(format_version !== 1 || typeof snapshot_id !== \"string\" || !/^sha256:[a-f0-9]{64}$/.test(snapshot_id) || typeof enola_version !== \"string\") && !/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)",
+      "status": "generated",
+      "id": "5c1e7f2bd4f6a0713ffa6b937e4d2a8c4c29f9a058edd2a6a6d482f3164c0bcb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 425,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7b02c45ae62926652207fcf05d010bef3e20c479115738516e9e6cf55fdc3728",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 425,
+      "endColumn": 35,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(format_version !== 1 || typeof snapshot_id !== \"string\" || !/^sha256:[a-f0-9]{64}$/.test(snapshot_id)) && typeof enola_version !== \"string\"",
+      "status": "generated",
+      "id": "4e54d3a6fba9f342dec309abce7f7d99686a19337cfab80aa0b71eb92b60db35",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 424,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "32e7ec56cf5fcbe8978298c1b2765bffbc6e9d1d06a319727d01cbe49ea54b1c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 424,
+      "endColumn": 44,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(format_version !== 1 || typeof snapshot_id !== \"string\") && !/^sha256:[a-f0-9]{64}$/.test(snapshot_id)",
+      "status": "generated",
+      "id": "35fc68188abcc4a595e1d5d2ff2b48e9dc987913cdf89c4484b3e2417d2cbc45",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 423,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2437dfb2d43d03b87b4a812622480d8af2ddb51c88848615fe1bc65e166e6d52",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 423,
+      "endColumn": 33,
+      "mutatorName": "LogicalOperator",
+      "replacement": "format_version !== 1 && typeof snapshot_id !== \"string\"",
+      "status": "generated",
+      "id": "e505f740729a91430d0fec6049d4c807b6ee4be10c27ea24b0881b0eb9436f9f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 422,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "167319e501d9f4e918abc23639cc1e4cc97136ec9bbfad7dd18af303f10bb3bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 422,
+      "column": 2,
+      "endLine": 422,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "format_version === 1",
+      "status": "generated",
+      "id": "7ba68b27096798c9917f8a05de82eb72add295c3298b8e73562c72289422efe6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 423,
+      "column": 2,
+      "endLine": 423,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ec0da8a2e06ef602389897726a6a4153cc5352533e8452af296a633169cb6949",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 423,
+      "column": 2,
+      "endLine": 423,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof snapshot_id === \"string\"",
+      "status": "generated",
+      "id": "3e3a89b6b42834419fb9116073d7b08af96016ad6ac3323b1b566746e988011b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 423,
+      "column": 25,
+      "endLine": 423,
+      "endColumn": 33,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a42125f4b3c7177bde8267607e0cef952aba94e0e85b0b8e2b24257f3001b9ff"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 424,
+      "column": 2,
+      "endLine": 424,
+      "endColumn": 44,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "/^sha256:[a-f0-9]{64}$/.test(snapshot_id)",
+      "status": "generated",
+      "id": "a6725d1647646178156660b1c428496cd2493a510976012382750160aa55bc15",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 424,
+      "column": 3,
+      "endLine": 424,
+      "endColumn": 26,
+      "mutatorName": "Regex",
+      "replacement": "/sha256:[a-f0-9]{64}$/",
+      "status": "generated",
+      "id": "8ee80ca50c9c185e4c4b8b1751a544c37faecb47638d70334ab1f438bcf8ef1e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 424,
+      "column": 3,
+      "endLine": 424,
+      "endColumn": 26,
+      "mutatorName": "Regex",
+      "replacement": "/^sha256:[a-f0-9]{64}/",
+      "status": "generated",
+      "id": "ccf77c6a4eaeaf316b664ac04effbefe4556420c20c17c26da83b9651ea06dc5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 424,
+      "column": 3,
+      "endLine": 424,
+      "endColumn": 26,
+      "mutatorName": "Regex",
+      "replacement": "/^sha256:[a-f0-9]$/",
+      "status": "generated",
+      "id": "cd4c64a26ce3d33f3c38cb5562c52273550aa427fd9d5be247b0ca556f3e0717",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 424,
+      "column": 3,
+      "endLine": 424,
+      "endColumn": 26,
+      "mutatorName": "Regex",
+      "replacement": "/^sha256:[^a-f0-9]{64}$/",
+      "status": "generated",
+      "id": "3834808accf051f8387bcc357b4e5187e97b61c7564c1cbbaa9b9a041d026370",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 425,
+      "column": 2,
+      "endLine": 425,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d0faed35fb292e9c8c73b5a3e2af2b7e92fa858c3676cfe2bbd8e7de89ea2486",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 425,
+      "column": 2,
+      "endLine": 425,
+      "endColumn": 35,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof enola_version === \"string\"",
+      "status": "generated",
+      "id": "8c29de9fdac47c7cdf910e22b2269ab05116b72748c55d0b18803b3ae48ef00f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 425,
+      "column": 27,
+      "endLine": 425,
+      "endColumn": 35,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c39e07b4abe8e968bcd04916be6596b06090651806fd1795290acb3e58845470"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 2,
+      "endLine": 426,
+      "endColumn": 52,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)",
+      "status": "generated",
+      "id": "6a97c555208c7ea193f735c480cbe9dfd1468d449fccfa84c1670b0e360610ea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 3,
+      "endLine": 426,
+      "endColumn": 32,
+      "mutatorName": "Regex",
+      "replacement": "/[0-9][0-9A-Za-z.+-]{0,63}$/",
+      "status": "generated",
+      "id": "6fb6e081a6ae1217698ad46c07c2a566efaf379c8445c93b7d11183f3a828285",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 3,
+      "endLine": 426,
+      "endColumn": 32,
+      "mutatorName": "Regex",
+      "replacement": "/^[0-9][0-9A-Za-z.+-]{0,63}/",
+      "status": "generated",
+      "id": "396c378d686968a6c7917326d6162e0b3bc124a380296cea4cada0da4fd3cb99",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 3,
+      "endLine": 426,
+      "endColumn": 32,
+      "mutatorName": "Regex",
+      "replacement": "/^[^0-9][0-9A-Za-z.+-]{0,63}$/",
+      "status": "generated",
+      "id": "189e0596e8d7ed49e5dcc8f976b4121796cba3a111e277de8232c3ebd6aec704",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 3,
+      "endLine": 426,
+      "endColumn": 32,
+      "mutatorName": "Regex",
+      "replacement": "/^[0-9][0-9A-Za-z.+-]$/",
+      "status": "generated",
+      "id": "d1bc2b3651e55d289b842a2b102f55d8fce543bb54900973d6c49cfdf454c257",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 426,
+      "column": 3,
+      "endLine": 426,
+      "endColumn": 32,
+      "mutatorName": "Regex",
+      "replacement": "/^[0-9][^0-9A-Za-z.+-]{0,63}$/",
+      "status": "generated",
+      "id": "6aa19f181810be08ae4de569051de1dc8bfe034d2aa4364886bc7e00b59b5f81",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 429,
+      "column": 23,
+      "endLine": 429,
+      "endColumn": 69,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b45803373dfb5f3af90ce39cce5ebbb9b87b79cb0784f2315e03227ad70df978",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    }
+  ],
+  "total": 51,
+  "omitted": 0,
+  "unmutated": []
+}

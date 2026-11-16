@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	Changeset,
 	defaultConfig,
@@ -155,6 +156,15 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 			trigger: { hash: "f".repeat(64), proof: [] },
 		});
 		expect(bytes(record)).not.toContain(token);
+		const what = `static.enola reports enola/god-class here. ${withheld}.`;
+		expect((record.toJSON().payload as { sighting: unknown }).sighting).toEqual({
+			revision,
+			finding: {
+				...finding,
+				message: { ...finding.message, text: what },
+				properties: { ...finding.properties, explanation: { what, whyHere: withheld, whatToDo: withheld } },
+			},
+		});
 	});
 
 	it("as free text in Enola's receipt", () => {
@@ -188,7 +198,10 @@ describe("a finding's ID holds no text a static tool wrote", () => {
 		const ids = first.stored.map((finding) => finding.properties.id);
 		expect(new Set(ids).size).toBe(2);
 		expect(again.stored.map((finding) => finding.properties.id).sort()).toEqual([...ids].sort());
-		for (const finding of first.stored) expect(finding.properties.discriminator).not.toContain(token);
+		const hashed = (text: string) => `message ${createHash("sha256").update(text).digest("hex")}`;
+		expect(first.stored.map((finding) => finding.properties.discriminator).sort()).toEqual(
+			results.map((result) => hashed(result.message.text)).sort(),
+		);
 	});
 });
 
@@ -257,5 +270,13 @@ describe("an exported record keeps what a static finding shares", () => {
 		expect(exported(JSON.stringify({ ...fields, snapshot_id: 7 }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, enola_version: token }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, enola_version: 4 }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, snapshot_id: [snapshotId] }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, enola_version: ["0.4.37"] }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${token} ${snapshotId}` }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${snapshotId} ${token}` }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, enola_version: `0.4.37 ${token}` }))).toBe(withheld);
+		const longest = { ...fields, enola_version: `0${"1".repeat(63)}` };
+		expect(exported(JSON.stringify(longest))).toBe(JSON.stringify(longest));
+		expect(exported(JSON.stringify({ ...fields, enola_version: `0${"1".repeat(64)}` }))).toBe(withheld);
 	});
 });
