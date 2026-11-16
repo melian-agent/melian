@@ -185,9 +185,9 @@ describe("an exported record keeps what Melian defines", () => {
 			claims: [],
 			dismissals: [],
 			outcomes: [
+				{ candidate: "openai-codex/sol", outcome: { status: "done", model: "openai-codex/sol" } },
 				{ candidate: "anthropic/claude", outcome: { status: "unanswered", reason: token } },
 				{ candidate: "openai-codex/gpt", outcome: { status: "exhausted", reason: "timeout" } },
-				{ candidate: "openai-codex/sol", outcome: { status: "done", model: "openai-codex/sol" } },
 			],
 		});
 		expect(payload(record).outcomes).toEqual([
@@ -197,6 +197,15 @@ describe("an exported record keeps what Melian defines", () => {
 		]);
 		expect(payload(records.triage("f".repeat(64), { failure: token })).failure).toBe(withheld);
 		expect(payload(records.triage("f".repeat(64), {})).failure).toBeNull();
+	});
+
+	it("keeps the routes a lens that gave up tried, and withholds why it gave up", () => {
+		const outcome = { status: "exhausted", tried: ["openai-codex/gpt", "anthropic/claude"], reason: token } as const;
+		expect(payload(records.lens(run, outcome, [])).outcome).toEqual({
+			status: "exhausted",
+			tried: ["openai-codex/gpt", "anthropic/claude"],
+			reason: withheld,
+		});
 	});
 
 	it("leaves a lens record's absent reason and error absent", () => {
