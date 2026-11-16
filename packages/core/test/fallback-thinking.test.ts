@@ -7,6 +7,8 @@ import {
 	type ModelTier,
 	ReviewPlan,
 	resolveModelForTier,
+	routeInOrder,
+	writtenRoute,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
@@ -144,6 +146,22 @@ describe("a fallback's own thinking level", () => {
 			{ model: "faux/first", credential: "test", family: "first" },
 			{ model: "faux/second", credential: "test", family: "second", thinking: "high" },
 		]);
+	});
+
+	it("turns a route's reachable models into the route that runs, naming a level only where it differs from the route's", () => {
+		const models = [{ model: "faux/second", thinking: "high" as const }, { model: "faux/third" }];
+		expect(routeInOrder(models, undefined)).toStrictEqual({
+			thinking: "high",
+			route: [{ model: "faux/second" }, { model: "faux/third" }],
+		});
+		expect(routeInOrder(models, "low")).toStrictEqual({
+			thinking: "high",
+			route: [{ model: "faux/second" }, { model: "faux/third", thinking: "low" }],
+		});
+		expect(writtenRoute({ route: [{ model: "faux/second" }, { model: "faux/third" }] })).toStrictEqual({
+			model: "faux/second",
+			fallbacks: ["faux/third"],
+		});
 	});
 
 	it("runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's", () => {
