@@ -12,6 +12,7 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	fallbackEntry,
 	GraphSnapshot,
 	Lens,
 	type LensBudget,
@@ -36,6 +37,7 @@ import {
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
+	type RoutedModel,
 	resolveModelForTier,
 	resolveModelRoute,
 	type ScrutinyLevel,
@@ -197,8 +199,9 @@ interface LensRun {
 	readonly name: string;
 	readonly version: string;
 	readonly level: ScrutinyLevel;
-	// The level's tier's models that were known with credentials when the review started, in routing order.
-	readonly route: readonly ModelReference[];
+	// The level's tier's models that were known with credentials when the review started, in routing order, each
+	// fallback with the thinking level its own entry names.
+	readonly route: readonly RoutedModel[];
 	readonly thinking?: ModelRoute["thinking"];
 	readonly verify?: boolean;
 	readonly instructions: string;
@@ -223,7 +226,7 @@ interface LensRun {
 	// A run of a level that probes. Its conversation in `children` is the planner's, which runs on `route` and records
 	// the attack plan; the prober's, on `probe.route`, is created once the plan is recorded, under `<key>/prober`.
 	readonly probe?: {
-		readonly route: readonly ModelReference[];
+		readonly route: readonly RoutedModel[];
 		readonly thinking?: ModelRoute["thinking"];
 		readonly instructions: string;
 		readonly environment: ProbingEnvironment;
@@ -371,6 +374,15 @@ function modelName(model: ModelReference): string {
 }
 
 // Creates one lens's conversation, owned by the lens task, and writes its policy on it.
+// A conversation's model, at the level its own route entry names or else the run's, cleared when neither names one so a
+// failover never keeps the level of the model it left.
+function modelAt(model: RoutedModel, thinking: ModelRoute["thinking"]) {
+	return {
+		model: { provider: model.provider, modelId: model.modelId },
+		thinkingLevel: model.thinking ?? thinking ?? null,
+	};
+}
+
 async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, lens: LensRun): Promise<ConversationId> {
 	const created = await tx.createConversation({ ownership: { kind: "task", taskId } });
 	// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only the lens
@@ -384,8 +396,7 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 	const stored = lens.budget as LensBudget | number;
 	const budget = typeof stored === "number" ? { findings: stored } : stored;
 	await configure(tx, created.id, {
-		model: lens.route[0],
-		thinkingLevel: lens.thinking,
+		...modelAt(lens.route[0]!, lens.thinking),
 		instructions: lens.instructions,
 		tools,
 		extensions: [lensExtension],
@@ -444,8 +455,7 @@ async function spawnProber(
 	const probe = lens.probe!;
 	const created = await tx.createConversation({ ownership: { kind: "task", taskId } });
 	await configure(tx, created.id, {
-		model: probe.route[0],
-		thinkingLevel: probe.thinking,
+		...modelAt(probe.route[0]!, probe.thinking),
 		instructions: probe.instructions,
 		tools: [...lens.tools.map((tool) => lensListedTools[tool]), reportFinding, runProbe, skipAttack],
 		extensions: [lensExtension],
@@ -559,7 +569,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			// attempt: a rerun after a crash finds the attempt it had reached, settled or not.
 			const converse = async (
 				key: string,
-				route: readonly ModelReference[],
+				route: readonly RoutedModel[],
+				thinking: ModelRoute["thinking"],
 				id: ConversationId,
 				prompt: string,
 			): Promise<{ readonly status: "done"; readonly model: string } | Exclude<LensOutcome, { status: "done" }>> => {
@@ -583,7 +594,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						return { status: "exhausted", tried, reason };
 					}
 					await runtime.commit(async (tx, current) => {
-						await configure(tx, id, { model: next });
+						await configure(tx, id, modelAt(next, thinking));
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						return {
 							status: "running",
@@ -669,6 +680,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				const answered = await converse(
 					key,
 					lens.probe!.route,
+					lens.probe!.thinking,
 					prober!,
 					carried === undefined ? plain : `${plain}\n\n${carried}`,
 				);
@@ -705,7 +717,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				prompt: string,
 				carried?: string,
 			): Promise<LensOutcome> => {
-				const planned = await converse(lens.key, lens.route, id, prompt);
+				const planned = await converse(lens.key, lens.route, lens.thinking, id, prompt);
 				if (planned.status !== "done") return planned;
 				const probed = lens.probe === undefined ? undefined : await probe(lens, id, carried);
 				if (probed !== undefined && "status" in probed) return probed;
@@ -1131,7 +1143,7 @@ export class ChangePrompt {
 
 // A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
 // credentials for, in routing order, or why there are none.
-type TierRoute = { readonly route: ModelReference[] } | { readonly unrouted: string };
+type TierRoute = { readonly route: RoutedModel[] } | { readonly unrouted: string };
 
 async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRoute> {
 	const models = modelsOf(review);
@@ -1142,7 +1154,7 @@ async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRou
 		if (error instanceof ModelRoutingError) return { unrouted: error.message };
 		throw error;
 	}
-	const available: ModelReference[] = [];
+	const available: RoutedModel[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
 		if (await hasCredentials(review, candidate.provider)) available.push(candidate);
@@ -1188,7 +1200,12 @@ class LevelRoute {
 				noun: at,
 				route: {
 					...(planned.thinking === undefined ? {} : { thinking: planned.thinking }),
-					...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
+					...(first === undefined
+						? {}
+						: {
+								model: first.model,
+								fallbacks: rest.map(({ model, thinking }) => fallbackEntry(model, thinking)),
+							}),
 				},
 				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
 			});
@@ -2633,7 +2650,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const { decisions: atBase, earlier } = await probingContext();
 			return {
 				run: {
-					route: [...(resolved.get(prober.key) as { route: ModelReference[] }).route],
+					route: [...(resolved.get(prober.key) as { route: RoutedModel[] }).route],
 					...(thinking === undefined ? {} : { thinking }),
 					...(settings.probe!.prober === undefined ? { onLevelTier: true as const } : {}),
 					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
@@ -2663,7 +2680,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const planning = (boundary: string) =>
 				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
 			const thinking = routeAt(lens, level).route?.thinking;
-			const route = [...(routeFor(lens, level) as { route: ModelReference[] }).route];
+			const route = [...(routeFor(lens, level) as { route: RoutedModel[] }).route];
 			const keyed = lensRequest({
 				run: (boundary, callers): Omit<LensRun, "request" | "escalation"> => ({
 					key: `${lens.name}@${lens.version}@${level}`,
@@ -2831,7 +2848,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				outcome?.status === "done" && (outcome.probing?.model ?? outcome.model) !== undefined
 					? (outcome.probing?.model ?? outcome.model)!
 					: modelName((run.probe?.route ?? run.route)[0]!);
-			let route = request.plan?.verifierRoute(finder).map(({ model }) => parseModelReference(model, "verifier"));
+			let route: RoutedModel[] | undefined = request.plan?.verifierRoute(finder).map(({ model, thinking }) => ({
+				...parseModelReference(model, "verifier"),
+				...(thinking === undefined ? {} : { thinking }),
+			}));
 			if (route === undefined) {
 				const configured = config.models.verifier;
 				if (
@@ -2840,9 +2860,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				) {
 					const resolved = resolveModelForTier("verifier", config.models);
 					route = [resolved.model, ...resolved.fallbacks];
-				} else route = [...(run.probe?.route ?? run.route)];
+				} else {
+					// A borrowed lens route runs at the verifier's level, not at a lens fallback's own.
+					route = (run.probe?.route ?? run.route).map(({ provider, modelId }) => ({ provider, modelId }));
+				}
 			}
-			const available: ModelReference[] = [];
+			const available: RoutedModel[] = [];
 			const collection = modelsOf(models);
 			for (const model of route)
 				if (

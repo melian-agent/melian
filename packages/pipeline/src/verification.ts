@@ -1,10 +1,4 @@
-import type {
-	FindingEvidence,
-	ModelReference,
-	ModelRoute,
-	Severity,
-	StoredVerificationState,
-} from "@melian-agent/core";
+import type { FindingEvidence, ModelRoute, RoutedModel, Severity, StoredVerificationState } from "@melian-agent/core";
 import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
@@ -54,7 +48,7 @@ export type VerificationCandidate = {
 	key: string;
 	state: StoredVerificationState;
 	finder: string;
-	route: ModelReference[];
+	route: RoutedModel[];
 	thinking?: ModelRoute["thinking"];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
@@ -171,8 +165,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					});
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
 					await configure(tx, child.id, {
-						model: candidate.route[0],
-						thinkingLevel: candidate.thinking,
+						model: { provider: candidate.route[0]!.provider, modelId: candidate.route[0]!.modelId },
+						thinkingLevel: candidate.route[0]!.thinking ?? candidate.thinking,
 						instructions: verifierPrompt(
 							candidate,
 							claims,
@@ -266,7 +260,10 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 							)
 						)
 							return undefined;
-						await configure(tx, id, { model: next });
+						await configure(tx, id, {
+							model: { provider: next.provider, modelId: next.modelId },
+							thinkingLevel: next.thinking ?? candidate.thinking ?? null,
+						});
 						(await tx.doc(LensDocument, id)).lens!.model = `${next.provider}/${next.modelId}`;
 						const checkpoint = current.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
 						return {
