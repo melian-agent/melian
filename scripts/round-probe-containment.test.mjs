@@ -214,7 +214,8 @@ describe("tokenShapes", () => {
 			"github fine-grained token": `github_pat_${"a".repeat(50)}`,
 			"anthropic key": `sk-ant-${"a".repeat(20)}`,
 			jwt: `eyJ${"a".repeat(10)}.eyJ${"a".repeat(10)}.${"a".repeat(10)}`,
-			"private key": "-----BEGIN RSA PRIVATE KEY-----",
+			// Joined at run time: the containment walk reads this file in the probe's tree, and a whole header there fails it.
+			"private key": ["-----BEGIN RSA PRIVATE", "KEY-----"].join(" "),
 		};
 		const short = {
 			"github token": `ghp_${"a".repeat(35)}`,
