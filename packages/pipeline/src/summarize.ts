@@ -1,5 +1,6 @@
 import {
 	type Changeset,
+	canonicalJson,
 	KeyedRequest,
 	type MelianConfig,
 	type ModelReference,
@@ -12,6 +13,7 @@ import {
 	requestJson,
 	resolveModelForTier,
 	type Walkthrough,
+	type WalkthroughPayload,
 } from "@melian-agent/core";
 import { type ReviewOrigin, type StoredVerdictState, VerdictDocument } from "./adjudication.ts";
 import {
@@ -29,6 +31,7 @@ import {
 	type Tx,
 	Type,
 } from "./harness.ts";
+import type { ImportedRecords } from "./imported-records.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, undecided } from "./review-index.ts";
 import { identityNonce, quoteUntrusted, reviewNonce } from "./untrusted.ts";
@@ -163,17 +166,33 @@ export async function exportedWalkthrough(
 	root: ConversationId,
 	revision: string,
 	context: Context,
+	imported?: ImportedRecords,
 ): Promise<{ key: string; route: string; walkthrough: Walkthrough } | undefined> {
+	const state = await harness.snapshot(VerdictDocument, root, context);
+	const published = publishedWalkthrough(state, revision);
+	if (published === undefined) return undefined;
 	const task = (await harness.snapshot(SummaryIndex, root, context))?.tasks[revision];
 	const record = task === undefined ? undefined : await harness.getTask(task as TaskId, context);
-	if (record?.state.status !== "terminal" || record.state.outcome.status !== "completed") return undefined;
-	const input = record.input as unknown as SummaryInput;
-	if (input.key === undefined) return undefined;
-	const state = await harness.snapshot(VerdictDocument, root, context);
-	const route = routeOf(input);
-	const walkthrough = state?.routedWalkthroughs?.[revision]?.[route];
-	if (walkthrough === undefined || walkthrough !== publishedWalkthrough(state, revision)) return undefined;
-	return { key: input.key, route, walkthrough };
+	const input = record?.input as unknown as SummaryInput | undefined;
+	if (
+		record?.state.status === "terminal" &&
+		record.state.outcome.status === "completed" &&
+		input?.key !== undefined &&
+		state?.routedWalkthroughs?.[revision]?.[routeOf(input)] === published
+	)
+		return { key: input.key, route: routeOf(input), walkthrough: published };
+	// A walkthrough another host's record supplied exports as that record, once it is the one publication posts.
+	for (const { kind, revision: at, key, payload } of imported?.records() ?? []) {
+		const route = kind === "walkthrough" && at === revision ? (payload as unknown as WalkthroughPayload).route : "";
+		const walkthrough = imported!.walkthrough(key, revision, route);
+		if (
+			walkthrough !== undefined &&
+			state?.routedWalkthroughs?.[revision]?.[route] === published &&
+			canonicalJson(walkthrough as unknown as RecordJson) === canonicalJson(published as unknown as RecordJson)
+		)
+			return { key, route, walkthrough: published };
+	}
+	return undefined;
 }
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
@@ -396,6 +415,8 @@ export async function summarizeReview(options: {
 	 * names no credential, since the walkthrough is published.
 	 */
 	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
+	/** Records another host wrote; a walkthrough one holds for this request on the wanted route stands, unless `rerun`. */
+	readonly imported?: ImportedRecords;
 }): Promise<void> {
 	const { harness, changeset, config, models } = options;
 	if (!config.publish.walkthrough.enabled) return;
@@ -462,6 +483,24 @@ export async function summarizeReview(options: {
 			paths: changeset.revision.files.map(({ path }) => path),
 			nonce: reviewNonce(),
 		});
+		const fromRecord = rerun ? undefined : options.imported?.walkthrough(request.key, revision, wanted!);
+		if (fromRecord !== undefined) {
+			await conversation.commit(async (tx) => {
+				const document = await tx.doc(VerdictDocument, conversation.id);
+				// Decided again here: another call can store this route's walkthrough after the reads above.
+				if (
+					document.walkthroughs?.[revision] !== undefined ||
+					document.routedWalkthroughs?.[revision]?.[wanted!] !== undefined
+				)
+					return;
+				document.routedWalkthroughs = {
+					...document.routedWalkthroughs,
+					[revision]: { ...document.routedWalkthroughs?.[revision], [wanted!]: fromRecord },
+				};
+				if (document.walkthroughNotes !== undefined) delete document.walkthroughNotes[revision];
+			}, context);
+			return;
+		}
 		const index = await harness.snapshot(SummaryIndex, conversation.id, context);
 		const known = index?.tasks[revision];
 		const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);

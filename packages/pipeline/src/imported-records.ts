@@ -14,6 +14,8 @@ import {
 	type TriagePayload,
 	type Verification,
 	type VerificationPayload,
+	type Walkthrough,
+	type WalkthroughPayload,
 } from "@melian-agent/core";
 import type { CheckRunRecord } from "./checks.ts";
 
@@ -184,6 +186,21 @@ export class ImportedRecords {
 			calibrated: decision.calibrated,
 			...(decision.model === null ? {} : { model: decision.model }),
 			answers,
+		};
+	}
+
+	/**
+	 * The walkthrough that answers the request keyed `key` at `revision` on light route `route`, or `undefined` when no
+	 * record holds one that route wrote.
+	 */
+	walkthrough(key: string, revision: string, route: string): Walkthrough | undefined {
+		const payload = this.match("walkthrough", revision, key)?.payload as unknown as WalkthroughPayload | undefined;
+		if (payload === undefined || payload.route !== route) return undefined;
+		return {
+			summary: payload.summary,
+			files: payload.files.map(({ path, summary }) => ({ path, summary })),
+			...(payload.diagram === null ? {} : { diagram: payload.diagram }),
+			...(payload.note === null ? {} : { note: payload.note }),
 		};
 	}
 }

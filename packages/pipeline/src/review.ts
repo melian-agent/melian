@@ -3713,7 +3713,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							resolve(true);
 						});
 					});
-		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
+		const summary =
+			written === true ? await exportedWalkthrough(harness, root, reviewed, context, request.imported) : undefined;
 		await exportRound(
 			request.records,
 			checked?.request ?? request.checkRequest ?? null,

@@ -394,6 +394,7 @@ export async function review(
 				origin,
 				plan,
 				rerun: options.rerun,
+				...(imported === undefined ? {} : { imported }),
 				// The walkthrough is published, so it never names a credential; the terminal does. It runs beside the review,
 				// so its unlock is a span of its own rather than part of whichever review step is open.
 				unlockModels: async (providers) => {
