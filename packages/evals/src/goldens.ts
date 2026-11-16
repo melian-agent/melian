@@ -674,8 +674,8 @@ export function answers(comment: ExpectedClaim, finding: Finding): boolean {
  * Scores adjudicated defects against their expected file and rule alternatives, lines and source. An expected
  * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
  * expectation is a false positive, since it is the same defect reported twice. An expectation counts as found when any
- * finding fits it, so no two expectations of a golden may share a file, a rule and a source: one broad finding would
- * count as found for both, whatever their lines.
+ * finding fits it, so no two expectations of a golden may share a file, a rule and a source, and one that names no
+ * source shares any: one broad finding would count as found for both, whatever their lines.
  */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
 	const expected = [

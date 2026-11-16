@@ -514,11 +514,12 @@ describe("a golden's standards and policy", () => {
 	});
 
 	// scoreGolden counts an expectation found when any finding fits it, so one broad finding fits two expectations that
-	// share a file, a rule and a source, whatever their lines, and counts both found.
+	// share a file, a rule and a source, whatever their lines, and counts both found. One that names no source shares
+	// any source.
 	it("hold no two expectations that one finding could answer from one source", () => {
 		const overlap = (one: readonly string[], other: readonly string[]) => one.some((each) => other.includes(each));
 		const shared = (one: GoldenComment, other: GoldenComment) =>
-			one.source === other.source &&
+			(one.source === undefined || other.source === undefined || one.source === other.source) &&
 			overlap([one.file, ...(one.alternativeFiles ?? [])], [other.file, ...(other.alternativeFiles ?? [])]) &&
 			overlap([one.rule, ...(one.alternativeRules ?? [])], [other.rule, ...(other.alternativeRules ?? [])]);
 		const pairs = (comments: readonly GoldenComment[]) =>
@@ -538,7 +539,24 @@ describe("a golden's standards and policy", () => {
 		).toHaveLength(1);
 		expect(pairs([comment!, { ...comment!, file: "y" }])).toEqual([]);
 		expect(pairs([comment!, { ...comment!, rule: "z" }])).toEqual([]);
-		expect(pairs([comment!, { ...comment!, source: "lens.elsewhere" }])).toEqual([]);
+		expect(
+			pairs([
+				{ ...comment!, source: "lens.here" },
+				{ ...comment!, source: "lens.elsewhere" },
+			]),
+		).toEqual([]);
+		expect(
+			pairs([
+				{ ...comment!, source: undefined },
+				{ ...comment!, source: "lens.here" },
+			]),
+		).toHaveLength(1);
+		expect(
+			pairs([
+				{ ...comment!, source: "lens.here" },
+				{ ...comment!, source: undefined },
+			]),
+		).toHaveLength(1);
 		expect(
 			goldens.filter((golden) => pairs(golden.expected.comments).length > 0).map((golden) => golden.name),
 			"one finding would count as found for both expectations. If a golden needs two, make scoreGolden count found from its one-to-one matching, and let a finding answer more than one expectation only where they differ by source alone",
