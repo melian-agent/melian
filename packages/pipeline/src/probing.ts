@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { git, gitOutput, hostFacts, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
+import { installedVersion } from "./installed-version.ts";
 import {
 	type CleanupOutcome,
 	Probe,
@@ -218,17 +219,27 @@ export type ProbingEnvironment = {
 };
 
 /**
- * The host a probe's result holds on: the sandbox's platform and kind, and the CPU architecture and version of the Node
- * that runs it. A probing run's key holds it whole, so a run on another host, or under another Node, runs again.
+ * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, and the CPU
+ * architecture and version of the Node that runs it. A probing run's key holds it whole, so a run on another host, under
+ * another Node, or under another release of the sandbox, runs again.
  */
-export type ProbingHost = { platform: ProbeSandbox["platform"]; sandbox: string; arch: string; node: string };
+export type ProbingHost = {
+	platform: ProbeSandbox["platform"];
+	sandbox: string;
+	sandboxVersion: string;
+	arch: string;
+	node: string;
+};
+
+// sandbox-runtime confines every probe a review runs; a test's own sandbox reports the installed release too.
+const sandboxVersion = installedVersion("@anthropic-ai/sandbox-runtime", import.meta.url);
 
 /** The host a probe runs on under `sandbox`. */
 export function probingHost(sandbox: ProbeSandbox): ProbingHost {
 	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
-	// it confines. Case folding is left out: a finished probing run is never reused, so nothing matches on it.
+	// it confines. Case folding is left out: a review reuses a probing run only from its own store, on its own host.
 	const { arch, node } = hostFacts();
-	return { platform: sandbox.platform, sandbox: sandbox.kind, arch, node };
+	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node };
 }
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
@@ -607,7 +618,7 @@ export function probeEvidenceRenderings(): string {
 			writer: { trusted: true, by: "reviewer" },
 			trustWriters: true,
 			read: ["node_modules"],
-			host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
+			host: { platform: "linux", sandbox: "unconfined", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" },
 		},
 		plan: [attack, { ...attack, target: "second" }],
 		probe: {

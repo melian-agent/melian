@@ -1,8 +1,7 @@
-/** A lens run as the copy rule reads it: its key, its request's key, whether it probes, and the run it escalates to. */
+/** A lens run as the copy rule reads it: its key, its request's key, and the run it escalates to. */
 export type ReusableRun = {
 	readonly key: string;
 	readonly request?: string;
-	readonly probe?: unknown;
 	readonly escalation?: { readonly next?: ReusableRun };
 };
 
@@ -26,8 +25,8 @@ export type LensCopy<Outcome> = {
 	readonly outcomes: Record<string, Outcome>;
 };
 
-// A run that ended as asked: answered, on a model the plan accepts, within its budgets, and not a probe. A probing run is
-// never copied, so every finding it reports rests on a probe of its own review.
+// A run that ended as asked: answered, on a model the plan accepts, and within its budgets. A probing run's request key
+// holds its probing environment, so it is copied only into a review that would probe under the same one.
 function finished(
 	run: ReusableRun,
 	outcome: ReusableOutcome | undefined,
@@ -38,8 +37,7 @@ function finished(
 		outcome.status === "done" &&
 		outcome.budgetEnded === undefined &&
 		outcome.capped === undefined &&
-		!(outcome.model !== undefined && refused(run.key, outcome.model)) &&
-		run.probe === undefined
+		!(outcome.model !== undefined && refused(run.key, outcome.model))
 	);
 }
 

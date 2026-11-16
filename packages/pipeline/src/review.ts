@@ -1676,9 +1676,6 @@ async function runLenses(
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
 	const selection = selectionOf(input.lenses);
-	// A finished probing run is never reused: a repeat review probes again, so every finding rests on a probe of its own
-	// review. A live one is attached to, which is how a review resumes its own run after a crash.
-	const probes = runsOf(input.lenses).some((run) => run.probe !== undefined);
 	// The lenses this review's commit copies, as read ahead of it, when it unlocked the providers of only the others;
 	// `undefined` when it read that the commit attaches, and so unlocked none.
 	let unlockedFor: string | undefined;
@@ -1692,7 +1689,7 @@ async function runLenses(
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
 			record !== undefined &&
-			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
+			(record.state.status !== "terminal" || finished(record, undecided)) &&
 			!(rerun && lensFailed(record!, refused));
 		if (attaches) attachesTo = known.task;
 		else {
@@ -1712,7 +1709,6 @@ async function runLenses(
 		const attach =
 			same &&
 			(await attachable(tx, known.task, undecided)) &&
-			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		// A task other than the one the read found asks lenses whose providers this review left locked, so commit again.
 		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
@@ -1878,8 +1874,8 @@ async function startAdjudication(
 		let known = index.reviews[revision];
 		// A review whose lenses ran owns the entry only while it still names their task. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
-		// that live run as superseded; and a repeat review with the same selection replaces a finished probing run and
-		// clears its findings, which left this one none to block on. Solution: a replaced review adjudicates nothing.
+		// that live run as superseded; and a repeat review under another probing environment replaces a finished probing
+		// run and clears its findings, which left this one none to block on. Solution: a replaced review adjudicates nothing.
 		if (!stillOwns(known, lensTask, verification)) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {

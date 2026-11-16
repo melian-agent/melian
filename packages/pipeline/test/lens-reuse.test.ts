@@ -100,11 +100,11 @@ describe("lensCopies", () => {
 		).toEqual([careful.key]);
 	});
 
-	it("never copies a probing run", () => {
+	it("copies a probing run that finished as asked, as it copies any run", () => {
 		const probing = { ...careful, probe: { route: [] } };
 		expect(
 			lensCopies({ task: 3, nonce: "n3", lenses: [probing], result: { [careful.key]: done() } }, [probing], never),
-		).toEqual({});
+		).toEqual({ [careful.key]: { task: 3, nonce: "n3", outcomes: { [careful.key]: { ...done(), reused: 3 } } } });
 	});
 
 	it("copies a quick run that did not escalate on its own", () => {
@@ -137,10 +137,19 @@ describe("lensCopies", () => {
 		expect(lensCopies({ task: 3, nonce: "n3", lenses: [quick], result }, [quick], never)).toEqual({});
 	});
 
-	it("never copies a quick run whose escalated run probes", () => {
+	it("copies a quick run with the probing run it escalated to", () => {
 		const probing = { ...quick, escalation: { next: { ...careful, probe: { route: [] } } } };
 		const result = { [quick.key]: done({ escalation: { to: careful.key } }), [careful.key]: done() };
-		expect(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], never)).toEqual({});
+		expect(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], never)).toEqual({
+			[quick.key]: {
+				task: 3,
+				nonce: "n3",
+				outcomes: {
+					[quick.key]: { ...result[quick.key], reused: 3 },
+					[careful.key]: { ...result[careful.key], reused: 3 },
+				},
+			},
+		});
 	});
 
 	it("never copies a quick run that escalated to a run other than the one it names", () => {

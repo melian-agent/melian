@@ -285,6 +285,10 @@ const escalating = (fake: FakeModels) => {
 	};
 };
 
+// A writer's word on the head: its probing environment differs from the reviewer's, so a review under it replaces a
+// finished probing run rather than reuse it.
+const anotherWriter = { writer: { trusted: true, by: "writer" } } as const;
+
 // A review in which the deep level runs as it would without `probe`, answering once.
 function withoutProbes(options: Parameters<typeof review>[1]) {
 	return review(
@@ -757,7 +761,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		await first.run;
 		expect(unlocked.flat()).toContain("probing");
 		unlocked.length = 0;
-		const again = await review({ planner: [...empty, ...empty], prober: [] }, options);
+		const again = await review({ planner: [...empty, ...empty], prober: [] }, { ...options, ...anotherWriter });
 		await again.run;
 		expect(again.requests[planner]).toHaveLength(2);
 		expect(unlocked.flat()).toContain("probing");
@@ -995,16 +999,20 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 	});
 
-	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
+	it("runs a claim's probe again once, a repeat review reuses both, and one under another writer probes afresh", async () => {
 		const fake = createFakeModels();
 		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
-		await first.run;
+		const found = (await first.run).verdict.counted();
 		const heads = () => first.heads.length;
 		expect(heads()).toBe(2);
-		const again = await review({ planner: plan, prober: probing(failing) }, { fake });
+		const same = await review({ planner: plan, prober: probing(failing) }, { fake });
+		expect((await same.run).verdict.counted()).toEqual(found);
+		expect(same.requests[planner]).toHaveLength(0);
+		expect(heads()).toBe(2);
+		const again = await review({ planner: plan, prober: probing(failing) }, { fake, ...anotherWriter });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(again.requests[planner]).toHaveLength(2);
-		// The repeat review's own probe and its rerun: an earlier review's results are never its evidence.
+		// That review's own probe and its rerun: a run under another environment is never its evidence.
 		expect(heads()).toBe(4);
 	});
 
@@ -1174,7 +1182,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 						],
 						prober: [],
 					},
-					{ fake },
+					{ fake, ...anotherWriter },
 				);
 				second.run.catch(() => undefined);
 				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 10_000 });
@@ -1221,7 +1229,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					const record =
 						task === undefined ? undefined : await reviewer.getTask(task as TaskId, backgroundContext);
 					if (second !== undefined || record?.state.status !== "terminal") return;
-					second = await review({ planner: plan, prober: probing(failing) }, { fake });
+					second = await review({ planner: plan, prober: probing(failing) }, { fake, ...anotherWriter });
 					second.run.catch(() => undefined);
 					await verified;
 				},
@@ -1398,7 +1406,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const spy = vi.spyOn(Predecessors, "open").mockImplementation(async (...args) => {
 			if (armed) {
 				armed = false;
-				second = await review({ planner: plan, prober: probing(failing) }, { fake });
+				second = await review({ planner: plan, prober: probing(failing) }, { fake, ...anotherWriter });
 				expect((await second.run).verdict.blocking).toBe(true);
 				const owner = (await reviewer.root(backgroundContext)).id;
 				wrote = structuredClone((await reviewer.snapshot(ReviewIndex, owner, backgroundContext))?.reviews[at]);
@@ -1470,7 +1478,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					prober: restating,
 					others: [{ match: "Melian adversarial verifier", replies: [same, same, same, same] }],
 				},
-				{ fake },
+				{ fake, ...anotherWriter },
 			);
 			await second.run;
 			links = structuredClone((await reviewer.snapshot(FindingsDocument, owner, context))?.inherited?.[at]);
