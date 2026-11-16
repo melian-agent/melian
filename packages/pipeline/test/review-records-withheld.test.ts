@@ -35,6 +35,14 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 		expect(bytes(records.check("e".repeat(64), result, []))).not.toContain(token);
 	});
 
+	it.each(["ran", "provisional"] as const)(
+		"as a %s check's version, which the installed tool's manifest names",
+		(status) => {
+			const result = { name: "static.biome", status, findings: 0, notes: [], version: token, reason: "" };
+			expect(bytes(records.check("e".repeat(64), result as CheckRunRecord, []))).not.toContain(token);
+		},
+	);
+
 	it("as a lens that did not answer, gave up, or failed with a provider's message and caveats", () => {
 		const check: CheckRecord = {
 			name: "lens.correctness",
@@ -140,6 +148,25 @@ describe("an exported record keeps what Melian defines", () => {
 			reason: withheld,
 			cause: null,
 		});
+	});
+
+	it.each(["2.3.4", "6.0.0-dev.20261101", "unavailable"])("keeps the version %s a check ran with", (version) => {
+		for (const status of ["ran", "provisional"] as const) {
+			const result = { name: "static.biome", status, findings: 0, notes: [], version, reason: "" } as CheckRunRecord;
+			expect((payload(records.check("e".repeat(64), result, [])).result as { version: string }).version).toBe(
+				version,
+			);
+		}
+	});
+
+	it("writes a check that names no version with a null version", () => {
+		const result = { name: "static.biome", status: "ran", findings: 0, notes: [] } as CheckRunRecord;
+		expect((payload(records.check("e".repeat(64), result, [])).result as { version: unknown }).version).toBeNull();
+	});
+
+	it.each(["v2.3.4", "2.3", "2.3.4 "])("withholds %j, which is not a version in its own form", (version) => {
+		const result = { name: "static.biome", status: "ran", findings: 0, notes: [], version } as CheckRunRecord;
+		expect((payload(records.check("e".repeat(64), result, [])).result as { version: string }).version).toBe(withheld);
 	});
 
 	it("keeps the code of a check no record holds", () => {
