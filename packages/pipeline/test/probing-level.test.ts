@@ -347,7 +347,12 @@ describe("a level that probes", () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{
+				rewrite: (command) =>
+					inHeadTree(command) && ++heads > 1
+						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
+						: command,
+			},
 		);
 		const error = await run.then(
 			() => undefined,
@@ -1874,7 +1879,12 @@ describe("a level that probes", () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{
+				rewrite: (command) =>
+					inHeadTree(command) && ++heads > 1
+						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
+						: command,
+			},
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -1953,6 +1963,22 @@ describe("a level that probes", () => {
 		expect(accepted[0]).toMatch(/probe p[0-9]+ passed/);
 		expect(accepted.slice(1).every((result) => result.includes("as skipped"))).toBe(true);
 		expect(ran.status).toBe("ran");
+	});
+
+	it("says a probe whose runner wrote no record of how it ended shows nothing", async () => {
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [
+					round([["run_probe", { attack: 1, script: "process.exit(1);\n" }]]),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ rewrite: (command) => (inHeadTree(command) ? "exit 1" : command) },
+		);
+		await run;
+		const [unrecorded] = resultsOf(requests[prober]![1]!);
+		expect(unrecorded).toMatch(/probe p[0-9]+ ended with no record of how, which shows nothing/);
 	});
 
 	it("says how a probe ended: timed out, cut, ended by a signal, or silent", async () => {

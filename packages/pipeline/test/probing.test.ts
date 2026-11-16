@@ -423,6 +423,7 @@ describe("the plan as a prober and a verifier read it", () => {
 			[result({ timedOut: true }), "timed out"],
 			[result({ truncated: true }), "printed past its output limit and was ended"],
 			[result({ exitCode: null, signal: "SIGKILL" }), "was ended by SIGKILL"],
+			[result({ exitCode: null, signal: null }), "ended with no record of how"],
 		] as const)
 			expect(
 				renderProbeEvidence("c1", { ...claim, probe: { ...claim.probe, result: given } }, undefined, nonce),

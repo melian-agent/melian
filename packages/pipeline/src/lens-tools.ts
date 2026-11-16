@@ -1332,7 +1332,10 @@ function describeProbe(id: string, result: ProbeRecord["result"], timeout: numbe
 		return `probe ${id} timed out after ${seconds} second${seconds === 1 ? "" : "s"}, which shows nothing`;
 	if (result.truncated)
 		return `probe ${id}'s output passed its limit, so it was cut and the probe ended, which shows nothing`;
-	if (result.exitCode === null) return `probe ${id} was ended by ${result.signal}, which shows nothing`;
+	if (result.exitCode === null)
+		return result.signal === null
+			? `probe ${id} ended with no record of how, which shows nothing`
+			: `probe ${id} was ended by ${result.signal}, which shows nothing`;
 	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so the boundary held`;
 	return `probe ${id} failed: it exited ${result.exitCode}, so it shows the defect if it exercises the attack. Report a finding it shows with probe "${id}"`;
 }

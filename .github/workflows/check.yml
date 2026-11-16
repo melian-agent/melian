@@ -124,8 +124,8 @@ jobs:
               | $name | sub("^.*?/(?<p>(packages|scripts)/)"; "\(.p)")]
             + ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
                 "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
-                "packages/pipeline/test/probe-keychain.test.ts"]
-            | unique | if length > 5 then .[] else error("the Linux report shows no skipped test") end
+                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probe-endings.test.ts"]
+            | unique | if length > 6 then .[] else error("the Linux report shows no skipped test") end
           ' "$RUNNER_TEMP/linux/vitest.json" > "$RUNNER_TEMP/files.txt"
           cat "$RUNNER_TEMP/files.txt"
       - name: Run those files
@@ -146,7 +146,7 @@ jobs:
             | ($tests | map({key: .id, value: .status}) | from_entries) as $status
             | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
                 "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
-                "packages/pipeline/test/probe-keychain.test.ts"] as $suites
+                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probe-endings.test.ts"] as $suites
             # Only root can give a file to another user, and neither runner is root.
             | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
             | [$suites[] as $suite | [$tests[] | select(.file == $suite)]

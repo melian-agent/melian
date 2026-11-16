@@ -91,6 +91,7 @@ export const probeEvidenceWording = Object.freeze({
 	timedOut: "timed out",
 	cut: "printed past its output limit and was ended",
 	signalled: "was ended by {signal}",
+	unrecorded: "ended with no record of how",
 	passed: "passed, exiting 0",
 	failed: "failed, exiting {code}",
 	nothing: "(nothing)",
@@ -236,9 +237,12 @@ export function probeFailed(result: StoredProbeResult): boolean {
 	return probeConclusive(result) && result.exitCode !== 0;
 }
 
-/** Whether a probe's result says anything: it exited with a code, within its time limit and its output limit. */
+/**
+ * Whether a probe's result says anything: it exited with a code other than 125, within its time limit and its output
+ * limit. A probe exits 125 to say it could not test its attack, as `git bisect` reads it.
+ */
 export function probeConclusive(result: StoredProbeResult): boolean {
-	return !result.timedOut && !result.truncated && result.exitCode !== null;
+	return !result.timedOut && !result.truncated && result.exitCode !== null && result.exitCode !== 125;
 }
 
 /** A probe's run, or why it could not run. */
@@ -485,7 +489,10 @@ export function probeClaimKey(claim: {
 function outcome(result: StoredProbeResult): string {
 	if (result.timedOut) return probeEvidenceWording.timedOut;
 	if (result.truncated) return probeEvidenceWording.cut;
-	if (result.exitCode === null) return fill(probeEvidenceWording.signalled, { signal: String(result.signal) });
+	if (result.exitCode === null)
+		return result.signal === null
+			? probeEvidenceWording.unrecorded
+			: fill(probeEvidenceWording.signalled, { signal: result.signal });
 	return result.exitCode === 0
 		? probeEvidenceWording.passed
 		: fill(probeEvidenceWording.failed, { code: result.exitCode });
@@ -626,6 +633,7 @@ export function probeEvidenceRenderings(): string {
 		"evidence, timed out": renderProbeEvidence("c1", claim, ran({ timedOut: true }), nonce),
 		"evidence, cut": renderProbeEvidence("c1", claim, ran({ truncated: true }), nonce),
 		"evidence, signalled": renderProbeEvidence("c1", claim, ran({ exitCode: null, signal: "SIGKILL" }), nonce),
+		"evidence, unrecorded": renderProbeEvidence("c1", claim, ran({ exitCode: null, signal: null }), nonce),
 	})
 		.map(([name, text]) => `=== ${name} ===\n${text}\n`)
 		.join("\n");
