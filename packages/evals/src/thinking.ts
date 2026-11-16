@@ -1,8 +1,11 @@
 import {
+	type FallbackEntry,
+	fallbackEntry,
 	type MelianConfig,
 	type ModelRoute,
 	type ModelTier,
 	modelTiers,
+	parseModelReference,
 	thinkingLevelSchema,
 	visibleText,
 } from "@melian-agent/core";
@@ -47,4 +50,28 @@ export class EvalThinking {
 			models[tier as ModelTier] = { ...models[tier as ModelTier], thinking };
 		return { ...config, models };
 	}
+}
+
+/**
+ * Parses MELIAN_EVAL_FALLBACK, comma-separated `provider/model-id` or `provider/model-id@level` entries, the fallbacks
+ * appended to every tier MELIAN_EVAL_MODEL fills.
+ */
+export function parseEvalFallbacks(value = ""): FallbackEntry[] {
+	return (value === "" ? [] : value.split(",")).map((entry) => {
+		const [model, level, ...extra] = entry.split("@").map((part) => part.trim());
+		try {
+			parseModelReference(model ?? "", "fallback");
+		} catch {
+			throw invalidFallback(entry);
+		}
+		if (extra.length !== 0 || (level !== undefined && !Value.Check(thinkingLevelSchema, level)))
+			throw invalidFallback(entry);
+		return fallbackEntry(model!, level as ModelRoute["thinking"]);
+	});
+}
+
+function invalidFallback(entry: string): Error {
+	return new Error(
+		`MELIAN_EVAL_FALLBACK needs provider/model-id or provider/model-id@level entries; invalid entry ${visibleText(JSON.stringify(entry))}`,
+	);
 }

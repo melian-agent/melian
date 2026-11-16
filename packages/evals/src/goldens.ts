@@ -12,6 +12,7 @@ import {
 	evaluateGuardrails,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
+	type FallbackEntry,
 	type Finding,
 	FindingsLog,
 	Lens,
@@ -312,6 +313,8 @@ export type GoldenMode =
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
 			readonly thinking?: EvalThinking;
+			/** Fallbacks appended to every tier `model` fills, each optionally with its own level. */
+			readonly fallbacks?: readonly FallbackEntry[];
 	  };
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
@@ -331,8 +334,13 @@ export interface GoldenRun {
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-function routeEveryTier(config: MelianConfig, model: string, override: boolean): MelianConfig {
-	const route: ModelRoute = { model };
+function routeEveryTier(
+	config: MelianConfig,
+	model: string,
+	override: boolean,
+	fallbacks: readonly FallbackEntry[] = [],
+): MelianConfig {
+	const route: ModelRoute = fallbacks.length === 0 ? { model } : { model, fallbacks: [...fallbacks] };
 	const models = Object.fromEntries(
 		tiers.map((tier) => {
 			const existing = config.models[tier];
@@ -342,7 +350,7 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 					? route
 					: existing?.model !== undefined || existing?.accept !== undefined
 						? existing
-						: { ...existing, model },
+						: { ...existing, ...route },
 			];
 		}),
 	);
@@ -389,7 +397,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = fake.review;
 			scriptLenses(fake, lenses, { ...golden.script, verifier: golden.verifier ?? {} }, toolMismatches);
 		} else {
-			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
+			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false, mode.fallbacks);
 			const verifier = mode.verifierModel ?? mode.model;
 			if (verifier !== undefined)
 				config = {
