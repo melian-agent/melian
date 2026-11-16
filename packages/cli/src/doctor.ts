@@ -534,7 +534,9 @@ async function branchContents(
 		];
 		return { state: strays.length === 0 && notes.length === 1 ? "ok" : "warn", detail: notes.join("; ") };
 	} catch (error) {
-		return { state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
+		// The sweep ran when the store opened, so what it left still needs naming when the branch cannot be read.
+		const failure = visibleText(error instanceof Error ? error.message : String(error));
+		return { state: "warn", detail: [failure, ...(store === undefined ? [] : sweepNotes(store.sweep))].join("; ") };
 	} finally {
 		await store?.close();
 	}

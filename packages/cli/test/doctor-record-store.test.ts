@@ -246,6 +246,16 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("names what the sweep kept when the branch then cannot be read", async () => {
+		origin(`file://${join(directory, "absent.git")}`);
+		const state = await stateDirectory(repo, io.env);
+		mkdirSync(join(state, "records.git.not-an-owner"), { recursive: true });
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toMatch(
+			/^warn records fetching melian\/state from the clone's origin failed, git exit \d+; run `git ls-remote origin refs\/heads\/melian\/state` in the clone to see git's own words; the state directory keeps a leftover whose maker Melian cannot tell is gone, which a person may remove once no Melian uses the directory: records\.git\.not-an-owner; its writers /,
+		);
+	});
+
 	it("says the sweep removed nothing when the process table cannot be read", async () => {
 		origin(remote.url);
 		vi.spyOn(ProcessTable.prototype, "list").mockImplementation(() => {
