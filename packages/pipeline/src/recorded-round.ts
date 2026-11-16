@@ -7,7 +7,6 @@ import {
 	type FindingSource,
 	type LensPayload,
 	type MelianConfig,
-	type PolicyAt,
 	type RecordEnvelope,
 	RecordError,
 	RecordSet,
@@ -27,9 +26,12 @@ import { accountKey, inManifestOrder } from "./review-records.ts";
 export type RecordedRoundContext = {
 	/** The revision the round reviewed, whose hunks let lens reports that one hunk caused merge. */
 	readonly revision: Revision;
-	/** The configuration for every path, used where no policy source is given. */
+	/** The configuration a refusal is decided under. A round is decided only under the policy source its account names. */
 	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases">;
-	/** The checkout and the source per-path configuration is read from, as the review that wrote the round read it. */
+	/**
+	 * The checkout and the source per-path configuration is read from, as the review that wrote the round read it.
+	 * Without both, the round reads as not reviewed.
+	 */
 	readonly repoRoot?: string;
 	readonly policy?: RepositorySource;
 	/** The IDs of findings an earlier revision sighted. Without them every finding reads as new. */
@@ -95,20 +97,23 @@ export class RecordedRound {
 		const { repoRoot, policy } = context;
 		const policies =
 			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
 		const decidedUnder = pieces.account.resolutionPolicy;
-		const readsUnder = policies?.fingerprint ?? null;
-		if (decidedUnder !== readsUnder)
+		if (decidedUnder === null)
+			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
+		if (policies === undefined)
+			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
+		if (decidedUnder !== policies.fingerprint)
 			return notReviewed(
 				this.id,
-				`was decided under ${decidedUnder === null ? "no resolution policy" : `resolution policy ${decidedUnder}`}, and ${readsUnder === null ? "the reader reads none" : `this checkout's reads ${readsUnder}`}`,
+				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
 				context,
 			);
-		const config: PolicyAt | ConfigFor = policies ?? (() => context.config as ReturnType<ConfigFor>);
 		return new Adjudication({
 			findings,
 			manifest: pieces.account.checks,
 			checks: pieces.checks,
-			config,
+			config: policies,
 			allowSkip: pieces.account.allowSkip,
 			verificationRan: true,
 			...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
@@ -135,6 +140,8 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 		return { refused: `names records the set does not hold: ${missing.map((each) => each.id).join(", ")}` };
 	const accountRecord = set.account(round);
 	if (accountRecord === undefined) return { refused: "names no account, or more than one" };
+	if ((accountRecord.payload as { v: number }).v === 1)
+		return { refused: "names an account written before accounts named their resolution policy" };
 	const account = accountRecord.payload as AccountPayload;
 	const named = round.manifest()!.read.filter((entry) => entry.kind !== "account");
 	const ids = named.map((entry) => entry.id).sort();

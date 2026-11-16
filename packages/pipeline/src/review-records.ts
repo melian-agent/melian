@@ -241,7 +241,7 @@ export class ReviewRecords {
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
 		const payload: AccountPayload = {
-			v: 1,
+			v: 2,
 			checks: [...new Set(facts.checks)],
 			records,
 			// Two records alike in every field fill one entry, since an account names each once.

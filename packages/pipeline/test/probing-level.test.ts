@@ -399,7 +399,11 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 	});
 
 	it("reads back from its records the verdict of a review whose prober left an attack untried", async () => {
+		// A reader decides a round only under the policy the review read, so the band moves into the base's melian.yaml.
+		withBasePolicy("lenses:\n  trust-boundary:\n    level:\n      floor: deep\n");
 		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		const base = gitIn(repo, "rev-parse", "main");
+		const policy = { kind: "revision", commit: base } as const;
 		const { run, changeset, config } = await review(
 			{
 				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
@@ -409,15 +413,18 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					fauxAssistantMessage("Still done."),
 				],
 			},
-			{ records },
+			{ records, policy },
 		);
 		const { verdict } = await run;
 		expect(verdict.status).toBe("not-reviewed");
+		expect(
+			[...(verdict.ran ?? []), ...verdict.notRun].find(({ name }) => name === "lens.trust-boundary")?.level,
+		).toBe("deep");
 		const stored = await records.list(changeset.id);
 		const round = SharedRecord.parseEnvelope(stored.filter(({ kind }) => kind === "round").at(-1)!).id;
 		const recorded = RecordedRound.of(stored, round, () => true);
 		expect(recorded.refusal()).toBeUndefined();
-		const read = await recorded.verdict({ revision: changeset.revision, config });
+		const read = await recorded.verdict({ revision: changeset.revision, config, repoRoot: repo, policy });
 		expect(read.toJSON()).toEqual(verdict.toJSON());
 	});
 
