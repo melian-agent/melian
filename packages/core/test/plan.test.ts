@@ -2019,6 +2019,29 @@ describe("a fallback's level in melian doctor", () => {
 		expect(texts(named).some((text) => text.includes("names no thinking level"))).toBe(false);
 	});
 
+	it("names a bare fallback promoted to first as the model a low level was chosen for", () => {
+		const promoted = plan({ heavy: { model: "nowhere/first", thinking: "low", fallbacks: [opus, gpt] } }, both);
+		expect(promoted.warnings().filter((text) => text.startsWith("heavy: fallback"))).toEqual([
+			warning("heavy", gpt, "low", opus),
+		]);
+	});
+
+	it("does not warn for a route no committed route names, when a fallback promoted to first names its own level", () => {
+		const resolved = plan({}, both, {
+			preferences: {
+				heavy: { model: "nowhere/first", thinking: "low", fallbacks: [{ model: opus, thinking: "high" }, gpt] },
+			},
+		});
+		expect(resolved.tier("heavy").models.map(({ model }) => model)).toEqual([opus, gpt]);
+		expect(resolved.warnings()).toEqual([
+			"heavy: nowhere/first, set by melian.local.yaml, is not a model the catalogue holds; it knows no provider nowhere",
+			`heavy runs ${opus}, set by melian.local.yaml; the committed route accepts ${opus}; thinking low set by melian.yaml; committed policy wants unset; it answers at thinking high`,
+			"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
+			`${opus} could be judged by ${opus} (same family) if ${gpt} fails`,
+			`${gpt} could be judged by ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+		]);
+	});
+
 	it("does not warn for a route that does not run", () => {
 		const resolved = plan({ heavy: { model: gpt, thinking: "low", fallbacks: [opus] } }, {});
 		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
