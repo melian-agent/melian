@@ -121,13 +121,14 @@ export class ReviewError extends Error {
 }
 
 /** Why a finding could not be dismissed, or why its verdict was not decided again afterwards. */
-export type DismissErrorCode = "notReviewed" | "unknownFinding" | "notInstalled" | "adjudicationFailed";
+export type DismissErrorCode = "notReviewed" | "unknownFinding" | "notInstalled" | "adjudicationFailed" | "unprovenRun";
 
 /**
  * A dismissal could not be recorded: `notReviewed` when no verdict is stored for the revision, `unknownFinding` when the
  * verdict holds no finding with the ID, and `notInstalled` when the harness cannot adjudicate. `adjudicationFailed`
  * means the dismissal was recorded but the verdict was not decided again; the next review of the revision decides it.
- * `revision` is the revision's key and `finding` the ID.
+ * `unprovenRun` means a static finding's dismissal cannot be exported, since no request shows the run that sighted it
+ * stored none of its tool's text. `revision` is the revision's key and `finding` the ID.
  */
 export class DismissError extends Error {
 	readonly code: DismissErrorCode;

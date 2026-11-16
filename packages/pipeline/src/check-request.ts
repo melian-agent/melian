@@ -76,6 +76,27 @@ function strykerFrom({
 	return { ...mutation, stryker: { ...stryker, source: { from: source.from } } };
 }
 
+// The first version of each static check's own code that stores none of its tool's text in a finding. A build before it
+// stored Biome's and tsc's messages, or Enola's and the mutation check's in a discriminator.
+const fixedTextSince: ReadonlyMap<string, number> = new Map([
+	["static.biome", 2],
+	["static.tsc", 2],
+	["static.enola", 2],
+	["static.mutation", 2],
+]);
+
+/**
+ * Whether a check run's request asks for a version of `check` whose findings hold none of its tool's text, so another
+ * host may be shown them. A request that is not a check run's, or names no version of `check`, proves nothing.
+ */
+export function writesFixedText(asked: KeyedRequest<RecordJson>, check: string): boolean {
+	const since = fixedTextSince.get(check);
+	const checks = asked.producer === "check" ? (asked.request as { checks?: unknown }).checks : undefined;
+	const version =
+		typeof checks === "object" && checks !== null ? (checks as Record<string, unknown>)[check] : undefined;
+	return since !== undefined && typeof version === "number" && version >= since;
+}
+
 /**
  * Whether a run of this request may stand for a later one with the same key. A key holds what was read, so an input
  * that could not be read leaves nothing to compare, and the run is not reused.

@@ -66,6 +66,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
+import { writesFixedText } from "./check-request.ts";
 import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -3067,7 +3068,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// bytes, so its round names no round of its own key as replaced.
 	const exportRound = async (
 		store: RecordStore,
-		run: string | null,
+		run: CheckRun | undefined,
 		checks: readonly CheckRecord[],
 		adjudicated: readonly CheckRecord[],
 		decided: ReadonlyMap<string, CheckRecord>,
@@ -3080,6 +3081,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		const sighted = (source: FindingSource) =>
 			state === undefined ? [] : producerSightings(state, reviewed, source);
+		const request = run?.request ?? null;
+		// A static sighting is shared only when the run's own request asks for check code that stores no tool text.
+		const proven = (check: string) =>
+			run?.asked !== undefined && run.asked.key === run.request && writesFixedText(run.asked, check);
 		const exported = checks.flatMap((check) => {
 			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
@@ -3087,6 +3092,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const sightings = counted
 				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
 				: [];
+			if (check.name.startsWith("static.") && sightings.length > 0 && !proven(check.name)) {
+				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason: "withheld", error: "" };
+				return [{ name: check.name, record: records.check(request, withheld, []) }];
+			}
 			// A host's record may leave out the count and the notes a run writes; its sightings and none stand for them.
 			const given = Object.fromEntries(Object.entries(check).filter(([, value]) => value !== undefined));
 			const result = {
@@ -3096,7 +3105,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				error: "",
 				...given,
 			} as unknown as CheckRunRecord;
-			return [{ name: check.name, record: records.check(run, result, sightings) }];
+			return [{ name: check.name, record: records.check(request, result, sightings) }];
 		});
 		const lenses = await lensRecords(ran.lenses, lensResult ?? {}, decided, state);
 		const counted = [
@@ -3667,7 +3676,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
 		await exportRound(
 			request.records,
-			run?.request ?? null,
+			run,
 			options.checks ?? [],
 			verificationCheck === undefined ? checks : [...checks, verificationCheck],
 			decided,

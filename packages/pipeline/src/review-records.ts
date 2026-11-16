@@ -28,7 +28,9 @@ import {
 	type WalkthroughPayload,
 } from "@melian-agent/core";
 import { blindCallers, lightTriage } from "./caveats.ts";
+import { writesFixedText } from "./check-request.ts";
 import type { CheckRunRecord } from "./checks.ts";
+import { DismissError } from "./errors.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
@@ -80,6 +82,8 @@ export type DismissalFacts = {
 	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
 	readonly rounds: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
+	/** For a static finding, the request of the check run that sighted it, which must prove that run stored no tool text. */
+	readonly request?: KeyedRequest<RecordJson>;
 };
 
 const micros = (dollars: number): number => Math.round(dollars * 1_000_000);
@@ -113,6 +117,7 @@ const codes: ReadonlySet<string> = new Set([
 	"faulted",
 	"no record",
 	"unexpected",
+	"withheld",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
 const caveat = (text: string): string =>
@@ -325,6 +330,13 @@ export class ReviewRecords {
 
 	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
 	dismissal(facts: DismissalFacts): SharedRecord {
+		const { check } = facts.sighting.finding.properties.source;
+		if (check.startsWith("static.") && (facts.request === undefined || !writesFixedText(facts.request, check)))
+			throw new DismissError(
+				"unprovenRun",
+				`The dismissed ${check} finding was sighted by a run that does not prove it holds no tool text; review again under this build to share it.`,
+				{ revision: facts.sighting.revision, finding: facts.finding },
+			);
 		const payload: DismissalPayload = {
 			v: 1,
 			by: facts.by,
