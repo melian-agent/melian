@@ -2,7 +2,7 @@
 
 Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 2's kinds that come from a command
 
-Status: for [issue #481](https://github.com/melian-agent/melian/issues/481). The coordinator answered the approach on 2026-11-16, on that issue; it is not a ruling.
+Status: for [issue #481](https://github.com/melian-agent/melian/issues/481). The coordinator answered the approach on 2026-11-16, on that issue; it is not a ruling. The maintainer ruled on three points the same day, in the coordinator's session, recorded in [the maintainer's ruling of 2026-11-16](https://github.com/melian-agent/melian/issues/481#issuecomment-6910821952) on that issue.
 
 ## Problem
 
@@ -20,16 +20,20 @@ A dismissal stored before findings document version 11 holds no frozen sighting,
 
 ## The verification request names each dismissal by its record
 
-A candidate's `dismissed` roots carry the ID of the dismissal record a round exports for each root. The verification request, and so its key, includes those IDs; the verifier's input leaves them out. A host that sees a dismissal an earlier verification was not shown builds another request and verifies again, as rule 5 asks. The verification record lists the IDs in `dismissals`, and a claim's `matches` names only roots it lists. The verification task's input is version 5; a version-4 task has no record IDs, and a candidate with a dismissed root runs again once after the upgrade. One with none keeps its key.
+A candidate's `dismissed` roots carry the ID of the dismissal record a round exports for each root. The verification request, and so its key, includes those IDs; the verifier's input leaves them out. A host that sees a dismissal an earlier verification was not shown builds another request and verifies again, as rule 5 asks. A dismissal replaced while a review runs is such a dismissal, so the same review asks the verifier again, and a restatement carries the dismissal that stands, by [the maintainer's ruling of 2026-11-16](https://github.com/melian-agent/melian/issues/481#issuecomment-6910821952). The verification record lists the IDs in `dismissals`, and a claim's `matches` names only roots it lists. The verification task's input is version 5; a version-4 task has no record IDs, and a candidate with a dismissed root runs again once after the upgrade. One with none keeps its key.
 
 ## How a reader applies a dismissal record
 
-`RecordedRound` reads every dismissal record of the changeset that counts, whatever round it reads. The latest by time stands for each finding. The finding reads dismissed when every sighting still meets the record's trigger under the host's reopen rule, `reopens`, at the revision's proving hunks. A record that does not count, or whose trigger a sighting no longer meets, leaves the finding live, never dropped.
+`RecordedRound` reads every dismissal record of the changeset that counts, whatever round it reads. The latest by time stands for each finding, and of two made at one time, the one with the greater ID. The finding reads dismissed when every sighting still meets the record's trigger under the host's reopen rule, `reopens`, at the revision's proving hunks. A record that does not count, or whose trigger a sighting no longer meets, leaves the finding live, never dropped.
 
-The host's round after a dismissal runs no verifier when every finding is dismissed, and its records then hold no claim of an earlier round's verification. A reader that does not count the dismissal would see a live finding with no claim, and the unverified cap would read a P1 as advisory and pass it. So the reader applies the unverified cap only when the round's account names the verifier. That never reads a round as less strict than the host. A dismissed finding's verification, which the host still shows, is absent from the reader's verdict.
+The host's round after a dismissal runs no verifier when every finding is dismissed, and its records then hold no claim of an earlier round's verification. A reader that does not count the dismissal would see a live finding with no claim, and the unverified cap would read a P1 as advisory and pass it. So the reader applies the unverified cap only when the round's account names the verifier, by [the maintainer's ruling of 2026-11-16](https://github.com/melian-agent/melian/issues/481#issuecomment-6910821952). That never reads a round as less strict than the host.
 
-## What stays out
+## Where a reader differs from the host
 
-A finding the host holds dismissed by inheritance, as a restatement of a dismissed root, reads as live in the reader. Inheriting needs the defect merge, the severity fence and the floors, and errs towards blocking without them.
+Three differences remain, by [the maintainer's ruling of 2026-11-16](https://github.com/melian-agent/melian/issues/481#issuecomment-6910821952); [issue #506](https://github.com/melian-agent/melian/issues/506) closes the first two before build 5.
 
-A record is never withdrawn. A host that reopens a finding stops exporting its record, and the reader reapplies the reopen rule, which covers every reopen the host makes today. A command that withdraws a dismissal by hand would need a record of its own.
+A dismissed finding carries no earlier verification. The host's round exports a claim only for a verification it ran, and its round after a dismissal runs none. So the reader's verdict shows the finding dismissed with no verification, where the host's shows the verification an earlier round made.
+
+A restatement the host holds dismissed by inheritance reads live. The reader applies a dismissal record only to the finding it names, because inheriting needs the defect merge, the severity fence and the floors. So a reader sees the restatement new and blocking where the host passes it.
+
+A dismissal record is never withdrawn. A host that reopens a finding stops exporting its record, and the reader reapplies the reopen rule to the record it still holds, which covers every reopen the host makes today. A reader would still see the finding dismissed after a command that withdrew a dismissal by hand, and such a command would need a record of its own.
