@@ -135,14 +135,18 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// Git and every program below it, such as ssh waiting at a passphrase prompt, by the pids one read of the process
 		// table recorded while git still ran, and git again through its own handle. A transport can hold the output pipes
 		// open, so this end of stderr is closed and git's close no longer settles the call; the stop does, within about a
-		// second. Resolves false when any read of the table failed or no longer showed git, so programs below git may still
-		// run.
+		// second. Resolves false when git had already exited, or any read of the table failed or no longer showed git, so
+		// programs below git may still run.
 		let stopped: Promise<boolean> | undefined;
 		const stop = () => {
 			if (stopped !== undefined) return stopped;
 			clearTimeout(deadline);
+			// Until Node has reaped git, which sets exitCode or signalCode, git's pid can be no other process's. After, a
+			// process that took it would be stopped with its own children, so nothing below git is signalled.
 			const stopping =
-				child.pid === undefined ? undefined : stopTree(child.pid, options.processes ?? new ProcessTable());
+				child.pid === undefined || child.exitCode !== null || child.signalCode !== null
+					? undefined
+					: stopTree(child.pid, options.processes ?? new ProcessTable());
 			child.kill();
 			child.stderr.destroy();
 			const all = stopping?.then(

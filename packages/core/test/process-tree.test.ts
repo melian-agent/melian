@@ -65,6 +65,15 @@ describe("stopTree", () => {
 		]);
 	});
 
+	it("reads the table and records the tree before it returns, with nothing awaited between", () => {
+		const table = new FakeTable([entry(1, 0), entry(self, 1), entry(100, self), entry(101, 100)]);
+		const stopping = stopTree(100, table, instant);
+		// The first signal follows the read in the same turn, so the tree was recorded from that one read.
+		expect(table.reads).toBeGreaterThanOrEqual(1);
+		expect(table.kills[0]).toEqual([100, "SIGTERM"]);
+		return stopping;
+	});
+
 	it("never signals this process, though the table shows it below the root", async () => {
 		const table = new FakeTable([entry(1, 0), entry(100, 1), entry(self, 100), entry(101, 100)]);
 		await stopTree(100, table, instant);

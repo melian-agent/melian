@@ -285,6 +285,41 @@ describe("git with a deadline", () => {
 		}
 	}, 20_000);
 
+	it("signals nothing below git once git has exited, though another process now holds its pid", async () => {
+		// Git exits at once while its child holds its output, and the table then shows git's pid as another process's.
+		const bin = join(repo, "bin");
+		const gitPid = join(repo, "git-pid");
+		const recorded = join(repo, "child-pid");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), `#!/bin/sh\necho $$ > ${gitPid}\nsleep 10 &\necho $! > ${recorded}\n`, {
+			mode: 0o755,
+		});
+		const kills: [number, string][] = [];
+		const reused: ProcessControl = {
+			list: () => {
+				const pid = Number(readFileSync(gitPid, "utf8"));
+				return [
+					{ pid, ppid: 1, start: "Mon Nov 16 03:00:00 2026", command: "vim" },
+					{ pid: pid + 100_000, ppid: pid, start: "Mon Nov 16 03:00:01 2026", command: "less" },
+				];
+			},
+			kill: (pid, signal) => {
+				kills.push([pid, signal]);
+			},
+		};
+		try {
+			const result = await git(repo, ["fetch"], {
+				deadlineMs: 500,
+				env: { PATH: `${bin}:${process.env.PATH}` },
+				processes: reused,
+			});
+			expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+			expect(kills).toEqual([]);
+		} finally {
+			stopRecorded(recorded);
+		}
+	}, 20_000);
+
 	it("leaves a command that ends in time as it is", async () => {
 		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });
 		expect(result).toEqual({ code: 0, stdout: "true\n", stdoutBytes: Buffer.from("true\n"), stderr: "" });
