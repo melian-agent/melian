@@ -129,6 +129,15 @@ describe("git", () => {
 		});
 		expect(result.stdout).toMatch(/^Melian state <state@melian\.invalid> /);
 	});
+
+	it("stops git once its output reaches maxBytes, and gives the cut result an exit code of -1", async () => {
+		// A stand-in for git, found first on PATH, that writes without end, so only the kill ends it.
+		const bin = join(repo, "bin");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), "#!/bin/sh\nexec yes\n", { mode: 0o755 });
+		const result = await git(repo, ["log"], { maxBytes: 4, env: { PATH: `${bin}:${process.env.PATH}` } });
+		expect(result).toMatchObject({ code: -1, truncated: true, stdout: "y\ny\n" });
+	});
 });
 
 describe("git with input it does not read", () => {
