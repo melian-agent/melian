@@ -95,10 +95,8 @@ const sharedEvidenceWording = Object.freeze({
 	nothing: "(nothing)",
 });
 
-/** Every wording one lens's planner and prober read: the shared lines with the lens's own. */
 export type ProbingWording = typeof probingWording & Omit<LensProbingWording, "judge">;
 
-/** Every wording one lens's verifier reads of a claim's probe: the shared lines with the lens's own judgement. */
 export type EvidenceWording = Omit<typeof sharedEvidenceWording, "judge"> & { readonly judge: string };
 
 function ownWording(lens: string): LensProbingWording {
@@ -109,16 +107,13 @@ function ownWording(lens: string): LensProbingWording {
 	return own;
 }
 
-/** The wording lens `lens`'s planner and prober read, which a level that probes keys its run by. */
 export function probingWordingOf(lens: string): ProbingWording {
 	const { judge: _, ...own } = ownWording(lens);
 	return Object.freeze({ ...probingWording, ...own });
 }
 
-/**
- * The wording lens `lens`'s verifier reads of a claim's probe, its own judgement in the place the shared table's order
- * gives it, since the verifier's version hashes the table as JSON text, in order.
- */
+// The judgement goes in the place the shared table's order gives it, since the verifier's version hashes the table as
+// JSON text, in order.
 export function evidenceWordingOf(lens: string): EvidenceWording {
 	return Object.freeze({ ...sharedEvidenceWording, judge: ownWording(lens).judge });
 }
