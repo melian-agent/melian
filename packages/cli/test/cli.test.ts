@@ -555,6 +555,48 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
 	});
 
+	it("decides a round from the records a review exported, as the review decided it", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["findings", "main", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stderr: `melian: no record store at ${store}\n`,
+		});
+		expect(melian(repo, ["review", "main", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
+
+		const json = melian(repo, ["findings", "main", "--records", `dir:${store}`, "--json"], env);
+		const text = melian(repo, ["findings", "main", "--records", `dir:${store}`], env);
+
+		expect(json.status).toBe(0);
+		const rounds = JSON.parse(json.stdout) as { round: string; verdict: StoredVerdict }[];
+		expect(rounds.map(({ verdict }) => verdict)).toEqual([host]);
+		expect(rounds[0]!.round).toMatch(/^[0-9a-f]{64}$/);
+		expect(text.status).toBe(0);
+		expect(text.stdout).toBe(
+			`Round ${rounds[0]!.round}\n${Verdict.from(host).render(new Rendering({ ids: true, decided: true, target: "main" }))}`,
+		);
+	});
+
+	it("reads no record, and says why, when the base does not trust writers", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		const store = join(scratch, "records");
+		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+		git(repo, "checkout", "--quiet", "-b", "untrusting", "main");
+		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}trust:\n  writers: false\n`);
+		git(repo, "add", "melian.yaml");
+		git(repo, "commit", "--quiet", "-m", "untrusting policy");
+		git(repo, "checkout", "--quiet", feature);
+		git(repo, "merge", "--quiet", "--no-edit", "untrusting");
+		mkdirSync(store);
+
+		expect(melian(repo, ["findings", "untrusting", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stderr: "melian: the base's melian.yaml does not set trust.writers: true, so no record in the store counts\n",
+		});
+		expect(readdirSync(store)).toEqual([]);
+	});
+
 	it("exports nothing, and says why in one line, when the base does not trust writers", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
@@ -576,9 +618,21 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	});
 
 	it("refuses --records outside review, and a store that is not a directory", () => {
-		expect(melian(root, ["findings", "main", "--records", "dir:x"])).toMatchObject({
+		expect(melian(root, ["telemetry", "main", "--records", "dir:x"])).toMatchObject({
 			status: 64,
-			stderr: expect.stringContaining("--records is only available for review"),
+			stderr: expect.stringContaining("--records is only available for review and findings"),
+		});
+		for (const extra of [["--open"], ["--rounds"]])
+			expect(melian(root, ["findings", "main", "--records", "dir:x", ...extra])).toMatchObject({
+				status: 64,
+				stderr: expect.stringContaining("findings --records takes no --open, --round or --rounds"),
+			});
+		expect(melian(root, ["findings", "--round", "range-0000000000000000.r1", "--records", "dir:x"])).toMatchObject({
+			status: 64,
+		});
+		expect(melian(root, ["findings", "main", "--records", "x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining('--records takes a store such as "dir:<path>"'),
 		});
 		expect(melian(root, ["review", "main", "--records", "x"])).toMatchObject({
 			status: 64,
