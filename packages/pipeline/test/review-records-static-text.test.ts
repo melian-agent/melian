@@ -154,9 +154,9 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
 		const madeUp: StoredFinding[] = stored.map((finding) => ({
 			...finding,
-			properties: { ...finding.properties, source: { check: "static.madeup", version: "1" } },
+			properties: { ...finding.properties, source: { check: "static.madeup", version: "1.0.0" } },
 		}));
-		expect(bytes(records.check("e".repeat(64), ran("static.madeup", 1, "1"), madeUp))).not.toContain(token);
+		expect(bytes(records.check("e".repeat(64), ran("static.madeup", 1, "1.0.0"), madeUp))).not.toContain(token);
 	});
 
 	it("as a Biome or tsc finding a build from before issue #281 stored with its tool's text", async () => {
@@ -164,9 +164,9 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		for (const check of ["static.biome", "static.tsc"]) {
 			const old: StoredFinding[] = stored.map((finding) => ({
 				...finding,
-				properties: { ...finding.properties, source: { check, version: "1" } },
+				properties: { ...finding.properties, source: { check, version: "1.0.0" } },
 			}));
-			expect(bytes(records.check("e".repeat(64), ran(check, 1, "1"), old))).not.toContain(token);
+			expect(bytes(records.check("e".repeat(64), ran(check, 1, "1.0.0"), old))).not.toContain(token);
 		}
 	});
 
