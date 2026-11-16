@@ -1,0 +1,298 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "57e3f81476402dce8b8d852683ae4d1eb5d7e7c3",
+    "head": "b3854be35b85b0c8bfa02080fc18c9dbd8fc5fc4"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 391,
+      "column": 77,
+      "endLine": 393,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7eadb846c3f7713fdeac4bba7b5d86d220658a296407d34aa6a925eb71ae349c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a lens refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2615,
+      "column": 7,
+      "endLine": 2615,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a473233985cefd35360ce26983497e900eadc56f35659a71f4b3dab6ea67a354",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a lens refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2615,
+      "column": 7,
+      "endLine": 2615,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ca926777e83d8e5414162660d8fc2a4bd2b7d9a69da34360ccdc7d88cf1825d1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/plan.test.ts",
+          "path": [
+            "reviewChangeset with a plan",
+            "fails every lens on a tier whose accepted models have no credentials under unavailable: fail, asking no model"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2615,
+      "column": 7,
+      "endLine": 2615,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "lineage !== undefined",
+      "status": "generated",
+      "id": "ee1aa730d874c81598f19d0501ec09a0948ec4e89b4275ed3d1c29654a4e2631",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a lens refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2615,
+      "column": 36,
+      "endLine": 2615,
+      "endColumn": 68,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "17c7b5cd2300c474f476e868e7de235a108f9ed815f40cfa710b56d063a4a0cb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a lens refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3442,
+      "column": 8,
+      "endLine": 3442,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "85f52da411d5095c5a914373a9f6a1e5fa065c27e82ae80a0fa93d2e04987952",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a verifier refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3442,
+      "column": 8,
+      "endLine": 3442,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "903aa774c00efbaf100947920a4c189889083e816dbf4117d7134df856d905a3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "clears ownership and prior judgements when missing credentials follows confirmed"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3442,
+      "column": 8,
+      "endLine": 3442,
+      "endColumn": 55,
+      "mutatorName": "EqualityOperator",
+      "replacement": "request.plan?.lineage(\"verifier\") !== undefined",
+      "status": "generated",
+      "id": "19c01939e52322ab061b42b54c92219eb1ecd3baa92876d4d7e5369dd85df45a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a verifier refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3442,
+      "column": 8,
+      "endLine": 3442,
+      "endColumn": 29,
+      "mutatorName": "OptionalChaining",
+      "replacement": "request.plan.lineage",
+      "status": "generated",
+      "id": "e6cf69c5966865b842041e80e31b70ab7236f88099e1774221410e1befae7c8f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "clears ownership and prior judgements when missing credentials follows confirmed"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3442,
+      "column": 30,
+      "endLine": 3442,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1c5511a7a869bb2658c409c84269b6bf083925320a776f877aab2be3901acc5f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a verifier refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3444,
+      "column": 7,
+      "endLine": 3444,
+      "endColumn": 65,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f316f52307b86ea3f572e0fb2653fe75cbfc6ef6e202fc529a718a24e19f9fe8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a verifier refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 3444,
+      "column": 50,
+      "endLine": 3444,
+      "endColumn": 60,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "98605b11ab2b41e66b7a341cbca70174585eac1e0494276eb2a34451eaa22cd5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification.test.ts",
+          "path": [
+            "the verifier",
+            "exports the round of a verifier refused at a fallback that names its own level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 12,
+  "omitted": 0,
+  "unmutated": []
+}
