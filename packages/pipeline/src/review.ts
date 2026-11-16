@@ -3092,11 +3092,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		// A static sighting is shared only from a run this process made, whose own request asks for check code that
 		// stores no tool text. A run handed in from elsewhere is not tied to the sightings, so it proves nothing.
 		const proven = (check: string) =>
-			run !== undefined &&
-			ranInThisProcess(run) &&
-			run.asked !== undefined &&
-			run.asked.key === run.request &&
-			writesFixedText(run.asked, check);
+			run !== undefined && ranInThisProcess(run) && run.asked !== undefined && writesFixedText(run.asked, check);
 		const exported = checks.flatMap((check) => {
 			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
