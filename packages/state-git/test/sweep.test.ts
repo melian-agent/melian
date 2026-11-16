@@ -262,6 +262,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 			`${host}--${randomUUID()}`,
 			`${host}-99999999999-${randomUUID()}`,
 			`${host}-${owner.pid}-${Buffer.from("Mon Nov 16 01:00:00 2026").toString("hex")}-${randomUUID()}`,
+			`${host}-${owner.pid}-.lock${randomUUID()}`,
 		];
 		for (const suffix of suffixes) writeFileSync(join(records, `melian-index-${suffix}`), "index");
 		const store = await remote.open({ directory });
