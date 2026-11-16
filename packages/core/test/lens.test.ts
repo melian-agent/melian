@@ -261,7 +261,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
 			"trust-boundary": "e78af31b1e01",
-			"trust-boundary-probes": "e97c17e2fe1d",
+			"trust-boundary-probes": "3c1046d5364f",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
