@@ -27,23 +27,42 @@ export function fallbackEntry(model: string, thinking: ModelRoute["thinking"]): 
 	return thinking === undefined ? model : { model, thinking };
 }
 
+/** A model of a route, naming the level it runs at where that differs from the route's. */
+export type AtLevel<T> = Omit<T, "thinking"> & { readonly thinking?: ModelRoute["thinking"] };
+
 /**
- * The route that runs `models` in order at `thinking`, each model that names its own level at that one. A first model
- * with a level of its own, a fallback promoted past models no credential reaches, becomes the route's level, and each
- * later model that names none keeps `thinking` by naming it.
+ * The route that runs `models`, a route's models at `thinking` that a credential reaches, in order: the level it runs
+ * at, and each model naming its own where it differs. The first model's own level, a fallback's promoted past models
+ * no credential reaches, becomes the route's, so a later model that names none keeps `thinking` by naming it, or runs
+ * at the first model's when `thinking` is absent. Every place that drops a model from a route takes the route that runs
+ * from here.
  */
-export function routeInOrder(
-	models: readonly { readonly model: string; readonly thinking?: ModelRoute["thinking"] }[],
+export function routeInOrder<T extends { readonly thinking?: ModelRoute["thinking"] }>(
+	models: readonly T[],
 	thinking: ModelRoute["thinking"],
-): ModelRoute {
-	const [first, ...rest] = models;
-	const level = first?.thinking ?? thinking;
-	const fallbacks = rest.map((each) =>
-		fallbackEntry(each.model, each.thinking ?? (level === thinking ? undefined : thinking)),
-	);
+): { readonly thinking?: ModelRoute["thinking"]; readonly route: AtLevel<T>[] } {
+	const level = models[0]?.thinking ?? thinking;
+	const at = ({ thinking: _own, ...model }: T, own: ModelRoute["thinking"]): AtLevel<T> =>
+		own === undefined ? model : { ...model, thinking: own };
 	return {
 		...(level === undefined ? {} : { thinking: level }),
-		...(first === undefined ? {} : { model: first.model, fallbacks }),
+		route: models.map((each, index) =>
+			at(each, index === 0 ? undefined : (each.thinking ?? (level === thinking ? undefined : thinking))),
+		),
+	};
+}
+
+/** `run`, a route {@link routeInOrder} gives, as a file writes it. */
+export function writtenRoute(run: {
+	readonly thinking?: ModelRoute["thinking"];
+	readonly route: readonly { readonly model: string; readonly thinking?: ModelRoute["thinking"] }[];
+}): ModelRoute {
+	const [first, ...rest] = run.route;
+	return {
+		...(run.thinking === undefined ? {} : { thinking: run.thinking }),
+		...(first === undefined
+			? {}
+			: { model: first.model, fallbacks: rest.map((each) => fallbackEntry(each.model, each.thinking)) }),
 	};
 }
 

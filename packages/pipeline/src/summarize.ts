@@ -12,6 +12,7 @@ import {
 	readRevisionFile,
 	requestJson,
 	resolveModelForTier,
+	routeInOrder,
 	type Walkthrough,
 } from "@melian-agent/core";
 import { type ReviewOrigin, type StoredVerdictState, VerdictDocument } from "./adjudication.ts";
@@ -433,7 +434,7 @@ export async function summarizeReview(options: {
 				(await hasCredentials(models, candidate.provider))
 			) {
 				model = { provider: candidate.provider, modelId: candidate.modelId };
-				thinking = candidate.thinking ?? thinking;
+				thinking = routeInOrder([candidate], thinking).thinking;
 				break;
 			}
 		}

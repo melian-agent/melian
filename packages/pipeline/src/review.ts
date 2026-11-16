@@ -55,6 +55,7 @@ import {
 	VerificationState,
 	verificationBudget,
 	visibleText,
+	writtenRoute,
 } from "@melian-agent/core";
 import { DecisionFiles, DesignSections } from "@melian-agent/decisions";
 import {
@@ -1161,8 +1162,10 @@ export class ChangePrompt {
 }
 
 // A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
-// credentials for, in routing order, or why there are none.
-type TierRoute = { readonly route: RoutedModel[] } | { readonly unrouted: string };
+// credentials for, in routing order, at the level they run at, or why there are none.
+type TierRoute =
+	| { readonly route: RoutedModel[]; readonly thinking?: ModelRoute["thinking"] }
+	| { readonly unrouted: string };
 
 async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRoute> {
 	const models = modelsOf(review);
@@ -1178,7 +1181,7 @@ async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRou
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
 		if (await hasCredentials(review, candidate.provider)) available.push(candidate);
 	}
-	if (available.length > 0) return { route: available };
+	if (available.length > 0) return routeInOrder(available, level.route?.thinking);
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	return { unrouted: `none of ${tried} is known with credentials` };
 }
@@ -1216,7 +1219,7 @@ class LevelRoute {
 				tier: at,
 				at,
 				noun: at,
-				route: routeInOrder(models, planned.thinking),
+				route: writtenRoute(routeInOrder(models, planned.thinking)),
 				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
 			});
 		}
@@ -2684,11 +2687,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const probingAt = async (settings: LensLevel, level: ScrutinyLevel) => {
 			const prober = proberAt(lens, level);
 			const timeout = settings.probe!.timeout ?? probeLimits.timeout.default;
-			const thinking = prober.route!.thinking;
+			const routed = resolved.get(prober.key) as { route: RoutedModel[]; thinking?: ModelRoute["thinking"] };
+			const { thinking } = routed;
 			const { decisions: atBase, earlier } = await probingContext();
 			return {
 				run: {
-					route: [...(resolved.get(prober.key) as { route: RoutedModel[] }).route],
+					route: [...routed.route],
 					...(thinking === undefined ? {} : { thinking }),
 					...(settings.probe!.prober === undefined ? { onLevelTier: true as const } : {}),
 					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
@@ -2717,8 +2721,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
 			const planning = (boundary: string) =>
 				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
-			const thinking = routeAt(lens, level).route?.thinking;
-			const route = [...(routeFor(lens, level) as { route: RoutedModel[] }).route];
+			const routed = routeFor(lens, level) as { route: RoutedModel[]; thinking?: ModelRoute["thinking"] };
+			const { thinking } = routed;
+			const route = [...routed.route];
 			const keyed = lensRequest({
 				run: (boundary, callers): Omit<LensRun, "request" | "escalation"> => ({
 					key: `${lens.name}@${lens.version}@${level}`,
@@ -2931,8 +2936,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				key: defect.speaker.id,
 				state: candidateState,
 				finder,
-				route: available,
-				...(config.models.verifier?.thinking === undefined ? {} : { thinking: config.models.verifier.thinking }),
+				// The plan's own level for the verifier, since its route may put a model the plan's routes did not first.
+				...routeInOrder(
+					available,
+					request.plan === undefined ? config.models.verifier?.thinking : request.plan.tier("verifier").thinking,
+				),
 				budget: { ...verificationBudget },
 				fence: {
 					coReported: !defect.lensOnly(),

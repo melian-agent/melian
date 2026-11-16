@@ -276,6 +276,7 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export {
+	type AtLevel,
 	type FallbackEntry,
 	fallbackEntry,
 	fallbackModel,
@@ -287,6 +288,7 @@ export {
 	resolveModelForTier,
 	resolveModelRoute,
 	routeInOrder,
+	writtenRoute,
 } from "./models.ts";
 export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";

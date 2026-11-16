@@ -1,4 +1,12 @@
-import type { CatalogModel, ModelRoute, RoutedModel, TextModel, ToolRequest, UsageObserver } from "@melian-agent/core";
+import {
+	type CatalogModel,
+	type ModelRoute,
+	type RoutedModel,
+	routeInOrder,
+	type TextModel,
+	type ToolRequest,
+	type UsageObserver,
+} from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
 import { type Api, isContextOverflow, type Model, type Models, type MutableModels } from "./harness.ts";
 import { ReasoningCapture } from "./reasoning.ts";
@@ -137,7 +145,7 @@ export class RouteTextModel implements TextModel {
 			if (model === undefined) continue;
 			// A store that cannot be read passes the provider over, so a later tier with its own credential still serves.
 			if (await hasCredentials(models, reference.provider).catch(() => false))
-				return new RouteTextModel(collection, model, reference.thinking ?? thinking);
+				return new RouteTextModel(collection, model, routeInOrder([reference], thinking).thinking);
 		}
 		return undefined;
 	}

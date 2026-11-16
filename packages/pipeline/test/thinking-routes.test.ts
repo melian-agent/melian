@@ -756,6 +756,125 @@ it("asks a fallback promoted past a first model no credential reaches at its own
 	}
 });
 
+it("asks a later bare fallback at a promoted fallback's level when a route names none, with no plan", async () => {
+	const repo = crashRepository();
+	const fake = createFakeModels({
+		models: [{ id: "spare" }, { id: "third" }, { id: "judge-spare" }, { id: "judge" }],
+	});
+	const asked = new Set<string>();
+	let reported = false;
+	fake.provider.setResponses(
+		Array.from({ length: 12 }, () => (request, options, _state, model) => {
+			asked.add(`${model.id} ${options?.reasoning}`);
+			if (model.id === "spare" || model.id === "judge-spare")
+				return fauxAssistantMessage("", { stopReason: "error", errorMessage: "Rate limit exceeded" });
+			if (model.id === "judge") return scriptVerifier(request.messages);
+			if (reported) return fauxAssistantMessage("Done.");
+			reported = true;
+			return fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" });
+		}),
+	);
+	const opened = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
+	try {
+		const lens = (await Lens.builtins()).find((each) => each.name === "correctness")!;
+		await reviewChangeset({
+			harness: opened,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			lenses: [lens],
+			standards: [],
+			models: fake.review,
+			checks: [],
+			config: {
+				...defaultConfig,
+				tiers: { full: ["lens.correctness"] },
+				lenses: {
+					correctness: {
+						route: {
+							model: "nowhere/first",
+							fallbacks: [{ model: "faux/spare", thinking: "high" }, "faux/third"],
+						},
+					},
+				},
+				models: {
+					verifier: {
+						model: "nowhere/judge-first",
+						fallbacks: [{ model: "faux/judge-spare", thinking: "medium" }, "faux/judge"],
+					},
+				},
+			},
+		});
+		expect([...asked].sort()).toEqual(["judge medium", "judge-spare medium", "spare high", "third high"]);
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
+});
+
+it("asks a planned verifier's bare model at the route's level when the finder's family moves a promoted fallback behind it", async () => {
+	const repo = crashRepository();
+	const fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }] });
+	const asked: string[] = [];
+	let reported = false;
+	fake.provider.setResponses(
+		Array.from({ length: 12 }, () => (request, options, _state, model) => {
+			asked.push(`${model.id} ${options?.reasoning}`);
+			if (model.id === "judge") return scriptVerifier(request.messages);
+			if (reported) return fauxAssistantMessage("Done.");
+			reported = true;
+			return fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" });
+		}),
+	);
+	const opened = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
+	try {
+		const lens = (await Lens.builtins()).find((each) => each.name === "correctness")!;
+		const route = { model: "faux/finder" };
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			lenses: { correctness: { route } },
+			models: {
+				verifier: {
+					model: "nowhere/judge-first",
+					thinking: "low",
+					fallbacks: [{ model: "faux/finder", thinking: "medium" }, "faux/judge"],
+				},
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: config.models,
+				overridden: {},
+				lensTiers: {},
+				retiered: {},
+				lensRoutes: { correctness: route },
+				lensRouteThinking: {},
+			},
+			catalog,
+			credentials,
+			lenses: [lens],
+			checks: ["lens.correctness"],
+		});
+		expect(plan.verifierRoute("faux/finder").map(({ model }) => model)).toEqual(["faux/judge", "faux/finder"]);
+		await reviewChangeset({
+			harness: opened,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			lenses: [lens],
+			standards: [],
+			models: fake.review,
+			checks: [],
+			config,
+			plan,
+		});
+		expect(asked.filter((each) => each.startsWith("judge"))).not.toEqual([]);
+		expect(new Set(asked.filter((each) => each.startsWith("judge")))).toEqual(new Set(["judge low"]));
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
+});
+
 it("refuses a review whose planned lens route names a level and no model, saying what to set", async () => {
 	const repo = crashRepository();
 	const fake = createFakeModels();

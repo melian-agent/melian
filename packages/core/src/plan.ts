@@ -8,7 +8,14 @@ import {
 	type RouteLineage,
 } from "./config.ts";
 import { defaultScrutinyLevel, type Lens, type ScrutinyLevel, scrutinyLevels } from "./lens.ts";
-import { type FallbackEntry, fallbackModel, fallbackThinking, parseModelReference, routeInOrder } from "./models.ts";
+import {
+	type FallbackEntry,
+	fallbackModel,
+	fallbackThinking,
+	parseModelReference,
+	routeInOrder,
+	writtenRoute,
+} from "./models.ts";
 import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
@@ -543,7 +550,7 @@ export class ReviewPlan {
 		for (const { tier, status, models, thinking } of this.tiers) {
 			if (thinking !== undefined) routes[tier] = { thinking };
 			if (models.length === 0 || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = routeInOrder(models, thinking);
+			routes[tier] = writtenRoute(routeInOrder(models, thinking));
 		}
 		return routes;
 	}
