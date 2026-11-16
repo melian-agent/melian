@@ -3667,6 +3667,213 @@
     "name": "ProcessTable > fails a read whose ps runs past the limit, though ps ignores SIGTERM, and the stop then signals nothing"
    },
    "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 17,
+   "endLine": 153,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.processes && new ProcessTable()",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 58,
+   "endLine": 153,
+   "endColumn": 100,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.clock && (() => performance.now())",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads and signals nothing more one millisecond past the stop's budget, and says the children may still run"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 76,
+   "endLine": 153,
+   "endColumn": 99,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > gives up on the real clock once the stop's reads have taken three seconds"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 181,
+   "column": 79,
+   "endLine": 190,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 182,
+   "column": 14,
+   "endLine": 182,
+   "endColumn": 34,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "now() - stopBudgetMs",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the table at the end of the stop's three-second budget"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 183,
+   "column": 9,
+   "endLine": 189,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 184,
+   "column": 15,
+   "endLine": 187,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads and signals nothing more one millisecond past the stop's budget, and says the children may still run"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "now() >= end",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the table at the end of the stop's three-second budget"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "now() <= end",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 37,
+   "endLine": 185,
+   "endColumn": 65,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "result": "equivalent",
+   "note": "the budget's error is caught where the stop settles and becomes childrenLeft, so its text is never read; four named tests, the past-budget one among them, still passed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 188,
+   "column": 9,
+   "endLine": 188,
+   "endColumn": 51,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 192,
+   "column": 19,
+   "endLine": 192,
+   "endColumn": 99,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
   }
  ]
 }
