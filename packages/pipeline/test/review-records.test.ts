@@ -1,6 +1,6 @@
 import { Finding, RecordError, reviewPayloads, SharedRecord, type StoredFinding } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
-import { ReviewRecords } from "../src/review-records.ts";
+import { ReviewRecords, withheld } from "../src/review-records.ts";
 
 const base = "a".repeat(40);
 const head = "b".repeat(40);
@@ -167,7 +167,7 @@ describe("ReviewRecords", () => {
 				{
 					name: "decisions.triage",
 					status: "skipped",
-					reason: "no decision provider is configured",
+					reason: withheld,
 					error: null,
 					version: null,
 					level: null,
@@ -179,8 +179,8 @@ describe("ReviewRecords", () => {
 				{
 					name: "lens.design",
 					status: "failed",
-					reason: "refused",
-					error: "no route",
+					reason: withheld,
+					error: withheld,
 					version: null,
 					level: "careful",
 					budgetEnded: null,

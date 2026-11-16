@@ -55,6 +55,7 @@ import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { injectionPolicy } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
+import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
 // sandbox that runs them unconfined, since every probe here is the test's own, and the verifier judges what they show.
@@ -409,7 +410,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const recorded = RecordedRound.of(stored, round, () => true);
 		expect(recorded.refusal()).toBeUndefined();
 		const read = await recorded.verdict({ revision: changeset.revision, config });
-		expect(read.toJSON()).toEqual(verdict.toJSON());
+		expectSharedVerdict(read.toJSON(), verdict.toJSON());
 	});
 
 	it.each([
