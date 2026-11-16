@@ -4,7 +4,7 @@ import { once } from "node:events";
 import type * as FsSync from "node:fs";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import type * as Fs from "node:fs/promises";
-import { readdir } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
@@ -14,10 +14,11 @@ import { Owner } from "../src/owner.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
-// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing.
+// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing, and others
+// make a listing or a stat fail.
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof Fs>();
-	return { ...actual, readdir: vi.fn(actual.readdir) };
+	return { ...actual, readdir: vi.fn(actual.readdir), lstat: vi.fn(actual.lstat) };
 });
 
 // The owner key reads this process's pid namespace, so a test can stand another namespace in for it.
@@ -582,6 +583,28 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 				expect(planted(suffix)).toEqual(there);
 			} finally {
 				vi.mocked(readdir).mockImplementation(listed);
+			}
+		});
+
+	for (const [what, at] of [
+		["half-made repository", (suffix: string) => join(directory, `records.git.${suffix}`)],
+		["temporary index", (suffix: string) => join(records, `melian-index-${suffix}`)],
+	] as const)
+		it(`removes nothing, and says it could not list every leftover, when a ${what} cannot be stat'ed`, async () => {
+			const owner = await exited();
+			const suffix = owned(owner.pid);
+			plant(suffix);
+			const stat = vi.mocked(lstat).getMockImplementation() as typeof lstat;
+			vi.mocked(lstat).mockImplementation((async (path: string) => {
+				if (path === at(suffix)) throw Object.assign(new Error("EIO: i/o error"), { code: "EIO" });
+				return stat(path);
+			}) as unknown as typeof lstat);
+			try {
+				const store = await remote.open({ directory });
+				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
+				expect(planted(suffix)).toEqual(there);
+			} finally {
+				vi.mocked(lstat).mockImplementation(stat);
 			}
 		});
 });

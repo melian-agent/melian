@@ -99,6 +99,14 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 
 // The bare repository Melian keeps beside a clone, at `records.git` in its state directory, which holds fetches of the
 // branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
+// An entry another call removed after the listing reads as gone; any other failure fails the listing, so the sweep
+// reports it rather than skipping an entry it could not inspect.
+async function statIfThere(path: string) {
+	return lstat(path).catch((cause: unknown) => {
+		if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause;
+	});
+}
+
 export class RecordRepository {
 	readonly path: string;
 	readonly #owner: Owner | undefined;
@@ -209,7 +217,7 @@ export class RecordRepository {
 		const state = dirname(this.path);
 		const folder = `${basename(this.path)}.`;
 		for (const name of (await readdir(state)).filter((entry) => entry.startsWith(folder)).sort()) {
-			const found = await lstat(join(state, name)).catch(() => undefined);
+			const found = await statIfThere(join(state, name));
 			if (found === undefined) continue;
 			leftovers.push({
 				name,
@@ -220,7 +228,7 @@ export class RecordRepository {
 		}
 		const index = "melian-index-";
 		for (const name of (await readdir(this.path)).filter((entry) => entry.startsWith(index)).sort()) {
-			const found = await lstat(join(this.path, name)).catch(() => undefined);
+			const found = await statIfThere(join(this.path, name));
 			if (found === undefined) continue;
 			leftovers.push({
 				name: `${basename(this.path)}/${name}`,
