@@ -651,12 +651,14 @@ function within(comment: ExpectedClaim, file: string, start: number, end: number
 	return comment.lines === undefined || (comment.lines[0] <= end && start <= comment.lines[1]);
 }
 
-// A merged claim keeps its own evidence but not the speaker's place, so lines are read from its cause on the head.
-function claimWithin(comment: ExpectedClaim, claim: MemberClaim): boolean {
+// A merged claim keeps its own evidence but not the speaker's place, so lines are read from its cause on the head, in
+// the speaker's file alone, as before lines: a cause in another file would let one claim answer expectations in both.
+function claimWithin(comment: ExpectedClaim, claim: MemberClaim, path: string): boolean {
 	return (claim.evidence ?? []).some(
 		(each) =>
 			each.role === "cause" &&
 			each.revision === "head" &&
+			each.file === path &&
 			within(comment, each.file, each.startLine, each.endLine ?? each.startLine),
 	);
 }
@@ -666,7 +668,7 @@ export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
 	const here = comment.lines === undefined ? within(comment, path, 0, 0) : within(comment, path, ...finding.lines());
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	const placed = (claim: MemberClaim) => (comment.lines === undefined ? here : claimWithin(comment, claim));
+	const placed = (claim: MemberClaim) => (comment.lines === undefined ? here : claimWithin(comment, claim, path));
 	if (otherClaims.some((claim) => matchesClaim(comment, claim) && placed(claim))) return true;
 	if (!here || !namesRule(comment, finding.ruleId)) return false;
 	const original = otherClaims.find(

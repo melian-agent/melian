@@ -1403,6 +1403,53 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden(), [merged(20, 40)()])).toMatchObject({ recall: 1 });
 	});
 
+	it("answers no expectation in another file through a merged claim's cause there, so one claim counts once", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [
+					{ ...comment!, source: "lens.tests", lines: [10, 12] as [number, number] },
+					{ ...comment!, file: "src/other.ts", source: "lens.tests", lines: [4, 6] as [number, number] },
+				],
+			},
+		};
+		const speaker = Finding.create({
+			rule: "wrong-result",
+			file: comment!.file,
+			startLine: 11,
+			discriminator: "user",
+			message: "The user can be null.",
+			severity: "P1",
+			cause: comment!.cause,
+			source: { check: "lens.correctness", version: "v" },
+			explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+		});
+		const cause = (file: string, startLine: number) => ({
+			file,
+			startLine,
+			role: "cause" as const,
+			revision: "head" as const,
+			snippet: "user.name",
+		});
+		const merged = Finding.from({
+			...speaker.toJSON(),
+			properties: {
+				...speaker.properties,
+				otherClaims: [
+					{
+						id: "tests-claim",
+						ruleId: comment!.rule,
+						source: { check: "lens.tests", version: "v" },
+						evidence: [cause(comment!.file, 11), cause("src/other.ts", 5)],
+					},
+				],
+			},
+		});
+		expect(scoreGolden(golden, [merged])).toMatchObject({ expected: 2, found: 1, truePositives: 1, recall: 0.5 });
+	});
+
 	it("keeps two expectations apart that differ only in their lines or their alternative rules", () => {
 		const [comment] = nullDeref!.expected.comments;
 		const twice = (first: Partial<GoldenComment>, second: Partial<GoldenComment>) => ({
