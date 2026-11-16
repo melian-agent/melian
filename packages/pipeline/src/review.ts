@@ -84,6 +84,7 @@ import {
 	clearSightings,
 	clearVerifications,
 	FindingsDocument,
+	type FindingsState,
 	findingsVersion,
 	overlapsSite,
 	type Producer,
@@ -3013,8 +3014,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		runs: readonly LensRun[],
 		outcomes: LensResult,
 		decided: ReadonlyMap<string, CheckRecord> = new Map(),
+		read?: FindingsState,
 	): Promise<{ name: string; record: SharedRecord; check?: CheckRecord }[]> => {
-		const state = await harness.snapshot(FindingsDocument, root, context);
+		const state = read ?? (await harness.snapshot(FindingsDocument, root, context));
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		return runsOf(runs).flatMap((run) => {
 			const outcome = outcomes[run.key];
@@ -3050,8 +3052,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		accounted: Manifest,
 		producers: readonly Producer[],
 		walkthrough: SharedRecord | undefined,
+		state: FindingsState | undefined,
 	) => {
-		const state = await harness.snapshot(FindingsDocument, root, context);
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		const sighted = (source: FindingSource) =>
 			state === undefined ? [] : producerSightings(state, reviewed, source);
@@ -3073,7 +3075,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			} as unknown as CheckRunRecord;
 			return [{ name: check.name, record: records.check(run, result, sightings) }];
 		});
-		const lenses = await lensRecords(ran.lenses, lensResult ?? {}, decided);
+		const lenses = await lensRecords(ran.lenses, lensResult ?? {}, decided, state);
 		const counted = [
 			...exported,
 			...lenses,
@@ -3602,8 +3604,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 		});
 	}
-	if (request.records !== undefined) {
-		const findings = await harness.snapshot(FindingsDocument, root, context);
+	const findingsDecided = await harness.snapshot(FindingsDocument, root, context);
+	const decision = (await harness.snapshot(VerdictDocument, root, context))?.decisions?.[reviewed];
+	// A round holds the findings this review's adjudication decided from. A later review of the revision can replace this
+	// one's runs and their sightings once it has decided, and a round read from those would stand for a verdict no
+	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
+	const owned =
+		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
+	if (request.records !== undefined && owned) {
+		const findings = findingsDecided;
 		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
 		const verification =
 			verified === undefined || verificationCheck === undefined
@@ -3649,6 +3658,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						summary.route,
 						summary.walkthrough,
 					),
+			findings,
 		);
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>

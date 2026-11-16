@@ -80,7 +80,7 @@ type FindingRecord = {
 type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
-type FindingsState = {
+export type FindingsState = {
 	revisions: string[];
 	items: Record<string, FindingRecord>;
 	versions: Record<string, number>;

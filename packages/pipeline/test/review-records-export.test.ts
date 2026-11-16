@@ -27,6 +27,9 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
+import { FindingsDocument } from "../src/findings.ts";
+import type { ConversationId, Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -357,6 +360,87 @@ describe("a review that names a record store and writes a walkthrough", () => {
 		expect(stored.filter(({ kind }) => kind === "walkthrough")).toEqual([]);
 		expect(roundOf(stored).walkthrough).toBeNull();
 	});
+
+	it("exports the findings adjudication decided from, though another review changed them while it waited", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { stored, verdict } = await review(store, checks, {
+			// A later review of the revision replaces this one's lens task and clears its sightings while this one waits.
+			started: async () => {
+				const open = harness!;
+				const root = await open.root(context);
+				while (Object.keys((await open.snapshot(VerdictDocument, root.id, context))?.decisions ?? {}).length === 0)
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				await root.commit(async (tx) => {
+					const findings = await tx.doc(FindingsDocument, root.id);
+					for (const item of Object.values(findings.items)) item.sightings = {};
+					for (const key of Object.keys(findings.versions)) findings.versions[key] = findings.versions[key]! + 1;
+				}, context);
+			},
+		});
+
+		const named = new Set(
+			(stored.find(({ kind }) => kind === "round")!.payload as { read: { id: string }[] }).read.map(({ id }) => id),
+		);
+		const sighted = stored
+			.filter((each) => each.kind === "lens" && named.has(SharedRecord.parseEnvelope(each).id))
+			.flatMap((each) =>
+				(each.payload as { sightings: { ruleId: string }[] }).sightings.map(({ ruleId }) => ruleId),
+			);
+
+		expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
+		expect(sighted).toEqual(["changed-return"]);
+	});
+
+	it.each([
+		[
+			"changed the findings",
+			async (tx: Tx, id: ConversationId) => {
+				const findings = await tx.doc(FindingsDocument, id);
+				for (const item of Object.values(findings.items)) item.sightings = {};
+				for (const key of Object.keys(findings.versions)) findings.versions[key] = findings.versions[key]! + 1;
+			},
+		],
+		[
+			"decided the verdict again",
+			async (tx: Tx, id: ConversationId) => {
+				const { decisions } = await tx.doc(VerdictDocument, id);
+				for (const decision of Object.values(decisions ?? {})) decision.task += 100;
+			},
+		],
+	] as const)(
+		"writes no round when another review %s before this one read its findings to export",
+		async (_, replace) => {
+			const store = new MemoryRecordStore({ payloads: reviewPayloads });
+			let cleared = false;
+			const { stored, verdict } = await review(store, checks, {
+				started: async () => {
+					const open = harness!;
+					const read = open.snapshot.bind(open) as (
+						doc: unknown,
+						id: ConversationId,
+						given?: unknown,
+					) => Promise<unknown>;
+					// The first read of the findings once the verdict is decided finds them already cleared by a later review.
+					const intercept = async (doc: unknown, id: ConversationId, given?: unknown) => {
+						if (doc === FindingsDocument && !cleared) {
+							const decided =
+								((await read(VerdictDocument, id)) as { decisions?: object } | undefined)?.decisions ?? {};
+							if (Object.keys(decided).length > 0) {
+								cleared = true;
+								await (await open.root(context)).commit((tx) => replace(tx, id), context);
+							}
+						}
+						return read(doc, id, given);
+					};
+					vi.spyOn(open, "snapshot").mockImplementation(intercept as unknown as Harness["snapshot"]);
+				},
+			});
+
+			expect(cleared).toBe(true);
+			expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
+			expect(stored.filter(({ kind }) => kind === "round")).toEqual([]);
+		},
+	);
 
 	it("waits for no walkthrough when no store is named", async () => {
 		const began = Date.now();
