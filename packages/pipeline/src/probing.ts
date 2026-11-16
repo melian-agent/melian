@@ -517,7 +517,7 @@ function outcome(result: StoredProbeResult): string {
 		: fill(probeEvidenceWording.failed, { code: result.exitCode });
 }
 
-function printed(output: string, shown: (text: string) => string = (text) => text): string {
+function printed(output: string, shown: (text: string) => string): string {
 	return output === "" ? probeEvidenceWording.nothing : shown(output.split("\n").map(visibleText).join("\n"));
 }
 
@@ -525,8 +525,8 @@ function printed(output: string, shown: (text: string) => string = (text) => tex
  * `text` cut to about `keep` bytes, its first and last halves around a marker naming the bytes cut, at the nearest
  * character boundaries, and the bytes it lost; `text` itself, and 0, when it already fits.
  */
-function keepEnds(text: string, keep: number): { text: string; cut: number } {
-	const encoded = Buffer.from(text, "utf8");
+export function keepEnds(text: string, keep: number): { text: string; cut: number } {
+	const encoded = Buffer.from(text);
 	if (encoded.length <= keep) return { text, cut: 0 };
 	let head = Math.floor(keep / 2);
 	while (head > 0 && (encoded[head]! & 0xc0) === 0x80) head--;

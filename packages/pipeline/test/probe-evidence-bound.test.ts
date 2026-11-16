@@ -8,6 +8,7 @@ import { modelsOf } from "../src/models.ts";
 import {
 	type Attack,
 	boundProbeEvidence,
+	keepEnds,
 	type ProbeEvidence,
 	probeEvidenceBudget,
 	probeEvidenceCutWording,
@@ -120,6 +121,18 @@ describe("boundProbeEvidence", () => {
 		}
 	});
 
+	it("keeps a cut that fills the budget to the byte", () => {
+		const evidence = [atLimits("c1"), atLimits("c2")];
+		const bound = boundProbeEvidence(evidence, nonce);
+		const filled = bytes(bound);
+		expect(filled).toBeLessThan(probeEvidenceBudget);
+		// The note names the budget, in as many digits at either budget, so only that number differs.
+		const refilled = boundProbeEvidence(evidence, nonce, filled).map((block) =>
+			block.replaceAll(`fit the ${filled} bytes`, `fit the ${probeEvidenceBudget} bytes`),
+		);
+		expect(refilled).toEqual(bound);
+	});
+
 	it("cuts the longest parts first and leaves shorter ones whole", () => {
 		const long = small("c1", text("long script", 200_000));
 		const short = small("c2", text("short script", 2_000));
@@ -183,6 +196,26 @@ describe("boundProbeEvidence", () => {
 		const before = structuredClone(evidence);
 		boundProbeEvidence(evidence, nonce);
 		expect(evidence).toEqual(before);
+	});
+});
+
+describe("keepEnds", () => {
+	it("keeps a text of exactly the bytes it may keep whole, and cuts one a byte longer", () => {
+		expect(keepEnds("abcd", 4)).toEqual({ text: "abcd", cut: 0 });
+		expect(keepEnds("abcde", 4)).toEqual({ text: "ab\n[Melian cut 1 bytes here]\nde", cut: 1 });
+	});
+
+	it("gives the head the smaller half of an odd keep", () => {
+		expect(keepEnds("abcdefg", 5)).toEqual({ text: "ab\n[Melian cut 2 bytes here]\nefg", cut: 2 });
+	});
+
+	// "aébcdé" is eight bytes: each é is two, a lead byte and a continuation byte.
+	it("moves a head that would end inside a character back to its start", () => {
+		expect(keepEnds("aébcdé", 4)).toEqual({ text: "a\n[Melian cut 5 bytes here]\né", cut: 5 });
+	});
+
+	it("moves a tail that would start inside a character on past it", () => {
+		expect(keepEnds("aébcdé", 2)).toEqual({ text: "a\n[Melian cut 7 bytes here]\n", cut: 7 });
 	});
 });
 
