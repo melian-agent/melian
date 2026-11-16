@@ -197,6 +197,22 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("passes over an entry that another call removed between the listing and its read", async () => {
+		const table = new ProcessTable().list();
+		const suffix = owned(4_000_000);
+		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
+		vi.mocked(readdir).mockImplementation((async (path: string) => [
+			...((await listed(path)) as string[]),
+			path === directory ? `records.git.${suffix}` : `melian-index-${suffix}`,
+		]) as unknown as typeof readdir);
+		try {
+			const store = await remote.open({ directory, processes: { list: () => table } });
+			expect(store.sweep).toEqual({ removed: [], kept: [], failed: [] });
+		} finally {
+			vi.mocked(readdir).mockImplementation(listed);
+		}
+	});
+
 	it("keeps and names what another host made, whose processes it cannot see", async () => {
 		const owner = await exited();
 		const suffix = owned(owner.pid, "0123456789abcdef");
