@@ -297,7 +297,8 @@ function withoutProbes(options: Parameters<typeof review>[1]) {
 	);
 }
 
-describe("a level that probes", () => {
+// The macOS runner takes four times as long as Linux here, so these pass five seconds there.
+describe("a level that probes", { timeout: 60_000 }, () => {
 	it("reports a finding only with a probe that failed, and the verifier judges the probe it ran again", async () => {
 		const { run, requests, heads } = await review({ planner: plan, prober: probing(failing) });
 		const { verdict } = await run;
@@ -1094,14 +1095,14 @@ describe("a level that probes", () => {
 		);
 		const firstDone = first.run.catch(() => undefined);
 		try {
-			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1));
+			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			const second = await review(
 				{ planner: plan, prober: probing(failing) },
 				{ fake, writer: { trusted: true, by: "writer" } },
 			);
 			second.run.catch(() => undefined);
 			// The probe environment names whose head it is, so the second review plans for itself rather than wait.
-			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 3_000 });
+			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 10_000 });
 			release();
 			await second.run.catch(() => undefined);
 		} finally {
@@ -1140,7 +1141,7 @@ describe("a level that probes", () => {
 					{ fake },
 				);
 				second.run.catch(() => undefined);
-				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 3_000 });
+				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			}
 			return record;
 		}) as typeof reviewer.waitForTask;
