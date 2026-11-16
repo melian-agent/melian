@@ -351,6 +351,74 @@ describe("git with a deadline", () => {
 		20_000,
 	);
 
+	// A stand-in git that keeps running, and a fake table that shows it with one child. A kill is recorded, never sent, so
+	// both stay in the table and the stop runs its whole course: SIGTERM to each, a second of grace, SIGKILL to each.
+	function budgetStop(jumpAfterThirdRead?: number) {
+		const bin = join(repo, "bin");
+		const gitPid = join(repo, "git-pid");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), `#!/bin/sh\necho $$ > ${gitPid}\nexec sleep 10\n`, { mode: 0o755 });
+		let now = 0;
+		let reads = 0;
+		const kills: [number, string][] = [];
+		const processes: ProcessControl = {
+			list: () => {
+				reads++;
+				if (reads === 3 && jumpAfterThirdRead !== undefined) now = jumpAfterThirdRead;
+				const pid = Number(readFileSync(gitPid, "utf8"));
+				return [
+					{ pid, ppid: process.pid, start: "Mon Nov 16 03:00:00 2026", command: "git" },
+					{ pid: pid + 100_000, ppid: pid, start: "Mon Nov 16 03:00:01 2026", command: "ssh" },
+				];
+			},
+			kill: (pid, signal) => {
+				kills.push([pid, signal]);
+			},
+		};
+		const run = (clock?: () => number) =>
+			git(repo, ["fetch"], {
+				deadlineMs: 500,
+				env: { PATH: `${bin}:${process.env.PATH}` },
+				processes,
+				...(clock === undefined ? {} : { clock }),
+			});
+		return { run, kills, clock: () => now, pid: () => Number(readFileSync(gitPid, "utf8")) };
+	}
+
+	it("runs a stop whose reads all fall inside its budget as before", async () => {
+		const stop = budgetStop();
+		const result = await stop.run();
+		const pid = stop.pid();
+		expect(result).toMatchObject({ code: -1, timedOut: true });
+		expect(result.childrenLeft).toBeUndefined();
+		expect(stop.kills).toEqual([
+			[pid, "SIGTERM"],
+			[pid + 100_000, "SIGTERM"],
+			[pid, "SIGKILL"],
+			[pid + 100_000, "SIGKILL"],
+		]);
+	}, 20_000);
+
+	it("reads the table at the end of the stop's three-second budget", async () => {
+		const stop = budgetStop(3000);
+		const result = await stop.run(stop.clock);
+		const pid = stop.pid();
+		expect(result.childrenLeft).toBeUndefined();
+		expect(stop.kills).toEqual([
+			[pid, "SIGTERM"],
+			[pid + 100_000, "SIGTERM"],
+			[pid, "SIGKILL"],
+			[pid + 100_000, "SIGKILL"],
+		]);
+	}, 20_000);
+
+	it("reads and signals nothing more one millisecond past the stop's budget, and says the children may still run", async () => {
+		const stop = budgetStop(3001);
+		const result = await stop.run(stop.clock);
+		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+		expect(stop.kills).toEqual([[stop.pid(), "SIGTERM"]]);
+	}, 20_000);
+
 	it("leaves a command that ends in time as it is", async () => {
 		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });
 		expect(result).toEqual({ code: 0, stdout: "true\n", stdoutBytes: Buffer.from("true\n"), stderr: "" });
@@ -405,7 +473,7 @@ describe("git with a standard error past its limit", () => {
 			ChangesetError,
 		);
 		expect(error.message).toBe(
-			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read or no longer showed git, so the programs git started were not stopped`,
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; Melian could not find or stop every program git started, so some may still run`,
 		);
 	});
 
@@ -416,7 +484,7 @@ describe("git with a standard error past its limit", () => {
 			ChangesetError,
 		);
 		expect(error.message).toBe(
-			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read or no longer showed git, so the programs git started were not stopped`,
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; Melian could not find or stop every program git started, so some may still run`,
 		);
 		expect(processes.kills).toEqual([]);
 	});
