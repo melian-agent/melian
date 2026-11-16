@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import {
 	Changeset,
 	defaultConfig,
+	Finding,
 	KeyedRequest,
 	normaliseEnolaSarif,
 	normaliseMutationReport,
-	type RecordJson,
 	type SharedRecord,
 	type StoredFinding,
 	staticFindings,
@@ -140,27 +140,13 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		expect(bytes(records.check("e".repeat(64), ran("static.mutation", 1, "10.0.0"), stored))).not.toContain(token);
 	});
 
-	it("as Enola's rule ID, in a check's sightings and a dismissal's", async () => {
-		const { stored, records, revision } = await enola([
+	it("as Enola's rule ID, in a check's sightings", async () => {
+		const { stored, records } = await enola([
 			{ ruleId: `layer/${token}`, level: "error", message: { text: "core reaches pipeline" } },
 			{ ruleId: `wide/${token}`, level: "warning", message: { text: "widget is wide" }, locations: at(path) },
 		]);
 		expect(stored.map((finding) => finding.message.text).join()).toContain(token);
 		expect(bytes(records.check("e".repeat(64), ran("static.enola", 2, "0.4.37"), stored))).not.toContain(token);
-		for (const finding of stored) {
-			const record = records.dismissal({
-				finding: finding.properties.id,
-				by: "maintainer",
-				reason: "the layer is meant to reach",
-				at: "2026-11-16T00:00:00.000Z",
-				severity: finding.properties.severity,
-				sighting: { revision, finding },
-				rounds: [],
-				trigger: { hash: "f".repeat(64), proof: [] },
-				request: enolaRun,
-			});
-			expect(bytes(record)).not.toContain(token);
-		}
 	});
 
 	it("as the text of a static check Melian does not know yet", async () => {
@@ -183,46 +169,11 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		}
 	});
 
-	it("as the dismissed sighting of a static finding", async () => {
-		const { stored, records, revision } = await enola([
-			{ ruleId: "god-class", level: "warning", message: { text: `widget holds ${token}` }, locations: at(path) },
-		]);
-		const finding = stored[0]!;
-		const record = records.dismissal({
-			finding: finding.properties.id,
-			by: "maintainer",
-			reason: "the class is meant to be wide",
-			at: "2026-11-16T00:00:00.000Z",
-			severity: finding.properties.severity,
-			sighting: { revision, finding },
-			rounds: [],
-			trigger: { hash: "f".repeat(64), proof: [] },
-			request: enolaRun,
-		});
-		expect(bytes(record)).not.toContain(token);
-		const what = `static.enola reports enola/god-class here. ${withheld}.`;
-		expect((record.toJSON().payload as { sighting: unknown }).sighting).toEqual({
-			revision,
-			finding: {
-				...finding,
-				message: { ...finding.message, text: what },
-				properties: { ...finding.properties, explanation: { what, whyHere: withheld, whatToDo: withheld } },
-			},
-		});
-	});
-
-	it.each<[string, KeyedRequest<RecordJson> | undefined]>([
-		["no request", undefined],
-		[
-			"a request for a build whose Enola check stored its text",
-			KeyedRequest.of("check", { checks: { "static.enola": 1 } }),
-		],
-		["a request that names no Enola check", KeyedRequest.of("check", { checks: { "static.tsc": 3 } })],
-		["a request that is not a check run's", KeyedRequest.of("lens", { checks: { "static.enola": 2 } })],
-	])("as the dismissed sighting of a static finding, refused with %s", async (_, request) => {
-		const { stored, records, revision } = await enola([
-			{ ruleId: `wide/${token}`, level: "warning", message: { text: "widget is wide" }, locations: at(path) },
-		]);
+	it.each([
+		["Enola's rule ID", { ruleId: `wide/${token}`, message: { text: "widget is wide" } }],
+		["Enola's message", { ruleId: "god-class", message: { text: `widget holds ${token}` } }],
+	])("as the dismissed sighting of a static finding, refused, with the token in %s", async (_, result) => {
+		const { stored, records, revision } = await enola([{ ...result, level: "warning", locations: at(path) }]);
 		const finding = stored[0]!;
 		const facts: DismissalFacts = {
 			finding: finding.properties.id,
@@ -233,8 +184,38 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 			sighting: { revision, finding },
 			rounds: [],
 			trigger: { hash: "f".repeat(64), proof: [] },
-			...(request === undefined ? {} : { request }),
 		};
+		expect(() => records.dismissal(facts)).toThrow(
+			expect.objectContaining({ constructor: DismissError, code: "unprovenRun", finding: finding.properties.id }),
+		);
+	});
+
+	it("as the dismissed sighting of an earlier build's static finding, refused beside a current check request", async () => {
+		const { records, revision } = await enola([]);
+		// An earlier build kept Enola's own rule and message, which the export keeps as the ID's input.
+		const finding = Finding.create({
+			rule: `enola/${token}`,
+			message: `Enola said ${token}`,
+			file: "enola-intent.yaml",
+			startLine: 1,
+			discriminator: `Enola said ${token}`,
+			cause: "introduced",
+			severity: "P2",
+			explanation: { what: token, whyHere: token, whatToDo: token },
+			source: { check: "static.enola", version: "0.4.37" },
+		}).toJSON();
+		// A caller that hands over a request the run that wrote the sighting may never have made.
+		const facts = {
+			finding: finding.properties.id,
+			by: "maintainer",
+			reason: "the layer is meant to reach",
+			at: "2026-11-16T00:00:00.000Z",
+			severity: finding.properties.severity,
+			sighting: { revision, finding },
+			rounds: [],
+			trigger: { hash: "f".repeat(64), proof: [] },
+			request: enolaRun,
+		} as DismissalFacts;
 		expect(() => records.dismissal(facts)).toThrow(
 			expect.objectContaining({ constructor: DismissError, code: "unprovenRun", finding: finding.properties.id }),
 		);
