@@ -241,6 +241,19 @@ describe("an exported record keeps what Melian defines", () => {
 		expect((account.producers as { version: string }[])[0]!.version).toBe("abc@careful");
 	});
 
+	it.each([
+		[["a".repeat(16)], ["b".repeat(16)], ["a".repeat(16), "b".repeat(16)]],
+		[["a".repeat(16)], undefined, null],
+		[undefined, ["b".repeat(16)], null],
+	])("unites the ids %j and %j of two producers whose versions it withholds", (first, second, ids) => {
+		const producers = [
+			{ check: "static.biome", version: "v1", ...(first === undefined ? {} : { ids: first }) },
+			{ check: "static.biome", version: "v2", ...(second === undefined ? {} : { ids: second }) },
+		];
+		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		expect(account.producers).toEqual([{ check: "static.biome", version: withheld, ids }]);
+	});
+
 	it("keeps a version of 64 characters and withholds one of 65", () => {
 		const of = (length: number) => `1.0.0-${"a".repeat(length - 6)}`;
 		const exported = (version: string) =>

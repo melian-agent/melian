@@ -277,15 +277,19 @@ export class ReviewRecords {
 		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
-		const producers = [
-			...new Map(
-				facts.producers.map((producer) => {
-					const version = sharedVersion(producer);
-					const ids = producer.ids === undefined ? null : [...new Set(producer.ids)].sort(compare);
-					return [`${producer.check}@${version ?? ""}`, { check: producer.check, version, ids }] as const;
-				}),
-			).values(),
-		].sort(
+		// Two versions withheld alike name one producer, whose findings are both producers' findings.
+		const united = new Map<string, { check: string; version: string | null; ids: string[] | null }>();
+		for (const producer of facts.producers) {
+			const version = sharedVersion(producer);
+			const key = `${producer.check}@${version ?? ""}`;
+			const earlier = united.get(key);
+			const ids =
+				producer.ids === undefined || earlier?.ids === null
+					? null
+					: [...new Set([...(earlier?.ids ?? []), ...producer.ids])].sort(compare);
+			united.set(key, { check: producer.check, version, ids });
+		}
+		const producers = [...united.values()].sort(
 			(a, b) =>
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
