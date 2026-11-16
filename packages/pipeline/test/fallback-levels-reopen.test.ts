@@ -64,6 +64,9 @@ it.each([7, 8])(
 				name: previous.kind,
 				version: from,
 				initial: () => previous.initial,
+				abort: async (_task, runtime, abortContext) => {
+					await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), abortContext);
+				},
 				phases: {
 					[previous.initial.phase]: async () => {
 						throw new Error("old definition must not execute");
