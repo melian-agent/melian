@@ -1,0 +1,177 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 111,
+   "column": 18,
+   "endLine": 111,
+   "endColumn": 59,
+   "mutatorName": "MethodExpression",
+   "replacement": "Math.min(Math.floor(left() * 3 / 4), 1)",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > ends a timed-out push's landed check at the call's deadline, and fails it a tick past",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > ends a timed-out push's landed check at the call's deadline, and fails it a tick past",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 111,
+   "column": 38,
+   "endLine": 111,
+   "endColumn": 54,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "left() * 3 * 4",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > gives each read the time left before the deadline, and a push three quarters of it",
+   "survivorClasses": [],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > gives each read the time left before the deadline, and a push three quarters of it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 111,
+   "column": 39,
+   "endLine": 111,
+   "endColumn": 49,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "left() / 3",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > gives each read the time left before the deadline, and a push three quarters of it",
+   "survivorClasses": [],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > gives each read the time left before the deadline, and a push three quarters of it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 7,
+   "endLine": 114,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > concurrent writers > a lost race reads the newer tip and pushes again, leased on it",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > concurrent writers > a lost race reads the newer tip and pushes again, leased on it",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 7,
+   "endLine": 114,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > ends a timed-out push's landed check at the call's deadline, and fails it a tick past",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > ends a timed-out push's landed check at the call's deadline, and fails it a tick past",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 7,
+   "endLine": 114,
+   "endColumn": 72,
+   "mutatorName": "LogicalOperator",
+   "replacement": "outcome === \"timedOut\" || (await this.#landed(commit, tip, left))",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 7,
+   "endLine": 114,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 7,
+   "endLine": 114,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "outcome !== \"timedOut\"",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": {
+    "head": "bdbbc8de",
+    "test": "packages/state-git/test/writes.test.ts > the retry deadline > reads the tip again a millisecond before the default two minutes pass, with that millisecond to fetch in",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/git-record-store.ts",
+   "line": 114,
+   "column": 19,
+   "endLine": 114,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 9,
+ "omitted": 0,
+ "unmutated": []
+}

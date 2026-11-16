@@ -26,6 +26,14 @@ export interface GitOptions {
 	readonly env?: Readonly<Record<string, string>>;
 }
 
+/**
+ * The most bytes of a Git command's standard error that `git` keeps; past it, `git` stops the command and rejects with
+ * `gitOutputTooLarge`. A fetch or push carries there whatever the remote or a credential helper sends. Before the tests
+ * that write past this limit on purpose, no command in Melian's tests wrote more than 250 bytes there.
+ */
+export const stderrLimit = 4 * 1024 * 1024;
+const stderrSlab = 64 * 1024;
+
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
 // them over `cwd`, so Melian run from a hook would read that repository instead of the one it was given.
 const repositoryLocalVariables = [
@@ -61,6 +69,8 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// With no input, git's input ends at once, so a command or credential helper that reads it cannot wait forever.
 		child.stdin.on("error", () => {}).end(options.input);
 		const stdout: Buffer[] = [];
+		// Standard error is copied into slabs: a Buffer kept for each chunk costs a hundred bytes or more, so a remote that
+		// writes one byte at a time would hold many times the limit.
 		const stderr: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
@@ -76,7 +86,27 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			truncated = true;
 			child.kill();
 		});
-		child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+		let stderrSize = 0;
+		child.stderr.on("data", (chunk: Buffer) => {
+			if (stderrSize + chunk.length <= stderrLimit) {
+				for (let offset = 0; offset < chunk.length; ) {
+					const used = stderrSize % stderrSlab;
+					if (used === 0) stderr.push(Buffer.allocUnsafe(stderrSlab));
+					const copied = chunk.copy(stderr[stderr.length - 1], used, offset);
+					offset += copied;
+					stderrSize += copied;
+				}
+				return;
+			}
+			// A cut stream is never resolved, so no caller can read part of a message as a failure it knows.
+			stop();
+			reject(
+				new ChangesetError(
+					"gitOutputTooLarge",
+					`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it`,
+				),
+			);
+		});
 		child.on("error", (cause) =>
 			reject(
 				new ChangesetError("gitUnavailable", "git could not be started; is it installed and on PATH?", { cause }),
@@ -89,7 +119,7 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 				code,
 				stdout: stdoutBytes.toString("utf8"),
 				stdoutBytes,
-				stderr: Buffer.concat(stderr).toString("utf8"),
+				stderr: Buffer.concat(stderr, stderrSize).toString("utf8"),
 				...(truncated ? { truncated } : {}),
 				...(timedOut ? { timedOut } : {}),
 			});
@@ -97,22 +127,28 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// Git's own process, by the pid spawn recorded. A transport git started, such as ssh, can hold the output pipes
 		// open after git stops, so the result does not wait for them. A transport inherits git's stderr, so this end of it
 		// is closed, and the transport keeps nothing of this process alive; it ends on its own.
+		const stop = () => {
+			child.kill();
+			child.stderr.destroy();
+		};
 		const deadline =
 			options.deadlineMs === undefined
 				? undefined
 				: setTimeout(() => {
-						child.kill();
-						child.stderr.destroy();
+						stop();
 						finish(-1, true);
 					}, options.deadlineMs);
 		child.on("close", (code) => finish(code ?? -1, false));
 	});
 }
 
+// Git's own options that take their value as the next argument.
+const optionsWithValues = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
+
 // The first argument after git's own options, such as `diff` in `git -c diff.renames=true diff`.
 function subcommand(args: readonly string[]): string {
 	for (let i = 0; i < args.length; i++) {
-		if (args[i] === "-c" || args[i] === "-C") i++;
+		if (optionsWithValues.has(args[i]!)) i++;
 		else if (!args[i]!.startsWith("-")) return args[i]!;
 	}
 	return "";

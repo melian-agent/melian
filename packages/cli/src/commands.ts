@@ -57,7 +57,7 @@ import {
 	scriptVariable,
 	Triage,
 } from "./models.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, roundChangeset, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -730,14 +730,14 @@ async function roundFindings(
 	id: string,
 	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
-	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
-	if (match === null) throw new CliError(`invalid round ID ${id}`);
+	const changesetId = roundChangeset(id);
+	if (changesetId === undefined) throw new CliError(`invalid round ID ${id}`);
 	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-	const path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
+	const path = await storagePath(repoRoot, changesetId, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw new CliError(`Melian has no round ${id}`);
 	const storage = await openStorage(path);
 	try {
-		const round = (await new RoundReader(storage).read(match[1]!)).find((round) => round.id === id);
+		const round = (await new RoundReader(storage).read(changesetId)).find((round) => round.id === id);
 		if (round === undefined) throw new CliError(`Melian has no round ${id}`);
 		const verdict = round.verdict();
 		if (verdict === undefined) throw new CliError(`Melian has no decided round ${id}`);

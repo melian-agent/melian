@@ -50,6 +50,8 @@ export const RunDetailsDocument = defineDocFamily<{ run?: StoredRunDetails }, nu
 
 type TaskRecord = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type DocumentScope = DocumentRecord["scope"];
+// A lens run a lens task copied, as its input names it: the conversation it ran in, and the task that asked it.
+type CopiedRun = { readonly conversation?: ConversationId; readonly reused: number };
 type Doc<T> = {
 	definition: { kind: string; version: number; migrate?: (value: JsonObject, from: number) => T };
 };
@@ -637,6 +639,20 @@ export class TelemetryReader {
 				}
 				if (page.next === undefined) break;
 				page = await this.storage.scanConversations({ ownerTaskId: task.id }, 200, page.next, context);
+			}
+			// A lens the task copied ran in the task that asked it, so its conversation is that task's, and cost this review nothing.
+			if (name !== "melian.lens") continue;
+			const copied = (task.input as { reused?: Record<string, { outcomes: Record<string, CopiedRun> }> } | null)
+				?.reused;
+			for (const run of Object.values(copied ?? {}).flatMap((copy) => Object.values(copy.outcomes))) {
+				if (run.conversation === undefined) continue;
+				const owner = (await this.storage.task(run.reused as TaskId, context))!;
+				const policy = (
+					await this.document(LensDocument, { kind: "conversation", conversationId: run.conversation }, context)
+				)?.lens;
+				const subject = `${policy!.name}@${policy!.version}@${policy!.level ?? "legacy"}`;
+				const stage = await this.conversation(owner, run.conversation, name, subject, before, context);
+				rows.push({ ...stage, reused: true, resumed: false });
 			}
 		}
 		if (selected?.adjudication !== undefined) {

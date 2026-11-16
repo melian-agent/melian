@@ -1,0 +1,231 @@
+{
+	"mutants": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 143,
+			"column": 5,
+			"endLine": 143,
+			"endColumn": 23,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 282,
+			"column": 3,
+			"endLine": 290,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > a closed handle > refuses every call as closed",
+			"survivorClasses": [],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/store.test.ts > a closed handle > refuses every call as closed",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 283,
+			"column": 4,
+			"endLine": 283,
+			"endColumn": 10,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 284,
+			"column": 4,
+			"endLine": 284,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 285,
+			"column": 4,
+			"endLine": 285,
+			"endColumn": 13,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 286,
+			"column": 4,
+			"endLine": 286,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 286,
+			"column": 33,
+			"endLine": 286,
+			"endColumn": 47,
+			"mutatorName": "LogicalOperator",
+			"replacement": "expected && \"\"",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/store.test.ts > a closed handle > refuses every call as closed",
+			"survivorClasses": [],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/store.test.ts > a closed handle > refuses every call as closed",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 286,
+			"column": 45,
+			"endLine": 286,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 289,
+			"column": 4,
+			"endLine": 289,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"status": "Ignored",
+			"claim": "equivalent",
+			"evidence": "not generated: Stryker ignores this StringLiteral mutant under the repository's configuration",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 163,
+			"column": 3,
+			"endLine": 163,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 163,
+			"column": 19,
+			"endLine": 163,
+			"endColumn": 87,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "sum - (StateTree.#readable(entry) ? small.get(entry.oid) ?? 0 : 0)",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+				"collected": 1,
+				"failed": true
+			}
+		},
+		{
+			"file": "packages/state-git/src/state-tree.ts",
+			"line": 163,
+			"column": 56,
+			"endLine": 163,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "small.get(entry.oid) && 0",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+			"survivorClasses": [
+				"nullish-logical"
+			],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/store.test.ts > the bytes a tip may hold > fails as unreachable when one cell sits at 65 paths, past the limit, and reads nothing",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	],
+	"total": 13,
+	"omitted": 0,
+	"unmutated": [],
+	"byHand": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 143,
+			"column": 5,
+			"endLine": 143,
+			"endColumn": 24,
+			"mutatorName": "hand (array element removal, which Stryker does not generate)",
+			"replacement": "",
+			"claim": "new-test",
+			"evidence": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+			"survivorClasses": [],
+			"run": {
+				"head": "4087021c",
+				"test": "packages/state-git/test/repository.test.ts > fetching the tip > runs no program a remote spelled as an option names, and fails as unreachable",
+				"collected": 1,
+				"failed": true
+			}
+		}
+	]
+}

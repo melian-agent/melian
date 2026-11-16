@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { copyFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Adjudication,
@@ -330,4 +330,10 @@ it.each(["publisher", "snapshot"] as const)("ownership still refuses a future %s
 	await expect(ComparisonStores.read(io, ownership)).rejects.toThrow(
 		kind === "publisher" ? "melian.publisher has newer version" : "melian.pull-request-rounds has newer version",
 	);
+});
+it("reads only stores whose names hold a changeset ID as core shapes it", async () => {
+	const near = [changeset.slice(0, -1), `${changeset}0`, changeset.toUpperCase(), `push${changeset.slice(4)}`];
+	for (const name of near) copyFileSync(path, join(path, "..", `${name}.sqlite`));
+	const stores = await ComparisonStores.read(io);
+	expect(stores.entries.map((entry) => entry.changeset)).toEqual([changeset]);
 });

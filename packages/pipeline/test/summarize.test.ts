@@ -519,6 +519,116 @@ describe("walkthrough summaries", () => {
 		await summarize({ unlockModels: rerun, rerun: true });
 		expect(rerun).toHaveBeenCalledOnce();
 	});
+	it("runs the credential command when it read the cap reached and a rerun meanwhile started a task it attaches to", async () => {
+		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
+		const held = Promise.withResolvers<void>();
+		scriptConversations(models, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [
+					fail,
+					fail,
+					async () => {
+						await held.promise;
+						return success();
+					},
+				],
+			},
+		]);
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		await summarize();
+		await summarize();
+		const capped = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]!;
+		const snapshot = harness.snapshot.bind(harness) as Harness["snapshot"];
+		const getTask = harness.getTask.bind(harness);
+		let readCapped = false;
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			if (args[0] === capped) readCapped = true;
+			return getTask(...args);
+		});
+		let racer: Promise<unknown> | undefined;
+		// Once this review has read the capped task and the spent attempts, a --rerun starts a live task, so this
+		// review's commit attaches to a task its read never saw.
+		vi.spyOn(harness, "snapshot").mockImplementation((async (...args: Parameters<Harness["snapshot"]>) => {
+			const read = await snapshot(...args);
+			if (racer === undefined && readCapped && (args[0] as unknown) === VerdictDocument) {
+				racer = summarize({ rerun: true });
+				while ((await snapshot(SummaryIndex, root.id, context))!.tasks[revision] === capped)
+					await new Promise((resolve) => setTimeout(resolve, 5));
+				setTimeout(() => held.resolve(), 50);
+			}
+			return read;
+		}) as Harness["snapshot"]);
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const doc = await summarize({ unlockModels: unlock });
+		await racer;
+		expect((await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]).not.toBe(capped);
+		expect(written(doc, revision)?.summary).toBe("Changes a value.");
+		expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
+	});
+	it("runs the credential command when it read the cap reached and a failed rerun meanwhile left an attempt", async () => {
+		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
+		const captured = scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail, success()] },
+		]);
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		await summarize();
+		await summarize();
+		const capped = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]!;
+		const snapshot = harness.snapshot.bind(harness) as Harness["snapshot"];
+		const getTask = harness.getTask.bind(harness);
+		let readCapped = false;
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			if (args[0] === capped) readCapped = true;
+			return getTask(...args);
+		});
+		let raced = false;
+		// Once this review has read the capped task and the spent attempts, a --rerun resets them and fails once, so
+		// this review's commit finds an attempt left and creates a task its read never planned.
+		vi.spyOn(harness, "snapshot").mockImplementation((async (...args: Parameters<Harness["snapshot"]>) => {
+			const read = await snapshot(...args);
+			if (!raced && readCapped && (args[0] as unknown) === VerdictDocument) {
+				raced = true;
+				await summarize({ rerun: true });
+			}
+			return read;
+		}) as Harness["snapshot"]);
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const doc = await summarize({ unlockModels: unlock });
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(4);
+		expect(written(doc, revision)?.summary).toBe("Changes a value.");
+		expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
+	});
+	it("stores the failure note, and runs no second credential command, when its commit fails for another reason", async () => {
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const revision = Revision.key(changeset.revision);
+		const root = harness.root.bind(harness);
+		// The walkthrough's commit fails as a full disk would make it fail, which asks for no unlock.
+		vi.spyOn(harness, "root").mockImplementationOnce(async (...args) => {
+			const conversation = await root(...args);
+			let failed = false;
+			return new Proxy(conversation, {
+				get(target, property) {
+					if (property === "commit" && !failed) {
+						failed = true;
+						return async () => {
+							throw new Error("disk full");
+						};
+					}
+					const value = Reflect.get(target, property, target);
+					return typeof value === "function" ? value.bind(target) : value;
+				},
+			});
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const doc = await summarize({ unlockModels: unlock });
+		expect(written(doc, revision)).toBeUndefined();
+		expect(doc?.walkthroughNotes?.[revision]).toBe("No walkthrough available. The summariser failed.");
+		expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
+		expect(captured["You write Melian's walkthrough"] ?? []).toHaveLength(0);
+	});
 	it("counts a finished task the index has not counted before deciding to run a credential command", async () => {
 		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
 		const captured = scriptConversations(models, [

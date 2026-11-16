@@ -170,7 +170,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
 		expect(state.reviews).toHaveLength(3);
 		expect(state.resolvedThreads).toEqual([]);
-		const again = scenarioModels();
+		const again = scenarioModels("again");
 		harness = await openReviewOnlyHarness(await openSqliteStorage(database), again);
 		const root = await harness.root(context);
 		const interrupted = (await harness.snapshot(PublishedDocument, root.id, context))!.revisions[
@@ -180,7 +180,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		expect(Object.values(interrupted.resolved).find((entry) => entry.id === id)).toMatchObject({
 			thread: String(thread.id),
 		});
-		const returned = await reviewScenario(repo, harness, again, lensScript(unsafeManager), true);
+		// Another model asks correctness again: its request is otherwise unchanged, so the review would copy its answer.
+		const returned = await reviewScenario(repo, harness, again, lensScript(unsafeManager), true, { model: "again" });
 		const { verdict: current } = await returned.review;
 		expect(returned.changeset.revision).toEqual(third.changeset.revision);
 		expect(current.findings.block.map((finding) => finding.properties.id)).toEqual([id]);

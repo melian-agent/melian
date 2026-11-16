@@ -42,12 +42,14 @@ import {
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
 import type { TaskId } from "../src/harness.ts";
-import { type ReviewState, recordPlan } from "../src/lens-tools.ts";
+import { continuePrompt } from "../src/lens-request.ts";
+import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingHost, probingLimits } from "../src/probing.ts";
+import { headTreeLimits, ProbeReruns, probingHost, probingLimits, probingWording } from "../src/probing.ts";
 import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { injectionPolicy } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
@@ -3253,5 +3255,94 @@ describe("a level that probes", () => {
 		);
 		expect((await failure(run)).code).toBe("lensFailed");
 		expect(judged[0]).toBe("claude-judge");
+	});
+});
+
+// Every fixed line Melian sends a lens, its planner or its prober as a system prompt or an input comes from what the
+// run's request key holds: the run's stored instructions, prompt and prober instructions, the injection policy, the
+// continue prompt, or a template of the probing wording table. Its limits: it reads turns, not tool results, and only
+// the turns this script drives; text inside a boundary is the change's, so it is set aside. Pi wraps each system prompt
+// section in tags named for its key. The key holds the policy section's name, so its tags count as keyed; Pi's own
+// `instructions` tags are Pi Durable's rendering, which the key holds by its installed release.
+describe("the turns a lens run is sent", () => {
+	const boundary = /<untrusted-[^\s>]+(?: label="[^"]*")?>[\s\S]*?<\/untrusted-[^\s>]+>/g;
+	const linesOf = (text: string) =>
+		text
+			.replace(boundary, "")
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line !== "");
+	const template = (text: string) =>
+		new RegExp(`^${text.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\{[a-zA-Z]+\}/g, "[\\s\\S]*")}$`);
+
+	it("holds no fixed line that the run's request key does not, through an escalation, a plan and both reminders", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		const scripts = {
+			planner: [],
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				(messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) =>
+					call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0")),
+				fauxAssistantMessage("Done."),
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+			others: [
+				{
+					match: planner,
+					replies: [
+						fauxAssistantMessage("Nothing."),
+						call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }),
+						plan[1]!,
+					],
+				},
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const { run, requests, changeset } = await review(scripts, escalating(fake));
+		await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		const store = harness!.harness;
+		const root = await store.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const task = (await store.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!.task;
+		const input = (await store.getTask(task as TaskId, backgroundContext))!.input as {
+			revision: { nonce: string };
+			lenses: {
+				instructions: string;
+				prompt: string;
+				probe?: { instructions: string };
+				escalation?: { next?: unknown };
+			}[];
+		};
+		type Run = (typeof input.lenses)[number];
+		const runs = input.lenses.flatMap((each) => [
+			each,
+			...(each.escalation?.next === undefined ? [] : [each.escalation.next as Run]),
+		]);
+		expect(runs.map((each) => each.probe !== undefined)).toEqual([false, true]);
+		const keyed = new Set(
+			[
+				...runs.flatMap((each) => [each.instructions, each.prompt, each.probe?.instructions ?? ""]),
+				injectionPolicy(input.revision.nonce),
+				continuePrompt,
+			].flatMap(linesOf),
+		);
+		for (const section of ["instructions", injectionPolicySection.key])
+			keyed.add(`<${section}>`).add(`</${section}>`);
+		const templates = Object.values(probingWording).flatMap(linesOf).map(template);
+		const sent = [reviewer, planner, prober].flatMap((who) =>
+			requests[who]!.flatMap((messages) =>
+				messages
+					.filter(({ role }) => role === "system" || role === "user")
+					.flatMap((message) => linesOf(textOf(message))),
+			),
+		);
+		// The script reached each kind of turn it claims to: the carried findings, the plan, and both reminders.
+		expect(sent).toContain(probingWording.carriedHeading);
+		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
+		expect(sent).toContain(probingWording.recordPlan);
+		expect(sent.some((line) => line.startsWith("Attack 2 has neither a probe nor a skip"))).toBe(true);
+		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
 	});
 });

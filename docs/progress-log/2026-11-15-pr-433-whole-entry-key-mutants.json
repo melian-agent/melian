@@ -1,0 +1,61 @@
+{
+ "mutants": [
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 103,
+   "column": 16,
+   "endLine": 103,
+   "endColumn": 103,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/state-tree.test.ts > the judgement a handle keeps > is judged again when only its mode changes",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "8908e0c8",
+    "test": "packages/state-git/test/state-tree.test.ts > the judgement a handle keeps > is judged again when only its mode changes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 103,
+   "column": 53,
+   "endLine": 103,
+   "endColumn": 102,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/state-git/test/state-tree.test.ts > the judgement a handle keeps > is judged again when only its oid changes",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": {
+    "head": "8908e0c8",
+    "test": "packages/state-git/test/state-tree.test.ts > the judgement a handle keeps > is judged again when only its oid changes",
+    "collected": 1,
+    "failed": true
+   }
+  },
+  {
+   "file": "packages/state-git/src/state-tree.ts",
+   "line": 103,
+   "column": 91,
+   "endLine": 103,
+   "endColumn": 99,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "equivalent",
+   "evidence": "not generated: Stryker ignores this string literal under the repository's configuration",
+   "survivorClasses": []
+  }
+ ],
+ "total": 3,
+ "omitted": 0,
+ "unmutated": []
+}

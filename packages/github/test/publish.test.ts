@@ -60,7 +60,7 @@ function providerFor(state: FakeState) {
 
 // Reviews revision 1 and moves a fake pull request to it.
 async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName, nanRetries)) {
-	const fake = scenarioModels();
+	const fake = scenarioModels("again");
 	const state = pullRequestState();
 	const github = providerFor(state);
 	harness = await openPublishHarness(createMemoryStorage(), fake, github);
@@ -834,7 +834,10 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await publish(github, changeset);
 		expect(state.statuses.at(-1)).toMatchObject({ state: "error" });
 
-		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
+		// Another model asks correctness again: its request is otherwise unchanged, so the review would copy its answer.
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true, {
+			model: "again",
+		});
 		await again.review;
 		const result = await publish(github, changeset);
 
@@ -890,7 +893,10 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		state.failReviews = true;
 		await expect(publish(github, changeset)).rejects.toBeInstanceOf(PublishError);
 		state.failReviews = false;
-		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
+		// Another model asks correctness again: its request is otherwise unchanged, so the review would copy its answer.
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true, {
+			model: "again",
+		});
 		await again.review;
 
 		const result = await publish(github, changeset);

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	type CheckRecord,
@@ -13,6 +12,7 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	GraphSnapshot,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -109,9 +109,12 @@ import {
 	type Registry,
 	type Storage,
 	type TaskId,
+	type TaskRecord,
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
+import { continuePrompt, lensRequest } from "./lens-request.ts";
+import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
 	budgetEnded,
 	findingsCapped,
@@ -199,7 +202,9 @@ interface LensRun {
 	readonly thinking?: ModelRoute["thinking"];
 	readonly verify?: boolean;
 	readonly instructions: string;
-	readonly instructionFingerprint?: string;
+	// The key of the run's request, from `lensRequest`; absent from a task an older Melian created, whose runs no review
+	// copies.
+	readonly request?: string;
 	readonly standardsOmitted?: boolean;
 	readonly standards?: readonly string[];
 	readonly tools: readonly LensToolName[];
@@ -207,9 +212,7 @@ interface LensRun {
 	readonly rules: readonly LensRule[];
 	readonly budget: LensBudget;
 	readonly coverage: LensCoverage;
-	// The change as this lens sees it: only the files it covers, with the head's functions the first call read. Outside
-	// the instruction fingerprint and so the attach key: reading them is best effort, and a repeat call attaches to
-	// the first call's prompt whether or not it could read them.
+	// The change as this lens sees it: only the files it covers, with the head's functions the call read.
 	readonly prompt: string;
 	// Why the first call could not read the head's functions for this run, when it could not; absent from a task an
 	// older Melian created, whose records carry no such note.
@@ -238,13 +241,15 @@ interface StoredCallers {
 	readonly coverage?: CoverageSource;
 }
 
-// `escalateAt` is absent from a task an older Melian created, which escalates nothing.
+// `escalateAt` is absent from a task an older Melian created, which escalates nothing. `reused` names, by each first
+// run's key, the lenses this task copies from the completed task it replaced, which it never asks again.
 interface StoredLensTaskInput {
 	readonly root: ConversationId;
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
 	readonly callers?: StoredCallers;
+	readonly reused?: Record<string, LensCopy<LensResult[string]>>;
 }
 
 class LensTaskInput {
@@ -253,6 +258,7 @@ class LensTaskInput {
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
 	readonly callers?: StoredCallers;
+	readonly reused?: Record<string, LensCopy<LensResult[string]>>;
 
 	constructor(
 		root: ConversationId,
@@ -260,12 +266,14 @@ class LensTaskInput {
 		lenses: readonly LensRun[],
 		escalateAt?: Severity,
 		callers?: StoredCallers,
+		reused?: Record<string, LensCopy<LensResult[string]>>,
 	) {
 		this.root = root;
 		this.revision = revision;
 		this.lenses = lenses;
 		if (escalateAt !== undefined) this.escalateAt = escalateAt;
 		if (callers !== undefined) this.callers = callers;
+		if (reused !== undefined && Object.keys(reused).length > 0) this.reused = reused;
 	}
 
 	static upgrade(input: unknown, from: number): StoredLensTaskInput {
@@ -274,7 +282,14 @@ class LensTaskInput {
 			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
 		const callers =
 			from >= 5 || stored.callers === undefined ? stored.callers : callersWithLegacyCaveat(stored.callers);
-		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt, callers).toJSON();
+		return new LensTaskInput(
+			stored.root,
+			stored.revision,
+			lenses,
+			stored.escalateAt,
+			callers,
+			stored.reused,
+		).toJSON();
 	}
 
 	toJSON(): StoredLensTaskInput {
@@ -284,6 +299,7 @@ class LensTaskInput {
 			lenses: this.lenses,
 			...(this.escalateAt === undefined ? {} : { escalateAt: this.escalateAt }),
 			...(this.callers === undefined ? {} : { callers: this.callers }),
+			...(this.reused === undefined ? {} : { reused: this.reused }),
 		};
 	}
 }
@@ -307,6 +323,8 @@ type LensOutcome =
 			};
 			readonly usage?: { models: string[]; tokens: number; cost: number };
 			readonly probing?: ProbingOutcome;
+			// The task that asked this run, when this task copied it rather than ask it again.
+			readonly reused?: number;
 	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
@@ -351,9 +369,6 @@ type LensResult = Record<
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
 }
-
-const continuePrompt =
-	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
 // Creates one lens's conversation, owned by the lens task, and writes its policy on it.
 async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, lens: LensRun): Promise<ConversationId> {
@@ -464,12 +479,12 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 			record.kind === VerificationTask.definition.name
 				? !VerificationWaves.owns(index, waves, Revision.key(input.revision), record.id)
 				: entry !== undefined && entry.task !== record.id;
-		// An older entry lacks a level or route, so no current selection can attach to its lens task.
+		// An entry an older Melian wrote names no request key, so no current selection can attach to its lens task.
 		const stale =
 			record.kind === LensTask.definition.name &&
 			entry !== undefined &&
 			entry.lenses.length > 0 &&
-			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens));
+			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ request [0-9a-f]{64}$/.test(lens));
 		if (replaced || stale) await harness.abortTask(record.id, context);
 	}
 	for (const { record } of adjudications) {
@@ -515,8 +530,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// Version 3 records each run's standards paths; older runs leave them absent. Version 4 changed no stored shape.
 	// Version 5 lets the input's callers name a caveat; an older input names none. Version 6 lets a run probe, with the
 	// prober's conversation in the checkpoint under `<key>/prober` and what it did in the outcome's `probing`; an older
-	// task's runs probe nothing.
-	version: 6,
+	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
+	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
+	// runs have no request key, so no later task copies them, and it copies none.
+	version: 7,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -527,7 +544,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			await runtime.commit(async (tx) => {
 				const children: Record<string, ConversationId> = {};
 				for (const lens of task.input.lenses)
-					children[lens.key] = await spawnLens(tx, runtime.taskId, task.input, lens);
+					if (task.input.reused?.[lens.key] === undefined)
+						children[lens.key] = await spawnLens(tx, runtime.taskId, task.input, lens);
 				const attempts = Object.fromEntries(Object.keys(children).map((key) => [key, 0]));
 				return { status: "running", checkpoint: { phase: "review", children, attempts } };
 			}, context);
@@ -743,6 +761,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			// A lens's first run, then the run the escalation rule moves it to. The escalated run is asked to confirm or
 			// refute each severe finding the first reported; one it does neither stays, attributed to the first run.
 			const chain = async (first: LensRun): Promise<[string, LensOutcome][]> => {
+				const copied = input.reused?.[first.key];
+				if (copied !== undefined) return Object.entries(copied.outcomes);
 				const outcome = await run(first, started.children[first.key]!, first.prompt);
 				const escalation = await escalationOf(first, outcome);
 				const next = first.escalation?.next;
@@ -827,7 +847,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 							key,
 							{
 								...outcome,
-								conversation: checkpoint.children[key],
+								// A copied run keeps the conversation of the task that asked it.
+								...(checkpoint.children[key] === undefined ? {} : { conversation: checkpoint.children[key] }),
 								...(prober === undefined ? {} : { prober }),
 							},
 						];
@@ -974,7 +995,9 @@ export class ReviewHarness {
 					...run.route.slice(started?.attempts[run.key] ?? 0),
 					...(run.probe?.route.slice(started?.attempts[`${run.key}/prober`] ?? 0) ?? []),
 				];
+				// A copied lens asks no model.
 				return input.lenses.flatMap((first) => {
+					if (input.reused?.[first.key] !== undefined) return [];
 					const next = input.escalateAt === undefined ? undefined : first.escalation?.next;
 					const finished = started?.escalations?.[first.key] !== undefined;
 					return [...(finished ? [] : remaining(first)), ...(next === undefined ? [] : remaining(next))].map(
@@ -1297,7 +1320,8 @@ interface ReviewSettings {
 	 */
 	readonly rerun?: boolean;
 	/**
-	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing.
+	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing, unless another
+	 * review committed between a step's read and its commit: the step then unlocks every provider it could ask first.
 	 * Before any wait, hosts also unlock {@link ReviewHarness.resumedProviders}, which uses stored routes.
 	 */
 	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
@@ -1581,45 +1605,58 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 	return rest;
 }
 
-// A review's lens selection as the review index keys it: each run's key and the route it resolved, with the band its
-// level was held to, the severity that escalates it, and the run a quick run escalates to, with its route, or why it
-// is capped. Problem: a selection of names alone let a review under another plan, such as one with --model or a
-// changed preference file, attach to a lens task that ran on the old route, and one under a changed band or
-// `escalateAt` attach to a task that escalated under the old rule. Solution: each is part of the selection, so a
-// change to any of them runs the lenses again. A task an older Melian created names none of them.
-function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
-	const { next } = escalation;
-	if (next !== undefined)
-		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}${next.thinking === undefined ? "" : ` thinking ${next.thinking}`}${next.probe === undefined ? "" : ` ${probesWith(next.probe)}`}`;
-	return `capped ${escalation.cap ?? "at its ceiling"}`;
+// A review's lens selection as the review index keys it: each first run's key and its request's key, which holds
+// everything the run is shown and the key of the run it escalates to. A task an older Melian created has no request
+// key, so no selection matches it.
+function selectionOf(lenses: readonly LensRun[]): string[] {
+	return lenses.map((lens) => `${lens.key} request ${lens.request ?? "none"}`).sort();
 }
 
-// A probing run's prober route and the whole environment its probes run under, so a review with another prober, writer,
-// time limit or grant runs again.
-function probesWith(probe: NonNullable<LensRun["probe"]>): string {
-	return `probes ${JSON.stringify(probe.environment)} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
+// What a lens task's runs were shown of callers: the key of the graph they came from and the caveat. A task copies runs
+// only from one shown the same, so its one caller record is true of every run it holds. The cache root names the host,
+// and the paths follow the revision, which a copy already shares.
+function callersShown(callers: StoredCallers | undefined): string | undefined {
+	if (callers === undefined) return undefined;
+	return JSON.stringify([
+		callers.coverage === undefined ? null : GraphSnapshot.key(callers.coverage.parts),
+		callers.caveat ?? null,
+	]);
 }
 
-function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
-	return lenses
-		.map((lens) =>
-			[
-				lens.key,
-				...(lens.thinking === undefined ? [] : [`thinking ${lens.thinking}`]),
-				...(lens.instructionFingerprint === undefined ? [] : [`instructions ${lens.instructionFingerprint}`]),
-				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
-				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
-				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
-				...(lens.probe === undefined ? [] : [probesWith(lens.probe)]),
-				`on ${lens.route.map(modelName).join(", ")}`,
-			].join(" "),
-		)
-		.sort();
+// The lenses of `lenses` a new lens task copies from `previous`, the task the review's index entry names, when it
+// completed and its runs were shown the callers `callers` shows.
+function copiesFrom(
+	previous: TaskRecord<unknown, unknown, unknown> | undefined,
+	lenses: readonly LensRun[],
+	callers: StoredCallers | undefined,
+	refused: (key: string, model: string) => boolean,
+): Record<string, LensCopy<LensResult[string]>> {
+	if (previous?.state.status !== "terminal") return {};
+	const { outcome } = previous.state;
+	if (outcome.status !== "completed") return {};
+	const earlier = previous.input as StoredLensTaskInput;
+	if (callersShown(earlier.callers) !== callersShown(callers)) return {};
+	return lensCopies(
+		{
+			task: previous.id,
+			nonce: earlier.revision.nonce,
+			lenses: earlier.lenses,
+			result: outcome.result as LensResult,
+			reused: earlier.reused,
+		},
+		lenses,
+		refused,
+	);
 }
 
 // Every run of `lenses`: each first run, and the run a quick one escalates to.
 function runsOf(lenses: readonly LensRun[]): LensRun[] {
 	return lenses.flatMap((lens) => [lens, ...(lens.escalation?.next === undefined ? [] : [lens.escalation.next])]);
+}
+
+// The provider of every model each run of `lenses` may ask, its prober's included.
+function providersOf(lenses: readonly LensRun[]): string[] {
+	return runsOf(lenses).flatMap((run) => [...run.route, ...(run.probe?.route ?? [])].map((model) => model.provider));
 }
 
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
@@ -1638,10 +1675,15 @@ async function runLenses(
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
-	const selection = selectionOf(input.lenses, input.escalateAt);
+	const selection = selectionOf(input.lenses);
 	// A finished probing run is never reused: a repeat review probes again, so every finding rests on a probe of its own
 	// review. A live one is attached to, which is how a review resumes its own run after a crash.
 	const probes = runsOf(input.lenses).some((run) => run.probe !== undefined);
+	// The lenses this review's commit copies, as read ahead of it, when it unlocked the providers of only the others;
+	// `undefined` when it read that the commit attaches, and so unlocked none.
+	let unlockedFor: string | undefined;
+	// The task the read found this review's commit attaches to.
+	let attachesTo: number | undefined;
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1652,15 +1694,18 @@ async function runLenses(
 			record !== undefined &&
 			(record.state.status !== "terminal" || (!probes && finished(record, undecided))) &&
 			!(rerun && lensFailed(record!, refused));
-		if (!attaches)
-			await unlockModels(
-				runsOf(input.lenses).flatMap((run) =>
-					[...run.route, ...(run.probe?.route ?? [])].map((model) => model.provider),
-				),
-			);
+		if (attaches) attachesTo = known.task;
+		else {
+			const copied = copiesFrom(record, input.lenses, input.callers, refused);
+			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
+			unlockedFor = Object.keys(copied).join("\n");
+		}
 	}
 	let replaced: number | undefined;
-	const taskId = await root.commit(async (tx) => {
+	// This commit acts only on what that read found, since a review that commits between the two can change it; anything
+	// else commits again with every provider unlocked. Only lens commits follow this rule yet: issue #474 does the rest.
+	let checked = unlockModels !== undefined;
+	const own = async (tx: Tx): Promise<TaskId<LensResult> | undefined> => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revision];
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
@@ -1669,21 +1714,59 @@ async function runLenses(
 			(await attachable(tx, known.task, undecided)) &&
 			!(probes && (await tx.task(known.task as TaskId))?.state.status === "terminal") &&
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
-		if (attach) return known.task as TaskId<LensResult>;
+		// A task other than the one the read found asks lenses whose providers this review left locked, so commit again.
+		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
+		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
+		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
+		const reused = copiesFrom(previous, input.lenses, input.callers, refused);
+		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
-		// The new run reports afresh, so any earlier run's sightings of these lenses leave the revision in the same commit,
-		// whether or not the index still names that run: a review that selected no lens rewrites the entry without one.
-		// Each run names its producer with its level, and a run an older Melian stored named the bare version.
-		const sources = runsOf(input.lenses).flatMap((run) => [
+		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
+		const copiedNotes = new Set(
+			input.lenses.filter((lens) => reused[lens.key] !== undefined).map((lens) => `${lens.name}@${lens.version}`),
+		);
+		// Its graph and caveat match, but a file's caller query can have failed in one review only.
+		const earlierNotes = (previous?.input as StoredLensTaskInput | undefined)?.callers?.notes ?? {};
+		const callers =
+			input.callers === undefined
+				? undefined
+				: {
+						...input.callers,
+						notes: Object.fromEntries(
+							Object.entries(input.callers.notes).map(([key, notes]) => [
+								key,
+								copiedNotes.has(key) ? earlierNotes[key]! : notes,
+							]),
+						),
+					};
+		// The new run reports afresh, so any earlier run's sightings of the lenses it asks leave the revision in the same
+		// commit, whether or not the index still names that run: a review that selected no lens rewrites the entry without
+		// one. Each run names its producer with its level, and a run an older Melian stored named the bare version.
+		const asked = input.lenses.filter((lens) => reused[lens.key] === undefined);
+		const sources = runsOf(asked).flatMap((run) => [
 			lensSource(run.name, run.version, run.level),
 			{ check: `lens.${run.name}`, version: run.version },
 		]);
 		await clearSightings(tx, root.id, revision, sources);
-		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
+		const copying = new LensTaskInput(
+			input.root,
+			input.revision,
+			input.lenses,
+			input.escalateAt,
+			callers,
+			reused,
+		).toJSON();
+		const created = await tx.createTask(LensTask, copying, { ownership: { kind: "conversation" } });
 		replaced = known?.task;
 		index.reviews[revision] = { task: created, lenses: selection };
 		return created;
-	}, context);
+	};
+	let taskId = await root.commit(own, context);
+	if (taskId === undefined) {
+		await unlockModels!(providersOf(input.lenses));
+		checked = false;
+		taskId = (await root.commit(own, context))!;
+	}
 	// Before anything resumes the replaced run: it asks no model again and its reports no longer count, but a live
 	// task would still hold its conversations open.
 	if (replaced !== undefined && replaced !== taskId) {
@@ -1755,7 +1838,7 @@ async function callersFor(
 ): Promise<CallerRecord> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
-	const selection = selectionOf(input.lenses, input.escalateAt);
+	const selection = selectionOf(input.lenses);
 	const entryOf = async () => {
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		return entry?.lenses.join("\n") === selection.join("\n") ? entry : undefined;
@@ -2101,21 +2184,27 @@ async function triage(
 		request: structuredClone(request) as DecisionTaskInput["request"],
 		...(inputCut ? { inputCut: true } : {}),
 	};
+	// The finished decision the read below found to attach to without unlocking. The commit acts on that alone: any
+	// other outcome writes nothing, and the commit runs again with the decider's providers unlocked, since another
+	// review can commit between the read and the commit.
+	let attachesTo: number | undefined;
 	if (unlockModels !== undefined) {
 		// What the commit below decides, read ahead of it: only a finished decision of these questions is attached to
 		// without asking a model, and a rerun asks again after one that recorded none.
 		const entry = (await harness.snapshot(DecisionDocument, root.id, context))?.decisions[revision]?.[set];
 		const record = entry === undefined ? undefined : await harness.getTask(entry.task as TaskId, context);
 		const attaches = entry?.key === key && !(rerun && entry.decision === undefined) && finished(record, undecided);
-		if (!attaches) await unlockModels(providers);
+		if (attaches) attachesTo = entry.task;
+		else await unlockModels(providers);
 	}
 	let replaced: number | undefined;
-	const taskId = await root.commit(async (tx) => {
+	const decide = async (tx: Tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
 		const known = document.decisions[revision]?.[set];
 		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
 		const retry = rerun && known?.decision === undefined;
 		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
+		if (attachesTo !== undefined && !(attach && known.task === attachesTo)) return undefined;
 		const index = await tx.doc(ReviewIndex, root.id);
 		const previous = index.reviews[revision];
 		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
@@ -2146,7 +2235,13 @@ async function triage(
 			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
 		}
 		return task;
-	}, context);
+	};
+	let taskId = await root.commit(decide, context);
+	if (taskId === undefined) {
+		await unlockModels!(providers);
+		attachesTo = undefined;
+		taskId = (await root.commit(decide, context))!;
+	}
 	// A live replaced task would still ask its decider, and its answer lands nowhere.
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
@@ -2482,6 +2577,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? standards.forFiles(standardsFiles)
 				: StandardsReading.from(standards)
 			: StandardsReading.from([]);
+		// The standards as their source gave them, for the lens's key. A preference file's path names the host, and its
+		// content reaches the configuration the run renders; a request drops a field left undefined.
+		const quoted = {
+			sections: reading.sections,
+			source: standards instanceof Standards ? { ...standards.source, preferences: undefined } : null,
+			trusted: standardsSource,
+		};
 
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (config.static.enola.enabled)
@@ -2547,7 +2649,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				context: (boundary: string) => plannerContext(atBase, earlier, boundary),
 			};
 		};
-		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
+		// A run at `level`, keyed by its request, with `escalation` for a quick run: the run it moves to, built first, so
+		// the quick run's key holds the next run's.
+		const runAt = async (level: ScrutinyLevel, escalation?: LensRun["escalation"]): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
 			const functions = settings.reads === "functions" ? await enclosing() : undefined;
@@ -2558,68 +2662,65 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
 			const planning = (boundary: string) =>
 				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
-			return {
-				key: `${lens.name}@${lens.version}@${level}`,
-				band: `${band.floor}-${band.ceiling}`,
-				name: lens.name,
-				version: lens.version,
-				level,
-				...(routeAt(lens, level).route?.thinking === undefined
+			const thinking = routeAt(lens, level).route?.thinking;
+			const route = [...(routeFor(lens, level) as { route: ModelReference[] }).route];
+			const keyed = lensRequest({
+				run: (boundary, callers): Omit<LensRun, "request" | "escalation"> => ({
+					key: `${lens.name}@${lens.version}@${level}`,
+					band: `${band.floor}-${band.ceiling}`,
+					name: lens.name,
+					version: lens.version,
+					level,
+					...(thinking === undefined ? {} : { thinking }),
+					route,
+					verify: settings.verify,
+					instructions:
+						ruled.renderInstructions(
+							reading.sections,
+							level,
+							neighbours,
+							(text, label = "listing") => quoteUntrusted(label, text, boundary),
+							standardsSource,
+							callers ? options.callers?.render(covers, boundary) : undefined,
+						) +
+						baseline(boundary) +
+						planning(boundary),
+					standards: reading.paths(),
+					standardsOmitted: reading.omitted.length > 0,
+					tools: lens.tools,
+					severities: lens.severities,
+					rules,
+					budget: settings.budget,
+					coverage,
+					prompt: new ChangePrompt(changeset, boundary).render(files, {
+						...(functions === undefined ? {} : { functions }),
+					}),
+					...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
+					...(probing === undefined ? {} : { probe: probing.run }),
+				}),
+				nonce,
+				base,
+				head,
+				standards: quoted,
+				...(config.triage.escalateAt === undefined ? {} : { escalateAt: config.triage.escalateAt }),
+				...(escalation === undefined
 					? {}
-					: { thinking: routeAt(lens, level).route!.thinking! }),
-				route: [...(routeFor(lens, level) as { route: ModelReference[] }).route],
-				verify: settings.verify,
-				instructions:
-					ruled.renderInstructions(
-						reading.sections,
-						level,
-						neighbours,
-						(text, label = "listing") => quoteUntrusted(label, text, nonce),
-						standardsSource,
-						options.callers?.render(covers, nonce),
-					) +
-					baseline(nonce) +
-					planning(nonce),
-				instructionFingerprint: createHash("sha256")
-					.update(
-						JSON.stringify({
-							instructions:
-								ruled.renderInstructions(
-									reading.sections,
-									level,
-									neighbours,
-									(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
-									standardsSource,
-								) + baseline("0".repeat(24)),
-							standards: reading.sections,
-							standardsOmitted: reading.omitted.length > 0,
-							source: standards instanceof Standards ? standards.source : null,
-							trusted: standardsSource,
-							tools: lens.tools,
-							severities: lens.severities,
-							rules,
-							budget: settings.budget,
-							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+					: {
+							escalation:
+								escalation.next === undefined
+									? { cap: escalation.cap ?? "at its ceiling" }
+									: { next: escalation.next.request! },
 						}),
-					)
-					.digest("hex"),
-				standards: reading.paths(),
-				standardsOmitted: reading.omitted.length > 0,
-				tools: lens.tools,
-				severities: lens.severities,
-				rules,
-				budget: settings.budget,
-				coverage,
-				prompt: prompt.render(files, { ...(functions === undefined ? {} : { functions }) }),
-				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
-				...(probing === undefined ? {} : { probe: probing.run }),
+			});
+			return {
+				...keyed.unkeyed.bestEffort,
+				request: keyed.key,
+				...(escalation === undefined ? {} : { escalation }),
 			};
 		};
 		const level = choices.get(lens) as ScrutinyLevel;
-		const first = await runAt(level);
 		if (level !== "quick") {
-			lenses.push(first);
+			lenses.push(await runAt(level));
 			continue;
 		}
 		const next = lens.escalation(level, bands.get(lens)!);
@@ -2635,7 +2736,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 								cap: `since ${next} runs on ${routeAt(lens, next).on}, which reaches no model with credentials`,
 							}
 						: { next: await runAt(next) };
-		lenses.push({ ...first, escalation });
+		lenses.push(await runAt(level, escalation));
 	}
 	const state: ReviewState = {
 		repoRoot,
@@ -2934,7 +3035,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					),
 					lenses: ran.lenses.flatMap((lens) => {
 						const next = lens.escalation?.next;
-						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
+						const nonce = ran.reused?.[lens.key]?.nonce;
+						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])].map((run) =>
+							nonce === undefined ? run : { ...run, nonce },
+						);
 					}),
 					files: revision.files,
 					nonce: ran.revision.nonce,
@@ -3100,7 +3204,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			verifying = await startVerification(
 				harness,
 				verificationInput,
-				selectionOf(lenses, escalateAt),
+				selectionOf(lenses),
 				options.rerun === true,
 				context,
 				verifierRefuses,
@@ -3241,7 +3345,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(paths === undefined ? {} : { standards: [...paths] }),
 				...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
 				...(lineageOf(name, level) === undefined ? {} : { lineage: describeLineage(lineageOf(name, level)!) }),
-				...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
+				// A copied run cost this review nothing.
+				...(lensRan(key)?.usage === undefined || lensRan(key)?.reused !== undefined
+					? {}
+					: { usage: structuredClone(lensRan(key)?.usage) }),
 				budget: {
 					findings: budget.findings,
 					...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
@@ -3254,7 +3361,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const adjudication = await startAdjudication(
 		harness,
 		input,
-		selectionOf(lenses, escalateAt),
+		selectionOf(lenses),
 		lensTask,
 		verifying,
 		verificationRefused,
