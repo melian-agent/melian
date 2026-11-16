@@ -288,14 +288,14 @@ export class ReviewRecords {
 	}
 
 	/**
-	 * The record of finding `id`'s dismissal as `melian dismiss` stored it in `state`, so every round builds the same
+	 * The record of the dismissal of `id`, a finding `state` holds, as `melian dismiss` stored it, so every round builds the same
 	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
 	 * version 11 lacks and every reopen drops.
 	 */
 	dismissalOf(state: FindingsState, id: string): SharedRecord | undefined {
-		const lifecycle = state.items[id]?.lifecycle;
-		const sighting = lifecycle?.dismissedSighting;
-		if (lifecycle === undefined || sighting === undefined) return undefined;
+		const { lifecycle } = state.items[id]!;
+		const sighting = lifecycle.dismissedSighting;
+		if (sighting === undefined) return undefined;
 		return this.dismissal({
 			finding: id,
 			by: lifecycle.dismissedBy!,
@@ -324,7 +324,7 @@ export class ReviewRecords {
 			at: facts.at,
 			severity: facts.severity,
 			sighting: { revision: facts.sighting.revision, finding: facts.sighting.finding as unknown as RecordJson },
-			head: Revision.parseKey(facts.sighting.revision)?.head ?? "",
+			head: Revision.parseKey(facts.sighting.revision)!.head,
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};

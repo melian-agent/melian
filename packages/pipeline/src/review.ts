@@ -3148,11 +3148,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			resolutionPolicy,
 		});
 		const dismissals =
-			state === undefined
-				? []
-				: Object.keys(state.items)
-						.sort()
-						.flatMap((id) => records.dismissalOf(state, id) ?? []);
+			state === undefined ? [] : Object.keys(state.items).flatMap((id) => records.dismissalOf(state, id) ?? []);
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
@@ -3507,8 +3503,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					// The dismissals the task's verifier was shown, each once; a task version 4 stored names no record.
 					const shown = new Map(
 						(
-							(await harness.getTask(verifying, context))?.input as VerificationInput | undefined
-						)?.candidates.flatMap((candidate) =>
+							(await harness.getTask(verifying, context))!.input as unknown as VerificationInput
+						).candidates.flatMap((candidate) =>
 							(candidate.dismissed ?? []).flatMap(({ id, record }) =>
 								record === undefined ? [] : [[id, record] as const],
 							),
