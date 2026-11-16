@@ -422,12 +422,21 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const stalled = new Promise<void>((resolve) => {
 			release = resolve;
 		});
+		let entered: () => void = () => {};
+		const stalling = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
 		let opened = 0;
 		vi.spyOn(MutationEnumeration, "open").mockImplementation(async (...args) => {
-			if (opened++ === 0) await stalled;
+			if (opened++ === 0) {
+				entered();
+				await stalled;
+			}
 			return open.apply(MutationEnumeration, args);
 		});
+		// The second review starts only once the first is stalled in its open, so the first is always the one held.
 		const first = call(head, { path: "src/a.ts" });
+		await stalling;
 		try {
 			const second = await Promise.race([
 				call(head, { path: "src/a.ts" }, "e".repeat(24)),
