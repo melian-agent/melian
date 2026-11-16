@@ -19,10 +19,8 @@ export const continuePrompt =
 /** The fields of a lens run its request reads beyond the run itself: the tools it lists, and whether it probes. */
 export type LensRequestRun = { readonly tools: readonly LensToolName[]; readonly probe?: unknown };
 
-/**
- * Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, and whether
- * that is the checkout's install or Melian's; `unavailable` when neither resolves.
- */
+// Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, and whether
+// that is the checkout's install or Melian's; `unavailable` when neither resolves.
 export type MutantLister = { readonly version: string; readonly source: "checkout" | "melian" } | "unavailable";
 
 /** What a lens run is asked, before it is keyed. */
