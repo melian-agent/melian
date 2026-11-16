@@ -163,7 +163,7 @@ report.udp = await new Promise((resolve) => {
 	socket.once("error", (error) => finish(code(error)));
 	socket.send("probe", t.udp.port, t.udp.host, (error) => finish(error ? code(error) : "sent"));
 });
-try { await lookup("api.github.com"); report.dns = "resolved"; } catch (error) { report.dns = code(error); }
+try { await lookup(t.dns); report.dns = "resolved"; } catch (error) { report.dns = code(error); }
 
 const statusLine = (data, socket, ended) => {
 	const text = data.toString("latin1");
@@ -618,6 +618,7 @@ export function containmentPlan({
 			...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
 		],
 		udp: listener.udp,
+		dns: "api.github.com",
 		walk: policy.read,
 		// Bytes each walk reads before it stops, and the check fails; far above what a runner's roots hold.
 		byteLimit: 16 * 1024 ** 3,

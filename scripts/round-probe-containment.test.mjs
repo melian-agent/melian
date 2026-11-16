@@ -561,6 +561,120 @@ describe("the probe script", () => {
 	);
 
 	it.runIf(process.platform === "linux")(
+		"fails every route the real script finds open, run outside the sandbox with each route left open",
+		{ timeout: 300_000 },
+		async () => {
+			const dir = mkdtempSync(join(tmpdir(), "melian-containment-open-"));
+			dirs.push(dir);
+			const secret = `melian-canary-${randomBytes(16).toString("hex")}`;
+			// Stand-ins on PATH for a sudo that runs and an ipcs that lists the host's segment, which ipcrm then removes.
+			const bin = join(dir, "bin");
+			mkdirSync(bin);
+			for (const [name, body] of [
+				["sudo", "exit 0"],
+				["ipcs", 'echo "0x00000000 4242 runner 600 1 0"'],
+				["ipcrm", "exit 0"],
+			])
+				writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+			const leak = join(dir, "leak");
+			writeFileSync(leak, `${secret}\n`);
+			const listed = join(dir, "listed");
+			mkdirSync(listed);
+			writeFileSync(join(listed, "entry"), "x\n");
+			const walkedRoot = join(dir, "walked");
+			mkdirSync(walkedRoot);
+			writeFileSync(join(walkedRoot, "file"), `${secret}\n`);
+			const written = join(dir, "written");
+			const listener = await Listener.open("127.0.0.1");
+			const http = createServer((socket) => socket.once("data", () => socket.end("HTTP/1.1 200 OK\r\n\r\n")));
+			const socks = createServer((socket) => {
+				let replies = 0;
+				socket.on("data", () =>
+					socket.write(Buffer.from(replies++ === 0 ? [5, 0] : [5, 0, 0, 1, 0, 0, 0, 0, 0, 0])),
+				);
+			});
+			const holder = spawn(process.execPath, ["-e", "setTimeout(() => {}, 120_000)", secret], {
+				env: { PATH: process.env.PATH, MELIAN_HELD: secret },
+				stdio: "ignore",
+			});
+			try {
+				await new Promise((resolve) => http.listen(0, "127.0.0.1", resolve));
+				await new Promise((resolve) => socks.listen(0, "127.0.0.1", resolve));
+				const { tcp, udp } = listener.targets();
+				const plan = {
+					canary: secret,
+					shm: "4242",
+					shapes: {},
+					environment: ["PATH"],
+					readable: [],
+					read: [leak, listed],
+					writable: [],
+					write: [written],
+					network: [tcp],
+					udp,
+					dns: "localhost",
+					walk: [walkedRoot],
+					byteLimit: 1,
+					own: [walkedRoot],
+					public: [],
+					self: join(dir, "targets.json"),
+				};
+				writeFileSync(join(dir, "probe.mjs"), probeScript);
+				writeFileSync(plan.self, JSON.stringify(plan));
+				const child = spawn(process.execPath, [join(dir, "probe.mjs")], {
+					cwd: dir,
+					env: {
+						PATH: `${bin}:${process.env.PATH}`,
+						MELIAN_LEAKED: secret,
+						HTTP_PROXY: `http://127.0.0.1:${http.address().port}`,
+						ALL_PROXY: `socks5h://127.0.0.1:${socks.address().port}`,
+					},
+					stdio: ["ignore", "pipe", "inherit"],
+				});
+				let output = "";
+				child.stdout.on("data", (chunk) => {
+					output += chunk;
+				});
+				expect(await new Promise((resolve) => child.on("close", resolve))).toBe(0);
+				const report = JSON.parse(output);
+				const host = {
+					...observeHost(plan, []),
+					listener: { connections: listener.connections, datagrams: listener.datagrams },
+				};
+				const target = `${tcp.host}:${tcp.port}`;
+				const [first, second] = [child.pid, holder.pid].sort((a, b) => a - b);
+				const inProc = (pid) => (pid === holder.pid ? [`${pid}`, `${pid} cmdline`] : [`${pid}`]);
+				expect(judge(report, plan, [["node", "probe.mjs"]], host)).toEqual([
+					"the probe's environment holds unexpected variables: ALL_PROXY, HTTP_PROXY, MELIAN_LEAKED",
+					"the probe's environment holds the canary",
+					"/proc/self/environ read as canary, not clean",
+					`the canary is in /proc of processes ${[...inProc(first), ...inProc(second)].join(", ")}`,
+					`${leak} read as canary`,
+					`${listed} lists 1 of the host's entries`,
+					`the probe's write to ${written} reached the host`,
+					`a TCP connection to ${target} opened`,
+					"a DNS lookup resolved",
+					"1 connection reached the host's listener",
+					"1 datagram reached the host's listener",
+					`the HTTP proxy answered CONNECT ${target} with 200`,
+					`the HTTP proxy answered GET ${target} with 200`,
+					`the SOCKS proxy connected ${target}`,
+					"sudo -n true ran",
+					"the host's System V segment was listed",
+					`${join(walkedRoot, "file")} holds a canary`,
+					`the walk of ${walkedRoot} stopped at its entry or byte limit`,
+					"the walk of /sys stopped at its entry or byte limit",
+				]);
+			} finally {
+				holder.kill("SIGKILL");
+				await listener.close();
+				await new Promise((resolve) => http.close(resolve));
+				await new Promise((resolve) => socks.close(resolve));
+			}
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
 		"reports a clean environment when no variable holds the canary",
 		{ timeout: 300_000 },
 		() => {
@@ -725,6 +839,7 @@ describe("containmentPlan", () => {
 				{ host: "169.254.169.254", port: 80 },
 			],
 			udp: { host: "10.1.0.4", port: 4101 },
+			dns: "api.github.com",
 			walk: input.policy.read,
 			byteLimit: 17_179_869_184,
 			own: ["/r/tree", "/usr/x/run", "/usr/x/probe"],
