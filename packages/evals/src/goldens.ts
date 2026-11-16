@@ -666,8 +666,7 @@ export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
 	const here = comment.lines === undefined ? within(comment, path, 0, 0) : within(comment, path, ...finding.lines());
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	const placed = (claim: MemberClaim) =>
-		claim.id === finding.id || comment.lines === undefined ? here : claimWithin(comment, claim);
+	const placed = (claim: MemberClaim) => (comment.lines === undefined ? here : claimWithin(comment, claim));
 	if (otherClaims.some((claim) => matchesClaim(comment, claim) && placed(claim))) return true;
 	if (!here || !namesRule(comment, finding.ruleId)) return false;
 	const original = otherClaims.find(

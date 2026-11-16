@@ -1344,7 +1344,12 @@ describe("scoreGolden", () => {
 				comments: [{ ...comment!, source: "lens.tests", ...(lines === undefined ? {} : { lines }) }],
 			},
 		});
-		const merged = (speakerLine: number, claimLine: number | undefined) => {
+		const merged = (
+			speakerLine: number,
+			claimLine: number | undefined,
+			role: "cause" | "context" = "cause",
+			revision: "head" | "base" = "head",
+		) => {
 			const speaker = Finding.create({
 				rule: "wrong-result",
 				file: comment!.file,
@@ -1364,8 +1369,8 @@ describe("scoreGolden", () => {
 								{
 									file,
 									startLine: claimLine,
-									role: "cause" as const,
-									revision: "head" as const,
+									role,
+									revision,
 									snippet: "user.name",
 								},
 							],
@@ -1392,6 +1397,8 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden([10, 12]), [merged(20, 13)()])).toMatchObject({ recall: 0 });
 		expect(scoreGolden(golden([10, 12]), [merged(11, 11)("src/other.ts")])).toMatchObject({ recall: 0 });
 		expect(scoreGolden(golden([10, 12]), [merged(11, undefined)()])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden([10, 12]), [merged(11, 11, "context")()])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden([10, 12]), [merged(11, 11, "cause", "base")()])).toMatchObject({ recall: 0 });
 		expect(scoreGolden(golden(), [merged(11, undefined)()])).toMatchObject({ recall: 1 });
 		expect(scoreGolden(golden(), [merged(20, 40)()])).toMatchObject({ recall: 1 });
 	});
