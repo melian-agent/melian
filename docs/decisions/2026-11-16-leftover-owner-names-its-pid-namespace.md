@@ -1,6 +1,6 @@
 # A leftover's owner names its pid namespace
 
-Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit
+Amends: [The record store sweeps what a killed call left, once its maker is gone](2026-11-16-record-store-sweeps-what-a-killed-call-left.md), the owner key and its limit, and a stat that fails
 
 Status: for [issue #520](https://github.com/melian-agent/melian/issues/520), which the maintainer marked P0 on 2026-11-16, in the coordinator's session. The method is the one the issue sets out.
 
@@ -11,6 +11,8 @@ The sweep's owner key hashed the host's name alone. A process table lists the pr
 ## Choice
 
 On Linux the key hashes the host's name with the device and inode of `/proc/self/ns/pid`, which name this process's pid namespace. The name's format is unchanged. A container that shares the host's pid namespace reads the host's device and inode, which is right, since its table lists the host's processes. When Linux will not answer that read, a call names what it makes by a UUID alone, and the sweep keeps every owned leftover, since no name matches this host. macOS has no pid namespaces, so there the host's name alone stays the key, and the sweep still removes what an exited call left.
+
+The sweep stats each entry it lists to learn its kind. A stat that fails because the entry is gone, removed by another call after the listing, passes the entry over. A stat that fails for any other reason, such as EIO or EACCES, fails the listing, so the sweep removes nothing and reports `unlisted`, as a listing that fails does. Before, the sweep dropped such an entry and named it nowhere, so `melian doctor` said nothing about the disk it held.
 
 ## Why
 
