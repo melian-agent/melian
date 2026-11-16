@@ -1,4 +1,4 @@
-# Issue #496: a withheld tool version stays consistent across a record
+# [Issue #496](https://github.com/melian-agent/melian/issues/496): a withheld tool version stays consistent across a record
 
 Codex's adversarial review of e34c1d3b found that withholding a check's version broke export. A check record's sightings must name the result's version, and they kept the original, so `ReviewRecords.check` threw `RecordError` for a version such as `1.2.3+build` with one finding. The same version also left the machine through a verification's claims, an account's producers and a dismissal's sighting.
 
