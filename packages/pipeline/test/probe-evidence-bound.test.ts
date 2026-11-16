@@ -159,6 +159,19 @@ describe("boundProbeEvidence", () => {
 		expect(boundProbeEvidence(claims(fits + 1), nonce)).toBeUndefined();
 	});
 
+	it("renders the least cut at a budget of exactly its size, and nothing a byte below it", () => {
+		const evidence = [small("c1", "s".repeat(200_000))];
+		let low = 1;
+		let high = 200_000;
+		while (low < high) {
+			const budget = Math.floor((low + high) / 2);
+			if (boundProbeEvidence(evidence, nonce, budget) === undefined) low = budget + 1;
+			else high = budget;
+		}
+		expect(bytes(boundProbeEvidence(evidence, nonce, low)!)).toBe(low);
+		expect(boundProbeEvidence(evidence, nonce, low - 1)).toBeUndefined();
+	});
+
 	it("keeps a cut that fills the budget to the byte", () => {
 		const evidence = [atLimits("c1"), atLimits("c2")];
 		const bound = boundProbeEvidence(evidence, nonce)!;
