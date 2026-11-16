@@ -23,7 +23,7 @@ For example, a merged defect of four probing claims at their limits renders abou
 - A note outside the review's boundary says which parts were cut and by how much. It names a file by its number, never its path, since the path is the head's text.
 - When anything was cut, the verifier reads a rule for cut evidence. It may confirm what the shown parts show. It must not refute or lower a claim because the part that would show it was cut. When the lines that decide the claim fall in a cut, it answers plausible and says which part was cut.
 - The stored records stay whole. The cut is made in the verifier's prompt alone. The candidate's probes and the review's probe reruns keep every byte, and a rerun runs the stored probe.
-- The verifier's version does not hash the cut's wording, so the cut judges no stored claim again. A verification's request keys the budget, the cut's wording and a cut rendered over fixed samples, and only when one of its candidates' claims carries probe evidence. Every other verification keeps the key it had.
+- The verifier's version does not hash the cut's wording, so the cut judges no stored claim again. A verification's request keys the budget, the cut's wording and a cut rendered over fixed samples, one of them cut partway by the same search the prompt runs, and only when one of its candidates' claims carries probe evidence. Every other verification keeps the key it had.
 - A test reads the committed verifier route's model, fallbacks and accepted models, and fails, naming the model, when one has a context of fewer than twice the budget in tokens. Counting a byte of evidence as at most one token leaves the other half for the instructions, the claims and the verifier's reads.
 
 ## Why
