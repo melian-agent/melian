@@ -318,7 +318,12 @@ export async function startVerification(
 	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const { key } = verificationRequest(input, reruns);
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
-	const providers = asking.flatMap((candidate) => candidate.route.map((model) => model.provider));
+	// A candidate whose evidence no verifier may be shown is asked nothing, so its route needs no credential.
+	const providers = asking
+		.filter(
+			(candidate) => boundProbeEvidence(candidateEvidence(candidate, reruns), input.revision.nonce) !== undefined,
+		)
+		.flatMap((candidate) => candidate.route.map((model) => model.provider));
 	// The task the read below found to attach to without unlocking. The commit acts on that alone: any other outcome
 	// writes nothing, and the commit runs again with every asking candidate's route unlocked, since another review can
 	// commit between the read and the commit.

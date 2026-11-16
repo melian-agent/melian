@@ -415,6 +415,37 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 	});
 
+	// A credential command runs only for a route a request will use, so a candidate asked nothing unlocks nothing.
+	it.each([
+		["unlocks nothing for the verifier's provider of a candidate it asks nothing", 1, false],
+		["unlocks the verifier's provider of a candidate whose evidence fits", undefined, true],
+	])("%s", async (_, bytes, asked) => {
+		evidenceBudget.bytes = bytes;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		const fake = createFakeModels({ models: [{ id: "planning" }] });
+		const judge = createFakeModels({ provider: "judging", models: [{ id: "judge" }] }, fake.review);
+		const unlocked: string[] = [];
+		const { run } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				fake,
+				config: {
+					models: {
+						heavy: { model: `${fake.ref("planning").provider}/planning` },
+						verifier: { model: `${judge.ref("judge").provider}/judge` },
+					},
+				},
+				unlockModels: async (providers: readonly string[]) => {
+					unlocked.push(...providers);
+				},
+			},
+		);
+		await run.catch(() => undefined);
+		expect(unlocked.includes("judging")).toBe(asked);
+	});
+
 	it.each([
 		["2 probing claims", true],
 		["1 probing claim", false],
