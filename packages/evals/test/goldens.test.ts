@@ -1335,6 +1335,67 @@ describe("scoreGolden", () => {
 		}
 	});
 
+	it("answers an expectation with lines through a merged claim only where that claim's own cause sits", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = (lines?: [number, number]) => ({
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [{ ...comment!, source: "lens.tests", ...(lines === undefined ? {} : { lines }) }],
+			},
+		});
+		const merged = (speakerLine: number, claimLine: number | undefined) => {
+			const speaker = Finding.create({
+				rule: "wrong-result",
+				file: comment!.file,
+				startLine: speakerLine,
+				discriminator: "user",
+				message: "The user can be null.",
+				severity: "P1",
+				cause: comment!.cause,
+				source: { check: "lens.correctness", version: "v" },
+				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+			});
+			const evidence = (file: string) =>
+				claimLine === undefined
+					? {}
+					: {
+							evidence: [
+								{
+									file,
+									startLine: claimLine,
+									role: "cause" as const,
+									revision: "head" as const,
+									snippet: "user.name",
+								},
+							],
+						};
+			return (file = comment!.file) =>
+				Finding.from({
+					...speaker.toJSON(),
+					properties: {
+						...speaker.properties,
+						otherClaims: [
+							{
+								id: "tests-claim",
+								ruleId: comment!.rule,
+								source: { check: "lens.tests", version: "v" },
+								...evidence(file),
+							},
+						],
+					},
+				});
+		};
+		expect(scoreGolden(golden([10, 12]), [merged(11, 20)()])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden([10, 12]), [merged(20, 11)()])).toMatchObject({ recall: 1, precision: 1 });
+		expect(scoreGolden(golden([10, 12]), [merged(11, 12)()])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden([10, 12]), [merged(20, 13)()])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden([10, 12]), [merged(11, 11)("src/other.ts")])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden([10, 12]), [merged(11, undefined)()])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden(), [merged(11, undefined)()])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden(), [merged(20, 40)()])).toMatchObject({ recall: 1 });
+	});
+
 	it("keeps two expectations apart that differ only in their lines or their alternative rules", () => {
 		const [comment] = nullDeref!.expected.comments;
 		const twice = (first: Partial<GoldenComment>, second: Partial<GoldenComment>) => ({

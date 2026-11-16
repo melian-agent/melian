@@ -646,17 +646,30 @@ function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 	);
 }
 
+function within(comment: ExpectedClaim, file: string, start: number, end: number): boolean {
+	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(file)) return false;
+	return comment.lines === undefined || (comment.lines[0] <= end && start <= comment.lines[1]);
+}
+
+// A merged claim keeps its own evidence but not the speaker's place, so lines are read from its cause on the head.
+function claimWithin(comment: ExpectedClaim, claim: MemberClaim): boolean {
+	return (claim.evidence ?? []).some(
+		(each) =>
+			each.role === "cause" &&
+			each.revision === "head" &&
+			within(comment, each.file, each.startLine, each.endLine ?? each.startLine),
+	);
+}
+
 // Match a merged defect through the claim that supplied the expected rule and source.
 export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
-	if (comment.lines !== undefined) {
-		const [start, end] = finding.lines();
-		if (end < comment.lines[0] || comment.lines[1] < start) return false;
-	}
+	const here = comment.lines === undefined ? within(comment, path, 0, 0) : within(comment, path, ...finding.lines());
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (!namesRule(comment, finding.ruleId)) return false;
+	const placed = (claim: MemberClaim) =>
+		claim.id === finding.id || comment.lines === undefined ? here : claimWithin(comment, claim);
+	if (otherClaims.some((claim) => matchesClaim(comment, claim) && placed(claim))) return true;
+	if (!here || !namesRule(comment, finding.ruleId)) return false;
 	const original = otherClaims.find(
 		(claim) =>
 			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
