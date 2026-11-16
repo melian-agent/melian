@@ -5,3 +5,5 @@ The record classes' inventory found a static check's `version` unclassed: `stati
 Five tests in `packages/pipeline/test/review-records-withheld.test.ts` failed on 9e26dfd0 for the reported reason, a made-up token exported as the version, and pass after the fix. A pre-release tag can still carry a short run of letters and digits; the decision names that limit.
 
 The coordinator asked for the rule on 2026-11-16. Enola's snapshot ID, receipt and cache key stay named limits for [pull request #524](https://github.com/melian-agent/melian/pull/524).
+
+Mutation proof: `2026-11-16-issue-496-tool-version-mutants.json` lists the commit's 12 mutants. All 11 generated mutants were killed, each by its named test run alone after that test passed unmutated. One mutant survived the first run, a missing version exported as the withheld sentence rather than `null`, and a new test kills it. The twelfth is a string literal the configuration ignores.
