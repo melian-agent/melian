@@ -13,6 +13,7 @@ import {
 	main,
 	observeHost,
 	outcome,
+	probeRead,
 	probeScript,
 	publicRoots,
 	recording,
@@ -616,6 +617,8 @@ describe("main", () => {
 		}
 	});
 
+	const head = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
+
 	function stoppedProbes(root, removed, result) {
 		const tree = join(root, "tree");
 		const run = join(root, "run");
@@ -634,7 +637,7 @@ describe("main", () => {
 		};
 	}
 
-	async function mainWith(probes) {
+	async function mainWith(probes, read = async () => ["node_modules"]) {
 		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
 		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", ...loginNames].map((name) => [name, process.env[name]]));
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -645,7 +648,14 @@ describe("main", () => {
 			mkdirSync(join(root, "temp"));
 			process.env.HOME = join(root, "home");
 			process.env.RUNNER_TEMP = join(root, "temp");
-			const code = await main(probes(root));
+			const opened = probes(root);
+			const open = opened.open;
+			let options;
+			opened.open = async (script, given) => {
+				options = given;
+				return open(script, given);
+			};
+			const code = await main(opened, read);
 			return {
 				code,
 				logs: log.mock.calls,
@@ -655,6 +665,7 @@ describe("main", () => {
 				),
 				segmentsKept: segments() === before.segments,
 				fdsKept: readdirSync("/proc/self/fd").length === before.fds,
+				head: options?.head,
 			};
 		} finally {
 			log.mockRestore();
@@ -675,9 +686,97 @@ describe("main", () => {
 				left: [],
 				segmentsKept: true,
 				fdsKept: true,
+				head: { checkout: process.cwd(), commit: head, read: ["node_modules"] },
 			});
 		},
 	);
+
+	it.runIf(process.platform === "linux")(
+		"hands the probe the policy's probe.read, as read at the checkout's HEAD",
+		async () => {
+			const asked = [];
+			const result = await mainWith(
+				(root) => stoppedProbes(root, true),
+				async (checkout, commit) => {
+					asked.push([checkout, commit]);
+					return ["node_modules", "extra"];
+				},
+			);
+			expect(asked).toEqual([[process.cwd(), head]]);
+			expect(result.head).toEqual({ checkout: process.cwd(), commit: head, read: ["node_modules", "extra"] });
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"fails, escaped and before it plants anything, when the policy cannot be read",
+		async () => {
+			const result = await mainWith(
+				(root) => stoppedProbes(root, true),
+				async () => {
+					throw new Error("bad melian.yaml\u001b[2J");
+				},
+			);
+			expect(result).toEqual({
+				code: 1,
+				logs: [["the policy's probe.read could not be read: bad melian.yaml\\u001b[2J"]],
+				left: [],
+				segmentsKept: true,
+				fdsKept: true,
+				head: undefined,
+			});
+		},
+	);
+
+	describe("probeRead", () => {
+		const repos = [];
+		afterEach(() => {
+			for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
+		});
+
+		function commitWith(files) {
+			const repo = mkdtempSync(join(tmpdir(), "melian-containment-policy-"));
+			repos.push(repo);
+			const git = (...args) =>
+				spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
+					cwd: repo,
+					encoding: "utf8",
+					env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_COUNT: "0" },
+				}).stdout.trim();
+			git("init", "--quiet");
+			for (const [name, text] of Object.entries(files)) writeFileSync(join(repo, name), text);
+			writeFileSync(join(repo, "README"), "x\n");
+			git("add", ".");
+			git("commit", "--quiet", "-m", "policy");
+			const commit = git("rev-parse", "HEAD");
+			// The working tree changes after the commit, and probeRead reads the commit.
+			writeFileSync(join(repo, "melian.yaml"), "probe:\n  read: [node_modules, uncommitted]\n");
+			return { repo, commit };
+		}
+
+		it("reads the committed policy's probe.read", async () => {
+			const { repo, commit } = commitWith({ "melian.yaml": "probe:\n  read: [node_modules, extra]\n" });
+			expect(await probeRead(repo, commit)).toEqual(["node_modules", "extra"]);
+		});
+
+		it("reads the default when the commit sets none", async () => {
+			const { repo, commit } = commitWith({});
+			expect(await probeRead(repo, commit)).toEqual(["node_modules"]);
+		});
+	});
+
+	it.runIf(process.platform === "linux")("writes control characters it prints as visible escapes", async () => {
+		const result = await mainWith((root) =>
+			stoppedProbes(root, true, {
+				exitCode: 0,
+				signal: null,
+				timedOut: false,
+				truncated: false,
+				output: "{}",
+				error: "kill failed\u001b[2J",
+			}),
+		);
+		expect(result.logs).toEqual([["the containment probe's processes could not be stopped: kill failed\\u001b[2J"]]);
+	});
 
 	it.runIf(process.platform === "linux")("names the probe's scratch when closing it left some", async () => {
 		const result = await mainWith((root) => stoppedProbes(root, false));

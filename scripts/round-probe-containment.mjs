@@ -18,6 +18,8 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import { loadConfig } from "../packages/core/src/config.ts";
+import { visibleText } from "../packages/core/src/render.ts";
 import { Probe } from "../packages/pipeline/src/probe.ts";
 
 /** The names the round job's logins sit under, so the canary tests the variables a probe would have to reach. */
@@ -497,16 +499,34 @@ export function containmentPlan({
 	};
 }
 
+/**
+ * The policy's `probe.read` at `commit`, the paths a round's probes read beyond the tracked tree. The round job checks out
+ * its base, and check.yml the result that would merge, so each proves the policy its probes will run under.
+ */
+export async function probeRead(checkout, commit) {
+	return (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe.read;
+}
+
 /** The id ipcmk printed for the segment it made, or "" when it printed none. */
 export function shmId(made) {
 	return /(\d+)\s*$/.exec(made)?.[1] ?? "";
 }
 
 /** Runs the containment probe through `probes`, Probe unless a test gives another, and returns the step's exit code. */
-export async function main(probes = Probe) {
+export async function main(probes = Probe, read = probeRead) {
+	const say = (line) => console.log(visibleText(line));
 	const available = await probes.availability();
 	if (!available.available) {
-		console.log(`probes cannot run here: ${available.reason}`);
+		say(`probes cannot run here: ${available.reason}`);
+		return 1;
+	}
+	const checkout = realpathSync(process.cwd());
+	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
+	let allowed;
+	try {
+		allowed = [...(await read(checkout, commit))];
+	} catch (error) {
+		say(`the policy's probe.read could not be read: ${error.message}`);
 		return 1;
 	}
 	const canary = `melian-canary-${randomBytes(16).toString("hex")}`;
@@ -519,8 +539,6 @@ export async function main(probes = Probe) {
 	const held = openSync(files[0], "r");
 	const made = execFileSync("ipcmk", ["--shmem", "64"], { encoding: "utf8" });
 	const shm = shmId(made);
-	const checkout = realpathSync(process.cwd());
-	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
 	try {
 		const argv = [];
 		const probe = await probes.open(
@@ -529,7 +547,7 @@ export async function main(probes = Probe) {
 				files: [{ path: "targets.json", text: "{}" }],
 			},
 			{
-				head: { checkout, commit },
+				head: { checkout, commit, read: allowed },
 				writer: { trusted: true, by: "reviewer" },
 				trustWriters: true,
 				sandbox: recording(probes.sandbox, argv),
@@ -560,28 +578,28 @@ export async function main(probes = Probe) {
 			const result = await probe.run();
 			const stopped = unfinished(result);
 			if (stopped !== undefined) {
-				console.log(stopped);
+				say(stopped);
 				return 1;
 			}
 			report = JSON.parse(result.output);
 		} finally {
 			const cleanup = await probe.close();
 			left = !cleanup.removed;
-			if (left) console.log(`the probe's scratch was left at ${cleanup.leftover}`);
+			if (left) say(`the probe's scratch was left at ${cleanup.leftover}`);
 		}
 		if (left) return 1;
-		for (const line of walked(report, plan)) console.log(line);
-		console.log(`environment: ${report.environment.join(" ")}`);
-		console.log(`processes visible: ${report.processes}; sudo: ${report.sudo}; dns: ${report.dns}`);
-		console.log(`tcp: ${JSON.stringify(report.tcp)}`);
-		console.log(`http proxy: ${JSON.stringify(report.httpProxy)}`);
-		console.log(`socks proxy: ${JSON.stringify(report.socksProxy)}`);
-		console.log(`ipc: ${JSON.stringify(report.ipc)}`);
-		console.log(`reads: ${JSON.stringify(report.reads)}`);
-		console.log(`writes: ${JSON.stringify(report.writes)}`);
+		for (const line of walked(report, plan)) say(line);
+		say(`environment: ${report.environment.join(" ")}`);
+		say(`processes visible: ${report.processes}; sudo: ${report.sudo}; dns: ${report.dns}`);
+		say(`tcp: ${JSON.stringify(report.tcp)}`);
+		say(`http proxy: ${JSON.stringify(report.httpProxy)}`);
+		say(`socks proxy: ${JSON.stringify(report.socksProxy)}`);
+		say(`ipc: ${JSON.stringify(report.ipc)}`);
+		say(`reads: ${JSON.stringify(report.reads)}`);
+		say(`writes: ${JSON.stringify(report.writes)}`);
 		const host = observeHost(plan, [...policy.read, ...policy.write]);
 		const { code, lines } = outcome(judge(report, plan, argv, host));
-		for (const line of lines) console.log(line);
+		for (const line of lines) say(line);
 		return code;
 	} finally {
 		closeSync(held);
