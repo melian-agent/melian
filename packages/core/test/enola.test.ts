@@ -179,12 +179,38 @@ describe("Enola policy and reports", () => {
 		]);
 	});
 	it("keeps the rule of each check Enola builds in, which no policy declares", () => {
+		// The checks `enola help check` lists for the pinned 0.4.40.
+		const builtins = [
+			"cycles",
+			"layers",
+			"crossrepo",
+			"coverage",
+			"unused-routes",
+			"messaging-coverage",
+			"god-class",
+			"hotspots",
+			"dependency-depth",
+			"exported-surface",
+			"complexity-outliers",
+			"intent",
+			"constraints",
+			"domain",
+			"query-loops",
+			"entry-points",
+			"dead-methods",
+			"vendored-candidates",
+			"import-closure",
+			"package-metrics",
+			"dead-code",
+			"performance",
+			"packwerk",
+		];
 		const log = normaliseEnolaSarif(
 			JSON.stringify({
 				version: "2.1.0",
 				runs: [
 					{
-						results: ["god-class", "exported-surface", "complexity-outliers", "god-classes"].map((ruleId) => ({
+						results: [...builtins, "god-classes"].map((ruleId) => ({
 							ruleId,
 							level: "warning",
 							message: { text: "Large" },
@@ -196,9 +222,7 @@ describe("Enola policy and reports", () => {
 			new Set(),
 		);
 		expect(log.runs[0].results.map((r) => r.ruleId)).toEqual([
-			"god-class",
-			"exported-surface",
-			"complexity-outliers",
+			...builtins,
 			`rule-${createHash("sha256").update("god-classes").digest("hex").slice(0, 16)}`,
 		]);
 	});
