@@ -11,6 +11,7 @@ import {
 	deterministicChecks,
 	type EnolaSnapshot,
 	evaluateGuardrails,
+	Finding,
 	hostFacts,
 	type MelianConfig,
 	type MutationSkipCause,
@@ -36,6 +37,7 @@ import {
 	type Harness,
 	type TaskId,
 } from "./harness.ts";
+import type { ImportedRecords } from "./imported-records.ts";
 import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { installDigests, MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
@@ -654,6 +656,11 @@ export interface RunChecksInput {
 	 * head of the same review target reuses the last judged head's, and the check is `provisional`.
 	 */
 	readonly cold?: boolean;
+	/**
+	 * Records from a store whose writers the base trusts. A check a record of this run's request answers is kept from it,
+	 * findings and all, as a rerun keeps a check it does not repeat, and runs nowhere here.
+	 */
+	readonly imported?: ImportedRecords;
 }
 
 // What decides a run's results: both commits, the tier, and the request every check of the run answers, so a build
@@ -775,6 +782,20 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		knownTier = false;
 	}
 	const revision = Revision.key(input.changeset.revision);
+	const tierChecks = knownTier ? checksOfTier(input.config, tier) : [];
+	const imported = new Map(
+		(reusable ? tierChecks : []).flatMap((name) => {
+			const found = input.imported?.check(request, input.changeset.revision, name);
+			return found === undefined ? [] : [[name, found] as const];
+		}),
+	);
+	const fromImport: ChecksInput["rerun"] | undefined =
+		imported.size === 0
+			? undefined
+			: {
+					checks: tierChecks.filter((name) => !imported.has(name)),
+					kept: Object.fromEntries([...imported].map(([name, { result }]) => [name, result])),
+				};
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task. A task
 	// whose run lost the revision's mutation authority ended aborted, so `restart` replaces it too.
 	const start = (rerun: ChecksInput["rerun"] | undefined, stale: number | undefined, restart: boolean) =>
@@ -786,6 +807,10 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});
+			// An imported check's findings stand at the revision in the commit that keeps its result.
+			if (rerun === fromImport)
+				for (const [name, { sightings }] of imported)
+					await replaceCheckFindings(tx, root.id, name, revision, sightings.map(Finding.from));
 			if (stale !== undefined) {
 				const previous = await tx.doc(CheckSources, root.id, String(stale), null);
 				const sources = await tx.doc(CheckSources, root.id, String(created), null);
@@ -816,7 +841,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		restart = retirement.restart;
 		await abortRetiredMutation(harness, revision, retirement.authority, context);
 	}
-	let taskId = await start(undefined, undefined, restart);
+	let taskId = await start(fromImport, undefined, restart);
 	let settled = await harness.waitForTask(taskId, context);
 	if (input.rerunFailed) {
 		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRunRecord[] });

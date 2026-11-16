@@ -562,7 +562,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
 
 		expect(review.status).toBe(0);
-		expect(review.stderr).not.toContain("records not exported");
+		expect(review.stderr).not.toContain("records not imported");
 		const changesets = readdirSync(join(store, "changesets"));
 		expect(changesets).toHaveLength(1);
 		const records = await DirectoryRecordStore.open(store, reviewPayloads);
@@ -761,7 +761,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	it.each([
 		["sets trust.writers: false", "trust:\n  writers: false\n"],
 		["leaves trust.writers at its default", ""],
-	])("exports nothing, and says why in one line, when the base %s", (_, trust) => {
+	])("imports and exports nothing, and says why in one line, when the base %s", (_, trust) => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
 		const store = join(scratch, "records");
@@ -769,10 +769,42 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "untrusting", "--records", `dir:${store}`], env);
 
 		expect(review.status).toBe(0);
-		expect(review.stderr.split("\n").filter((line) => line.includes("records not exported"))).toEqual([
-			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them",
+		expect(review.stderr.split("\n").filter((line) => line.includes("records not"))).toEqual([
+			"melian: records not imported or exported: the base's melian.yaml does not set trust.writers: true, so no record counts",
 		]);
 		expect(existsSync(store)).toBe(false);
+	});
+
+	it("stops on a counted record whose payload its check refuses, and reads no record when the base stops trusting writers", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "policy", trustingPolicy);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "policy", "--records", `dir:${store}`], env).status).toBe(0);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		// A store opened with no payload check of its own takes a lens record the review's check refuses.
+		const planting = await DirectoryRecordStore.open(store, { lens: () => undefined });
+		const [round] = (await planting.list(changeset!)).filter(({ kind }) => kind === "round");
+		await planting.add([
+			{ v: 1, changeset: changeset!, revision: round!.revision!, kind: "lens", key: "planted", payload: { v: 1 } },
+		]);
+		await planting.close();
+
+		const refused = melian(repo, ["review", "policy", "--records", `dir:${store}`], env);
+		expect(refused.status).not.toBe(0);
+		expect(refused.stderr).toContain("a lens record's payload");
+
+		// The same base branch, so the same changeset, now under a policy that does not trust writers.
+		const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+		git(repo, "checkout", "--quiet", "policy");
+		writeFileSync(join(repo, "melian.yaml"), guardrailsOnly);
+		git(repo, "commit", "--quiet", "-am", "stop trusting writers");
+		git(repo, "checkout", "--quiet", feature);
+		git(repo, "merge", "--quiet", "--no-edit", "policy");
+		const untrusted = melian(repo, ["review", "policy", "--records", `dir:${store}`], env);
+		expect(untrusted.status).toBe(0);
+		expect(untrusted.stderr.split("\n").filter((line) => line.includes("records not"))).toEqual([
+			"melian: records not imported or exported: the base's melian.yaml does not set trust.writers: true, so no record counts",
+		]);
 	});
 
 	it("refuses --records outside review, and a store that is not a directory", () => {

@@ -33,6 +33,7 @@ import {
 	createNodeExecutionEnv,
 	DismissError,
 	DismissHarness,
+	ImportedRecords,
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
@@ -276,7 +277,7 @@ export async function review(
 		options.records === undefined ? false : await ReviewSource.of(changeset, source).trustsWriters();
 	if (options.records !== undefined && !trustsWriters)
 		io.stderr(
-			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them\n",
+			"melian: records not imported or exported: the base's melian.yaml does not set trust.writers: true, so no record counts\n",
 		);
 	spans.step("secrets");
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
@@ -324,6 +325,9 @@ export async function review(
 				resolve(io.cwd, options.records.slice("dir:".length)),
 				reviewPayloads,
 			);
+		// A store's records are read before anything runs, so each producer a record answers is never asked.
+		const imported =
+			records === undefined ? undefined : ImportedRecords.from(changeset.id, await records.list(changeset.id));
 		spans.step("resume");
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
 		const resumed = await reviewHarness.resumedProviders(context);
@@ -342,6 +346,7 @@ export async function review(
 				rerunFailed: options.rerun,
 				writer,
 				...(options.cold === true ? { cold: true } : {}),
+				...(imported === undefined ? {} : { imported }),
 			},
 			context,
 		);

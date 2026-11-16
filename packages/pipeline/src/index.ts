@@ -55,6 +55,7 @@ export {
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
+export { ImportedRecords } from "./imported-records.ts";
 export {
 	contextOverflowed,
 	type PlanSources,
