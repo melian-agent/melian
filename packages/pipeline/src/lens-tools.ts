@@ -886,13 +886,15 @@ let enumerating: Promise<unknown> = Promise.resolve();
 function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	const change = [review.nonce, review.repoRoot, review.base, review.head].join("\0");
 	return listings.get([change, path].join("\0"), () => {
-		const turn = enumerating.then(() => enumerate(review, change, path));
+		// A call waits its turn inside the 120 seconds the enumerator allows it, so a long queue fails calls rather than stalls.
+		const deadline = performance.now() + 120_000;
+		const turn = enumerating.then(() => enumerate(review, change, path, deadline));
 		enumerating = turn.catch(() => {});
 		return turn;
 	});
 }
 
-async function enumerate(review: ReviewState, change: string, path: string): Promise<MutantListing> {
+async function enumerate(review: ReviewState, change: string, path: string, deadline: number): Promise<MutantListing> {
 	// Two dots against the review's own base give its diff; the policy is that base, so the head's Stryker
 	// configuration cannot switch its own mutants off.
 	const enumeration = await enumerations.get(change, () =>
@@ -900,7 +902,7 @@ async function enumerate(review: ReviewState, change: string, path: string): Pro
 			policy: { kind: "revision", commit: review.base },
 		}),
 	);
-	const inventory = (await enumeration.list({ all: true, limitedTo: [path] })).toJSON();
+	const inventory = (await enumeration.list({ all: true, limitedTo: [path], deadline })).toJSON();
 	return MutantListing.of(inventory, path);
 }
 

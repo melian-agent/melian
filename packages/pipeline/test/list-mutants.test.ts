@@ -279,7 +279,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		await call(head, { path: "src/flags.ts" });
 		await call(head, { path: "src/flags.ts", startLine: maxListedMutants + 1 });
 		await call(head, { path: "src/flags.ts", startLine: 1, endLine: 3 });
-		expect(list.mock.calls).toEqual([[{ all: true, limitedTo: ["src/flags.ts"] }]]);
+		expect(list.mock.calls).toEqual([[{ all: true, limitedTo: ["src/flags.ts"], deadline: expect.any(Number) }]]);
 	});
 
 	it.each([
@@ -394,15 +394,44 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(most).toBe(1);
 	});
 
+	it("starts each listing's deadline when the call joins the queue, not when its turn comes", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
+		const list = MutationEnumeration.prototype.list;
+		const deadlines: (number | undefined)[] = [];
+		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
+			this: MutationEnumeration,
+			options,
+		) {
+			deadlines.push(options?.deadline);
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			return list.call(this, options);
+		});
+		const before = performance.now();
+		await Promise.all([call(head, { path: "src/a.ts" }), call(head, { path: "src/b.ts" })]);
+		expect(deadlines).toHaveLength(2);
+		for (const deadline of deadlines) {
+			expect(deadline).toBeGreaterThanOrEqual(before + 120_000);
+			expect(deadline).toBeLessThan(before + 120_000 + 400);
+		}
+	});
+
 	it("lists the next file after an enumeration fails", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
-		vi.spyOn(MutationEnumeration.prototype, "list").mockRejectedValueOnce(new Error("worker failed"));
-		const [failed, next] = await Promise.allSettled([
-			call(head, { path: "src/a.ts" }),
-			call(head, { path: "src/b.ts" }),
-		]);
-		expect(failed.status === "rejected" || failed.value.isError).toBe(true);
-		expect(next.status === "fulfilled" && next.value.details?.mutants).toHaveLength(1);
+		const list = MutationEnumeration.prototype.list;
+		const order: string[] = [];
+		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
+			this: MutationEnumeration,
+			options,
+		) {
+			const path = options?.limitedTo?.[0] ?? "";
+			order.push(path);
+			if (order.length === 1) throw new Error("worker failed");
+			return list.call(this, options);
+		});
+		const results = await Promise.all([call(head, { path: "src/a.ts" }), call(head, { path: "src/b.ts" })]);
+		const [failed, next] = order.map((path) => results[path === "src/a.ts" ? 0 : 1]!);
+		expect(failed!.isError).toBe(true);
+		expect(next!.details?.mutants).toHaveLength(1);
 	});
 
 	it("enumerates again for a review of another head", async () => {

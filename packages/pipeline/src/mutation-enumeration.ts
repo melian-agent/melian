@@ -426,12 +426,20 @@ export class MutationEnumeration {
 	/**
 	 * Lists the mutants of the range's changed lines. `claimsIn` records the files whose rows owe a claim and lists every
 	 * file still; `limitedTo` lists only its files, for reading, and the inventory can never be sampled. A file the range
-	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants.
+	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants. `deadline`, a
+	 * `performance.now()` time, ends it sooner than its own 120 seconds.
 	 */
 	async list(
-		options: { limit?: number; all?: boolean; claimsIn?: readonly string[]; limitedTo?: readonly string[] } = {},
+		options: {
+			limit?: number;
+			all?: boolean;
+			claimsIn?: readonly string[];
+			limitedTo?: readonly string[];
+			deadline?: number;
+		} = {},
 	): Promise<MutationInventory<MutationInventoryV2>> {
-		const deadline = performance.now() + 120_000;
+		const deadline = Math.min(options.deadline ?? Number.POSITIVE_INFINITY, performance.now() + 120_000);
+		remainingTime(deadline);
 		const limit = options.all ? Number.MAX_SAFE_INTEGER : (options.limit ?? 200);
 		if (!Number.isSafeInteger(limit) || limit < 0)
 			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
