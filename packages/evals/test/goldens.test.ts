@@ -1284,11 +1284,11 @@ describe("scoreGolden", () => {
 	it("answers the claim golden by any lens under either rule, since its expectation names no source", () => {
 		const golden = goldens.find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
 		const [comment] = golden.expected.comments;
-		const report = (check: string, rule: string) =>
+		const report = (check: string, rule: string, startLine = comment!.evidence[0]!.line) =>
 			Finding.create({
 				rule,
 				file: comment!.file,
-				startLine: comment!.evidence[0]!.line,
+				startLine,
 				discriminator: "release",
 				message: "A release is lost.",
 				severity: "P2",
@@ -1301,6 +1301,10 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden, [report("lens.correctness", "fail-open")])).toMatchObject({ recall: 1 });
 		expect(scoreGolden(golden, [report("lens.trust-boundary", "fail-open")])).toMatchObject({ recall: 1 });
 		expect(scoreGolden(golden, [report("lens.correctness", "wrong-result")])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 78)])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 76)])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 79)])).toMatchObject({ recall: 0 });
+		expect(comment!.lines).toEqual([77, 78]);
 	});
 
 	it("answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound", () => {
