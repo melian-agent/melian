@@ -1,6 +1,11 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type ComparisonEntry, type MembershipCandidate, pullRequestChangesetId } from "@melian-agent/core";
+import {
+	type ComparisonEntry,
+	isChangesetId,
+	type MembershipCandidate,
+	pullRequestChangesetId,
+} from "@melian-agent/core";
 import {
 	ComparisonReader,
 	backgroundContext as context,
@@ -38,7 +43,9 @@ export class ComparisonStores {
 			if (error.code === "ENOENT") return [];
 			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
 		});
-		const files = names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort();
+		const files = names
+			.filter((name) => name.endsWith(".sqlite") && isChangesetId(name.slice(0, -".sqlite".length)))
+			.sort();
 		if (exporting) {
 			const own = files.indexOf(`${historyChangeset}.sqlite`);
 			if (own < 0) return result;
