@@ -47,9 +47,17 @@ const lostRace =
  * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
  * tell, which it kept; and those it found stale but could not remove. `unread` says why it swept nothing, when the
  * process table could not be read, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
- * which the next open removes.
+ * which the next open removes. `unlisted` says it could not list the fetch refs, for want of time or because git
+ * failed, so it removed nothing and counted every stale leftover it found as unswept.
  */
-export type Sweep = { removed: string[]; kept: string[]; failed: string[]; unread?: string; unswept?: number };
+export type Sweep = {
+	removed: string[];
+	kept: string[];
+	failed: string[];
+	unread?: string;
+	unswept?: number;
+	unlisted?: true;
+};
 
 // A leftover as the sweep lists it: its name, the owner its name records, whether it is the kind of thing the store
 // makes under that name, and how to remove it.
@@ -166,8 +174,8 @@ export class RecordRepository {
 	async sweep(deadline: Deadline, processes: Processes): Promise<Sweep> {
 		// Listed before the table is read: a call still running when it is read made only what it is listed beside, and a
 		// call that starts later made nothing the listing holds.
-		const leftovers = await this.#leftovers(deadline);
-		const sweep: Sweep = { removed: [], kept: [], failed: [] };
+		const { leftovers, unlisted } = await this.#leftovers(deadline);
+		const sweep: Sweep = { removed: [], kept: [], failed: [], ...(unlisted ? { unlisted: true } : {}) };
 		let table: ReturnType<Processes["list"]> | undefined;
 		try {
 			table = processes.list();
@@ -178,7 +186,7 @@ export class RecordRepository {
 			if (!leftover.fits || leftover.owner === undefined || !leftover.owner.isHere()) sweep.kept.push(leftover.name);
 			else if (table === undefined) sweep.kept.push(leftover.name);
 			else if (!leftover.owner.isGone(table)) sweep.kept.push(leftover.name);
-			else if (deadline.left() <= 0) sweep.unswept = (sweep.unswept ?? 0) + 1;
+			else if (unlisted || deadline.left() <= 0) sweep.unswept = (sweep.unswept ?? 0) + 1;
 			else
 				try {
 					await leftover.remove();
@@ -190,7 +198,7 @@ export class RecordRepository {
 		return sweep;
 	}
 
-	async #leftovers(deadline: Deadline): Promise<Leftover[]> {
+	async #leftovers(deadline: Deadline): Promise<{ leftovers: Leftover[]; unlisted: boolean }> {
 		const leftovers: Leftover[] = [];
 		const state = dirname(this.path);
 		const folder = `${basename(this.path)}.`;
@@ -215,8 +223,15 @@ export class RecordRepository {
 				remove: () => rm(join(this.path, name), { force: true }),
 			});
 		}
+		// Housekeeping never fails an open: a listing with no time left, or one that fails, leaves the sweep unlisted.
 		const fetch = "refs/melian/fetch/";
-		const refs = await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline);
+		const refs =
+			deadline.left() <= 0
+				? undefined
+				: await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline).catch(
+						() => undefined,
+					);
+		if (refs === undefined) return { leftovers, unlisted: true };
 		for (const ref of refs.split("\n").filter((line) => line !== ""))
 			leftovers.push({
 				name: ref,
@@ -224,7 +239,7 @@ export class RecordRepository {
 				fits: true,
 				remove: () => this.#deleteRef(ref, deadline),
 			});
-		return leftovers;
+		return { leftovers, unlisted: false };
 	}
 
 	async run(

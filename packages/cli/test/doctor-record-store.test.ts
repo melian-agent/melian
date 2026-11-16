@@ -295,6 +295,32 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("says the sweep removed nothing when it could not list its fetch refs", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: [], kept: [], failed: [], unswept: 2, unlisted: true },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory holds 2 leftovers of exited calls that the sweep left, since it could not list its fetch refs, which the next open removes; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
+	it("says the sweep could not list its fetch refs when it found nothing else to remove", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: [], kept: [], failed: [], unlisted: true },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory's fetch refs were not swept, since the sweep could not list them, which the next open retries; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
 	it("says one leftover was left when the deadline ran out", async () => {
 		origin(remote.url);
 		vi.spyOn(GitRecordStore, "open").mockResolvedValue({

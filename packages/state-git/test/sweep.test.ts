@@ -451,6 +451,57 @@ describe("the sweep's deadline", { timeout: 60_000 }, () => {
 	});
 });
 
+// A clock that stands still, and reads `left` ms before a 30 s deadline from the moment the sweep starts.
+function listClock(left: number): Clock {
+	let now = 0;
+	const real = RecordRepository.prototype.sweep;
+	vi.spyOn(RecordRepository.prototype, "sweep").mockImplementation(function (this: RecordRepository, ...args) {
+		now = 30_000 - left;
+		return real.apply(this, args);
+	});
+	return { now: () => now, sleep: async () => {} };
+}
+
+describe("the sweep's listing", { timeout: 60_000 }, () => {
+	const listings = (run: { mock: { calls: unknown[][] } }) =>
+		run.mock.calls.filter(([args]) => (args as string[]).includes("refs/melian/fetch/")).length;
+
+	it("lists no fetch refs once no time is left, removes nothing, and the open still succeeds", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		plant(suffix);
+		const clock = listClock(0);
+		const run = vi.spyOn(RecordRepository.prototype, "run");
+		const store = await remote.open({ directory, deadlineMs: 30_000, clock });
+		expect(listings(run)).toBe(0);
+		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unswept: 3, unlisted: true });
+		expect(planted(suffix)).toEqual(there);
+	});
+
+	it("starts the listing while a millisecond is left", async () => {
+		const owner = await exited();
+		plant(owned(owner.pid));
+		const clock = listClock(1);
+		const run = vi.spyOn(RecordRepository.prototype, "run");
+		await remote.open({ directory, deadlineMs: 30_000, clock });
+		expect(listings(run)).toBe(1);
+	});
+
+	it("removes nothing, and the open still succeeds, when the listing fails", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		plant(suffix);
+		const real = RecordRepository.prototype.run;
+		vi.spyOn(RecordRepository.prototype, "run").mockImplementation(function (this: RecordRepository, ...args) {
+			if (args[0].includes("refs/melian/fetch/")) throw new Error("for-each-ref failed");
+			return real.apply(this, args);
+		});
+		const store = await remote.open({ directory });
+		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unswept: 3, unlisted: true });
+		expect(planted(suffix)).toEqual(there);
+	});
+});
+
 describe("the names a call gives what it makes", { timeout: 60_000 }, () => {
 	const ownedName = new RegExp(
 		`^${host}-${process.pid}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`,
