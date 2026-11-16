@@ -132,6 +132,9 @@ async function review(options: {
 	};
 }
 
+const readOf = (stored: readonly RecordEnvelope[]) =>
+	(stored.find(({ kind }) => kind === "round")!.payload as { read: { kind: string; key: string; id: string }[] }).read;
+
 describe("a review that imports a verification record", () => {
 	it("asks no verifier for a request the record answers, and stands on the verdicts it holds", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
@@ -141,10 +144,18 @@ describe("a review that imports a verification record", () => {
 
 		// This host's verifier would refute the finding, so a verdict that still confirms it came from the record.
 		const second = await review({
+			store: new MemoryRecordStore({ payloads: reviewPayloads }),
 			imported: (changeset) => ImportedRecords.from(changeset, first.stored),
 			verdicts: refuting(id),
 		});
 		expect(second.asked).toBe(0);
+		// The record it stood on is the one it exports, so its round reads the same verification as the first host's.
+		const verificationOf = (stored: readonly RecordEnvelope[]) =>
+			stored.filter(({ kind }) => kind === "verification");
+		expect(verificationOf(second.stored)).toEqual(verificationOf(first.stored));
+		expect(readOf(second.stored).filter(({ kind }) => kind === "verification")).toEqual(
+			readOf(first.stored).filter(({ kind }) => kind === "verification"),
+		);
 		expect(second.verifications).toEqual(first.verifications);
 		expect(second.verdict.all().map((finding) => finding.toJSON())).toEqual(
 			first.verdict.all().map((finding) => finding.toJSON()),
