@@ -175,4 +175,19 @@ describe("ProcessTable", () => {
 		expect(own?.state).not.toMatch(/^Z/);
 		expect(own?.command).toMatch(/node/);
 	});
+
+	it("reads the same start for this process whatever the caller's time zone", () => {
+		const zone = process.env.TZ;
+		try {
+			const starts = ["UTC", "Australia/Sydney", "America/New_York"].map((each) => {
+				process.env.TZ = each;
+				return new ProcessTable().start(process.pid);
+			});
+			expect(new Set(starts).size).toBe(1);
+			expect(starts[0]).toMatch(/^\S+ \S+ \d+ \d\d:\d\d:\d\d \d{4}$/);
+		} finally {
+			if (zone === undefined) delete process.env.TZ;
+			else process.env.TZ = zone;
+		}
+	});
 });

@@ -313,7 +313,7 @@ describe("ProcessTable reads", () => {
 		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			expect(command).toBe("/bin/ps");
 			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="]);
-			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
+			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" } });
 			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S ssh", stderr: "" } as ReturnType<typeof spawnSync>;
 		});
 		expect(new ProcessTable().list()).toStrictEqual([
@@ -343,6 +343,22 @@ describe("ProcessTable reads", () => {
 			[101, "SIGKILL"],
 		]);
 		expect(process.env.LC_ALL).toBe(locale);
+	});
+
+	it("records the same start whatever the caller's time zone, since it reads ps in UTC and leaves this process's own alone", () => {
+		const zone = process.env.TZ;
+		vi.mocked(spawnSync).mockImplementation(fakePs([{ pid: 100, ppid: 1, state: "S" }]) as unknown as typeof spawnSync);
+		try {
+			process.env.TZ = "Australia/Sydney";
+			const sydney = new ProcessTable().start(100);
+			process.env.TZ = "America/New_York";
+			const newYork = new ProcessTable().start(100);
+			expect([sydney, newYork]).toEqual(["Mon Nov 16 01:00:00 2026", "Mon Nov 16 01:00:00 2026"]);
+			expect(process.env.TZ).toBe("America/New_York");
+		} finally {
+			if (zone === undefined) delete process.env.TZ;
+			else process.env.TZ = zone;
+		}
 	});
 
 	it("reports a failed ps request instead of accepting its output", () => {
@@ -817,22 +833,28 @@ describe("MutationProcess.execute", () => {
 });
 
 // A fake ps: each row gets its state only when ps is asked for stat=, and the start in ctime's five fields only when
-// LC_ALL is C. Any other locale gets a start of two fields, as some locales print it.
+// LC_ALL is C. Any other locale gets a start of two fields, as some locales print it. The start's hour follows TZ, as
+// real ps prints it, and an unset TZ reads as UTC, as this container's does.
+const zoneHours: Record<string, string> = { UTC: "01", "Australia/Sydney": "12", "America/New_York": "20" };
 const fakePs =
 	(rows: { pid: number; ppid: number; state: string }[]) =>
 	(_command: string, args: readonly string[], options?: { env?: Record<string, string | undefined> }) => ({
 		status: 0,
 		stdout: rows
 			.map(({ pid, ppid, state }) => {
-				const start = options?.env?.LC_ALL === "C" ? `Mon Nov 16 01:00:0${pid % 10} 2026` : `2026-11-16 01:00:0${pid % 10}`;
+				const hour = zoneHours[options?.env?.TZ ?? "UTC"]!;
+				const start =
+					options?.env?.LC_ALL === "C" ? `Mon Nov 16 ${hour}:00:0${pid % 10} 2026` : `2026-11-16 ${hour}:00:0${pid % 10}`;
 				return `${pid} ${ppid} ${start}${args[2]!.includes("stat=") ? ` ${state}` : ""}`;
 			})
 			.join("\n"),
 		stderr: "",
 	});
 
-it("leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree, in any locale", async () => {
+it("leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree, in any locale or time zone", async () => {
 	let exited: ((code: number) => void) | undefined;
+	let tick: (() => void) | undefined;
+	const written = new Map<string, string>();
 	const rows = [
 		{ pid: 10, ppid: 1, state: "S" },
 		{ pid: 20, ppid: 1, state: "S" },
@@ -860,15 +882,26 @@ it("leaves a recorded process that its own ps shows as a zombie alone when the s
 			},
 		}),
 		spawnSync: fakePs(rows),
-		writeFileSync: () => {},
-		renameSync: () => {},
-		setInterval: () => 1,
+		writeFileSync: (path: string, text: string) => written.set(path, text),
+		renameSync: (from: string, to: string) => written.set(to, written.get(from)!),
+		setInterval: (callback: () => void) => {
+			tick = callback;
+			return 1;
+		},
 		setTimeout: (callback: () => void) => callback(),
-		process: { pid: 20, on: () => {}, exit: () => {}, kill },
+		// The controller recorded its start in UTC; the supervisor inherits a caller's other zone.
+		process: { pid: 20, env: { TZ: "Australia/Sydney" }, on: () => {}, exit: () => {}, kill },
 	});
+	// The controller reads the supervisor's records in UTC, and the supervisor reads the controller's start in UTC.
+	expect(JSON.parse(written.get("/control/ready.json")!)).toEqual({
+		supervisor: { pid: 20, start: "Mon Nov 16 01:00:00 2026" },
+		root: { pid: 21, start: "Mon Nov 16 01:00:01 2026" },
+	});
+	tick!();
 	exited!(0);
 	await new Promise(setImmediate);
 	expect(kill.mock.calls).toEqual([[21, "SIGTERM"]]);
+	expect(written.get("/control/done")).toBe("0");
 });
 
 it("captures bounded stderr in the supervisor before publishing done with fake process controls", async () => {
