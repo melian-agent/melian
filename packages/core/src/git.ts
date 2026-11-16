@@ -13,7 +13,8 @@ export interface GitResult {
 	readonly truncated?: boolean;
 	// Set when git ran past `deadlineMs` and was stopped; `code` is then -1.
 	readonly timedOut?: boolean;
-	// Set when git was stopped but the process table could not be read, so the programs git started may still run.
+	// Set when git was stopped but the stop could not find or end the programs git started: the table could not be read
+	// in its budget, or no longer showed git. They may still run.
 	readonly childrenLeft?: boolean;
 }
 
@@ -29,6 +30,8 @@ export interface GitOptions {
 	readonly env?: Readonly<Record<string, string>>;
 	// The process table a stop reads and signals through; a test passes a fake.
 	readonly processes?: ProcessControl;
+	// A monotonic clock in milliseconds, which times the stop's budget; a test passes a fake.
+	readonly clock?: () => number;
 }
 
 /**
@@ -89,7 +92,7 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			}
 			stdout.push(chunk.subarray(0, room));
 			truncated = true;
-			child.kill();
+			void stop().then((all) => finish(-1, false, !all));
 		});
 		let stderrSize = 0;
 		child.stderr.on("data", (chunk: Buffer) => {
@@ -104,11 +107,12 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 				return;
 			}
 			// A cut stream is never resolved, so no caller can read part of a message as a failure it knows.
-			const left = stop() ? "" : `; ${unstopped}`;
-			reject(
-				new ChangesetError(
-					"gitOutputTooLarge",
-					`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it${left}`,
+			void stop().then((all) =>
+				reject(
+					new ChangesetError(
+						"gitOutputTooLarge",
+						`git ${subcommand(args)} wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it${all ? "" : `; ${unstopped}`}`,
+					),
 				),
 			);
 		});
@@ -131,25 +135,61 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 			});
 		};
 		// Git and every program below it, such as ssh waiting at a passphrase prompt, by the pids one read of the process
-		// table recorded while git still ran, and git again through its own handle. The result does not wait for them: a
-		// transport can hold the output pipes open, so this end of stderr is closed. Returns false when the table could not
-		// be read, and git alone was stopped.
+		// table recorded while git still ran, and git again through its own handle. A program the stop could not find can
+		// hold the output pipes open, so this end of both is closed, and git's close no longer settles the call; the stop
+		// does, within about a second and within the stop's budget. Resolves false when git had already exited, the budget
+		// ran out, or any read of the table failed or no longer showed git, so programs below git may still run.
+		let stopped: Promise<boolean> | undefined;
 		const stop = () => {
+			if (stopped !== undefined) return stopped;
+			clearTimeout(deadline);
+			// Until Node has reaped git, which sets exitCode or signalCode, git's pid can be no other process's. After, a
+			// process that took it would be stopped with its own children, so nothing below git is signalled.
 			const stopping =
-				child.pid === undefined ? undefined : stopTree(child.pid, options.processes ?? new ProcessTable());
-			// A table that fails on a later read leaves the rest of the tree; git itself ends below either way.
-			void stopping?.catch(() => {});
+				child.pid === undefined || child.exitCode !== null || child.signalCode !== null
+					? undefined
+					: stopTree(
+							child.pid,
+							budgeted(options.processes ?? new ProcessTable(), options.clock ?? (() => performance.now())),
+						);
 			child.kill();
 			child.stderr.destroy();
-			return stopping !== undefined;
+			child.stdout.destroy();
+			const all = stopping?.then(
+				() => true,
+				() => false,
+			);
+			stopped = all ?? Promise.resolve(false);
+			return stopped;
 		};
 		const deadline =
-			options.deadlineMs === undefined ? undefined : setTimeout(() => finish(-1, true, !stop()), options.deadlineMs);
-		child.on("close", (code) => finish(code ?? -1, false));
+			options.deadlineMs === undefined
+				? undefined
+				: setTimeout(() => void stop().then((all) => finish(-1, true, !all)), options.deadlineMs);
+		child.on("close", (code) => {
+			if (stopped === undefined) finish(code ?? -1, false);
+		});
 	});
 }
 
-const unstopped = "the process table could not be read, so the programs git started were not stopped";
+// How long a stop may read the table and signal, from when it begins. A normal stop takes about a second; each read can
+// take up to the table's own limit, so a call settles at most this plus one read after its deadline or output bound.
+const stopBudgetMs = 10_000;
+
+// The table, until the budget is spent; then every read throws, so the stop signals nothing more and reports the children
+// may still run.
+function budgeted(control: ProcessControl, now: () => number): ProcessControl {
+	const end = now() + stopBudgetMs;
+	return {
+		list: () => {
+			if (now() > end) throw new Error("the stop's budget is spent");
+			return control.list();
+		},
+		kill: (pid, signal) => control.kill(pid, signal),
+	};
+}
+
+const unstopped = "Melian could not find or stop every program git started, so some may still run";
 
 // Git's own options that take their value as the next argument.
 const optionsWithValues = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);

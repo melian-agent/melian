@@ -4,10 +4,14 @@ import { spawnSync } from "node:child_process";
 // has it, never 0, 1, a negative pid or a group. This file is in mutation-paths.ts's signal set, so no mutation runs over
 // it; its guards are proved on a fake process.kill.
 
-export type RecordedProcess = { pid: number; start: string };
+// `command` is the program's name, where ps was asked for it. A record that has one also needs it to match, which
+// narrows a pid passed on within the start's second to another copy of the same program.
+export type RecordedProcess = { pid: number; start: string; command?: string };
 
 export interface ProcessEntry extends RecordedProcess {
 	ppid: number;
+	// Present only where ps was asked for stat=.
+	state?: string;
 }
 
 export interface ProcessControl {
@@ -15,13 +19,21 @@ export interface ProcessControl {
 	kill(pid: number, signal: "SIGTERM" | "SIGKILL"): void;
 }
 
-// Embedded in the supervisor script as source, so it names nothing outside itself.
+// Embedded in the supervisor script as source, so it names nothing outside itself. Reads pid=,ppid=,lstart= with an
+// optional stat= and then comm= after it. lstart is ctime's five fields, so the state is the word after them.
 export function parseProcesses(text: string): ProcessEntry[] {
 	const entries: ProcessEntry[] = [];
 	for (const line of text.split("\n")) {
-		const match = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line);
-		if (match !== null)
-			entries.push({ pid: Number(match[1]), ppid: Number(match[2]), start: match[3]!.replace(/\s+/g, " ") });
+		const match = /^\s*(\d+)\s+(\d+)\s+(\S+(?:\s+\S+){4})(?:\s+(\S+)(?:\s+(\S.*?))?)?\s*$/.exec(line);
+		if (match === null) continue;
+		const entry: ProcessEntry = {
+			pid: Number(match[1]),
+			ppid: Number(match[2]),
+			start: match[3]!.replace(/\s+/g, " "),
+		};
+		if (match[4] !== undefined) entry.state = match[4];
+		if (match[5] !== undefined) entry.command = match[5];
+		entries.push(entry);
 	}
 	return entries;
 }
@@ -41,7 +53,15 @@ export async function terminateRecorded(
 				Number.isSafeInteger(record.pid) &&
 				record.pid > 1 &&
 				!kept.includes(record.pid) &&
-				table.some((entry) => entry.pid === record.pid && entry.start === record.start),
+				// A zombie has exited and holds its pid until it is reaped, so it is neither signalled nor waited for. Only a
+				// state ps reports as a zombie counts; a missing one does not.
+				table.some(
+					(entry) =>
+						entry.pid === record.pid &&
+						entry.start === record.start &&
+						(record.command === undefined || entry.command === record.command) &&
+						entry.state?.startsWith("Z") !== true,
+				),
 		);
 	};
 	// The table is read again before each signal, not once for the batch: a recorded process can exit while the ones
@@ -58,7 +78,8 @@ export async function terminateRecorded(
  * Stops `root` and every process below it, as one read of the process table shows them, by recorded pid: SIGTERM, then
  * SIGKILL. The read comes before any signal, because a child whose parent has ended is re-parented and no longer reads
  * as below `root`. This process and its ancestors are never signalled. Returns the stop's completion, or `undefined`,
- * having signalled nothing, when the table cannot be read or `root` is not a pid above 1.
+ * having signalled nothing, when the table cannot be read, `root` is not a pid above 1, or the table shows `root` gone
+ * or a zombie, since a process that has exited no longer has its children below it.
  */
 export function stopTree(
 	root: number,
@@ -74,30 +95,51 @@ export function stopTree(
 	} catch {
 		return undefined;
 	}
+	if (!table.some((entry) => entry.pid === root && entry.state?.startsWith("Z") !== true)) return undefined;
 	const parents = new Map(table.map((entry) => [entry.pid, entry.ppid]));
 	const kept: number[] = [];
 	for (let pid: number | undefined = process.pid; pid !== undefined && !kept.includes(pid); pid = parents.get(pid))
 		kept.push(pid);
-	const recorded = new Map<number, string>();
+	const recorded = new Map<number, ProcessEntry>();
 	const queue: number[] = [];
 	for (const entry of table)
 		if (entry.pid === root) {
-			recorded.set(entry.pid, entry.start);
+			recorded.set(entry.pid, entry);
 			queue.push(entry.pid);
 		}
 	for (let next = queue.shift(); next !== undefined; next = queue.shift())
 		for (const entry of table)
 			if (entry.ppid === next && !recorded.has(entry.pid)) {
-				recorded.set(entry.pid, entry.start);
+				recorded.set(entry.pid, entry);
 				queue.push(entry.pid);
 			}
-	const records = [...recorded].map(([pid, start]) => ({ pid, start }));
+	const records = [...recorded.values()].map(({ pid, start, command }) =>
+		command === undefined ? { pid, start } : { pid, start, command },
+	);
 	return terminateRecorded(records, control, sleep, kept);
 }
 
 export class ProcessTable implements ProcessControl {
+	readonly #ps: string;
+	readonly #limitMs: number;
+
+	// Only tests pass either: no configuration, environment variable or head reaches them.
+	constructor(ps = "/bin/ps", limitMs = 5000) {
+		this.#ps = ps;
+		this.#limitMs = limitMs;
+	}
+
 	list(): ProcessEntry[] {
-		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart="], { encoding: "utf8" });
+		// parseProcesses reads lstart as ctime's five fields, which only the C locale promises. A start is compared across
+		// processes, such as a record the mutation supervisor wrote, and ps prints it in the caller's time zone. The read
+		// blocks the event loop, so a ps that stalls is ended by its own handle, with SIGKILL since it may ignore SIGTERM,
+		// and the read fails.
+		const result = spawnSync(this.#ps, ["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="], {
+			encoding: "utf8",
+			env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
+			timeout: this.#limitMs,
+			killSignal: "SIGKILL",
+		});
 		if (result.status !== 0) throw new Error(`ps failed: ${result.stderr}`);
 		return parseProcesses(result.stdout);
 	}

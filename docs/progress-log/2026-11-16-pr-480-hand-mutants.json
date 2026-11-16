@@ -1,0 +1,3879 @@
+{
+ "note": "A hand inventory, not melian mutants output: melian mutants list sets git.ts, process-tree.ts and mutation-process.ts aside because they send signals. Mutants come from scripts/instrument-mutants.mjs; lines and columns are 1-based. Each ran against its one named test alone, which passed unmutated first. A process-tree.ts or mutation-process.ts mutant ran with no real signal: ProcessTable.kill sent none, or the supervisor's process.kill was a fake. ranAt names the head each ran at; the first pass covered the range from the base to ce4d6692, and each later pass the lines its own commits changed.",
+ "base": "374fdaf760e18af963362c38b9fb5487778b80b2",
+ "mutants": [
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 99,
+   "column": 26,
+   "endLine": 99,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 99,
+   "column": 31,
+   "endLine": 99,
+   "endColumn": 47,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 103,
+   "column": 6,
+   "endLine": 103,
+   "endColumn": 115,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 112,
+   "column": 67,
+   "endLine": 112,
+   "endColumn": 72,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 112,
+   "column": 77,
+   "endLine": 124,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 122,
+   "column": 24,
+   "endLine": 122,
+   "endColumn": 40,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > stops git alone, and says the programs it started were not stopped, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 131,
+   "column": 5,
+   "endLine": 131,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 131,
+   "column": 5,
+   "endLine": 131,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "result": "equivalent",
+   "note": "stopTree returns undefined for a root that is not a safe integer, so forcing the pid check false sends an undefined pid to the same answer"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 131,
+   "column": 5,
+   "endLine": 131,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.pid !== undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 131,
+   "column": 63,
+   "endLine": 131,
+   "endColumn": 102,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.processes && new ProcessTable()",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > stops git alone, and says the programs it started were not stopped, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 133,
+   "column": 9,
+   "endLine": 133,
+   "endColumn": 24,
+   "mutatorName": "OptionalChaining",
+   "replacement": "stopping.catch",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > stops git alone, and says the programs it started were not stopped, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 136,
+   "column": 11,
+   "endLine": 136,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > stops git alone, and says the programs it started were not stopped, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 136,
+   "column": 11,
+   "endLine": 136,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 136,
+   "column": 11,
+   "endLine": 136,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stopping === undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 4,
+   "endLine": 139,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 4,
+   "endLine": 139,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 4,
+   "endLine": 139,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.deadlineMs !== undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 62,
+   "endLine": 139,
+   "endColumn": 93,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 75,
+   "endLine": 139,
+   "endColumn": 77,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 79,
+   "endLine": 139,
+   "endColumn": 83,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 85,
+   "endLine": 139,
+   "endColumn": 92,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "stop()",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 144,
+   "column": 19,
+   "endLine": 144,
+   "endColumn": 102,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 66,
+   "column": 51,
+   "endLine": 67,
+   "endColumn": 62,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > sends SIGKILL to a process still there a second after SIGTERM"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 67,
+   "column": 15,
+   "endLine": 67,
+   "endColumn": 61,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > sends SIGKILL to a process still there a second after SIGTERM"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 68,
+   "column": 30,
+   "endLine": 96,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 6,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 6,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and reads no table, for a root of 1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 6,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!Number.isSafeInteger(root) && root <= 1",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and reads no table, for a root of 1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 6,
+   "endLine": 70,
+   "endColumn": 33,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "Number.isSafeInteger(root)",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 37,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and reads no table, for a root of 1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 37,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "root < 1",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and reads no table, for a root of 1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 70,
+   "column": 37,
+   "endLine": 70,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "root > 1",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 72,
+   "column": 6,
+   "endLine": 74,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 74,
+   "column": 10,
+   "endLine": 76,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 77,
+   "column": 36,
+   "endLine": 77,
+   "endColumn": 70,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 77,
+   "column": 47,
+   "endLine": 77,
+   "endColumn": 70,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals an ancestor of this process, though the table shows one below the root"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 78,
+   "column": 25,
+   "endLine": 78,
+   "endColumn": 27,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "result": "equivalent",
+   "note": "kept seeded with a string holds no number, so no pid ever matches it and the walk adds the same numbers"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 79,
+   "column": 50,
+   "endLine": 79,
+   "endColumn": 90,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals this process, though the table shows it below the root"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 79,
+   "column": 50,
+   "endLine": 79,
+   "endColumn": 90,
+   "mutatorName": "LogicalOperator",
+   "replacement": "pid !== undefined || !kept.includes(pid)",
+   "ranAt": "afbeb16b21253aaeb4e661abf825800977d89bc2",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > ends when the table shows a process as its own parent, as macOS's ps shows pid 0"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 79,
+   "column": 50,
+   "endLine": 79,
+   "endColumn": 67,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "result": "equivalent",
+   "note": "forcing the walk to continue past an undefined pid adds undefined to kept once, and parents.get(undefined) ends the walk; no pid matches undefined"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 79,
+   "column": 50,
+   "endLine": 79,
+   "endColumn": 67,
+   "mutatorName": "EqualityOperator",
+   "replacement": "pid === undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals this process, though the table shows it below the root"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 79,
+   "column": 71,
+   "endLine": 79,
+   "endColumn": 90,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "kept.includes(pid)",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals this process, though the table shows it below the root"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 80,
+   "column": 3,
+   "endLine": 80,
+   "endColumn": 18,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals this process, though the table shows it below the root"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 82,
+   "column": 26,
+   "endLine": 82,
+   "endColumn": 28,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "result": "equivalent",
+   "note": "queue seeded with a string matches no ppid, and the root is pushed by the loop below, so the walk is the same"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 84,
+   "column": 7,
+   "endLine": 84,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 84,
+   "column": 7,
+   "endLine": 84,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 84,
+   "column": 7,
+   "endLine": 84,
+   "endColumn": 25,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.pid !== root",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 84,
+   "column": 27,
+   "endLine": 87,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 85,
+   "column": 4,
+   "endLine": 85,
+   "endColumn": 41,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 86,
+   "column": 4,
+   "endLine": 86,
+   "endColumn": 26,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 88,
+   "column": 33,
+   "endLine": 88,
+   "endColumn": 51,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 88,
+   "column": 33,
+   "endLine": 88,
+   "endColumn": 51,
+   "mutatorName": "EqualityOperator",
+   "replacement": "next === undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 8,
+   "endLine": 90,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed by timeout: the named test hung alone, and its recorded processes were stopped"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 8,
+   "endLine": 90,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 8,
+   "endLine": 90,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "entry.ppid === next || !recorded.has(entry.pid)",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 8,
+   "endLine": 90,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 8,
+   "endLine": 90,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.ppid !== next",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 31,
+   "endLine": 90,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "recorded.has(entry.pid)",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 90,
+   "column": 57,
+   "endLine": 93,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 91,
+   "column": 5,
+   "endLine": 91,
+   "endColumn": 42,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 92,
+   "column": 5,
+   "endLine": 92,
+   "endColumn": 27,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 94,
+   "column": 18,
+   "endLine": 94,
+   "endColumn": 31,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 94,
+   "column": 36,
+   "endLine": 94,
+   "endColumn": 70,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 94,
+   "column": 55,
+   "endLine": 94,
+   "endColumn": 69,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "ce4d6692bd1c1e023aabfef709cda6631f81b147",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 107,
+   "column": 21,
+   "endLine": 113,
+   "endColumn": 6,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 110,
+   "column": 7,
+   "endLine": 110,
+   "endColumn": 26,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git one byte past its limit, and says which stream passed which limit"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 111,
+   "column": 7,
+   "endLine": 111,
+   "endColumn": 139,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 111,
+   "column": 116,
+   "endLine": 111,
+   "endColumn": 118,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 111,
+   "column": 121,
+   "endLine": 111,
+   "endColumn": 137,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 139,
+   "column": 22,
+   "endLine": 152,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 140,
+   "column": 8,
+   "endLine": 140,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 140,
+   "column": 8,
+   "endLine": 140,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "result": "equivalent",
+   "note": "stop has two callers at this head, and each makes the other unreachable: the first stop clears the deadline and destroys standard error, so a second call never comes"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 140,
+   "column": 8,
+   "endLine": 140,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stopped === undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 141,
+   "column": 4,
+   "endLine": 141,
+   "endColumn": 27,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > lets the process exit once it stops git, though the deadline is far off"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 146,
+   "column": 16,
+   "endLine": 146,
+   "endColumn": 30,
+   "mutatorName": "OptionalChaining",
+   "replacement": "stopping.then",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 15,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 11,
+   "endLine": 147,
+   "endColumn": 15,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 148,
+   "column": 5,
+   "endLine": 148,
+   "endColumn": 16,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "result": "equivalent",
+   "note": "undefined is read where false is, as a condition and through !, so the stop's failure reads the same"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 148,
+   "column": 11,
+   "endLine": 148,
+   "endColumn": 16,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table fails after its first read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 150,
+   "column": 14,
+   "endLine": 150,
+   "endColumn": 43,
+   "mutatorName": "LogicalOperator",
+   "replacement": "all && Promise.resolve(false)",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > stops git's tree on a flood, through the process table it is given"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 150,
+   "column": 37,
+   "endLine": 150,
+   "endColumn": 42,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 154,
+   "column": 4,
+   "endLine": 154,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 154,
+   "column": 4,
+   "endLine": 154,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.deadlineMs !== undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 156,
+   "column": 18,
+   "endLine": 156,
+   "endColumn": 73,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 156,
+   "column": 41,
+   "endLine": 156,
+   "endColumn": 72,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 156,
+   "column": 57,
+   "endLine": 156,
+   "endColumn": 59,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 156,
+   "column": 61,
+   "endLine": 156,
+   "endColumn": 65,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 156,
+   "column": 67,
+   "endLine": 156,
+   "endColumn": 71,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "all",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 157,
+   "column": 12,
+   "endLine": 157,
+   "endColumn": 19,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 157,
+   "column": 31,
+   "endLine": 159,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 8,
+   "endLine": 158,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 8,
+   "endLine": 158,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 8,
+   "endLine": 158,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stopped !== undefined",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 38,
+   "endLine": 158,
+   "endColumn": 48,
+   "mutatorName": "LogicalOperator",
+   "replacement": "code && -1",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops git once its output reaches maxBytes, and gives the cut result an exit code of -1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 46,
+   "endLine": 158,
+   "endColumn": 48,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops git once its output reaches maxBytes, and gives the cut result an exit code of -1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 158,
+   "column": 50,
+   "endLine": 158,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > leaves a command that ends in time as it is"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 154,
+   "column": 4,
+   "endLine": 154,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "518fc85d41d06538488275419ec1ca315139097a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "gives git an ended input when it is given none, so a command that reads it cannot wait forever"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 24,
+   "column": 62,
+   "endLine": 35,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 26,
+   "column": 39,
+   "endLine": 33,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > rejects a valid-looking row with text before its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from Linux's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\S*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\D+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\S+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from macOS's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\D+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a start set off from its parent by more than one space"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\S+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\s+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+))(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from macOS's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\S+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\s+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > gives a row without a state no state, as the supervisor's ps prints it"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from macOS's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\S+(\\S+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from Linux's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\s+)(?:\\s+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?)))?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from Linux's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\S+(\\S.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\s.*?))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.))?)?\\s*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\s$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 27,
+   "column": 17,
+   "endLine": 27,
+   "endColumn": 89,
+   "mutatorName": "Regex",
+   "replacement": "/^\\s*(\\d+)\\s+(\\d+)\\s+(\\S+(?:\\s+\\S+){4})(?:\\s+(\\S+)(?:\\s+(\\S.*?))?)?\\S*$/",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 28,
+   "column": 7,
+   "endLine": 28,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 28,
+   "column": 7,
+   "endLine": 28,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads pid, parent and start, collapsing the padding in the start time"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 28,
+   "column": 7,
+   "endLine": 28,
+   "endColumn": 21,
+   "mutatorName": "EqualityOperator",
+   "replacement": "match !== null",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 29,
+   "column": 31,
+   "endLine": 29,
+   "endColumn": 119,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 29,
+   "column": 105,
+   "endLine": 29,
+   "endColumn": 111,
+   "mutatorName": "Regex",
+   "replacement": "/\\s/g",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from macOS's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 29,
+   "column": 105,
+   "endLine": 29,
+   "endColumn": 111,
+   "mutatorName": "Regex",
+   "replacement": "/\\S+/g",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 29,
+   "column": 113,
+   "endLine": 29,
+   "endColumn": 116,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 30,
+   "column": 7,
+   "endLine": 30,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > gives a row without a state no state, as the supervisor's ps prints it"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 30,
+   "column": 7,
+   "endLine": 30,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 30,
+   "column": 7,
+   "endLine": 30,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "match[4] === undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 31,
+   "column": 7,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads the state after the start, from Linux's ps"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 31,
+   "column": 7,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 31,
+   "column": 7,
+   "endLine": 31,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "match[5] === undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 32,
+   "column": 3,
+   "endLine": 32,
+   "endColumn": 23,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "parseProcesses > reads a command after the state, apart from both"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 44,
+   "column": 18,
+   "endLine": 71,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 45,
+   "column": 21,
+   "endLine": 62,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 47,
+   "column": 10,
+   "endLine": 61,
+   "endColumn": 4,
+   "mutatorName": "MethodExpression",
+   "replacement": "records",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 48,
+   "column": 4,
+   "endLine": 60,
+   "endColumn": 6,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 49,
+   "column": 5,
+   "endLine": 60,
+   "endColumn": 6,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 49,
+   "column": 5,
+   "endLine": 60,
+   "endColumn": 6,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 49,
+   "column": 5,
+   "endLine": 60,
+   "endColumn": 6,
+   "mutatorName": "LogicalOperator",
+   "replacement": "Number.isSafeInteger(record.pid) && record.pid > 1 && !kept.includes(record.pid) ||\n// A zombie has exited and holds its pid until it is reaped, so it is neither signalled nor waited for. Only a\n// state ps reports as a zombie counts; a missing one does not.\ntable.some(entry => entry.pid === record.pid && entry.start === record.start && (record.command === undefined || entry.command === record.command) && entry.state?.startsWith(\"Z\") !== true)",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 54,
+   "column": 5,
+   "endLine": 60,
+   "endColumn": 6,
+   "mutatorName": "MethodExpression",
+   "replacement": "table.every(entry => entry.pid === record.pid && entry.start === record.start && (record.command === undefined || entry.command === record.command) && entry.state?.startsWith(\"Z\") !== true)",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 55,
+   "column": 6,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "LogicalOperator",
+   "replacement": "entry.pid === record.pid && entry.start === record.start && (record.command === undefined || entry.command === record.command) || entry.state?.startsWith(\"Z\") !== true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 58,
+   "endColumn": 73,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > sends SIGTERM to each recorded process that is still the one recorded, and nothing else"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 58,
+   "endColumn": 73,
+   "mutatorName": "LogicalOperator",
+   "replacement": "entry.pid === record.pid && entry.start === record.start || record.command === undefined || entry.command === record.command",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 57,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > sends SIGTERM to each recorded process that is still the one recorded, and nothing else"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 57,
+   "endColumn": 35,
+   "mutatorName": "LogicalOperator",
+   "replacement": "entry.pid === record.pid || entry.start === record.start",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 56,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > leaves a recorded pid alone when only another pid has its start, as two started in one second do"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 56,
+   "column": 7,
+   "endLine": 56,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.pid !== record.pid",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 57,
+   "column": 7,
+   "endLine": 57,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > leaves a pid alone when its start time differs, because the pid was reused"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 57,
+   "column": 7,
+   "endLine": 57,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.start !== record.start",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 8,
+   "endLine": 58,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > leaves a recorded pid alone when its start second matches and its command does not"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 8,
+   "endLine": 58,
+   "endColumn": 72,
+   "mutatorName": "LogicalOperator",
+   "replacement": "record.command === undefined && entry.command === record.command",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > signals a recorded pid whose start and command both match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 8,
+   "endLine": 58,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > signals a recorded pid with no command by its start alone, as before, whatever command ps shows"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 8,
+   "endLine": 58,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.command !== undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > leaves a recorded pid alone when its start second matches and its command does not"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 40,
+   "endLine": 58,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > signals a recorded pid whose start and command both match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 58,
+   "column": 40,
+   "endLine": 58,
+   "endColumn": 72,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.command !== record.command",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > leaves a recorded pid alone when its start second matches and its command does not"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.state?.startsWith(\"Z\") === true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 35,
+   "mutatorName": "MethodExpression",
+   "replacement": "entry.state?.endsWith(\"Z\")",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 7,
+   "endLine": 59,
+   "endColumn": 30,
+   "mutatorName": "OptionalChaining",
+   "replacement": "entry.state.startsWith",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 31,
+   "endLine": 59,
+   "endColumn": 34,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > still signals and waits for a recorded process with the same pid and start in any other state, or none"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 59,
+   "column": 40,
+   "endLine": 59,
+   "endColumn": 44,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "terminateRecorded > neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 84,
+   "column": 30,
+   "endLine": 114,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 100,
+   "column": 27,
+   "endLine": 103,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 101,
+   "column": 4,
+   "endLine": 101,
+   "endColumn": 35,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 106,
+   "column": 57,
+   "endLine": 109,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 107,
+   "column": 5,
+   "endLine": 107,
+   "endColumn": 36,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 110,
+   "column": 18,
+   "endLine": 110,
+   "endColumn": 40,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 110,
+   "column": 45,
+   "endLine": 111,
+   "endColumn": 67,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 111,
+   "column": 3,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals a pid whose start second still matches but whose command does not"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 111,
+   "column": 3,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "result": "equivalent",
+   "note": "forcing command === undefined false builds { pid, start, command } with command undefined, which terminateRecorded reads as a record with no command"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 111,
+   "column": 3,
+   "endLine": 111,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "command !== undefined",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > never signals a pid whose start second still matches but whose command does not"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 111,
+   "column": 27,
+   "endLine": 111,
+   "endColumn": 41,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 111,
+   "column": 44,
+   "endLine": 111,
+   "endColumn": 67,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals a recorded process whose start and command both still match"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 117,
+   "column": 25,
+   "endLine": 126,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 28,
+   "endLine": 120,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 39,
+   "endLine": 120,
+   "endColumn": 85,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 40,
+   "endLine": 120,
+   "endColumn": 44,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 46,
+   "endLine": 120,
+   "endColumn": 50,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 52,
+   "endLine": 120,
+   "endColumn": 84,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 120,
+   "column": 87,
+   "endLine": 123,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 121,
+   "column": 14,
+   "endLine": 121,
+   "endColumn": 20,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 122,
+   "column": 9,
+   "endLine": 122,
+   "endColumn": 51,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 122,
+   "column": 35,
+   "endLine": 122,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 122,
+   "column": 44,
+   "endLine": 122,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/mutation-process.ts",
+   "line": 125,
+   "column": 104,
+   "endLine": 167,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree, in any locale or time zone"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/pipeline/src/mutation-process.ts",
+   "line": 126,
+   "column": 9,
+   "endLine": 166,
+   "endColumn": 2,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "ranAt": "6f496a74f8c60f65a5f047360a428e8a8e012757",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree, in any locale or time zone"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 93,
+   "column": 21,
+   "endLine": 93,
+   "endColumn": 53,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops git once its output reaches maxBytes, and gives the cut result an exit code of -1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 93,
+   "column": 37,
+   "endLine": 93,
+   "endColumn": 39,
+   "mutatorName": "UnaryOperator",
+   "replacement": "+1",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops git once its output reaches maxBytes, and gives the cut result an exit code of -1"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 93,
+   "column": 41,
+   "endLine": 93,
+   "endColumn": 46,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops the programs git started once its output reaches maxBytes, though one holds the output open"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 93,
+   "column": 48,
+   "endLine": 93,
+   "endColumn": 52,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "all",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git > stops the programs git started once its output reaches maxBytes, though one holds the output open"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 166,
+   "column": 2,
+   "endLine": 166,
+   "endColumn": 109,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 6,
+   "endLine": 98,
+   "endColumn": 89,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "table.some(entry => entry.pid === root && entry.state?.startsWith(\"Z\") !== true)",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 6,
+   "endLine": 98,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 6,
+   "endLine": 98,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is no longer in the table"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 7,
+   "endLine": 98,
+   "endColumn": 89,
+   "mutatorName": "MethodExpression",
+   "replacement": "table.every(entry => entry.pid === root && entry.state?.startsWith(\"Z\") !== true)",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 18,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 29,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is no longer in the table"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 29,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 29,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "LogicalOperator",
+   "replacement": "entry.pid === root || entry.state?.startsWith(\"Z\") !== true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is no longer in the table"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 29,
+   "endLine": 98,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is no longer in the table"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 29,
+   "endLine": 98,
+   "endColumn": 47,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.pid !== root",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is no longer in the table"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 51,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is a zombie"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 51,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "EqualityOperator",
+   "replacement": "entry.state?.startsWith(\"Z\") === true",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 51,
+   "endLine": 98,
+   "endColumn": 79,
+   "mutatorName": "MethodExpression",
+   "replacement": "entry.state?.endsWith(\"Z\")",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is a zombie"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 51,
+   "endLine": 98,
+   "endColumn": 74,
+   "mutatorName": "OptionalChaining",
+   "replacement": "entry.state.startsWith",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > stops the root and every process below it, and nothing beside them"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 75,
+   "endLine": 98,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 98,
+   "column": 84,
+   "endLine": 98,
+   "endColumn": 88,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "ranAt": "4094d0ae96df72cb0779bb59078a5d7e7d5def1a",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is a zombie"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(child.pid === undefined || child.exitCode !== null) && child.signalCode !== null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "child.pid === undefined && child.exitCode !== null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "result": "equivalent",
+   "note": "forcing child.pid === undefined false sends an undefined pid to stopTree, which refuses a root that is not a safe integer and returns undefined, the same answer"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.pid !== undefined",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 32,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 32,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.exitCode === null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 59,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git is killed by a signal, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 59,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.signalCode === null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 152,
+   "column": 4,
+   "endLine": 152,
+   "endColumn": 27,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > lets the process exit when git has already exited and one of the programs it started holds its output open"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 127,
+   "column": 19,
+   "endLine": 127,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 127,
+   "column": 46,
+   "endLine": 130,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 38,
+   "endLine": 137,
+   "endColumn": 84,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 39,
+   "endLine": 137,
+   "endColumn": 43,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 45,
+   "endLine": 137,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 51,
+   "endLine": 137,
+   "endColumn": 83,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 86,
+   "endLine": 142,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 138,
+   "column": 14,
+   "endLine": 138,
+   "endColumn": 20,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 9,
+   "endLine": 139,
+   "endColumn": 51,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 35,
+   "endLine": 139,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 44,
+   "endLine": 139,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 141,
+   "column": 16,
+   "endLine": 141,
+   "endColumn": 25,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "ProcessTable > fails a read whose ps runs past the limit, though ps ignores SIGTERM, and the stop then signals nothing"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 17,
+   "endLine": 153,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.processes && new ProcessTable()",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 58,
+   "endLine": 153,
+   "endColumn": 100,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.clock && (() => performance.now())",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads and signals nothing more one millisecond past the stop's budget, and says the children may still run"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 153,
+   "column": 76,
+   "endLine": 153,
+   "endColumn": 99,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > gives up on the real clock once the stop's reads have taken three seconds"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 181,
+   "column": 79,
+   "endLine": 190,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 182,
+   "column": 14,
+   "endLine": 182,
+   "endColumn": 34,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "now() - stopBudgetMs",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the table at the end of the stop's three-second budget"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 183,
+   "column": 9,
+   "endLine": 189,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 184,
+   "column": 15,
+   "endLine": 187,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads and signals nothing more one millisecond past the stop's budget, and says the children may still run"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "now() >= end",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the table at the end of the stop's three-second budget"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 8,
+   "endLine": 185,
+   "endColumn": 19,
+   "mutatorName": "EqualityOperator",
+   "replacement": "now() <= end",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 185,
+   "column": 37,
+   "endLine": 185,
+   "endColumn": 65,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "result": "equivalent",
+   "note": "the budget's error is caught where the stop settles and becomes childrenLeft, so its text is never read; four named tests, the past-budget one among them, still passed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 188,
+   "column": 9,
+   "endLine": 188,
+   "endColumn": 51,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > runs a stop whose reads all fall inside its budget as before"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 192,
+   "column": 19,
+   "endLine": 192,
+   "endColumn": 99,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "e65c615f3ee777db853d5202ad05f7eeee7c3e74",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a standard error past its limit > says the programs git started were not stopped on a flood, when the process table cannot be read"
+   },
+   "result": "killed"
+  }
+ ]
+}
