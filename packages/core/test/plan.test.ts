@@ -1722,3 +1722,69 @@ describe("a lens route", () => {
 		).toBeUndefined();
 	});
 });
+
+describe("a fallback's level in melian doctor", () => {
+	const both = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+	const sonnet = "anthropic/claude-sonnet-5-5";
+	const mini = "openai/gpt-5.4-mini";
+	const texts = (resolved: ReviewPlan) => resolved.lines().map(({ text }) => text);
+	const warning = (label: string, fallback: string, level: string, first: string) =>
+		`${label}: fallback ${fallback} names no thinking level, so it runs at ${level}, which was chosen for ${first}`;
+
+	it("prints a fallback's own level beside it, and none for a bare fallback", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "medium" }, sonnet] } },
+			both,
+		);
+		const route = texts(resolved).find((text) => text.startsWith("heavy") && text.includes(gpt))!;
+		expect(route).toContain(`${opus} at medium with ANTHROPIC_API_KEY`);
+		expect(route).toContain(`${sonnet} with ANTHROPIC_API_KEY`);
+		expect(route).not.toContain(`${sonnet} at`);
+	});
+
+	it.each(["off", "minimal", "low"] as const)(
+		"warns when a bare fallback on another provider inherits %s",
+		(level) => {
+			const resolved = plan({ heavy: { model: gpt, thinking: level, fallbacks: [opus] } }, both);
+			expect(resolved.lines()).toContainEqual({ state: "warn", text: warning("heavy", opus, level, gpt) });
+		},
+	);
+
+	it.each<[string, ModelRoute]>([
+		["the same provider", { model: opus, thinking: "low", fallbacks: [sonnet] }],
+		["a fallback with its own level", { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "low" }] }],
+		["medium", { model: gpt, thinking: "medium", fallbacks: [opus] }],
+		["no level", { model: gpt, fallbacks: [opus] }],
+	])("does not warn for %s", (_, route) => {
+		const resolved = plan({ heavy: route }, both);
+		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
+	it("warns only for the bare cross-provider fallback among several", () => {
+		const resolved = plan(
+			{ heavy: { model: opus, thinking: "low", fallbacks: [sonnet, gpt, { model: mini, thinking: "high" }] } },
+			both,
+		);
+		expect(texts(resolved).filter((text) => text.includes("names no thinking level"))).toEqual([
+			warning("heavy", gpt, "low", opus),
+		]);
+	});
+
+	it("does not warn for a route that does not run", () => {
+		const resolved = plan({ heavy: { model: gpt, thinking: "low", fallbacks: [opus] } }, {});
+		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
+	it("warns for a lens route and prints its fallback's level", () => {
+		const bare = plan({}, both, { lensRoutes: { correctness: { model: gpt, thinking: "low", fallbacks: [opus] } } });
+		expect(bare.lines()).toContainEqual({
+			state: "warn",
+			text: warning("correctness route", opus, "low", gpt),
+		});
+		const own = plan({}, both, {
+			lensRoutes: { correctness: { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "high" }] } },
+		});
+		expect(texts(own).some((text) => text.includes("names no thinking level"))).toBe(false);
+		expect(texts(own).some((text) => text.includes(`${opus} at high with ANTHROPIC_API_KEY`))).toBe(true);
+	});
+});

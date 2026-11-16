@@ -831,7 +831,11 @@ export class ReviewPlan {
 				({ model, by, provider }) =>
 					`${label}: ${model}, set by ${by}, is not a model the catalogue holds; ${provider === undefined ? "a newer pi-ai may hold it" : `it knows no provider ${provider}`}`,
 			);
-		const tiers = this.tiers.flatMap((planned) => [...unknown(planned.tier, planned), ...notice(planned)]);
+		const tiers = this.tiers.flatMap((planned) => [
+			...unknown(planned.tier, planned),
+			...notice(planned),
+			...ReviewPlan.inheritedLow(planned.tier, planned),
+		]);
 		return [...tiers, ...moved, ...this.routeMessages(unknown)];
 	}
 
@@ -869,8 +873,23 @@ export class ReviewPlan {
 				standing.refusal === undefined && standing.lineage !== undefined
 					? [`${label} runs ${standing.lineage.model}, ${ReviewPlan.lineageText(standing.lineage)}`]
 					: [];
-			return [...ignored, ...unknown(named, route), ...refused, ...runs];
+			return [...ignored, ...unknown(named, route), ...refused, ...runs, ...ReviewPlan.inheritedLow(named, route)];
 		});
+	}
+
+	// A low level is chosen for the route's first model; a fallback on another provider that names no level of its own
+	// runs at it too.
+	private static inheritedLow(label: string, { status, models, thinking }: PlannedRoute): string[] {
+		if (status !== "routed" || (thinking !== "off" && thinking !== "minimal" && thinking !== "low")) return [];
+		const first = models[0]!.model;
+		const provider = (model: string) => parseModelReference(model, label).provider;
+		return models
+			.slice(1)
+			.filter((model) => model.thinking === undefined && provider(model.model) !== provider(first))
+			.map(
+				({ model }) =>
+					`${label}: fallback ${model} names no thinking level, so it runs at ${thinking}, which was chosen for ${first}`,
+			);
 	}
 
 	private verificationMessages(): PlanLine[] {
@@ -963,8 +982,8 @@ export class ReviewPlan {
 			if (status !== "routed") continue;
 			const route = models
 				.map(
-					({ model, credential, family }) =>
-						`${model}${tier === "verifier" ? ` (${family ?? "unknown family"})` : ""} with ${credential}`,
+					({ model, credential, family, thinking }) =>
+						`${model}${tier === "verifier" ? ` (${family ?? "unknown family"})` : ""}${thinking === undefined ? "" : ` at ${thinking}`} with ${credential}`,
 				)
 				.join(", then ");
 			const origin =
@@ -984,7 +1003,12 @@ export class ReviewPlan {
 				});
 			}
 			if (route.status !== "routed") continue;
-			const models = route.models.map(({ model, credential }) => `${model} with ${credential}`).join(", then ");
+			const models = route.models
+				.map(
+					({ model, credential, thinking }) =>
+						`${model}${thinking === undefined ? "" : ` at ${thinking}`} with ${credential}`,
+				)
+				.join(", then ");
 			const origin =
 				route.by === "derived"
 					? "derived, since no model of the committed route has credentials"
