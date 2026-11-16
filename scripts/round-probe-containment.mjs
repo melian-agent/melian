@@ -335,6 +335,9 @@ export function judge(report, plan, argv, host) {
 		if (summary.cut) failures.push(`the walk of ${root} stopped at its entry limit`);
 	}
 	if (report.walk[plan.walk[0]]?.files === 0) failures.push(`the walk read no file of ${plan.walk[0]}`);
+	for (const root of plan.walk)
+		if (!plan.own.includes(root) && !plan.public.includes(root))
+			failures.push(`the policy lets a probe read ${root}, which is neither its own nor a named public root`);
 	return failures;
 }
 
@@ -459,12 +462,10 @@ async function main() {
 					...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
 				],
 				walk: policy.read,
+				own: [tree, run, probeDirectory],
+				// A probe's own directories are never public, wherever they sit.
 				public: policy.read.filter(
-					(path) =>
-						path !== tree &&
-						path !== run &&
-						path !== probeDirectory &&
-						publicRoots.some((root) => root.matches(path)),
+					(path) => ![tree, run, probeDirectory].includes(path) && publicRoots.some((root) => root.matches(path)),
 				),
 				self: join(probeDirectory, "targets.json"),
 			};

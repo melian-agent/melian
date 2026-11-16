@@ -13,6 +13,7 @@ function plan() {
 		write: ["/run/home/written", "/tmp/melian-written"],
 		writable: ["/run/home/written"],
 		walk: ["/tree", "/usr"],
+		own: ["/tree"],
 		public: ["/usr"],
 	};
 }
@@ -216,6 +217,17 @@ describe("judge", () => {
 		const later = report();
 		later.walk["/usr"].files = 0;
 		expect(judge(later, plan(), argv, host())).toEqual([]);
+	});
+});
+
+describe("judge's read roots", () => {
+	it("fails a root the policy grants that is neither the probe's own nor public", () => {
+		const r = report();
+		r.walk["/opt/secrets"] = walkSummary(1);
+		const wider = { ...plan(), walk: ["/tree", "/usr", "/opt/secrets"] };
+		expect(judge(r, wider, argv, host())).toEqual([
+			"the policy lets a probe read /opt/secrets, which is neither its own nor a named public root",
+		]);
 	});
 });
 
