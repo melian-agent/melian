@@ -334,6 +334,8 @@ export interface CheckLineage {
 	};
 	readonly wanted?: string;
 	readonly by: string;
+	/** The level `model` answered at when its own route entry names one, in place of the route's. */
+	readonly answeredAt?: NonNullable<ModelRoute["thinking"]>;
 	/** For a lens a preference file moved to another tier: that file, and the tiers it moved the lens from and to. */
 	readonly moved?: { readonly by: string; readonly from: string; readonly to: string };
 	readonly outside: boolean;

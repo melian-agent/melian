@@ -625,12 +625,14 @@ export class ReviewPlan {
 			(model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside))
 		)
 			return undefined;
+		const answeredAt = planned.models.find((each) => each.model === model)?.thinking;
 		return {
 			model,
 			...(wanted === undefined ? {} : { wanted }),
 			by: by ?? thinking?.by ?? "melian.yaml",
 			outside,
 			...(thinking === undefined ? {} : { thinking }),
+			...(answeredAt === undefined ? {} : { answeredAt }),
 		};
 	}
 
@@ -950,7 +952,7 @@ export class ReviewPlan {
 		return messages;
 	}
 
-	private static lineageText({ wanted, by, moved, outside, model, thinking }: CheckLineage): string {
+	private static lineageText({ wanted, by, moved, outside, model, thinking, answeredAt }: CheckLineage): string {
 		const routed = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
 		const why =
 			moved === undefined
@@ -960,9 +962,10 @@ export class ReviewPlan {
 			thinking === undefined
 				? ""
 				: `; thinking ${thinking.level} set by ${thinking.by}; committed policy wants ${thinking.wanted}`;
+		const own = answeredAt === undefined ? "" : `; it answers at thinking ${answeredAt}, its own entry's level`;
 		if (wanted === undefined)
-			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}`;
-		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}`;
+			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}${own}`;
+		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}${own}`;
 	}
 
 	/**
