@@ -1,9 +1,10 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import type * as FsSync from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import type * as Fs from "node:fs/promises";
-import { readdir } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
@@ -13,10 +14,22 @@ import { Owner } from "../src/owner.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
-// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing.
+// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing, and others
+// make a listing or a stat fail.
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof Fs>();
-	return { ...actual, readdir: vi.fn(actual.readdir) };
+	return { ...actual, readdir: vi.fn(actual.readdir), lstat: vi.fn(actual.lstat) };
+});
+
+// The owner key reads this process's pid namespace, so a test can stand another namespace in for it.
+const namespace = vi.hoisted(() => ({ read: undefined as (() => { dev: number; ino: number }) | undefined }));
+vi.mock("node:fs", async (importOriginal) => {
+	const actual = await importOriginal<typeof FsSync>();
+	const statSync = ((path: FsSync.PathLike, options?: FsSync.StatSyncOptions) =>
+		path === "/proc/self/ns/pid" && namespace.read !== undefined
+			? namespace.read()
+			: actual.statSync(path, options)) as typeof actual.statSync;
+	return { ...actual, statSync, default: { ...actual, statSync } };
 });
 
 let remote: Remote;
@@ -26,7 +39,10 @@ let outside: string;
 let commit: string;
 const children: ChildProcess[] = [];
 
-const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
+// A host's hash as the store makes it: the host's name, with the pid namespace on Linux.
+const hash = (space: string) => createHash("sha256").update(`${hostname()}${space}`).digest("hex").slice(0, 16);
+const spaceOf = ({ dev, ino }: { dev: number; ino: number }) => `\0${dev}:${ino}`;
+const host = hash(process.platform === "linux" ? spaceOf(statSync("/proc/self/ns/pid")) : "");
 // A leftover's suffix as the store names it: this host's hash, the owner's pid, and a UUID.
 const owned = (pid: number, on = host) => `${on}-${pid}-${randomUUID()}`;
 
@@ -110,6 +126,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	namespace.read = undefined;
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	for (const child of children.splice(0)) await stop(child);
@@ -568,6 +585,81 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 				vi.mocked(readdir).mockImplementation(listed);
 			}
 		});
+
+	for (const [what, at] of [
+		["half-made repository", (suffix: string) => join(directory, `records.git.${suffix}`)],
+		["temporary index", (suffix: string) => join(records, `melian-index-${suffix}`)],
+	] as const)
+		it(`removes nothing, and says it could not list every leftover, when a ${what} cannot be stat'ed`, async () => {
+			const owner = await exited();
+			const suffix = owned(owner.pid);
+			plant(suffix);
+			const stat = vi.mocked(lstat).getMockImplementation() as typeof lstat;
+			vi.mocked(lstat).mockImplementation((async (path: string) => {
+				if (path === at(suffix)) throw Object.assign(new Error("EIO: i/o error"), { code: "EIO" });
+				return stat(path);
+			}) as unknown as typeof lstat);
+			try {
+				const store = await remote.open({ directory });
+				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
+				expect(planted(suffix)).toEqual(there);
+			} finally {
+				vi.mocked(lstat).mockImplementation(stat);
+			}
+		});
+});
+
+describe("the owner's process namespace", () => {
+	const other = { dev: 4, ino: 4026532000 };
+	const platform = (name: NodeJS.Platform) => vi.spyOn(process, "platform", "get").mockReturnValue(name);
+
+	it("keeps what a process in another pid namespace under this host's name left, and removes what this one's left", async () => {
+		platform("linux");
+		// Each prefix is the one the store gives this host under that namespace, and each pid names no live process.
+		const prefix = () => Owner.current(new ProcessTable().list())?.name().split("-")[0] as string;
+		namespace.read = () => other;
+		const theirs = owned((await exited()).pid, prefix());
+		namespace.read = undefined;
+		const ours = owned((await exited()).pid, prefix());
+		plant(theirs);
+		plant(ours);
+		const store = await remote.open({ directory });
+		expect(planted(theirs)).toEqual(there);
+		expect(planted(ours)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(ours).sort(), kept: names(theirs).sort(), failed: [] });
+	});
+
+	it("names what it makes after the pid namespace it reads", async () => {
+		platform("linux");
+		namespace.read = () => other;
+		const owner = Owner.current(new ProcessTable().list());
+		expect(owner?.name()).toMatch(new RegExp(`^${hash(spaceOf(other))}-${process.pid}-[0-9a-f-]{36}$`));
+	});
+
+	it("names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace", async () => {
+		platform("linux");
+		namespace.read = () => {
+			throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+		};
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		expect(Owner.current(new ProcessTable().list())).toBeUndefined();
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+	});
+
+	it("keys by the host's name alone off Linux, reads no namespace, and still sweeps", async () => {
+		platform("darwin");
+		namespace.read = () => {
+			throw new Error("a namespace was read off Linux");
+		};
+		const suffix = owned((await exited()).pid, hash(""));
+		plant(suffix);
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
+	});
 });
 
 describe("the names a call gives what it makes", { timeout: 60_000 }, () => {
