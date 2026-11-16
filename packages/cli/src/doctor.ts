@@ -392,12 +392,11 @@ async function trustCheck(
 		return { name, state: "warn", detail: "not inside a git repository; root policy is unknown" };
 	const policy = await committedTrust(root);
 	if ("unknown" in policy) return { name, state: "warn", detail: policy.unknown };
-	const { base, writers } = policy;
-	let state: Check["state"] = writers && base.ref !== "HEAD" && base.ref !== "main" ? "ok" : "warn";
+	const { base, writers, caveat } = policy;
+	let state: Check["state"] = writers && caveat === undefined ? "ok" : "warn";
 	const details = [`writers trusted: ${writers ? "yes" : "no"}; policy ${base.ref} (${base.commit.slice(0, 7)})`];
 	if (!writers) details.push("a trusted host must set the status");
-	if (base.ref === "HEAD") details.push("base policy is unknown; using committed HEAD");
-	if (base.ref === "main") details.push("base policy may be stale; using local main");
+	if (caveat !== undefined) details.push(caveat);
 	if (token === undefined) return { name, state: "warn", detail: `${details.join("; ")}; no GitHub token` };
 	const url = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
 	let repository: { owner: string; repo: string };
@@ -455,9 +454,10 @@ async function trustCheck(
 }
 
 // The committed root policy's `trust.writers`, from the first base ref that resolves. Doctor never fetches the refs.
+// Local main may lag the remote, and HEAD is the branch's own policy, so either carries a caveat.
 async function committedTrust(
 	root: string,
-): Promise<{ base: { ref: string; commit: string }; writers: boolean } | { unknown: string }> {
+): Promise<{ base: { ref: string; commit: string }; writers: boolean; caveat?: string } | { unknown: string }> {
 	let base: { ref: string; commit: string } | undefined;
 	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
 		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
@@ -471,6 +471,8 @@ async function committedTrust(
 		return {
 			base,
 			writers: (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers,
+			...(base.ref === "HEAD" && { caveat: "base policy is unknown; using committed HEAD" }),
+			...(base.ref === "main" && { caveat: "base policy may be stale; using local main" }),
 		};
 	} catch (error) {
 		return { unknown: visibleText(error instanceof Error ? error.message : String(error)) };
@@ -487,12 +489,12 @@ async function recordTrust(root: string): Promise<{ state: Check["state"]; detai
 			detail: `who may write it is unknown, since the trust policy cannot be read: ${policy.unknown}`,
 		};
 	const source = `trust.writers in ${policy.base.ref} (${policy.base.commit.slice(0, 7)})`;
-	return policy.writers
-		? { state: "ok", detail: `its writers are trusted as the repository's writers, by ${source}` }
-		: {
-				state: "warn",
-				detail: `${source} is off, so only the trusted host may write melian/state; doctor cannot check who may push to it`,
-			};
+	const detail = policy.writers
+		? `its writers are trusted as the repository's writers, by ${source}`
+		: `${source} is off, so only the trusted host may write melian/state; doctor cannot check who may push to it`;
+	return policy.caveat === undefined
+		? { state: policy.writers ? "ok" : "warn", detail }
+		: { state: "warn", detail: `${detail}; ${policy.caveat}` };
 }
 
 // A file on the record branch that Melian did not write refuses calls until a writer removes it, so the line names it.
