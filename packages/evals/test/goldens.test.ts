@@ -51,6 +51,13 @@ const readText = (path: string) => (existsSync(path) ? readFileSync(path, "utf8"
 const ofLensCorpus = (entry: { parentPath: string }) =>
 	relative(goldensDirectory, entry.parentPath).split(sep)[0] !== "resolution";
 
+// Every tiered golden runs Melian's trust-boundary-probes lens beside trust-boundary. Its instructions hold the reading
+// lens's, so a hand-written script answers it first, by its own body line.
+const probingLens = () => ({
+	match: "This lens is its second half",
+	replies: [testing.fauxAssistantMessage("Reported 0 findings.")],
+});
+
 describe("live design golden routing", { timeout: 60_000 }, () => {
 	it.each(["openai-codex/gpt-5.6-terra", undefined])(
 		"uses the subscription verifier route %s independently of the finder",
@@ -1277,6 +1284,7 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		availability.mockClear();
 		const fake = testing.createFakeModels();
 		testing.scriptConversations(fake, [
+			probingLens(),
 			{
 				match: "You are the trust-boundary reviewer",
 				replies: [
@@ -1332,6 +1340,7 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		});
 		const fake = testing.createFakeModels();
 		testing.scriptConversations(fake, [
+			probingLens(),
 			{
 				match: "You are the trust-boundary reviewer",
 				replies: [
@@ -1376,6 +1385,7 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 		});
 		const fake = testing.createFakeModels();
 		testing.scriptConversations(fake, [
+			probingLens(),
 			{
 				match: "You are the trust-boundary reviewer",
 				replies: [
@@ -1426,6 +1436,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 					testing.fauxAssistantMessage("Still no probe."),
 				],
 			},
+			probingLens(),
 			{
 				match: "You are the trust-boundary reviewer",
 				replies: [
@@ -1464,6 +1475,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 		const golden = claim();
 		const fake = testing.createFakeModels();
 		testing.scriptConversations(fake, [
+			probingLens(),
 			{
 				match: "You are the trust-boundary reviewer",
 				replies: [

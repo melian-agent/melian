@@ -255,6 +255,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
 			"trust-boundary": "e78af31b1e01",
+			"trust-boundary-probes": "e97c17e2fe1d",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
@@ -266,6 +267,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "0885fd05330f",
 			tests: "a9ed7d3ea22c",
 			"trust-boundary": "7d072a9e5e2c",
+			"trust-boundary-probes": "caf41cbbdb7e",
 		});
 	});
 
@@ -324,9 +326,16 @@ describe("built-in lenses", () => {
 		);
 		const quick = levels.filter(([level]) => level!.endsWith(".quick"));
 		expect(quick.map(([level]) => level).sort()).toEqual(
-			["contracts", "conventions", "correctness", "durability", "removed-behaviour", "tests", "trust-boundary"].map(
-				(lens) => `${lens}.quick`,
-			),
+			[
+				"contracts",
+				"conventions",
+				"correctness",
+				"durability",
+				"removed-behaviour",
+				"tests",
+				"trust-boundary-probes",
+				"trust-boundary",
+			].map((lens) => `${lens}.quick`),
 		);
 		const terra = {
 			model: "openai-codex/gpt-5.6-terra",
