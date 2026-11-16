@@ -108,6 +108,20 @@ it("asks a live fallback at its own level and a bare one at the route's", async 
 it.each([
 	[{ MELIAN_EVAL_FALLBACK: "anthropic/claude@none" }, 'invalid entry "anthropic/claude@none"'],
 	[{ MELIAN_EVAL_FALLBACK: "anthropic/claude@medium" }, "MELIAN_EVAL_FALLBACK needs MELIAN_EVAL_MODEL"],
+	// Codex's adversarial review of pull request #489: a route whose fallback names a level must name its own, and the
+	// tiers MELIAN_EVAL_MODEL fills take their level from MELIAN_EVAL_THINKING alone.
+	[
+		{ MELIAN_EVAL_MODEL: "anthropic/claude", MELIAN_EVAL_FALLBACK: "anthropic/claude@medium" },
+		"MELIAN_EVAL_FALLBACK names a thinking level, so MELIAN_EVAL_THINKING must name light, medium and heavy",
+	],
+	[
+		{
+			MELIAN_EVAL_MODEL: "anthropic/claude",
+			MELIAN_EVAL_FALLBACK: "anthropic/other,anthropic/claude@medium",
+			MELIAN_EVAL_THINKING: "light=low,medium=low,verifier=high",
+		},
+		"MELIAN_EVAL_FALLBACK names a thinking level, so MELIAN_EVAL_THINKING must name light, medium and heavy",
+	],
 ])("rejects a live fallback before opening live credentials", (variables, message) => {
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-fallback-env-")));
 	try {

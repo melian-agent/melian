@@ -2,8 +2,9 @@
  * Runs every golden against real models and prints precision and recall. Spends real tokens, so it runs only with
  * `MELIAN_EVAL_LIVE=1`, and never in `npm run check`. `MELIAN_EVAL_MODEL`, as `provider/model-id`, routes every tier a
  * golden's `melian.golden.yaml` leaves unrouted, and `MELIAN_EVAL_FALLBACK`, as `provider/model-id` or
- * `provider/model-id@level`, comma-separated, gives those tiers fallbacks. `MELIAN_EVAL_GOLDEN` names one golden to run
- * instead of all of them.
+ * `provider/model-id@level`, comma-separated, gives those tiers fallbacks; a fallback that names a level needs
+ * `MELIAN_EVAL_THINKING` to name light, medium and heavy, since a route must name its own level when a fallback does.
+ * `MELIAN_EVAL_GOLDEN` names one golden to run instead of all of them.
  * Credentials resolve as in a review: the named credentials of the secrets files, the per-clone one of the working
  * directory's repository and the user's own, then Pi's login, then the providers' environment variables. A golden whose `expected.json` sets
  * `live: false` is skipped and left out of the corpus score. `MELIAN_EVAL_TRIAGE=1` runs the triage corpus instead:
@@ -37,6 +38,15 @@ try {
 	fallbacks = parseEvalFallbacks(process.env.MELIAN_EVAL_FALLBACK);
 	if (fallbacks.length !== 0 && process.env.MELIAN_EVAL_MODEL === undefined)
 		throw new Error("MELIAN_EVAL_FALLBACK needs MELIAN_EVAL_MODEL, the first model its fallbacks follow.");
+	// A route whose fallback names a level must name its own, and only MELIAN_EVAL_THINKING gives one to a tier
+	// MELIAN_EVAL_MODEL fills.
+	if (
+		fallbacks.some((entry) => typeof entry !== "string") &&
+		(["light", "medium", "heavy"] as const).some((tier) => thinking.level(tier) === undefined)
+	)
+		throw new Error(
+			"MELIAN_EVAL_FALLBACK names a thinking level, so MELIAN_EVAL_THINKING must name light, medium and heavy, the levels of the routes MELIAN_EVAL_MODEL fills.",
+		);
 } catch (error) {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
