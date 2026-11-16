@@ -339,6 +339,7 @@ export function judge(report, plan, argv, host) {
 	for (const [target, outcome] of Object.entries(report.tcp))
 		if (outcome === "connected") failures.push(`a TCP connection to ${target} opened`);
 	if (report.dns === "resolved") failures.push("a DNS lookup resolved");
+	if (report.dns === undefined) failures.push("the probe did not try DNS");
 	if (report.udp === undefined) failures.push("the probe did not try UDP");
 	const { connections, datagrams } = host.listener;
 	if (connections > 0) failures.push(`${plural(connections, "connection")} reached the host's listener`);
@@ -528,13 +529,7 @@ export class Listener {
 
 	async close() {
 		await new Promise((resolve) => this.tcp.close(() => resolve()));
-		await new Promise((resolve) => {
-			try {
-				this.udp.close(resolve);
-			} catch {
-				resolve();
-			}
-		});
+		await new Promise((resolve) => this.udp.close(resolve));
 	}
 }
 

@@ -101,6 +101,12 @@ describe("judge", () => {
 			expect(judge(report(), plan(), argv, { ...host(), listener })).toEqual([failure]);
 	});
 
+	it("fails a probe that did not try DNS", () => {
+		const r = report();
+		delete r.dns;
+		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try DNS"]);
+	});
+
 	it("fails a probe that sent no datagram", () => {
 		const r = report();
 		delete r.udp;
@@ -434,6 +440,7 @@ describe("the probe script", () => {
 			const report = JSON.parse(output);
 			expect(report.tcp).toEqual({ [`127.0.0.1:${targets.network[0].port}`]: "connected" });
 			expect(report.udp).toBe("sent");
+			expect(report.dns).toEqual(expect.any(String));
 			expect(seen).toEqual({ connections: 1, datagrams: 1 });
 		} finally {
 			await new Promise((resolve) => tcp.close(resolve));
@@ -742,12 +749,13 @@ describe("Listener", () => {
 			expect([listener.connections, listener.datagrams]).toEqual([0, 0]);
 			const { tcp, udp } = listener.targets();
 			const socket = createConnection(tcp).on("error", () => {});
+			const closed = new Promise((resolve) => socket.once("close", resolve));
 			await new Promise((resolve) => socket.once("connect", resolve));
 			const sender = createSocket("udp4");
 			await new Promise((resolve) => sender.send("x", udp.port, udp.host, resolve));
 			sender.close();
 			await vi.waitFor(() => expect([listener.connections, listener.datagrams]).toEqual([1, 1]));
-			socket.destroy();
+			await closed;
 		} finally {
 			await listener.close();
 		}
@@ -765,6 +773,28 @@ describe("Listener", () => {
 		} finally {
 			await new Promise((resolve) => server.close(resolve));
 			socket.close();
+		}
+	});
+
+	it("fails its control, and throws nothing else, when its connection errors", { timeout: 20_000 }, async () => {
+		const listener = await Listener.open("127.0.0.1");
+		const { udp } = listener.targets();
+		listener.targets = () => ({ tcp: { host: "melian.invalid", port: 1 }, udp });
+		try {
+			await expect(listener.control()).rejects.toThrow("no connection from the host reached melian.invalid:1");
+		} finally {
+			await listener.close();
+		}
+	});
+
+	it("fails its control, and throws nothing else, when its datagram errors", { timeout: 20_000 }, async () => {
+		const listener = await Listener.open("127.0.0.1");
+		const { tcp } = listener.targets();
+		listener.targets = () => ({ tcp, udp: { host: "melian.invalid", port: 1 } });
+		try {
+			await expect(listener.control()).rejects.toThrow("no datagram from the host reached melian.invalid:1");
+		} finally {
+			await listener.close();
 		}
 	});
 
@@ -1044,6 +1074,44 @@ describe("main", () => {
 		});
 		expect(result.left).toEqual(["melian-written"]);
 	});
+
+	it.runIf(process.platform === "linux")(
+		"fails a probe whose connection and datagram reached its listener",
+		async () => {
+			const result = await mainWith((root) => {
+				const probes = stoppedProbes(root, true);
+				const open = probes.open;
+				probes.open = async (...given) => {
+					const probe = await open(...given);
+					probe.run = async () => {
+						const plan = JSON.parse(readFileSync(join(root, "probe", "targets.json"), "utf8"));
+						const socket = createConnection(plan.network[0]).on("error", () => {});
+						await new Promise((resolve) => socket.once("close", resolve));
+						const sender = createSocket("udp4");
+						await new Promise((resolve) => sender.send("x", plan.udp.port, plan.udp.host, resolve));
+						sender.close();
+						await new Promise((resolve) => setTimeout(resolve, 200));
+						return {
+							exitCode: 0,
+							signal: null,
+							timedOut: false,
+							truncated: false,
+							output: JSON.stringify(report()),
+						};
+					};
+					return probe;
+				};
+				return probes;
+			});
+			expect(result.code).toBe(1);
+			expect(result.logs.flat()).toEqual(
+				expect.arrayContaining([
+					"not contained: 1 connection reached the host's listener",
+					"not contained: 1 datagram reached the host's listener",
+				]),
+			);
+		},
+	);
 
 	it("runs nothing when another module imports it", () => {
 		const run = spawnSync(
