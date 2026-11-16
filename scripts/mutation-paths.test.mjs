@@ -52,6 +52,7 @@ it("keeps static.mutation's TypeScript scope and permits JavaScript only on requ
 	expect(signalFiles).toEqual(
 		new Set([
 			"packages/core/src/git.ts",
+			"packages/core/src/process-tree.ts",
 			"packages/pipeline/src/cache-scratch.ts",
 			"packages/pipeline/src/mutation-process.ts",
 			"packages/pipeline/src/probe-process.ts",
