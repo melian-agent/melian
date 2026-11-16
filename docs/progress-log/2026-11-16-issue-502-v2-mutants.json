@@ -1,0 +1,636 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "9895d9e78856719250865f0f09988376a0997394",
+		"head": "13eda216973f7228efa0fd1fd7cad8332eeef016"
+	},
+	"claimsIn": [
+		"packages/core/src/record-payloads.ts",
+		"packages/pipeline/src/review-records.ts",
+		"packages/pipeline/src/recorded-round.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 277,
+			"column": 22,
+			"endLine": 283,
+			"endColumn": 1,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6b5a2f7caddee2e5ff7be1b342d46e19e3cf56f3b2f49c47b27d4fc1ab13cde6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 280,
+			"column": 32,
+			"endLine": 280,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "519582fd0cd8fd4694d288ecd8d0b181645d3a66be41831cfbe5e165c2f7a3cf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 280,
+			"column": 69,
+			"endLine": 280,
+			"endColumn": 90,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4433f8415166eb55916152dd0e8d3968a9bdf936926b7b3f1b3105395425edff",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 280,
+			"column": 70,
+			"endLine": 280,
+			"endColumn": 79,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2dc37d334f14d81dfd483b1a644ca51db6c860679cb4474153b3c35335f8a447"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 280,
+			"column": 81,
+			"endLine": 280,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "16d08544e42f521525f70a746a73becbf92b5f195321cfe61d8f94775906c735"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 282,
+			"column": 35,
+			"endLine": 282,
+			"endColumn": 102,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f125cf3024389d420f32a1c5bc109765b6161d4dc873985830954eccbd27ad7b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 302,
+			"column": 54,
+			"endLine": 302,
+			"endColumn": 77,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "46fe743d58190b7ab3604fc7f3e9492396b965a658dd15834e21a793a9662cc3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"takes a version-1 account, which names no resolution policy, and checks its order as version 2's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 387,
+			"column": 3,
+			"endLine": 387,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0daad37ce72b9433d92b9532fb055ac47400d9bae10e76b363fd895cf13609a5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 387,
+			"column": 3,
+			"endLine": 387,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bd49812f2133e64ed28285cd9fa2dcb579bf1bc44b06c02bd891a6dc1e442bdc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"takes a version-1 account, which names no resolution policy, and checks its order as version 2's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 387,
+			"column": 3,
+			"endLine": 387,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(payload as {\n  v?: unknown;\n}).v !== 1",
+			"status": "generated",
+			"id": "a012103b58ceb2b92ab92ffc80b7ae119faa418908147b635c5bbb76f81fee74",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"accepts a whole account payload, sample 12"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 397,
+			"column": 17,
+			"endLine": 397,
+			"endColumn": 92,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "385bad6a800a9ea5780e43969923f6eadd9ef4d58cc1da56c97158bc637fec17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"takes an account whose producers share a check and differ in version, the one with none first"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 397,
+			"column": 55,
+			"endLine": 397,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9534da7dd00f7f9a49c4c6b393c6baae827d37bc5ccf20b38ef53792ca1ccc05"
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 397,
+			"column": 72,
+			"endLine": 397,
+			"endColumn": 90,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.version && \"\"",
+			"status": "generated",
+			"id": "8078cc8530a23843236c8c0ea2fe00ab23e310e328895bb7d05dc5e0becb49e3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/review-payloads.test.ts",
+					"path": [
+						"review payload checks",
+						"takes an account whose producers share a check and differ in version, the one with none first"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 397,
+			"column": 88,
+			"endLine": 397,
+			"endColumn": 90,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c5c5627ea37f5e13ab817f2b3b289cc130185a3cf253914defe733b6c13bbc37"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 102,
+			"column": 6,
+			"endLine": 102,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "826e8194f2acbad3c47231aa2f0365be76e578b612f706eb0c1f5e8b629b3754",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 102,
+			"column": 6,
+			"endLine": 102,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "821771ba70f786061d37effc492ff3c3c5d4874ec1f306782ebd6d9888ae15dd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"reads not reviewed when the review read no policy source and the reader reads one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 102,
+			"column": 6,
+			"endLine": 102,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "decidedUnder !== null",
+			"status": "generated",
+			"id": "dacf1ae04c1d3b2e6742030501ec0bd7e6b093332d8a254ed2464cfba9f942b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 103,
+			"column": 31,
+			"endLine": 103,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b4ef7e0cb334c234b0ae7885c2febf989902ec6b6dc5492afc56fecdbc95f10a"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 104,
+			"column": 6,
+			"endLine": 104,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "60470562d2282d01f6869b08b14048502d00cc6893cb242b1195680fdbdff1c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 104,
+			"column": 6,
+			"endLine": 104,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "462cb1b44a82d68f132f2b3a42c755d32e44578a851df409dd162b7648e4c328",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"reads not reviewed when the reader holds no checkout and no policy source"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 104,
+			"column": 6,
+			"endLine": 104,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "policies !== undefined",
+			"status": "generated",
+			"id": "b21ee164d0544b360e92fba32d4fadd60de3625b192e3a06cc9f820ee60eb367",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 105,
+			"column": 31,
+			"endLine": 105,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "db9c09ccf2821eb2aa2a8e90451501445d4345dbb3c87e56ad05601e82bd72f7"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bebf0b55345418db197e351f5446e7e30140f0ef0894677c506240ac54e05034",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6d9efd3bfbabcb93d46773281d54908428b18f5ad8f014612ea96443d724c217",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"reads not reviewed once melian.yaml changes what blocks between the review and the read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "decidedUnder === policies.fingerprint",
+			"status": "generated",
+			"id": "d194a8fa1233571d3d0d758fda1ec147b777a320d43d88906dd80283c330a55e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 109,
+			"column": 4,
+			"endLine": 109,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2ca318d1b9ec7de1e5359d245ec3b100d445349ef5f5b0f90524cf43316e82b2"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 143,
+			"column": 5,
+			"endLine": 143,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "026611b62ea7c7ebcf4c1590a72d89c86453f107e918b452ca78fd3813b2bc53",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 143,
+			"column": 5,
+			"endLine": 143,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d8715b93473520bfadf78681ba7db81392f102bcba2ca36c56762a79177da26a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"refuses an account main wrote before accounts named their resolution policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 143,
+			"column": 5,
+			"endLine": 143,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(accountRecord.payload as {\n  v: number;\n}).v !== 1",
+			"status": "generated",
+			"id": "7646609d9c764d8c0e7ce4bdff142a58f50eed7893df8b5e98594e5b0c311aba",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"decides as the review did when the reader holds the policy the review decided under"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 144,
+			"column": 9,
+			"endLine": 144,
+			"endColumn": 94,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3e763c84b6c34ba10e3f6f86d56640695acedfbf1ada7dd7e3b2e31be54cf062",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round decided under another policy",
+						"refuses an account main wrote before accounts named their resolution policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 144,
+			"column": 20,
+			"endLine": 144,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9111c4307108b38c17531b1ccf9616e3bc2ab81e5254703592d9ab437e00afe3"
+		}
+	],
+	"total": 31,
+	"omitted": 0,
+	"unmutated": []
+}
