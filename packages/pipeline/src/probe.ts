@@ -418,6 +418,9 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 // secret, so it is left alone.
 const deniedEnvVars = ["JAVA_TOOL_OPTIONS"];
 
+// Where util-linux puts unshare. A fixed list, not PATH, which the host's environment decides.
+const unsharePaths = ["/usr/bin/unshare", "/bin/unshare"];
+
 // sandbox-runtime's reads of Node's install, for a probe's `node`. The grandparent of the executable is granted only
 // when it is a Node-only prefix, such as an nvm or a `node-*` directory; `/usr/bin/node`'s grandparent `/usr` would
 // expose `/usr/local/etc/npmrc`, so a system install grants the binary and its module directory alone, both already
@@ -592,12 +595,18 @@ export class RuntimeSandbox implements ProbeSandbox {
 	readonly kind = "sandbox-runtime";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
+	readonly #unshare: string | null;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
 	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
 	readonly #sessions: { count: number; queue: Promise<void> };
 
-	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
+	constructor(
+		runtime: SandboxRuntime = SandboxManager,
+		name: string = platform(),
+		unshare: string | null = unsharePaths.find((path) => existsSync(path)) ?? null,
+	) {
 		this.#runtime = runtime;
+		this.#unshare = unshare;
 		this.#sessions = sessionsOf.get(runtime) ?? { count: 0, queue: Promise.resolve() };
 		sessionsOf.set(runtime, this.#sessions);
 		this.#name = name;
@@ -610,6 +619,8 @@ export class RuntimeSandbox implements ProbeSandbox {
 	unavailable(): string | undefined {
 		if (this.#name !== "darwin" && this.#name !== "linux") return `probes run on macOS and Linux, not ${this.#name}`;
 		if (!this.#runtime.isSupportedPlatform()) return "sandbox-runtime does not support this platform";
+		if (this.platform === "linux" && this.#unshare === null)
+			return "util-linux's unshare is not installed, so a probe would share the host's IPC namespace";
 		const { errors, warnings } = this.#runtime.checkDependencies();
 		const problems = [...errors, ...warnings];
 		return problems.length === 0 ? undefined : `sandbox-runtime cannot run here: ${problems.join("; ")}`;
@@ -647,7 +658,13 @@ export class RuntimeSandbox implements ProbeSandbox {
 			},
 			credentials: { envVars: deniedEnvVars.map((name) => ({ name, mode: "deny" as const })) },
 		});
-		return argv;
+		if (this.platform === "darwin") return argv;
+		// bubblewrap shares the host's IPC namespace, where a probe running as the host's user could read or remove its
+		// System V and POSIX queues, semaphores and shared memory. A user namespace of our own, keeping the uid that
+		// sandbox-runtime chose its flags for, gives everything under bubblewrap a fresh one. unshare execs bubblewrap in
+		// place, so the pid Melian records is still the sandbox's.
+		if (this.#unshare === null) throw new Error("util-linux's unshare is not installed");
+		return [this.#unshare, "--user", "--map-current-user", "--ipc", "--", ...argv];
 	}
 
 	cleanup(): void {

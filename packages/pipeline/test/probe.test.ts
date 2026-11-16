@@ -1393,7 +1393,36 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(fake, "win32").unavailable()).toBe("probes run on macOS and Linux, not win32");
 		expect(calls).toEqual([]);
 		expect(new RuntimeSandbox(fake, "darwin").platform).toBe("darwin");
-		expect(new RuntimeSandbox(fake, "linux").platform).toBe("linux");
+		expect(new RuntimeSandbox(fake, "linux", "/usr/bin/unshare").platform).toBe("linux");
+	});
+
+	it("refuses Linux without unshare, before asking sandbox-runtime, and never needs it on macOS", () => {
+		const linux = runtime();
+		expect(new RuntimeSandbox(linux.fake, "linux", null).unavailable()).toBe(
+			"util-linux's unshare is not installed, so a probe would share the host's IPC namespace",
+		);
+		expect(linux.names()).toEqual(["isSupportedPlatform"]);
+		const mac = runtime();
+		expect(new RuntimeSandbox(mac.fake, "darwin", null).unavailable()).toBeUndefined();
+		expect(new RuntimeSandbox(runtime().fake, "linux", "/usr/bin/unshare").unavailable()).toBeUndefined();
+	});
+
+	it("starts bubblewrap in an IPC namespace of its own on Linux alone, and never wraps without unshare", async () => {
+		const policy = { read: [], deny: ["/"], denyGlobs: [], write: [], denyWrite: [] };
+		expect(await new RuntimeSandbox(runtime().fake, "darwin", "/usr/bin/unshare").wrap("true", policy)).toEqual([
+			"wrapped",
+		]);
+		expect(await new RuntimeSandbox(runtime().fake, "linux", "/bin/unshare").wrap("true", policy)).toEqual([
+			"/bin/unshare",
+			"--user",
+			"--map-current-user",
+			"--ipc",
+			"--",
+			"wrapped",
+		]);
+		await expect(new RuntimeSandbox(runtime().fake, "linux", null).wrap("true", policy)).rejects.toThrow(
+			"util-linux's unshare is not installed",
+		);
 	});
 
 	it("says what sandbox-runtime lacks here, and refuses a warning that weakens confinement", () => {
@@ -1401,16 +1430,16 @@ describe("RuntimeSandbox", () => {
 			"sandbox-runtime does not support this platform",
 		);
 		const missing = runtime({ errors: ["bubblewrap (bwrap) not installed", "socat not found"] });
-		expect(new RuntimeSandbox(missing.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(missing.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: bubblewrap (bwrap) not installed; socat not found",
 		);
 		// A missing seccomp helper leaves unix sockets unrestricted; 0.0.81 reports it only as a warning.
 		const weak = runtime({ warnings: ["seccomp not available - unix socket access not restricted"] });
-		expect(new RuntimeSandbox(weak.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(weak.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: seccomp not available - unix socket access not restricted",
 		);
 		const both = runtime({ errors: ["bwrap missing"], warnings: ["an old bubblewrap"] });
-		expect(new RuntimeSandbox(both.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(both.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: bwrap missing; an old bubblewrap",
 		);
 		const ready = runtime();
@@ -1442,8 +1471,8 @@ describe("RuntimeSandbox", () => {
 
 	it("shares one session count among every wrapper of one runtime, so closing one never resets another's", async () => {
 		const { fake, names } = runtime();
-		const first = new RuntimeSandbox(fake, "linux");
-		const second = new RuntimeSandbox(fake, "linux");
+		const first = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
+		const second = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await first.open();
 		await second.open();
 		await first.close();
@@ -1467,7 +1496,7 @@ describe("RuntimeSandbox", () => {
 				order.push("reset-end");
 			},
 		});
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await sandbox.open();
 		// A's close and B's open race on the shared manager; serialised, B initialises only after A's reset finishes.
 		const closing = sandbox.close();
@@ -1509,7 +1538,7 @@ describe("RuntimeSandbox", () => {
 				if (attempts === 1) throw new Error("no user namespaces");
 			},
 		});
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await expect(sandbox.open()).rejects.toThrow("no user namespaces");
 		await sandbox.close();
 		expect(names()).toEqual(["initialize"]);
@@ -1520,7 +1549,7 @@ describe("RuntimeSandbox", () => {
 
 	it("passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network", async () => {
 		const { fake, calls } = runtime();
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		const policy = {
 			read: ["/w", "/w/**"],
 			deny: ["/", "/w/.git"],
@@ -1528,7 +1557,14 @@ describe("RuntimeSandbox", () => {
 			write: ["/s/run"],
 			denyWrite: ["/tmp/claude"],
 		};
-		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual(["wrapped"]);
+		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual([
+			"/usr/bin/unshare",
+			"--user",
+			"--map-current-user",
+			"--ipc",
+			"--",
+			"wrapped",
+		]);
 		sandbox.cleanup();
 		const literal = (path: string) => ({ path, literal: true });
 		expect(calls).toEqual([
