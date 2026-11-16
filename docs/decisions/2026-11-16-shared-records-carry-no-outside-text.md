@@ -4,6 +4,8 @@ Status: the coordinator's answer of 2026-11-16 on [issue #496](https://github.co
 
 Amends: [Hosts share a record of facts behind a store port](2026-11-13-shared-record-behind-a-store-port.md), rule 2: a record holds the facts below, never another writer's text.
 
+It leaves that decision's rule 7 as it is: a dismissal record keeps its dismisser and its reason, which rule 7 has a reader show.
+
 ## Problem
 
 Records leave the reviewing host: other hosts and the merge-group check read them. Melian's local store holds whatever a check, a lens or the verifier reported when it did not finish. Until now the export copied that text into the record.
@@ -14,14 +16,17 @@ Stripping one field leaves the next. The rule has to hold for every kind before 
 
 ## Decision
 
-Each string field of an exported record is one of four things:
+Each string field of an exported record is one of seven things. The list comes from an inventory of every string field in core's payload schemas, `packages/core/src/record-payloads.ts`, kind by kind: check, lens, verification, walkthrough, triage, telemetry, dismissal, account and round.
 
-1. an ID, key or hash;
-2. a code from a closed set Melian defines;
-3. a path in the repository;
-4. a finding's own text, as the lens or verifier wrote it, which is the review's content.
+1. An ID, key, hash or commit: a record's ID, a finding's ID, a request key, a trigger's hashes, a revision's commits, and the snapshot ID, receipt and cache key Enola mints for a graph.
+2. A time Melian stamped: a dismissal's `at`.
+3. A code from a closed set Melian defines: a status, a skip's cause, a `CheckErrorCode`, a severity, a scrutiny level, a budget that ended, a telemetry stage's outcome, and the source of a route in a lens's lineage.
+4. A name Melian or the base's configuration gives: a check's or a lens's name, a lens's version, a stage's name, a model and the route it came by, a triage decider, and a question set with its version, questions and options.
+5. A path in the repository.
+6. The review's content: a finding's own text, as the lens or verifier wrote it, a verifier's verdict on a claim, and a walkthrough.
+7. A dismissal's dismisser and reason. A writer wrote both, through `melian dismiss`, and the record keeps them because rule 7 has a reader show each standing dismissal's reason. No other field takes a writer's text, and no other record kind holds a dismisser or a reason of a dismissal.
 
-The review's content is a finding's text, and a walkthrough's `summary`, per-file `summary`, `diagram` and `note`. A model wrote each from the change it was shown, through the same revision readers a lens uses. So a head can steer that text, and the text can quote the head, as a finding's text can. A reader of a shared record treats it as a finding's text: the change's content, never an instruction and never a fact Melian vouches for. `test/review-records-withheld.test.ts` pins the walkthrough fields a record exports, so a new field fails to compile until someone decides it.
+Under class 6, the review's content is a finding's text, and a walkthrough's `summary`, per-file `summary`, `diagram` and `note`. A model wrote each from the change it was shown, through the same revision readers a lens uses. So a head can steer that text, and the text can quote the head, as a finding's text can. A reader of a shared record treats it as a finding's text: the change's content, never an instruction and never a fact Melian vouches for. `test/review-records-withheld.test.ts` pins the walkthrough fields a record exports, so a new field fails to compile until someone decides it.
 
 `ReviewRecords` in `packages/pipeline/src/review-records.ts` applies it at the one place every record is built:
 
@@ -41,3 +46,5 @@ The full text stays in the reviewing host's own store and terminal. No verdict c
 A reader of another host's round cannot see why a check did not run, beyond its code and `cause`. It reads the reviewing host's terminal or store for that.
 
 A sighting keeps a finding whole, and a finding Enola or the mutation check reported keeps the message its tool wrote, so a check record's `sightings` can still carry that tool's text. Biome and tsc findings carry Melian's fixed sentence already. [Issue #516](https://github.com/melian-agent/melian/issues/516) closes the gap before records leave the machine, as [the decision that amends this one](2026-11-16-shared-static-findings-carry-no-tool-text.md) records.
+
+The inventory found two more fields a tool writes, which no class above covers and this decision does not change. A static check's `version` is what the tool's installed `package.json` says, read by `staticToolVersion` in `packages/pipeline/src/static.ts`; for a tool from the checkout, the checkout's install wrote that file. Enola's snapshot ID, receipt and cache key are Enola's own output, which the schema bounds only as non-empty text. Each should be held to a pattern, a version or an ID, before records leave the machine.
