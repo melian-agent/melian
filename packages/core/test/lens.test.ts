@@ -1006,12 +1006,24 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 					"pkg/x.ts": lines("export {};"),
 				},
 			],
+			// A folder's name is the head's to choose, so it cannot pass for the mark of a lens Melian ships.
+			[
+				"builtin:x/.melian/lenses/correctness/LENS.md",
+				{
+					"builtin:x/.melian/lenses/correctness/LENS.md": lensFile([
+						...security.map((line) => line.replace("name: security", "name: correctness")),
+						"levels:",
+						"  deep: { tier: heavy, probe: {} }",
+					]),
+					"builtin:x/x.ts": lines("export {};"),
+				},
+			],
 		] as const) {
-			rmSync(join(repo, ".melian/lenses"), { recursive: true, force: true });
-			rmSync(join(repo, "pkg"), { recursive: true, force: true });
+			for (const folder of [".melian/lenses", "pkg", "builtin:x"])
+				rmSync(join(repo, folder), { recursive: true, force: true });
 			writeFiles(repo, files);
 			const name = file.split("/").at(-2)!;
-			const refused = await rejection(load(["pkg/x.ts", "src/index.ts"]), LensError);
+			const refused = await rejection(load(["builtin:x/x.ts", "pkg/x.ts", "src/index.ts"]), LensError);
 			expect(refused, file).toMatchObject({
 				code: "missingField",
 				field: "levels.deep.probe",

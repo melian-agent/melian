@@ -222,6 +222,8 @@ const builtinDirectory = fileURLToPath(new URL("../lenses/", import.meta.url));
 
 interface Definition {
 	readonly file: string;
+	// Whether Melian ships the definition: a repository's file names cannot say, since a folder may be named `builtin:x`.
+	readonly builtin: boolean;
 	readonly scope: string;
 	readonly frontMatter: LensFrontMatter;
 	readonly body: string;
@@ -479,7 +481,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
-	const builtin = file.startsWith("builtin:") || (own.extends === own.name && base?.builtin === true);
+	const builtin = definition.builtin || (own.extends === own.name && base?.builtin === true);
 	const resolution = own.resolution ?? base?.lens.resolution;
 	const emoji = own.emoji ?? base?.lens.emoji;
 	if (own.emoji !== undefined) checkEmoji(file, own.emoji);
@@ -550,7 +552,7 @@ async function builtinDefinitions(): Promise<Definition[]> {
 		names.map(async (name) => {
 			const file = `builtin:${name}`;
 			const content = await readFile(join(builtinDirectory, name, "LENS.md"), "utf8");
-			return { file, scope: "", ...parseLensFile(file, content) };
+			return { file, scope: "", builtin: true, ...parseLensFile(file, content) };
 		}),
 	);
 }
@@ -581,7 +583,7 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 					},
 				);
 			}
-			definitions.push({ file, scope, ...parsed });
+			definitions.push({ file, scope, builtin: false, ...parsed });
 		}
 	}
 	return definitions;
