@@ -14,10 +14,12 @@ import {
 	type CredentialStore,
 	defaultProviderAuthContext,
 	isRetryableAssistantError,
+	type Message,
 	type MutableModels,
 } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
+	type ConversationId,
 	type Harness,
 	type HarnessOptions,
 	MemoryStorage,
@@ -117,6 +119,21 @@ const providerLimit =
 export function isFailoverError(message: string): boolean {
 	const failed = { role: "assistant", stopReason: "error", errorMessage: message } as AssistantMessage;
 	return authenticationFailure.test(message) || providerLimit.test(message) || isRetryableAssistantError(failed);
+}
+
+/**
+ * Whether a conversation holds work a model did, read from its model context: a reply, which a tool result always
+ * follows. Pi Durable leaves a reply that failed or was aborted out of that context, and drops a tool result no reply
+ * called for, so a model that failed before it started leaves only inputs there.
+ */
+export async function holdsWork(
+	reader: {
+		context(id: ConversationId, context: Context): Promise<{ readonly messages: readonly Message[] }>;
+	},
+	id: ConversationId,
+	context: Context,
+): Promise<boolean> {
+	return (await reader.context(id, context)).messages.some((message) => message.role === "assistant");
 }
 
 /**
