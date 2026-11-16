@@ -5,7 +5,6 @@ import {
 	type CheckRecord,
 	type ConfigFor,
 	type FindingSource,
-	KeyedRequest,
 	type LensPayload,
 	type MelianConfig,
 	type PolicyAt,
@@ -22,7 +21,7 @@ import {
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
 import { mergeSightings, type Producer, type VerificationClaim } from "./findings.ts";
-import { inManifestOrder } from "./review-records.ts";
+import { accountKey, inManifestOrder } from "./review-records.ts";
 
 /** What a recorded round's verdict is decided under, which its records do not hold. */
 export type RecordedRoundContext = {
@@ -86,13 +85,7 @@ export class RecordedRound {
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
 		const pieces = this.#pieces;
-		if ("refused" in pieces)
-			return new Adjudication({
-				findings: [],
-				manifest: ["records"],
-				checks: [{ name: "records", status: "failed", reason: `round ${this.id} ${pieces.refused}` }],
-				config: () => context.config as ReturnType<ConfigFor>,
-			}).adjudicate();
+		if ("refused" in pieces) return notReviewed(this.id, pieces.refused, context);
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
 			check,
 			...(version === null ? {} : { version }),
@@ -100,10 +93,17 @@ export class RecordedRound {
 		}));
 		const findings = mergeSightings(pieces.sightings, pieces.claims, producers);
 		const { repoRoot, policy } = context;
-		const config: PolicyAt | ConfigFor =
-			repoRoot === undefined || policy === undefined
-				? () => context.config as ReturnType<ConfigFor>
-				: await configsFor(repoRoot, policy, findings);
+		const policies =
+			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+		const decidedUnder = pieces.account.resolutionPolicy;
+		const readsUnder = policies?.fingerprint ?? null;
+		if (decidedUnder !== readsUnder)
+			return notReviewed(
+				this.id,
+				`was decided under ${decidedUnder === null ? "no resolution policy" : `resolution policy ${decidedUnder}`}, and ${readsUnder === null ? "the reader reads none" : `this checkout's reads ${readsUnder}`}`,
+				context,
+			);
+		const config: PolicyAt | ConfigFor = policies ?? (() => context.config as ReturnType<ConfigFor>);
 		return new Adjudication({
 			findings,
 			manifest: pieces.account.checks,
@@ -117,6 +117,16 @@ export class RecordedRound {
 	}
 }
 
+// A verdict of not reviewed that says why the round's records cannot stand for it.
+function notReviewed(id: string, reason: string, context: RecordedRoundContext): Verdict {
+	return new Adjudication({
+		findings: [],
+		manifest: ["records"],
+		checks: [{ name: "records", status: "failed", reason: `round ${id} ${reason}` }],
+		config: () => context.config as ReturnType<ConfigFor>,
+	}).adjudicate();
+}
+
 function piecesOf(set: RecordSet, id: string): Pieces {
 	const round = set.records().find((record) => record.id === id && record.kind === "round");
 	if (round === undefined) return { refused: "is not among the records, or does not count" };
@@ -128,8 +138,7 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	const account = accountRecord.payload as AccountPayload;
 	const named = round.manifest()!.read.filter((entry) => entry.kind !== "account");
 	const ids = named.map((entry) => entry.id).sort();
-	const key = KeyedRequest.of("account", { revision: round.revision ?? null, records: account.records }).key;
-	if (accountRecord.key !== key || account.records.join() !== ids.join())
+	if (accountRecord.key !== accountKey(round.revision ?? null, account) || account.records.join() !== ids.join())
 		return { refused: "names an account of other records than its own" };
 	const byId = new Map(set.records().map((record) => [record.id, record]));
 	// A run that stands for its lens counts every finding; an escalated run's kept quick run counts only those it names.

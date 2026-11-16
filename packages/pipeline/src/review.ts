@@ -3053,6 +3053,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		producers: readonly Producer[],
 		walkthrough: SharedRecord | undefined,
 		state: FindingsState | undefined,
+		resolutionPolicy: string | null,
 	) => {
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		const sighted = (source: FindingSource) =>
@@ -3101,6 +3102,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			filled,
 			allowSkip: accounted.skippable(),
 			producers,
+			resolutionPolicy,
 		});
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
@@ -3659,6 +3661,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						summary.walkthrough,
 					),
 			findings,
+			// The policy the adjudication task decided under, as its input names it.
+			input.resolutionPolicy ?? null,
 		);
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>

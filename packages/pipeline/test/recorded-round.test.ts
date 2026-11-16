@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	type AccountPayload,
 	Changeset,
@@ -39,7 +40,7 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ReviewRecords } from "../src/review-records.ts";
+import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
@@ -94,6 +95,8 @@ type Scenario = {
 	readonly standards?: (changeset: Changeset) => Promise<Standards>;
 	// Triage's answer for contracts, so it can run at quick and escalate.
 	readonly triage?: RecordedDecider;
+	// Where the review reads per-path policy; without it, `config` applies to every path.
+	readonly policy?: RepositorySource;
 };
 
 // One review of the fixture under `scenario`, exporting to `store`. A review that throws carries the verdict it
@@ -136,6 +139,7 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		checks: [...(scenario.given ?? checks)],
 		records: store,
 		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
+		...(scenario.policy === undefined ? {} : { policy: scenario.policy }),
 	}).then(
 		(result) => result.verdict,
 		(error: unknown) => {
@@ -160,6 +164,15 @@ function read(reviewed: Reviewed, records: readonly RecordEnvelope[] = reviewed.
 	return RecordedRound.of(records, id, everyRecordCounts).verdict({
 		revision: reviewed.changeset.revision,
 		config: reviewed.config,
+	});
+}
+
+function readUnder(reviewed: Reviewed, policy: RepositorySource) {
+	return RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+		revision: reviewed.changeset.revision,
+		config: reviewed.config,
+		repoRoot: repo,
+		policy,
 	});
 }
 
@@ -349,7 +362,7 @@ describe("a round read back from its records", () => {
 		expect(after.status).toBe("findings");
 	});
 
-	it("resolves each finding under its own path's policy when a policy source is given", async () => {
+	it("resolves each finding under its own path's policy when the review and the reader read one source", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
 			{
@@ -359,17 +372,66 @@ describe("a round read back from its records", () => {
 			},
 			{ "src/a.ts": lines("export const a = 2;") },
 		);
-		const reviewed = await review(exported());
-		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
-			revision: reviewed.changeset.revision,
-			config: reviewed.config,
-			repoRoot: repo,
-			policy: { kind: "revision", commit: gitIn(repo, "rev-parse", "main") },
-		});
+		const policy: RepositorySource = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") };
+		const reviewed = await review(exported(), { policy });
+		const verdict = await readUnder(reviewed, policy);
 
-		expect(reviewed.verdict.findings.acknowledge.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.findings.acknowledge).toEqual([]);
+		expect(reviewed.verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+	});
+});
+
+describe("a round decided under another policy", () => {
+	const worktree: RepositorySource = { kind: "worktree" };
+	const accountOf = (reviewed: Reviewed) =>
+		reviewed.stored.find(({ kind }) => kind === "account")!.payload as AccountPayload;
+	const refusedWith = (verdict: Verdict, round: string, reason: string) => {
+		expect(verdict.status).toBe("not-reviewed");
+		expect(verdict.notRun).toEqual([{ name: "records", status: "failed", reason: `round ${round} ${reason}` }]);
+	};
+
+	it("decides as the review did when the reader holds the policy the review decided under", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(reviewed.verdict.status).toBe("findings");
+		expect((await readUnder(reviewed, worktree)).toJSON()).toEqual(reviewed.verdict.toJSON());
+	});
+
+	it("reads not reviewed once melian.yaml changes what blocks between the review and the read", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const decidedUnder = accountOf(reviewed).resolutionPolicy;
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
+		const verdict = await readUnder(reviewed, worktree);
+		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
+		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(readsUnder).not.toBe(decidedUnder);
+		refusedWith(
+			verdict,
+			roundOf(reviewed.stored),
+			`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${readsUnder}`,
+		);
+	});
+
+	it("reads not reviewed when the review read a policy source and the reader reads none", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		refusedWith(
+			await read(reviewed),
+			roundOf(reviewed.stored),
+			`was decided under resolution policy ${accountOf(reviewed).resolutionPolicy}, and the reader reads none`,
+		);
+	});
+
+	it("reads not reviewed when the review read no policy source and the reader reads one", async () => {
+		const reviewed = await review(exported());
+		expect(accountOf(reviewed).resolutionPolicy).toBeNull();
+		const verdict = await readUnder(reviewed, worktree);
+		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
+		refusedWith(
+			verdict,
+			roundOf(reviewed.stored),
+			`was decided under no resolution policy, and this checkout's reads ${readsUnder}`,
+		);
+		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
 	});
 });
 
@@ -427,7 +489,7 @@ describe("a round its records cannot stand for", () => {
 				const account = namedOf(records, round, "account");
 				const payload = account.payload as AccountPayload;
 				const counted = payload.records.slice(1);
-				const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+				const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 				const other = SharedRecord.parseEnvelope({
 					...account.toJSON(),
 					key,
@@ -570,7 +632,7 @@ function added(
 	const account = namedOf(records, round, "account");
 	const payload = account.payload as AccountPayload;
 	const counted = [...payload.records, other.id].sort();
-	const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+	const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 	const next = SharedRecord.parseEnvelope({ ...account.toJSON(), key, payload: { ...payload, records: counted } });
 	const all = [...records.filter((each) => each !== account), next, other];
 	return renamed(reviewed, all, round, (read) => [...read.map((each) => (each === account ? next : each)), other], [
@@ -611,7 +673,7 @@ function rebuiltWith(
 	if (record.kind !== "account" && account !== undefined) {
 		const payload = account.payload as AccountPayload;
 		const counted = payload.records.map((id) => (id === record.id ? changed.id : id)).sort();
-		const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+		const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 		const next = SharedRecord.parseEnvelope({ ...account.toJSON(), key, payload: { ...payload, records: counted } });
 		swapped.splice(swapped.indexOf(account), 1, next);
 		account = next;

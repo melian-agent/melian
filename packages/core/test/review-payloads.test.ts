@@ -262,6 +262,7 @@ const account = {
 		{ check: "lens.security", version: "abc@careful", ids: null },
 		{ check: "lens.security", version: "abc@quick", ids: [dismissed, "1123456789abcdef"] },
 	],
+	resolutionPolicy: "2:0123456789abcdef",
 };
 samples.push(["account", account]);
 
@@ -305,6 +306,7 @@ const bounds: readonly [string, string, RecordJson][] = [
 	["account", "records/0", "1".repeat(63)],
 	["account", "filled/0/status", "ran"],
 	["account", "producers/2/ids/0", "x"],
+	["account", "resolutionPolicy", "2:0123456789abcdeg"],
 ];
 
 // Each other value an enumerated field takes, so every one the schema lists is accepted.
@@ -317,6 +319,7 @@ const variants: readonly [string, string, RecordJson][] = [
 	["telemetry", "stages/0/ended", null],
 	["account", "filled/1/status", "skipped"],
 	["account", "filled/0/reason", null],
+	["account", "resolutionPolicy", null],
 ];
 
 const check = (kind: string, payload: RecordJson) => reviewPayloads[kind]?.(payload);

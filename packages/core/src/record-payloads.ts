@@ -278,7 +278,8 @@ export const dismissalPayloadSchema = Type.Object(
  * An account record's payload: how a round accounts for every check its tier names. It holds the tier's checks in tier
  * order, the IDs of the check and lens records it counts, the record it made for each check no record holds, the checks
  * whose skip lets the review pass, and the sources whose findings the review counts, each with the finding IDs it keeps
- * where it keeps only some.
+ * where it keeps only some. It names the resolution policy the review decided under by its fingerprint, or `null` when
+ * the review read no policy source, so a reader under another policy reads the round as not reviewed.
  */
 export const accountPayloadSchema = Type.Object(
 	{
@@ -288,6 +289,7 @@ export const accountPayloadSchema = Type.Object(
 		filled: Type.Array(Type.Object({ ...decidedFields, status: literals(["skipped", "failed"]) }, strict)),
 		allowSkip: Type.Array(text),
 		producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
+		resolutionPolicy: nullable(Type.String({ pattern: "^[0-9]+:[0-9a-f]{16}$" })),
 	},
 	strict,
 );
