@@ -21,7 +21,7 @@ Each string field of an exported record is one of seven things. The list comes f
 1. An ID, key, hash or commit: a record's ID, a finding's ID, a request key, a trigger's hashes, a revision's commits, and the snapshot ID, receipt and cache key Enola mints for a graph.
 2. A time Melian stamped: a dismissal's `at`.
 3. A code from a closed set Melian defines: a status, a skip's cause, a `CheckErrorCode`, a severity, a scrutiny level, a budget that ended, a telemetry stage's outcome, and the source of a route in a lens's lineage.
-4. A name Melian or the base's configuration gives: a check's or a lens's name, a lens's version, a stage's name, a model and the route it came by, a triage decider, and a question set with its version, questions and options.
+4. A name Melian or the base's configuration gives: a check's or a lens's name, a lens's version, a stage's name, a model and the route it came by, a triage decider, and a question set with its version, questions and options. A telemetry stage's model names the reasoning level its provider reported only when the level is one of Pi's; any other reads `unrecognised`.
 5. A path in the repository.
 6. The review's content: a finding's own text, as the lens or verifier wrote it, a verifier's verdict on a claim, and a walkthrough.
 7. A dismissal's dismisser and reason. A writer wrote both, through `melian dismiss`, and the record keeps them because rule 7 has a reader show each standing dismissal's reason. No other field takes a writer's text, and no other record kind holds a dismisser or a reason of a dismissal.
