@@ -131,9 +131,38 @@ function declaredRules(text: string): string[] {
 	});
 }
 
+// A built-in check's result carries the check's name as its rule. These are the names `enola help check` lists for the
+// pinned 0.4.40; raise them with the pin.
+const builtinRules = new Set([
+	"cycles",
+	"layers",
+	"crossrepo",
+	"coverage",
+	"unused-routes",
+	"messaging-coverage",
+	"god-class",
+	"hotspots",
+	"dependency-depth",
+	"exported-surface",
+	"complexity-outliers",
+	"intent",
+	"constraints",
+	"domain",
+	"query-loops",
+	"entry-points",
+	"dead-methods",
+	"vendored-candidates",
+	"import-closure",
+	"package-metrics",
+	"dead-code",
+	"performance",
+	"packwerk",
+]);
+
 /**
  * Reads Enola SARIF, excluding resolved and explicitly suppressed results. Unlocated results sit on its policy. A rule
- * outside `rules`, the IDs the base's policy declares, becomes `rule-<hash>`, with the rule Enola wrote in the message.
+ * that is neither one of Enola's built-in checks nor in `rules`, the IDs the base's policy declares, becomes
+ * `rule-<hash>`, with the rule Enola wrote in the message.
  */
 export function normaliseEnolaSarif(output: string, run: ToolRun, rules: ReadonlySet<string>): ToolLog {
 	try {
@@ -154,7 +183,7 @@ export function normaliseEnolaSarif(output: string, run: ToolRun, rules: Readonl
 			if (result.properties?.bucket === "resolved" || (result.suppressions?.length ?? 0) > 0) return [];
 			if (typeof result.ruleId !== "string" || !["error", "warning", "note", "none"].includes(String(result.level)))
 				throw new Error("Missing rule or severity");
-			const declared = rules.has(result.ruleId);
+			const declared = builtinRules.has(result.ruleId) || rules.has(result.ruleId);
 			const message = (result as { message?: { text?: unknown } }).message;
 			return [
 				{

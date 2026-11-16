@@ -563,8 +563,8 @@ describe("staticFindings", () => {
 	});
 
 	it("still reports another Enola rule on lines the change did not edit", async () => {
-		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspot")).toEqual({
-			findings: [["enola/hotspot", "introduced"]],
+		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspots")).toEqual({
+			findings: [["enola/hotspots", "introduced"]],
 			notes: [],
 		});
 	});
