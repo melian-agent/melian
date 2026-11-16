@@ -588,7 +588,7 @@ const recordLimit = 256;
 
 // How the probe's own process ended, from the last line its runner wrote to fd 3. A record that is absent, malformed or
 // past the bound leaves both null, which shows nothing.
-function endingOf(record: Buffer): { exitCode: number | null; signal: string | null } {
+export function endingOf(record: Buffer): { exitCode: number | null; signal: string | null } {
 	const unknown = { exitCode: null, signal: null };
 	const lines = record.toString("utf8").split("\n");
 	// The record ends with a newline and starts on a line of its own, so a whole line has a newline on each side of it.
