@@ -367,9 +367,7 @@ describe("a round read back from its records", () => {
 			policy: { kind: "revision", commit: gitIn(repo, "rev-parse", "main") },
 		});
 
-		expect(reviewed.verdict.findings.acknowledge.map(({ ruleId }) => ruleId)).toEqual([
-			"changed-return",
-		]);
+		expect(reviewed.verdict.findings.acknowledge.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
 		expect(verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
 		expect(verdict.findings.acknowledge).toEqual([]);
 	});
