@@ -1,0 +1,48 @@
+# A round probes in its own job, behind a containment check, and fails a level that cannot probe
+
+Amends: [A trust-boundary level that runs probes](2026-11-07-trust-boundary-level-that-probes.md), "Elsewhere the level runs as it would without `probe`", for a review run with `--require-probes`, as the `melian round` workflow runs it
+Amends: [Probing is on for Melian's own rounds, in a lens of its own](2026-11-16-probing-on-for-melians-own-rounds.md), "Otherwise its `deep` level runs as an ordinary `deep` level", for rounds the `melian round` workflow runs
+
+Status: for [issue #505](https://github.com/melian-agent/melian/issues/505). The maintainer ruled on 2026-11-16, in the coordinator's session, [as the coordinator recorded on the issue](https://github.com/melian-agent/melian/issues/505#issuecomment-6910823418), that the workflow runs probes with the sandbox installed in the round job: "absolutely, but install the sandbox, the whole point is to be a full, parity review that runs safely." The same ruling asked that a round where a level that probes could not probe not read as a clean review. The containment step and the closed set of causes follow [the revised plan](https://github.com/melian-agent/melian/issues/505#issuecomment-6911137332), which had an attacking review before it was built. The four choices inside the step and the deferred stored field are the coordinator's answers on approach of 2026-11-16, recorded on the issue, not rulings.
+
+## Problem
+
+The `melian round` workflow's round job holds two logins, the Claude and Codex ones, in its environment and on its disk. A probe is head code, written by a model that read the head. Until now the round job installed no sandbox, so `lens.trust-boundary-probes` ran its `deep` level without probes and passed with only its reading.
+
+Two things can go wrong once the job probes. A probe could reach what the job holds: a login in an environment variable, a file under the runner's home or temporary directory, the network, or another process. And a level that cannot probe on this runner, for a reason the runner does not show, could pass the round just as before, without anyone noticing.
+
+Example: the runner image drops `unshare`, so `Probe.availability` reports that the sandbox cannot run. Every probing level then runs without probes and passes. The round reads `passed`, and `melian/review` turns green on a head no probe ever touched.
+
+## Choice
+
+**The job proves containment before the round runs.** The round job installs bubblewrap, socat and ripgrep, and turns off the AppArmor limit on unprivileged user namespaces. Then `scripts/round-probe-containment.mjs` runs a probe through the real `Probe` code, under the base policy and as the runner's own user. It plants a canary in the environment, the home directory and the temporary directory, and fails the step, and with it the round, if any route reaches it. The routes are: the environment, the probe's arguments, every file it may read, writes outside its scratch directory, TCP and DNS, the HTTP and SOCKS proxies, `sudo`, and System V IPC. The step holds no secret, and it runs before the step that does. `check.yml` runs the same script on the same image, under Node 24, so a change that breaks containment fails CI before it merges. The script's decisions are functions with tests of their own: which routes it tries, whether the probe finished, what reached the host, and the exit code. Each failing input has a test, and an empty failure list is the one that passes, by the coordinator's answer on approach of 2026-11-16. The step itself runs as a test on Linux, and fails rather than skips when `MELIAN_PROBE_SANDBOX=1` is set and the sandbox cannot run.
+
+The four choices inside the script, which the coordinator answered on approach on 2026-11-16:
+
+1. **Token shapes.** The script searches every file a probe may read for a login's shape: a GitHub token, an OpenAI or Anthropic key, a JWT, a private key header. A match fails the step, except inside the named public roots: the system's programs and libraries, installed npm packages, and the Node binary that runs the round. Each root has its reason in `publicRoots`. Those roots hold sample keys in documentation and tests, as `@octokit/auth-token`'s README does, and nothing the round writes. The step prints how many such matches it listed, so a reader can see the count grow.
+2. **A proxy that closes with no reply counts as refused.** sandbox-runtime's proxy allows no domain, so it closes the connection. The script asserts it read no byte of reply, so a proxy that answered before closing fails.
+3. **The environment is asserted exactly.** A probe sees `PATH`, `HOME`, `TMPDIR` and `LANG` from `Probe`, the shell's `PWD`, `OLDPWD` and `SHLVL`, and the variables sandbox-runtime adds for its proxy. A missing variable fails as an extra one does, so a change to what a probe sees shows up as a failure, not as silence.
+4. **The step's tree is the checkout it runs in.** The script probes a tree written from the default branch's own commit. That stands for a round's probes because both use the same `Probe` code, the same base policy, the same user and the same runner. Only the head's tracked files differ, and the policy decides what a probe may read, not the head.
+
+**What the step found on the runner.** On `blacksmith-4vcpu-ubuntu-2404`, as a user who is not root, every route was shut. A probe may read 15,156 files under `/sys`; 5,359 more refused it. They describe the machine's kernel modules, devices, buses and firmware. None held the canary or a token shape, since `/sys` holds no process environment and no file the round writes. The IPC route was shut by running bubblewrap inside `unshare --user --ipc`, which `packages/pipeline/src/probe.ts` now does.
+
+**A token-shaped literal in the default branch fails every round.** The step's tree is the default branch's checkout, so a commit there that holds a token shape outside the public roots fails each round's containment step until someone removes it. This repository's own test of the shapes builds its private key header from two halves for this reason. The same script in `check.yml` fails such a commit's pull request first, so it should never reach the default branch.
+
+**A level that probes and cannot probe fails.** The round passes `--require-probes` to `melian review`. Under it, a level set to probe that cannot probe here records `failed` rather than running without probes. So does a level whose prober asked for a probe that could not run. A level that plans no attack, or skips one and says why, still passes. The failure has one of eight causes from a closed set: `no-writer`, `untrusted-writer`, `writers-untrusted`, `sandbox-unavailable`, `head-refuses`, `prober-tier-refused`, `prober-tier-unrouted` and `probe-refused`. Each has a fixed sentence in `probeGapSentences`.
+
+A level's reason can name a path in the head, so it never leaves the job. `--probe-gaps <file>` writes each failed level's check, level and cause as JSON. `scripts/round-probe-gaps.mjs` rebuilds each gap from those closed sets and prints one line for it to the job's log: the check, the level, the cause and its sentence. A file holding anything else prints one fixed line. The comment says that each such check probes and could not probe here, and that the round's log names why.
+
+**A head past the tree limits passes only on a host round.** A head with more files than `headTreeLimits` allows refuses probes, as `head-refuses`. The round then fails the probing level, so such a pull request gets `success` on `melian/review` only from a round on the host, where a reviewer can raise the limit or judge the head by hand.
+
+## What this leaves open
+
+- **The stored field is deferred.** The cause lives only in the log and the public gaps file. A field on the stored check record would need new versions of the verdict, adjudication, lens task and review index documents, with reopen tests for each. This pull request takes the cheaper path, and the coordinator opens the follow-up when it lands.
+- **[Issue #493](https://github.com/melian-agent/melian/issues/493).** An attack whose every probe showed nothing, such as one that timed out, still counts as answered. So `--require-probes` fails a level whose probe could not run, but not one whose probe ran and showed nothing. The maintainer's ruling on that issue is not built yet.
+- **The proxy's sockets.** sandbox-runtime's proxy listens on the host, and any process in the job can reach it. It allows no domain, so reaching it gives nothing. A later change that allows a domain for probes would need its own look at who else in the job can use it.
+- **Stored reviews.** `--require-probes` acts on a review that runs. A round's store is thrown away after each run, so every Actions round runs its lenses. A host that keeps a stored verdict reviewed without the flag would print it unchanged.
+
+## Why not the alternatives
+
+- **Probes on the host only.** The host's rounds are rare, and the point of the workflow is that a builder can run rounds without the coordinator's machine. Probing there alone would leave every Actions round with a reading-only trust lens.
+- **A separate job with no logins.** The probes need the head and the models, and the models need a login. Splitting the prober from the planner across jobs is a larger change, and the containment step proves the shorter path holds.
+- **Pass a level that cannot probe, with a note.** That was the behaviour before, and the example above shows how it turns a missing sandbox into a green status.
