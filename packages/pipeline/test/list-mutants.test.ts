@@ -282,6 +282,20 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(list.mock.calls).toEqual([[{ all: true, limitedTo: ["src/flags.ts"] }]]);
 	});
 
+	it.each([
+		[4, 4],
+		[5, 6],
+	])(
+		"holds the listings of the last four files asked about: after %s files, %s enumerations",
+		async (files, lists) => {
+			const paths = Array.from({ length: files }, (_, index) => `src/file${index}.ts`);
+			const head = commit(repo, Object.fromEntries(paths.map((path) => [path, flags(1)])));
+			const list = vi.spyOn(MutationEnumeration.prototype, "list");
+			for (const path of [...paths, paths[0]!]) await call(head, { path });
+			expect(list).toHaveBeenCalledTimes(lists);
+		},
+	);
+
 	it("pages at a line boundary when the cap falls inside a line, so the next call repeats none", async () => {
 		const head = commit(repo, {
 			"src/flags.ts": `${flags(maxListedMutants - 1)}export const pair = [true, false];\n`,

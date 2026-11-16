@@ -874,9 +874,10 @@ export function verifierInjectionPolicy(nonce: string): string {
 }
 
 // Keyed by the repository, the review's resolved base and head commits, and the file, so paging never enumerates again.
-// It lives in memory and is never stored or shared, so it has no row in the identity guideline.
+// It lives in memory and is never stored or shared, so it has no row in the identity guideline. A listing can hold up
+// to the enumerator's 64 MiB response, so the memo holds four: paging reads one file at a time.
 const enumerations = new GraphMemo<MutationEnumeration>(2);
-const listings = new GraphMemo<MutantListing>(64);
+const listings = new GraphMemo<MutantListing>(4);
 
 function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	const change = [review.repoRoot, review.base, review.head].join("\0");
