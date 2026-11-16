@@ -89,6 +89,12 @@ describe("terminateRecorded", () => {
 		},
 	);
 
+	it("leaves a recorded pid alone when only another pid has its start, as two started in one second do", async () => {
+		const fake = new FakeProcesses([at(11, 1, "same second")]);
+		await terminateRecorded(recorded(at(10, 1, "same second")), fake, async () => {}, []);
+		expect(fake.kills).toEqual([]);
+	});
+
 	it("leaves a recorded pid alone when no such process runs", async () => {
 		const fake = new FakeProcesses([at(99, 1)]);
 		await terminateRecorded(recorded(at(10, 1)), fake, async () => {}, []);
@@ -173,6 +179,39 @@ describe("terminateRecorded", () => {
 		);
 		expect(fake.kills).toEqual([[10, "SIGTERM"]]);
 	});
+
+	it("neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match", async () => {
+		// A zombie has exited and keeps its pid until it is reaped, so no other process can hold that pid meanwhile.
+		const fake = new FakeProcesses([{ ...at(10, 1), state: "Z" }, { ...at(11, 1), state: "Z+" }], []);
+		const sleeps: number[] = [];
+		await terminateRecorded(
+			recorded(at(10, 1), at(11, 1)),
+			fake,
+			async (milliseconds) => void sleeps.push(milliseconds),
+			[],
+		);
+		expect(fake.kills).toEqual([]);
+		expect(sleeps).toEqual([]);
+	});
+
+	it("still signals and waits for a recorded process with the same pid and start in any other state, or none", async () => {
+		const fake = new FakeProcesses([{ ...at(10, 1), state: "S" }, at(11, 1), { ...at(12, 1), state: "Ss+" }], []);
+		let waits = 0;
+		await terminateRecorded(
+			recorded(at(10, 1), at(11, 1), at(12, 1)),
+			fake,
+			async () => {
+				if (++waits === 2) fake.table = [];
+			},
+			[],
+		);
+		expect(fake.kills).toEqual([
+			[10, "SIGTERM"],
+			[11, "SIGTERM"],
+			[12, "SIGTERM"],
+		]);
+		expect(waits).toBe(2);
+	});
 });
 
 describe("parseProcesses", () => {
@@ -192,6 +231,56 @@ describe("parseProcesses", () => {
 	it("rejects a valid-looking row with text before its pid", () => {
 		expect(parseProcesses("garbage 101 1 Thu Oct 8 10:00:00 2026")).toEqual([]);
 	});
+
+	it("gives a row without a state no state, as the supervisor's ps prints it", () => {
+		expect(parseProcesses(" 5 1 Sun Jan  4 00:00:00 2026\n 6 1 Sat Jan 3 00:00:00 2026")).toStrictEqual([
+			{ pid: 5, ppid: 1, start: "Sun Jan 4 00:00:00 2026" },
+			{ pid: 6, ppid: 1, start: "Sat Jan 3 00:00:00 2026" },
+		]);
+	});
+
+	it("reads a start set off from its parent by more than one space", () => {
+		expect(parseProcesses(" 7 1  Wed Jan  7 00:00:00 2026 S")).toStrictEqual([
+			{ pid: 7, ppid: 1, start: "Wed Jan 7 00:00:00 2026", state: "S" },
+		]);
+	});
+
+	it("reads the state after the start, from Linux's ps", () => {
+		// Captured from procps-ng 4.0.4 on 2026-11-16 with ps -A -o pid=,ppid=,lstart=,stat=; pid 5809 was an orphan that pid 1
+		// left unreaped.
+		const linux = [
+			"    1     0 Mon Nov 16 01:27:48 2026 SLl",
+			"    4     2 Mon Nov 16 01:27:48 2026 I<",
+			" 5809     1 Mon Nov 16 02:08:51 2026 Z",
+		].join("\n");
+		expect(parseProcesses(linux)).toStrictEqual([
+			{ pid: 1, ppid: 0, start: "Mon Nov 16 01:27:48 2026", state: "SLl" },
+			{ pid: 4, ppid: 2, start: "Mon Nov 16 01:27:48 2026", state: "I<" },
+			{ pid: 5809, ppid: 1, start: "Mon Nov 16 02:08:51 2026", state: "Z" },
+		]);
+	});
+
+	it("reads the state after the start, from macOS's ps", () => {
+		// Written from macOS's ps format, not captured: no Mac is reachable from here. Core's real-table test reads the real
+		// format on CI's macOS job.
+		const macos = [
+			"    0     0 Mon Nov  9 08:00:00 2026     Ss  ",
+			"  412     1 Tue Nov 10 09:01:02 2026     S+  ",
+			"  413   412 Sat Nov 14 10:00:00 2026     Z   ",
+		].join("\n");
+		expect(parseProcesses(macos)).toStrictEqual([
+			{ pid: 0, ppid: 0, start: "Mon Nov 9 08:00:00 2026", state: "Ss" },
+			{ pid: 412, ppid: 1, start: "Tue Nov 10 09:01:02 2026", state: "S+" },
+			{ pid: 413, ppid: 412, start: "Sat Nov 14 10:00:00 2026", state: "Z" },
+		]);
+	});
+
+	it("reads a command after the state, apart from both", () => {
+		// Captured as the zombie line above, with args= after stat=.
+		expect(parseProcesses(" 5809     1 Mon Nov 16 02:08:51 2026 Z    [sleep] <defunct>  ")).toStrictEqual([
+			{ pid: 5809, ppid: 1, start: "Mon Nov 16 02:08:51 2026", state: "Z", command: "[sleep] <defunct>" },
+		]);
+	});
 });
 
 describe("ProcessTable reads", () => {
@@ -201,14 +290,16 @@ describe("ProcessTable reads", () => {
 		vi.mocked(spawnSync).mockImplementation(actual);
 	});
 
-	it("asks ps for every pid, parent and start in decoded text", () => {
+	it("asks ps for every pid, parent, start and state in decoded text", () => {
 		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			expect(command).toBe("/bin/ps");
-			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart="]);
+			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat="]);
 			expect(options).toEqual({ encoding: "utf8" });
-			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026", stderr: "" } as ReturnType<typeof spawnSync>;
+			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S", stderr: "" } as ReturnType<typeof spawnSync>;
 		});
-		expect(new ProcessTable().list()).toEqual([{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026" }]);
+		expect(new ProcessTable().list()).toStrictEqual([
+			{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S" },
+		]);
 		expect(asked).toHaveBeenCalledTimes(1);
 	});
 
@@ -683,11 +774,60 @@ describe("MutationProcess.execute", () => {
 	);
 });
 
+// A fake ps: each row gets the start lstart prints, and its state only when ps is asked for stat=.
+const fakePs = (rows: { pid: number; ppid: number; state: string }[]) => (_command: string, args: string[]) => ({
+	status: 0,
+	stdout: rows
+		.map(({ pid, ppid, state }) => `${pid} ${ppid} Mon Nov 16 01:00:0${pid % 10} 2026${args[2]!.includes("stat=") ? ` ${state}` : ""}`)
+		.join("\n"),
+	stderr: "",
+});
+
+it("leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree", async () => {
+	let exited: ((code: number) => void) | undefined;
+	const rows = [
+		{ pid: 10, ppid: 1, state: "S" },
+		{ pid: 20, ppid: 1, state: "S" },
+		{ pid: 21, ppid: 20, state: "S" },
+		{ pid: 22, ppid: 21, state: "Z" },
+	];
+	const kill = vi.fn((pid: number) => {
+		rows.splice(
+			rows.findIndex((row) => row.pid === pid),
+			1,
+		);
+	});
+	const source = supervisorSource(
+		{ controller: { pid: 10, start: "Mon Nov 16 01:00:00 2026" }, interval: 100 },
+		"head-command",
+		"/control",
+	).replace(/^import .*;$/gm, "");
+	runInNewContext(source, {
+		MutationStderr,
+		spawn: () => ({
+			pid: 21,
+			stderr: { setEncoding: () => {}, on: () => {} },
+			on: (_name: string, callback: (code: number) => void) => {
+				exited = callback;
+			},
+		}),
+		spawnSync: (command: string, args: string[]) => fakePs(rows)(command, args),
+		writeFileSync: () => {},
+		renameSync: () => {},
+		setInterval: () => 1,
+		setTimeout: (callback: () => void) => callback(),
+		process: { pid: 20, on: () => {}, exit: () => {}, kill },
+	});
+	exited!(0);
+	await new Promise(setImmediate);
+	expect(kill.mock.calls).toEqual([[21, "SIGTERM"]]);
+});
+
 it("captures bounded stderr in the supervisor before publishing done with fake process controls", async () => {
 	let exited: ((code: number) => void) | undefined;
 	let data: ((text: string) => void) | undefined;
 	const written = new Map<string, string>();
-	let table = ["10 1 controller", "20 1 supervisor", "21 20 root"];
+	let table = ["10 1 Mon Nov 16 01:00:00 2026", "20 1 Mon Nov 16 01:00:01 2026", "21 20 Mon Nov 16 01:00:02 2026"];
 	const child = {
 		pid: 21,
 		stderr: {
@@ -703,7 +843,7 @@ it("captures bounded stderr in the supervisor before publishing done with fake p
 		},
 	};
 	let source = supervisorSource(
-		{ controller: { pid: 10, start: "controller" }, interval: 100 },
+		{ controller: { pid: 10, start: "Mon Nov 16 01:00:00 2026" }, interval: 100 },
 		"head-command",
 		"/control",
 	).replace(/^import .*;$/gm, "");

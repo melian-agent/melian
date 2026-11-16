@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { type ProcessControl, type ProcessEntry, stopTree } from "../src/process-tree.ts";
+import { type ProcessControl, type ProcessEntry, ProcessTable, stopTree } from "../src/process-tree.ts";
 
-// stopTree on a fake process table and a fake kill: nothing here signals a real process.
+// stopTree on a fake process table and a fake kill: nothing here signals a real process. One test reads the real table.
 
 class FakeTable implements ProcessControl {
 	entries: ProcessEntry[];
@@ -130,5 +130,15 @@ describe("stopTree", () => {
 			[101, "SIGTERM"],
 			[101, "SIGKILL"],
 		]);
+	});
+});
+
+describe("ProcessTable", () => {
+	it("reads this process from the real table, with its start and a state that is not a zombie's", () => {
+		// The one check of ps's real output on each system CI runs, macOS included.
+		const own = new ProcessTable().list().find((each) => each.pid === process.pid);
+		expect(own).toMatchObject({ ppid: process.ppid, start: expect.stringMatching(/^\S+( \S+){4}$/) });
+		expect(own?.state).toMatch(/^[A-Za-z]/);
+		expect(own?.state).not.toMatch(/^Z/);
 	});
 });

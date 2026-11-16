@@ -8,6 +8,9 @@ export type RecordedProcess = { pid: number; start: string };
 
 export interface ProcessEntry extends RecordedProcess {
 	ppid: number;
+	// Present only where ps was asked for stat= and args=.
+	state?: string;
+	command?: string;
 }
 
 export interface ProcessControl {
@@ -15,13 +18,17 @@ export interface ProcessControl {
 	kill(pid: number, signal: "SIGTERM" | "SIGKILL"): void;
 }
 
-// Embedded in the supervisor script as source, so it names nothing outside itself.
+// Embedded in the supervisor script as source, so it names nothing outside itself. Reads pid=,ppid=,lstart= with an
+// optional stat= and then args= after it. lstart is ctime's five fields, so the state is the word after them.
 export function parseProcesses(text: string): ProcessEntry[] {
 	const entries: ProcessEntry[] = [];
 	for (const line of text.split("\n")) {
-		const match = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line);
-		if (match !== null)
-			entries.push({ pid: Number(match[1]), ppid: Number(match[2]), start: match[3]!.replace(/\s+/g, " ") });
+		const match = /^\s*(\d+)\s+(\d+)\s+(\S+(?:\s+\S+){4})(?:\s+(\S+)(?:\s+(\S.*?))?)?\s*$/.exec(line);
+		if (match === null) continue;
+		const entry: ProcessEntry = { pid: Number(match[1]), ppid: Number(match[2]), start: match[3]!.replace(/\s+/g, " ") };
+		if (match[4] !== undefined) entry.state = match[4];
+		if (match[5] !== undefined) entry.command = match[5];
+		entries.push(entry);
 	}
 	return entries;
 }
@@ -41,7 +48,11 @@ export async function terminateRecorded(
 				Number.isSafeInteger(record.pid) &&
 				record.pid > 1 &&
 				!kept.includes(record.pid) &&
-				table.some((entry) => entry.pid === record.pid && entry.start === record.start),
+				// A zombie has exited and holds its pid until it is reaped, so it is neither signalled nor waited for. Only a
+				// state ps reports as a zombie counts; a missing one does not.
+				table.some(
+					(entry) => entry.pid === record.pid && entry.start === record.start && entry.state?.startsWith("Z") !== true,
+				),
 		);
 	};
 	// The table is read again before each signal, not once for the batch: a recorded process can exit while the ones
@@ -97,7 +108,7 @@ export function stopTree(
 
 export class ProcessTable implements ProcessControl {
 	list(): ProcessEntry[] {
-		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart="], { encoding: "utf8" });
+		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], { encoding: "utf8" });
 		if (result.status !== 0) throw new Error(`ps failed: ${result.stderr}`);
 		return parseProcesses(result.stdout);
 	}
