@@ -41,6 +41,7 @@ describe("the runner's record of how a probe ended", () => {
 	it("reads a signal only when the system names it", () => {
 		expect(record('\n{"code":null,"signal":"SIGNOPE"}\n')).toEqual(unknown);
 		expect(record('\n{"code":null,"signal":9}\n')).toEqual(unknown);
+		expect(record('\n{"code":null,"signal":["SIGKILL"]}\n')).toEqual(unknown);
 		expect(record('\n{"code":0,"signal":"SIGTERM"}\n')).toEqual(unknown);
 	});
 
