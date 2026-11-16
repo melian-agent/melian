@@ -152,6 +152,20 @@ describe("stopTree", () => {
 		expect(table.kills).toEqual([]);
 	});
 
+	it("signals nothing, and says it could not stop the tree, when the root is no longer in the table", () => {
+		// The root has exited and been reaped, so the child it left now reads as pid 1's.
+		const table = new FakeTable([entry(1, 0), entry(self, 1), entry(101, 1)]);
+		expect(stopTree(100, table, instant)).toBeUndefined();
+		expect(table.kills).toEqual([]);
+	});
+
+	it("signals nothing, and says it could not stop the tree, when the root is a zombie", () => {
+		// A zombie has exited, so its children have already been re-parented.
+		const table = new FakeTable([entry(1, 0), entry(self, 1), { ...entry(100, self), state: "Z" }, entry(101, 1)]);
+		expect(stopTree(100, table, instant)).toBeUndefined();
+		expect(table.kills).toEqual([]);
+	});
+
 	it("sends SIGKILL to a process still there a second after SIGTERM", async () => {
 		const table = new FakeTable([entry(1, 0), entry(self, 1), entry(100, self), entry(101, 100)]);
 		table.stubborn = [101];

@@ -78,7 +78,8 @@ export async function terminateRecorded(
  * Stops `root` and every process below it, as one read of the process table shows them, by recorded pid: SIGTERM, then
  * SIGKILL. The read comes before any signal, because a child whose parent has ended is re-parented and no longer reads
  * as below `root`. This process and its ancestors are never signalled. Returns the stop's completion, or `undefined`,
- * having signalled nothing, when the table cannot be read or `root` is not a pid above 1.
+ * having signalled nothing, when the table cannot be read, `root` is not a pid above 1, or the table shows `root` gone
+ * or a zombie, since a process that has exited no longer has its children below it.
  */
 export function stopTree(
 	root: number,
@@ -94,6 +95,7 @@ export function stopTree(
 	} catch {
 		return undefined;
 	}
+	if (!table.some((entry) => entry.pid === root && entry.state?.startsWith("Z") !== true)) return undefined;
 	const parents = new Map(table.map((entry) => [entry.pid, entry.ppid]));
 	const kept: number[] = [];
 	for (let pid: number | undefined = process.pid; pid !== undefined && !kept.includes(pid); pid = parents.get(pid))

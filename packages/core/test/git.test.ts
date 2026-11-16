@@ -40,6 +40,20 @@ async function expectEnded(pid: number): Promise<void> {
 	expect(alive()).toBe(false);
 }
 
+// Stops the process whose pid a test's stand-in recorded, by that pid alone, if it still runs.
+function stopRecorded(file: string): void {
+	let pid: number;
+	try {
+		pid = Number(readFileSync(file, "utf8"));
+	} catch {
+		return;
+	}
+	if (!Number.isSafeInteger(pid) || pid <= 1) return;
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {}
+}
+
 // A process table that reads the real one and records each signal without sending it.
 class RecordingTable implements ProcessControl {
 	kills: [number, string][] = [];
@@ -238,6 +252,20 @@ describe("git with a deadline", () => {
 		expect(Date.now() - start).toBeLessThan(5000);
 	}, 30_000);
 
+	it("says the programs git started were not stopped when git has already exited and one holds its output open", async () => {
+		// Git exits at once and its child is re-parented, so the table no longer shows it below git.
+		const bin = join(repo, "bin");
+		const recorded = join(repo, "child-pid");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), `#!/bin/sh\nsleep 10 &\necho $! > ${recorded}\n`, { mode: 0o755 });
+		try {
+			const result = await git(repo, ["fetch"], { deadlineMs: 500, env: { PATH: `${bin}:${process.env.PATH}` } });
+			expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
+		} finally {
+			stopRecorded(recorded);
+		}
+	}, 20_000);
+
 	it("leaves a command that ends in time as it is", async () => {
 		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });
 		expect(result).toEqual({ code: 0, stdout: "true\n", stdoutBytes: Buffer.from("true\n"), stderr: "" });
@@ -260,8 +288,10 @@ describe("git with a standard error past its limit", () => {
 	});
 
 	it("stops git one byte past its limit, and says which stream passed which limit", async () => {
+		// Git still runs when the stop reads the table, as a fetch does while its remote writes.
+		const flood = standIn(`${writes(stderrLimit + 1)}\nwhile :; do sleep 1; done`);
 		const error = await rejection(
-			git(repo, ["-c", "fetch.prune=false", "fetch", "origin"], { env: standIn(writes(stderrLimit + 1)) }),
+			git(repo, ["-c", "fetch.prune=false", "fetch", "origin"], { env: flood }),
 			ChangesetError,
 		);
 		expect(error.code).toBe("gitOutputTooLarge");
@@ -272,7 +302,7 @@ describe("git with a standard error past its limit", () => {
 
 	it("stops git's tree on a flood, through the process table it is given", async () => {
 		const processes = new RecordingTable();
-		// Git still runs when the stop reads the table; one that had exited would be a zombie, which is not signalled. It
+		// Git still runs when the stop reads the table; one that had exited would leave the stop nothing to record. It
 		// runs no exec, which would change its command before the signal, and nothing it starts outlives a second.
 		const error = await rejection(
 			git(repo, ["fetch"], { env: standIn(`${writes(stderrLimit + 1)}\nwhile :; do sleep 1; done`), processes }),
@@ -290,7 +320,7 @@ describe("git with a standard error past its limit", () => {
 			ChangesetError,
 		);
 		expect(error.message).toBe(
-			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read, so the programs git started were not stopped`,
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read or no longer showed git, so the programs git started were not stopped`,
 		);
 	});
 
@@ -301,7 +331,7 @@ describe("git with a standard error past its limit", () => {
 			ChangesetError,
 		);
 		expect(error.message).toBe(
-			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read, so the programs git started were not stopped`,
+			`git fetch wrote more than ${stderrLimit} bytes to standard error, so Melian stopped it; the process table could not be read or no longer showed git, so the programs git started were not stopped`,
 		);
 		expect(processes.kills).toEqual([]);
 	});

@@ -13,7 +13,8 @@ export interface GitResult {
 	readonly truncated?: boolean;
 	// Set when git ran past `deadlineMs` and was stopped; `code` is then -1.
 	readonly timedOut?: boolean;
-	// Set when git was stopped but the process table could not be read, so the programs git started may still run.
+	// Set when git was stopped but the process table could not be read or no longer showed git, so the programs git
+	// started may still run.
 	readonly childrenLeft?: boolean;
 }
 
@@ -134,7 +135,8 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 		// Git and every program below it, such as ssh waiting at a passphrase prompt, by the pids one read of the process
 		// table recorded while git still ran, and git again through its own handle. A transport can hold the output pipes
 		// open, so this end of stderr is closed and git's close no longer settles the call; the stop does, within about a
-		// second. Resolves false when any read of the table failed, so programs below git may still run.
+		// second. Resolves false when any read of the table failed or no longer showed git, so programs below git may still
+		// run.
 		let stopped: Promise<boolean> | undefined;
 		const stop = () => {
 			if (stopped !== undefined) return stopped;
@@ -160,7 +162,8 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 	});
 }
 
-const unstopped = "the process table could not be read, so the programs git started were not stopped";
+const unstopped =
+	"the process table could not be read or no longer showed git, so the programs git started were not stopped";
 
 // Git's own options that take their value as the next argument.
 const optionsWithValues = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
