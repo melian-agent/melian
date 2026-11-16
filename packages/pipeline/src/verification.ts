@@ -14,6 +14,7 @@ import {
 	type DocumentReader,
 	defineTask,
 	type Harness,
+	holdsWork,
 	isFailoverError,
 	type TaskId,
 	type Tx,
@@ -223,7 +224,9 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 									(candidate.dismissed ?? []).map(({ id: _, ...claim }) => claim),
 									task.input.revision.nonce,
 								)
-							: continueJudging;
+							: (await holdsWork(runtime, id, context))
+								? judgingHandover.continue
+								: judgingHandover.fresh;
 					const settled = await (
 						await child.submit(
 							{ type: "input", content, requestId: `verify:${candidate.key}:${attempt}` },
@@ -435,8 +438,13 @@ export function candidateKey(candidate: VerificationCandidate): string {
 	return KeyedRequest.of("verification.candidate", requestJson(candidateIdentity(candidate))).key;
 }
 
-const continueJudging =
-	"Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.";
+// What the next verifier model is told when the one before it failed: `continue` once an earlier model did work in the
+// conversation, `fresh` when none did, so it is never told that verdicts it must give were already given.
+const judgingHandover = Object.freeze({
+	continue:
+		"Continue judging the labelled claims. Already recorded verdicts remain; answer every claim still missing.",
+	fresh: "The model before you failed before it started, so no claim has a verdict yet. Judge every labelled claim, from the beginning.",
+});
 
 function claimLine(label: string, id: string, severity: Severity | undefined): string {
 	return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
@@ -528,7 +536,7 @@ function verifierText(): unknown {
 		wording: probeEvidenceWording,
 		planRow: probingWording.planRow,
 		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
-		continue: continueJudging,
+		handover: judgingHandover,
 	};
 }
 
