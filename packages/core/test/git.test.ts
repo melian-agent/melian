@@ -201,7 +201,11 @@ describe("git with a deadline", () => {
 	it("reads the process table while git runs, and signals git and its transport by pid", async () => {
 		const recorded = join(repo, "pids");
 		const transport = join(repo, "transport.sh");
-		writeFileSync(transport, `echo "$(ps -o ppid= -p $PPID | tr -d ' ') $$" > ${recorded}\nexec sleep 10\n`);
+		// git is the transport's ancestor whose parent is this process; git 2.55 puts one more process between them than 2.43.
+		writeFileSync(
+			transport,
+			`p=$$\nwhile q=$(ps -o ppid= -p $p | tr -d ' ') && [ -n "$q" ] && [ "$q" -gt 1 ] && [ "$q" != ${process.pid} ]; do p=$q; done\necho "$p $$" > ${recorded}\nexec sleep 10\n`,
+		);
 		const processes = new RecordingTable();
 		const result = await git(repo, ["-c", "protocol.ext.allow=always", "fetch", `ext::sh ${transport}`], {
 			deadlineMs: 500,

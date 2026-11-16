@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -200,7 +201,10 @@ describe("ProcessTable", () => {
 		expect(own).toMatchObject({ ppid: process.ppid, start: expect.stringMatching(/^\S+( \S+){4}$/) });
 		expect(own?.state).toMatch(/^[A-Za-z]/);
 		expect(own?.state).not.toMatch(/^Z/);
-		expect(own?.command).toMatch(/node/);
+		// A process may rename itself after it starts: CI's Node reads as MainThread, so ps itself is the authority.
+		expect(own?.command).toBe(
+			execFileSync("/bin/ps", ["-o", "comm=", "-p", String(process.pid)], { encoding: "utf8" }).trim(),
+		);
 	});
 
 	// A stand-in for ps that ignores SIGTERM, records its pid, waits `seconds`, then prints one entry and exits.
