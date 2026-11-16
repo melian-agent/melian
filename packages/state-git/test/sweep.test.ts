@@ -324,6 +324,16 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		expect(store.sweep.unread).toBe("it does not list this process");
 	});
 
+	it("sweeps nothing when the table lists another child of this process's parent, but not this process", async () => {
+		const owner = await exited();
+		const suffix = owned(owner.pid);
+		plant(suffix);
+		const sibling = { pid: 4_000_000, ppid: process.ppid, start: "Mon Nov 16 01:00:00 2026" };
+		const store = await remote.open({ directory, processes: { list: () => [sibling] } });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep.unread).toBe("it does not list this process");
+	});
+
 	it("lists the leftovers before it reads the table, so a call that starts in between keeps its own", async () => {
 		const table = new ProcessTable().list();
 		const late = owned(4_000_000);
