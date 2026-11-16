@@ -3,10 +3,13 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, syml
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
+	Changeset,
+	checksOfTier,
 	defaultConfig,
 	Finding,
 	type FindingInput,
 	Lens,
+	loadConfig,
 	type MelianConfig,
 	type ResolvedFinding,
 	revisionLimits,
@@ -47,6 +50,7 @@ import {
 	ProbingCombination,
 	type ProbingRunners,
 	ProbingSettings,
+	probingGoldenPrefix,
 } from "../src/probing.ts";
 import { GoldenRunError } from "../src/run-error.ts";
 
@@ -244,6 +248,60 @@ describe("ProbingCombination", () => {
 		expect(routed.config.lenses["trust-boundary"]).toStrictEqual({ route: { model: "a/plan" } });
 		const boundary = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(Object.values(boundary.levels).map((level) => level?.probe)).toEqual([undefined, undefined, undefined]);
+	});
+});
+
+// A probing golden measures one prober, trust-boundary's, so no other lens of its tier may probe in any arm.
+describe("a probing golden", { timeout: 120_000 }, () => {
+	const probingGoldens = all.filter((each) => each.name.startsWith(probingGoldenPrefix));
+
+	it("leaves trust-boundary the only lens of its tier with a level that probes, in the arm without probes and a pair", async () => {
+		expect(probingGoldens).toHaveLength(6);
+		for (const each of probingGoldens) {
+			const { repo, base } = buildGoldenRepository(each);
+			try {
+				const source = { kind: "revision", commit: base } as const;
+				const { revision } = await Changeset.resolve(repo, "main...feature");
+				const config = (await loadConfig(repo, source, ".")).config;
+				const loaded = await Lens.load(repo, source, revision.paths());
+				const tier = checksOfTier(config, "full");
+				for (const [entry, probing] of [
+					["off=a/plan", []],
+					["pair=a/plan>b/probe", ["trust-boundary"]],
+				] as const) {
+					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded);
+					const probers = routed.lenses
+						.filter((lens) => tier.includes(`lens.${lens.name}`))
+						.filter((lens) => Object.values(lens.levels).some((level) => level?.probe !== undefined))
+						.map((lens) => lens.name);
+					expect(probers, `${each.name} ${entry}`).toEqual(probing);
+				}
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it("runs the lenses it ran before Melian's own rounds probed, with trust-boundary alone planning and probing", async () => {
+		const run = await runGolden(golden("trust-boundary-probe-round-environ-leak"), {
+			kind: "scripted",
+			probes: "unconfined",
+		});
+		expect((run.verdict.ran ?? []).map(({ name }) => name).filter((name) => name.startsWith("lens."))).toEqual([
+			"lens.contracts",
+			"lens.conventions",
+			"lens.correctness",
+			"lens.design",
+			"lens.removed-behaviour",
+			"lens.tests",
+			"lens.trust-boundary",
+		]);
+		expect(run.notes).toEqual([
+			{
+				reason: expect.stringMatching(/^it planned 2 attacks and ran 2 probes in /),
+				checks: ["lens.trust-boundary"],
+			},
+		]);
 	});
 });
 
