@@ -79,7 +79,16 @@ describe("verificationRequest", () => {
 			"candidates.0.state.claims.0.verification",
 			"candidates.0.state.speaker.message",
 		];
-		expect(keyCoverage(verificationRequest, sample, { vary, excluded })).toEqual([]);
+		const levelled: VerificationInput = {
+			...sample,
+			candidates: [
+				{
+					...candidate,
+					route: [...candidate.route, { provider: "openai-codex", modelId: "gpt-c", thinking: "medium" }],
+				},
+			],
+		};
+		expect(keyCoverage(verificationRequest, levelled, { vary, excluded })).toEqual([]);
 	});
 
 	// Another host's dismissal of the same root is another record, so a verifier shown it judged under another ruling.
