@@ -301,11 +301,15 @@ export class Miss {
 	/**
 	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
 	 * conversation, other than a prober, whose stored coverage holds the miss's file and which saw the defect: its prompt
-	 * showed the file's diff whole, or `read_file` delivered it the miss's lines, or any line of the file for a miss
-	 * without lines.
-	 * The diff has no context lines, so it shows a miss's lines only where a head-side hunk of `target`'s diff holds them.
+	 * showed the file's diff whole, or `read_file` delivered it a line of one of `location`'s ranges, or any line of the
+	 * file for a miss located by file and rule alone.
+	 * The diff has no context lines, so it shows a range's lines only where a head-side hunk of `target`'s diff holds them.
 	 */
-	async unscoped(run: Pick<RangeRun, "telemetry">, target: Pick<ReviewTarget, "range">): Promise<string | undefined> {
+	async unscoped(
+		run: Pick<RangeRun, "telemetry">,
+		target: Pick<ReviewTarget, "range">,
+		location: MissLocation,
+	): Promise<string | undefined> {
 		const scoped = run.telemetry.stages.filter(
 			(stage) =>
 				stage.name === "melian.lens" &&
@@ -316,15 +320,16 @@ export class Miss {
 				lensCovers(stage.coverage, this.file),
 		);
 		if (scoped.length === 0) return `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
-		const lines = this.lines;
+		const ranges = location.by === "file and rule" ? undefined : location.ranges;
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		const diffShows =
-			lines === undefined ||
+			ranges === undefined ||
 			revision.files
 				.filter((file) => file.path === this.file)
 				.flatMap((file) => file.hunks)
 				.some(
-					({ newStart, newLines }) => newLines > 0 && newStart <= lines[1] && newStart + newLines - 1 >= lines[0],
+					({ newStart, newLines }) =>
+						newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first),
 				);
 		const seen = scoped.some(
 			(stage) =>
@@ -332,12 +337,13 @@ export class Miss {
 				stage.read?.some(
 					(read) =>
 						read.path === this.file &&
-						(lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])),
+						(ranges === undefined ||
+							read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))),
 				),
 		);
 		return seen
 			? undefined
-			: `the review shows no completed ${probingLens} run that was shown ${this.file} or ${lines === undefined ? "read it" : `read lines ${lines[0]}-${lines[1]} of it`}`;
+			: `the review shows no completed ${probingLens} run that was shown ${this.file} or ${ranges === undefined ? "read it" : `read lines ${ranges.map(([first, last]) => `${first}-${last}`).join(", ")} of it`}`;
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -840,7 +846,7 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				const unscoped = await miss.unscoped(run, target);
+				const unscoped = await miss.unscoped(run, target, location);
 				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
 				const unadjudicated =
 					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));

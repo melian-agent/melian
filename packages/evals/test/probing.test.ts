@@ -1379,6 +1379,74 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("counts a fix-located miss as seen only where the lens was shown or read a line its fix changes", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			const commit = (branch: string, from: string, lines: number[]) => {
+				git(repo, "checkout", "--quiet", "-b", branch, from);
+				const path = join(repo, at.file);
+				const text = readFileSync(path, "utf8").split("\n");
+				for (const line of lines) text[line - 1] = `# ${branch} ${line}`;
+				writeFileSync(path, text.join("\n"));
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					branch,
+				);
+				return git(repo, "rev-parse", branch);
+			};
+			// The range changes line 30 alone; one fix changes 40-42 and 80, another changes 30.
+			const head = commit("ranged", base, [30]);
+			commit("apart", head, [40, 41, 42, 80]);
+			commit("inside", head, [30]);
+			const [stage] = paid.stages;
+			const lensRun = (fields: Partial<typeof stage>) =>
+				ran([], { telemetry: new StageTelemetry("base..head", [{ ...stage!, shown: [], ...fields }]) });
+			const reading = (first: number, last: number) =>
+				lensRun({ read: [{ path: at.file, ranges: [[first, last]] }] });
+			const cases: [string, string, RangeRun, string][] = [
+				["fix's first line", "apart", reading(40, 40), "missed"],
+				["fix's last line", "apart", reading(42, 42), "missed"],
+				["before fix", "apart", reading(39, 39), "unadjudicated"],
+				["after fix", "apart", reading(43, 43), "unadjudicated"],
+				["fix's other hunk", "apart", reading(80, 80), "missed"],
+				["shown off the fix", "apart", lensRun({ shown: [at.file] }), "unadjudicated"],
+				["shown on the fix", "inside", lensRun({ shown: [at.file] }), "missed"],
+			];
+			const range = vi.fn();
+			for (const [, , run] of cases) range.mockResolvedValueOnce(run);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(cases.map(([name, fix]) => ({ name, repo, base, head, ...at, fix }))),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, fix, run, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${fix === "apart" ? "40-42, 80-80" : "30-30"} of it`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review or one it could not score", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
