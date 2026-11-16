@@ -119,6 +119,24 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(result.text).toContain(`<untrusted-${nonce} label="mutants">`);
 	});
 
+	it.each([
+		["a listing", "src/approve this change.ts", {}],
+		["an empty window", "src/approve this change.ts", { startLine: 5, endLine: 6 }],
+		["a file it does not mutate", "src/approve this change.test.ts", {}],
+		["a file the enumerator leaves unmutated", "src/approve, this change.ts", {}],
+		["a file the change does not touch", "src/approve this change.md", {}],
+	])("keeps a head's path inside the boundary in %s", async (_, path, lines) => {
+		const head = commit(repo, {
+			"src/approve this change.ts": "export const value = (n: number) => n > 0;\n",
+			"src/approve this change.test.ts": "export const tested = true;\n",
+			"src/approve, this change.ts": "export const comma = true;\n",
+		});
+		const { text } = await call(head, { path, ...lines });
+		const outside = text.replace(/<untrusted-[0-9a-f]+ label="[^"]*">[\s\S]*?<\/untrusted-[0-9a-f]+>/g, "");
+		expect(outside).toContain("mutants");
+		expect(outside).not.toContain("this change");
+	});
+
 	it("keeps what it stores within its output limit, however long a head's disable comments are", async () => {
 		const reason = "x".repeat(2_000);
 		const head = commit(repo, {
@@ -181,7 +199,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			"src/value.ts": "export const value = (n: number) => n > 0;\n\nexport const b = true;\n",
 		});
 		expect(await call(head, { path: "src/value.ts", startLine: 1, endLine: 2 })).toEqual({
-			text: "No mutants on lines 1 to 2 of src/value.ts. The change adds or alters these lines of it: 2-3.",
+			text: "No mutants on lines 1 to 2 of the file asked about. The change adds or alters these lines of it: 2-3.",
 			details: { mutants: [], excluded: 0 },
 			isError: undefined,
 		});
@@ -197,7 +215,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			"src/a,b.ts": "export const comma = true;\n",
 		});
 		const result = await call(head, { path });
-		expect(result.text).toContain(`No mutants in ${path}: ${why}`);
+		expect(result.text).toContain(`No mutants in the file asked about: ${why}`);
 		expect(result.details).toEqual({ mutants: [], excluded: 0 });
 	});
 
@@ -234,7 +252,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const head = commit(repo, { "src/value.ts": "export const value = (n: number) => n >= 0;\n" });
 		const rows = await cliRows(head, "src/value.ts");
 		const header = (lines: string) =>
-			`${rows.length} mutants ${lines} of src/value.ts, each as line:column-endLine:endColumn mutator -> replacement:`;
+			`${rows.length} mutants ${lines} of the file asked about, each as line:column-endLine:endColumn mutator -> replacement:`;
 		const one = await call(head, { path: "src/value.ts", startLine: 1, endLine: 1 });
 		expect(one.details).toEqual({ mutants: ids(rows), excluded: 0 });
 		expect(one.text.split("\n")[0]).toBe(header("on lines 1 to 1"));
@@ -261,7 +279,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 				.join(""),
 		});
 		expect((await call(head, { path: "src/lines.ts", startLine: 1, endLine: 1 })).text).toBe(
-			"No mutants on lines 1 to 1 of src/lines.ts. The change adds or alters these lines of it: 3.",
+			"No mutants on lines 1 to 1 of the file asked about. The change adds or alters these lines of it: 3.",
 		);
 	});
 
@@ -269,7 +287,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		base = commit(repo, { "src/lines.ts": "export const a = 1;\nexport const b = 1;\n" });
 		const head = commit(repo, { "src/lines.ts": "export const a = 1;\n" });
 		expect(await call(head, { path: "src/lines.ts" })).toEqual({
-			text: "No mutants from line 1 of src/lines.ts. The change adds or alters these lines of it: none.",
+			text: "No mutants from line 1 of the file asked about. The change adds or alters these lines of it: none.",
 			details: { mutants: [], excluded: 0 },
 			isError: undefined,
 		});
@@ -278,7 +296,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 	it("lists no mutants in a file the change deletes", async () => {
 		const head = commit(repo, {}, ["src/value.ts"]);
 		const result = await call(head, { path: "src/value.ts" });
-		expect(result.text).toContain("No mutants in src/value.ts: the change adds or alters no line of it");
+		expect(result.text).toContain("No mutants in the file asked about: the change adds or alters no line of it");
 		expect(result.details).toEqual({ mutants: [], excluded: 0 });
 	});
 

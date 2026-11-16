@@ -919,9 +919,8 @@ const listMutants = defineLensTool({
 			const start = args.startLine ?? 1;
 			const end = args.endLine ?? Number.MAX_SAFE_INTEGER;
 			if (end < start) throw new Error(`endLine ${end} is before startLine ${start}`);
-			const path = visibleText(args.path);
 			const none = (why: string) => ({
-				...text(`No mutants in ${path}: ${why}`),
+				...text(`No mutants in the file asked about: ${why}`),
 				details: { mutants: [], excluded: 0 },
 			});
 			const changed = review.files.find((file) => file.path === args.path);
@@ -958,7 +957,7 @@ const listMutants = defineLensTool({
 				return {
 					...text(
 						[
-							`No mutants ${lines} of ${path}. The change adds or alters these lines of it: ${changedRanges(review, args.path)}.`,
+							`No mutants ${lines} of the file asked about. The change adds or alters these lines of it: ${changedRanges(review, args.path)}.`,
 							...notes,
 						].join("\n"),
 					),
@@ -967,7 +966,7 @@ const listMutants = defineLensTool({
 			return {
 				...text(window.mutants.map(describeMutant), (body, count) =>
 					[
-						`${count} mutants ${lines} of ${path}, each as line:column-endLine:endColumn mutator -> replacement:`,
+						`${count} mutants ${lines} of the file asked about, each as line:column-endLine:endColumn mutator -> replacement:`,
 						quoteUntrusted("mutants", body, review.nonce),
 						...notes,
 					].join("\n"),
