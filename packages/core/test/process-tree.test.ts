@@ -160,8 +160,8 @@ describe("stopTree", () => {
 	});
 
 	it("signals nothing, and says it could not stop the tree, when the root is a zombie", () => {
-		// A zombie has exited, so its children have already been re-parented.
-		const table = new FakeTable([entry(1, 0), entry(self, 1), { ...entry(100, self), state: "Z" }, entry(101, 1)]);
+		// A zombie has exited, so its children have already been re-parented. Linux's ps adds flags after the Z.
+		const table = new FakeTable([entry(1, 0), entry(self, 1), { ...entry(100, self), state: "Z+" }, entry(101, 1)]);
 		expect(stopTree(100, table, instant)).toBeUndefined();
 		expect(table.kills).toEqual([]);
 	});

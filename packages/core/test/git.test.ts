@@ -164,6 +164,7 @@ describe("git", () => {
 			const result = await git(repo, ["log"], { maxBytes: 4, env: { PATH: `${bin}:${process.env.PATH}` } });
 			expect(result).toMatchObject({ code: -1, truncated: true, stdout: "y\ny\n" });
 			expect(result.childrenLeft).toBeUndefined();
+			expect(result.timedOut).toBeUndefined();
 			expect(Date.now() - start).toBeLessThan(5000);
 			await expectEnded(Number(readFileSync(recorded, "utf8")));
 		} finally {
