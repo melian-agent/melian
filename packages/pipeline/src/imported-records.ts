@@ -8,6 +8,7 @@ import {
 	type RecordEnvelope,
 	type RecordJson,
 	RecordSet,
+	Revision,
 	reviewPayloads,
 	type SharedRecord,
 	type StoredDecision,
@@ -115,7 +116,7 @@ export class ImportedRecords {
 	): { readonly result: CheckRunRecord; readonly sightings: readonly StoredFinding[] } | undefined {
 		if (name === "static.mutation") return undefined;
 		const key = KeyedRequest.of("check.record", { request, base: sides.base, head: sides.head, name }).key;
-		const record = this.match("check", `${sides.base}..${sides.head}`, key);
+		const record = this.match("check", Revision.key(sides), key);
 		if (record === undefined) return undefined;
 		const { result, sightings } = record.payload as unknown as CheckPayload;
 		if (result.name !== name || result.status !== "ran" || result.snapshots !== null) return undefined;
