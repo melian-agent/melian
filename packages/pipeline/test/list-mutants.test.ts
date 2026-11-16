@@ -16,7 +16,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ToolExecutionApi } from "../src/harness.ts";
 import { LensDocument, lensListedTools, reviewFiles } from "../src/lens-tools.ts";
-import { maxListedMutants } from "../src/mutant-listing.ts";
+import { describeMutant, MutantListing, maxListedMutants, maxReplacementChars } from "../src/mutant-listing.ts";
 import { MutationEnumeration } from "../src/mutation-enumeration.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
 
@@ -199,6 +199,111 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		await call(head, { path: "src/flags.ts", startLine: maxListedMutants + 1 });
 		await call(head, { path: "src/flags.ts", startLine: 1, endLine: 3 });
 		expect(list.mock.calls).toEqual([[{ all: true, limitedTo: ["src/flags.ts"] }]]);
+	});
+
+	it("pages at a line boundary when the cap falls inside a line, so the next call repeats none", async () => {
+		const head = commit(repo, {
+			"src/flags.ts": `${flags(maxListedMutants - 1)}export const pair = [true, false];\n`,
+		});
+		const rows = await cliRows(head, "src/flags.ts");
+		expect(rows.filter((row) => row.line === maxListedMutants).length).toBeGreaterThan(1);
+		expect((await call(head, { path: "src/flags.ts" })).details).toEqual({
+			mutants: rows.slice(0, maxListedMutants - 1),
+			excluded: 0,
+			more: { count: rows.length - maxListedMutants + 1, startLine: maxListedMutants },
+		});
+	});
+
+	it("heads a window with the lines it covers, a one-line window included", async () => {
+		const head = commit(repo, { "src/value.ts": "export const value = (n: number) => n >= 0;\n" });
+		const rows = await cliRows(head, "src/value.ts");
+		const header = (lines: string) =>
+			`${rows.length} mutants ${lines} of src/value.ts, each as line:column-endLine:endColumn mutator -> replacement:`;
+		const one = await call(head, { path: "src/value.ts", startLine: 1, endLine: 1 });
+		expect(one.details).toEqual({ mutants: rows, excluded: 0 });
+		expect(one.text.split("\n")[0]).toBe(header("on lines 1 to 1"));
+		expect((await call(head, { path: "src/value.ts" })).text.split("\n")[0]).toBe(header("from line 1"));
+	});
+
+	it("describes a mutant by its place, mutator and quoted replacement, cut past the bound", async () => {
+		const head = commit(repo, { "src/value.ts": "export const value = (n: number) => n >= 0;\n" });
+		const [row] = await cliRows(head, "src/value.ts");
+		const place = `${row!.line}:${row!.column}-${row!.endLine}:${row!.endColumn} ${row!.mutatorName} -> `;
+		const at = "x".repeat(maxReplacementChars - 2);
+		expect(describeMutant({ ...row!, replacement: at })).toBe(`${place}"${at}"`);
+		expect(describeMutant({ ...row!, replacement: `${at}x` })).toBe(`${place}"${at}x [cut]`);
+	});
+
+	it("names each changed range, a one-line change as one number and a deletion as none", async () => {
+		base = commit(repo, {
+			"src/lines.ts": ["a", "b", "c", "d", "e"].map((name) => `export const ${name} = 1;\n`).join(""),
+		});
+		const head = commit(repo, {
+			"src/aaa.ts": "export const one = 1;\nexport const two = 2;\n",
+			"src/lines.ts": ["a", "c", "d", "e"]
+				.map((name) => `export const ${name} = ${name === "d" ? 2 : 1};\n`)
+				.join(""),
+		});
+		expect((await call(head, { path: "src/lines.ts", startLine: 1, endLine: 1 })).text).toBe(
+			"No mutants on lines 1 to 1 of src/lines.ts. The change adds or alters these lines of it: 3.",
+		);
+	});
+
+	it("says the change alters no line of a file it only deletes lines from", async () => {
+		base = commit(repo, { "src/lines.ts": "export const a = 1;\nexport const b = 1;\n" });
+		const head = commit(repo, { "src/lines.ts": "export const a = 1;\n" });
+		expect(await call(head, { path: "src/lines.ts" })).toEqual({
+			text: "No mutants from line 1 of src/lines.ts. The change adds or alters these lines of it: none.",
+			details: { mutants: [], excluded: 0 },
+			isError: undefined,
+		});
+	});
+
+	it("lists no mutants in a file the change deletes", async () => {
+		const head = commit(repo, {}, ["src/value.ts"]);
+		const result = await call(head, { path: "src/value.ts" });
+		expect(result.text).toContain("No mutants in src/value.ts: the change adds or alters no line of it");
+		expect(result.details).toEqual({ mutants: [], excluded: 0 });
+	});
+
+	it("enumerates again for a review of another head", async () => {
+		const first = commit(repo, { "src/value.ts": "export const value = (n: number) => n >= 0;\n" });
+		await call(first, { path: "src/value.ts" });
+		const second = commit(repo, { "src/value.ts": "export const value = true;\n" });
+		expect((await call(second, { path: "src/value.ts" })).details).toEqual({
+			mutants: await cliRows(second, "src/value.ts"),
+			excluded: 0,
+		});
+	});
+
+	it("keeps one file's rows of a whole inventory, in line and column order, and that file's reason", async () => {
+		const head = commit(repo, {
+			"src/value.ts": "export const value = (n: number) => n >= 0 && n < 9;\nexport const flag = true;\n",
+			"src/other.ts": "export const other = false;\n",
+			"src/a,b.ts": "export const comma = true;\n",
+		});
+		const inventory = (await (await MutationEnumeration.open(repo, `${base}..${head}`)).list({ all: true })).toJSON();
+		const rows = inventory.mutants.filter((row) => row.file === "src/value.ts");
+		expect(new Set(rows.map((row) => row.line))).toEqual(new Set([1, 2]));
+		expect(inventory.mutants.some((row) => row.file === "src/other.ts")).toBe(true);
+		const reversed = { ...inventory, mutants: [...inventory.mutants].reverse() };
+		const listing = MutantListing.of(reversed, "src/value.ts");
+		expect(listing.unmutated).toBeUndefined();
+		expect(listing.window(1, Number.MAX_SAFE_INTEGER).mutants.map((row) => [row.file, row.line, row.column])).toEqual(
+			rows.map((row) => [row.file, row.line, row.column]),
+		);
+		expect(MutantListing.of(reversed, "src/a,b.ts").unmutated).toContain("comma-separated");
+	});
+
+	it("refuses an empty path and a line below 1 before it runs", () => {
+		expect(() => tool.prepareArguments!({ path: "" })).toThrow("path");
+		expect(() => tool.prepareArguments!({ path: "src/value.ts", startLine: 0 })).toThrow("startLine");
+		expect(() => tool.prepareArguments!({ path: "src/value.ts", endLine: 0 })).toThrow("endLine");
+		expect(tool.prepareArguments!({ path: "src/value.ts", startLine: 1, endLine: 1 })).toEqual({
+			path: "src/value.ts",
+			startLine: 1,
+			endLine: 1,
+		});
 	});
 
 	it("puts its cap in the description that keys a lens request", () => {
