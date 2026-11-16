@@ -285,6 +285,26 @@ describe("git with a deadline", () => {
 		}
 	}, 20_000);
 
+	it("lets the process exit when git has already exited and one of the programs it started holds its output open", () => {
+		// Git exits at once and its child, re-parented, keeps git's output for ten seconds; the process must not wait for it.
+		const bin = join(repo, "bin");
+		const recorded = join(repo, "child-pid");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "git"), `#!/bin/sh\nsleep 10 &\necho $! > ${recorded}\n`, { mode: 0o755 });
+		const fixture = fileURLToPath(new URL("./fixtures/children-left-exit.ts", import.meta.url));
+		const start = Date.now();
+		try {
+			const out = execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, repo, bin], {
+				encoding: "utf8",
+				timeout: 20_000,
+			});
+			expect(JSON.parse(out)).toEqual({ code: -1, stdout: "", timedOut: true, childrenLeft: true });
+			expect(Date.now() - start).toBeLessThan(5000);
+		} finally {
+			stopRecorded(recorded);
+		}
+	}, 30_000);
+
 	it.each([
 		["exits", ""],
 		["is killed by a signal", "kill -KILL $$\n"],
