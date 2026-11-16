@@ -80,6 +80,12 @@ describe("checkRequest", () => {
 		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
 	});
 
+	it("keys Enola and the mutation check past the build whose findings held their tools' text", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks["static.enola"]).toBeGreaterThanOrEqual(2);
+		expect(checks["static.mutation"]).toBeGreaterThanOrEqual(2);
+	});
+
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {
 		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
 		expect(checkReusable(sample)).toBe(true);

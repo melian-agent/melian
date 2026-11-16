@@ -539,7 +539,7 @@ describe("staticFindings", () => {
 					],
 				}),
 				{ root: repo, version: "0.4.27" },
-				new Set([rule]),
+				new Set(),
 			);
 		const report = await staticFindings({
 			repoRoot: repo,

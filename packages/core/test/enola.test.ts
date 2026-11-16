@@ -178,6 +178,30 @@ describe("Enola policy and reports", () => {
 			],
 		]);
 	});
+	it("keeps the rule of each check Enola builds in, which no policy declares", () => {
+		const log = normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{
+						results: ["god-class", "exported-surface", "complexity-outliers", "god-classes"].map((ruleId) => ({
+							ruleId,
+							level: "warning",
+							message: { text: "Large" },
+						})),
+					},
+				],
+			}),
+			{ root: "/repo", version: "0.4.40" },
+			new Set(),
+		);
+		expect(log.runs[0].results.map((r) => r.ruleId)).toEqual([
+			"god-class",
+			"exported-surface",
+			"complexity-outliers",
+			`rule-${createHash("sha256").update("god-classes").digest("hex").slice(0, 16)}`,
+		]);
+	});
 	it.each(["", "{}", '{"version":"2.1.0","runs":[{"results":[{}]}]}'])("fails unreadable SARIF closed", (text) => {
 		expect(() => normaliseEnolaSarif(text, { root: "/repo", version: "0.4.27" }, new Set())).toThrow();
 	});
