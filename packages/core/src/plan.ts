@@ -549,7 +549,7 @@ export class ReviewPlan {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
 		for (const { tier, status, models, thinking } of this.tiers) {
 			if (thinking !== undefined) routes[tier] = { thinking };
-			if (models.length === 0 || (status !== "routed" && status !== "uncredentialed")) continue;
+			if (status !== "routed" && status !== "uncredentialed") continue;
 			routes[tier] = writtenRoute(routeInOrder(models, thinking));
 		}
 		return routes;
