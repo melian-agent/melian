@@ -1454,4 +1454,93 @@ describe("the melian round workflow", () => {
 			["report", false],
 		]);
 	});
+
+	const containment = "node --conditions=@melian-agent/source scripts/round-probe-containment.mjs";
+
+	it("installs the sandbox and proves containment after the install, before any step holds a login, with no token", () => {
+		const round = workflow.jobs.round.steps;
+		const at = (find) => round.findIndex(find);
+		const install = at((step) => step.run === "npm ci --ignore-scripts");
+		const sandbox = at((step) => step.name === "Let probes run under bubblewrap");
+		const proof = at((step) => step.name === "Prove a probe cannot reach the round's secrets");
+		const moved = at((step) => step.name === "Refuse a pull request that moved after the gate");
+		const secret = at((step) => JSON.stringify(step).includes("secrets."));
+		expect([install < sandbox, sandbox < proof, proof < moved, moved < secret]).toEqual([true, true, true, true]);
+		expect(round[sandbox].run).toContain("sudo apt-get install -y -qq bubblewrap socat ripgrep");
+		expect(round[sandbox].run).toContain("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0");
+		for (const step of [round[sandbox], round[proof]]) {
+			expect(step.env, step.name).toBeUndefined();
+			expect(JSON.stringify(step), step.name).not.toMatch(/secrets\.|github\.token|TOKEN/);
+		}
+		expect(round[proof]["working-directory"]).toBe("melian");
+		expect(round[proof].run).toContain(`if ! ${containment}; then`);
+	});
+
+	it("ends the round unreviewed when a probe reaches what the round would hold, and carries on when none does", () => {
+		const { run } = workflow.jobs.round.steps.find(
+			(step) => step.name === "Prove a probe cannot reach the round's secrets",
+		);
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// A fake node answers only the containment script's command line, with the exit the test asks for.
+			writeFileSync(
+				join(dir, "node"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "--conditions=@melian-agent/source scripts/round-probe-containment.mjs" ] || exit 99',
+					'exit "$CONTAINED"',
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "node"), 0o755);
+			const step = (contained) => {
+				rmSync(join(dir, "public"), { recursive: true, force: true });
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: { PATH: `${dir}:${process.env.PATH}`, HOME: dir, RUNNER_TEMP: dir, CONTAINED: contained },
+				});
+				const exit = existsSync(join(dir, "public", "exit"))
+					? readFileSync(join(dir, "public", "exit"), "utf8")
+					: undefined;
+				return [ran.status, ran.stdout, exit];
+			};
+			expect(step("0")).toEqual([0, "", undefined]);
+			const refused =
+				"::error::a probe on this runner reached what the round would hold, so the round does not run\n";
+			expect(step("1")).toEqual([1, refused, "none\n"]);
+			expect(step("99")).toEqual([1, refused, "none\n"]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("sets none of the variables sandbox-runtime reads from Melian's process for a probe's command line", () => {
+		const { env, run } = workflow.jobs.round.steps.find((step) => step.name === "Run the round");
+		const read = [
+			"CLAUDE_CODE_TMPDIR",
+			"CLAUDE_TMPDIR",
+			"JAVA_TOOL_OPTIONS",
+			"GIT_CONFIG_COUNT",
+			"NODE_EXTRA_CA_CERTS",
+			"HTTP_PROXY",
+			"HTTPS_PROXY",
+			"ALL_PROXY",
+			"NO_PROXY",
+		];
+		const named = new RegExp(`\\b(${read.join("|")})\\b`, "i");
+		expect(Object.keys(env).filter((name) => named.test(name))).toEqual([]);
+		expect(run.split("\n").filter((line) => named.test(line))).toEqual([]);
+	});
+
+	it("proves containment on every pull request in check.yml's Linux job, under the round job's Node", () => {
+		const check = parse(
+			readFileSync(fileURLToPath(new URL("../.github/workflows/check.yml", import.meta.url)), "utf8"),
+		);
+		const linux = check.jobs.check.steps;
+		const proof = linux.findIndex((step) => step.run === containment);
+		expect(linux[proof]?.if).toBe("matrix.node == 24");
+		expect(linux[proof]?.env).toBeUndefined();
+		expect(linux.findIndex((step) => step.name === "Let probes run under bubblewrap")).toBeLessThan(proof);
+		expect(linux.findIndex((step) => step.run === "npm ci --ignore-scripts")).toBeLessThan(proof);
+	});
 });
