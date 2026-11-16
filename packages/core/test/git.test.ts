@@ -405,16 +405,16 @@ describe("git with a deadline", () => {
 		]);
 	}, 20_000);
 
-	it("gives up on the real clock once the stop's reads have taken three seconds", async () => {
-		// The second and third reads each take 1.6 seconds, as a slow ps would, so the fourth would start past the budget.
-		const stop = budgetStop(undefined, (read) => (read === 2 || read === 3 ? 1600 : 0));
+	it("gives up on the real clock once the stop's reads have taken ten seconds", async () => {
+		// The second and third reads each take 5.1 seconds, as a slow ps would, so the fourth would start past the budget.
+		const stop = budgetStop(undefined, (read) => (read === 2 || read === 3 ? 5100 : 0));
 		const result = await stop.run();
 		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
 		expect(stop.kills).toEqual([[stop.pid(), "SIGTERM"]]);
-	}, 20_000);
+	}, 30_000);
 
-	it("reads the table at the end of the stop's three-second budget", async () => {
-		const stop = budgetStop(3000);
+	it("reads the table at the end of the stop's ten-second budget", async () => {
+		const stop = budgetStop(10_000);
 		const result = await stop.run(stop.clock);
 		const pid = stop.pid();
 		expect(result.childrenLeft).toBeUndefined();
@@ -427,7 +427,7 @@ describe("git with a deadline", () => {
 	}, 20_000);
 
 	it("reads and signals nothing more one millisecond past the stop's budget, and says the children may still run", async () => {
-		const stop = budgetStop(3001);
+		const stop = budgetStop(10_001);
 		const result = await stop.run(stop.clock);
 		expect(result).toMatchObject({ code: -1, timedOut: true, childrenLeft: true });
 		expect(stop.kills).toEqual([[stop.pid(), "SIGTERM"]]);

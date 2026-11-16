@@ -174,7 +174,7 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 
 // How long a stop may read the table and signal, from when it begins. A normal stop takes about a second; each read can
 // take up to the table's own limit, so a call settles at most this plus one read after its deadline or output bound.
-const stopBudgetMs = 3000;
+const stopBudgetMs = 10_000;
 
 // The table, until the budget is spent; then every read throws, so the stop signals nothing more and reports the children
 // may still run.
