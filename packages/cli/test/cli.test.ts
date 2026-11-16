@@ -16,8 +16,11 @@ import { fileURLToPath } from "node:url";
 import {
 	type Decider,
 	type DecisionRequest,
+	DirectoryRecordStore,
 	findingId,
 	Rendering,
+	reviewPayloads,
+	SharedRecord,
 	type StoredVerdict,
 	standardsLimits,
 	Verdict,
@@ -73,6 +76,7 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 // The goldens have no tsconfig.json, so tsc cannot check them, and Biome's defaults would add findings of their own.
 // Their tests keep the deterministic checks to guardrails; the static tools have a repository of their own below.
 const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
+const trustingPolicy = `${guardrailsOnly}trust:\n  writers: true\n`;
 
 // Every lens the default full tier runs, so a script can answer each.
 const builtinLenses = ["correctness", "contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"];
@@ -104,6 +108,18 @@ function userDirectory(secrets: string): { XDG_CONFIG_HOME: string } {
 
 function git(repo: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: repo, env: { ...process.env, ...gitEnv }, encoding: "utf8" }).trim();
+}
+
+// Commits `policy` as melian.yaml on a new branch, `name`, from main, and merges it into the checked-out branch, so a
+// review of `name` reads its policy from that commit.
+function policyBase(repo: string, name: string, policy: string): void {
+	const feature = git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+	git(repo, "checkout", "--quiet", "-b", name, "main");
+	writeFileSync(join(repo, "melian.yaml"), policy);
+	git(repo, "add", "melian.yaml");
+	git(repo, "commit", "--quiet", "-m", `${name} policy`);
+	git(repo, "checkout", "--quiet", feature);
+	git(repo, "merge", "--quiet", "--no-edit", name);
 }
 
 const tsconfig = JSON.stringify({
@@ -535,6 +551,243 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("passed");
 		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
+	});
+
+	it("exports the review's records to a directory store when the base sets trust.writers: true", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(0);
+		expect(review.stderr).not.toContain("records not exported");
+		const changesets = readdirSync(join(store, "changesets"));
+		expect(changesets).toHaveLength(1);
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const kinds = (await records.list(changesets[0]!)).map(({ kind }) => kind);
+		await records.close();
+		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
+	});
+
+	it("reviews under a base that trusts writers without --records, and exports nothing", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const before = readdirSync(repo).sort();
+
+		const review = melian(repo, ["review", "trusting"], env);
+
+		expect({ status: review.status, stdout: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			stdout: "Verdict: passed",
+		});
+		expect(review.stderr).not.toContain("records");
+		expect(readdirSync(repo).sort()).toEqual(before);
+	});
+
+	it("decides a round from the records a review exported, as the review decided it", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stderr: `melian: no record store at ${store}\n`,
+		});
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+
+		const json = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env);
+		const text = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+
+		expect(json.status).toBe(0);
+		const rounds = JSON.parse(json.stdout) as { round: string; verdict: StoredVerdict }[];
+		expect(rounds.map(({ verdict }) => verdict)).toEqual([host]);
+		expect(rounds[0]!.round).toMatch(/^[0-9a-f]{64}$/);
+		expect(text.status).toBe(0);
+		expect(text.stdout).toBe(
+			`Round ${rounds[0]!.round}\n${Verdict.from(host).render(new Rendering({ ids: true, decided: true, target: "trusting" }))}`,
+		);
+	});
+
+	it("shows every round of the revision in ID order, and no round of another revision", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const exported = await records.list(changeset!);
+		const round = exported.find(({ kind }) => kind === "round")!;
+		await records.add([
+			{ ...round, key: `${round.key}-elsewhere`, revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
+		]);
+		// The store lists in no order, so add rounds until it lists them in neither ID order nor its reverse, which a
+		// sort that ignores the IDs could produce.
+		const listed = async () =>
+			(await records.list(changeset!))
+				.filter(({ kind, revision }) => kind === "round" && revision === round.revision)
+				.map((each) => SharedRecord.parse(each, reviewPayloads).id);
+		let ids: string[] = [];
+		let mixed = false;
+		for (let n = 0; n < 20 && !mixed; n++) {
+			await records.add([{ ...round, key: `${round.key}-again-${n}` }]);
+			const order = await listed();
+			ids = [...order].sort();
+			mixed = order.join() !== ids.join() && order.join() !== [...ids].reverse().join();
+		}
+		await records.close();
+		expect(mixed).toBe(true);
+
+		const json = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env);
+		const text = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all", "--notes"], env);
+
+		expect(json.status).toBe(0);
+		expect(JSON.parse(json.stdout)).toEqual(ids.map((id) => ({ round: id, verdict: host })));
+		expect(text.status).toBe(0);
+		const rendered = Verdict.from(host).render(
+			new Rendering({ ids: true, decided: true, all: true, notes: true, target: "trusting" }),
+		);
+		expect(text.stdout).toBe(ids.map((id) => `Round ${id}\n${rendered}`).join("\n"));
+	});
+
+	it("renders a recorded round's silent findings under --all, and its notes under --notes", () => {
+		const { repo, env: script } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		const env = { ...script, MELIAN_STATE_DIR: join(scratch, "state") };
+		// A silent finding shows only under --all, and Enola's absence leaves a note on every lens for --notes.
+		policyBase(repo, "trusting", `${trustingPolicy}resolution:\n  P1: silent\nstatic:\n  enola: { enabled: true }\n`);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict,
+		);
+		const [round] = JSON.parse(
+			melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env).stdout,
+		) as { round: string }[];
+		const shown = (options: { all?: boolean; notes?: boolean }) =>
+			`Round ${round!.round}\n${host.render(new Rendering({ ids: true, decided: true, target: "trusting", ...options }))}`;
+
+		const plain = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+		const all = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all"], env);
+		const notes = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--notes"], env);
+
+		expect([plain.status, all.status, notes.status]).toEqual([0, 0, 0]);
+		expect(plain.stdout).toBe(shown({}));
+		expect(all.stdout).toBe(shown({ all: true }));
+		expect(notes.stdout).toBe(shown({ notes: true }));
+		expect(all.stdout).not.toBe(plain.stdout);
+		expect(notes.stdout).not.toBe(plain.stdout);
+	});
+
+	// The base's committed policy shows the P1; the uncommitted melian.yaml silences it, and counts only on the head.
+	const silencing = `${guardrailsOnly}resolution:\n  P1: silent\n`;
+
+	it("reads a range's policy from the working tree when its head is checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			verdict: "Verdict: passed",
+		});
+	});
+
+	it("reads a range's policy from its base when its head is not checked out", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "plain", guardrailsOnly);
+		git(repo, "checkout", "--quiet", "plain");
+		writeFileSync(join(repo, "melian.yaml"), silencing);
+
+		const review = melian(repo, ["review", "plain...feature"], env);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 1,
+			verdict: "Verdict: findings, blocking",
+		});
+	});
+
+	it("refuses a store that holds no round of the revision, though it holds one of another", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const exported = join(scratch, "exported");
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${exported}`], env).status).toBe(0);
+		const [changeset] = readdirSync(join(exported, "changesets"));
+		const source = await DirectoryRecordStore.open(exported, reviewPayloads);
+		const records = (await source.list(changeset!)).map((each) =>
+			each.kind === "round" ? { ...each, revision: `${"0".repeat(40)}..${"1".repeat(40)}` } : each,
+		);
+		await source.close();
+		const target = await DirectoryRecordStore.open(store, reviewPayloads);
+		await target.add(records);
+		await target.close();
+		const head = git(repo, "rev-parse", "HEAD").slice(0, 12);
+
+		expect(melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stdout: "",
+			stderr: `melian: the record store holds no round of ${head}\n`,
+		});
+	});
+
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("reads no record, and says why, when the base %s", (_, trust) => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		const store = join(scratch, "records");
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
+		mkdirSync(store);
+
+		expect(melian(repo, ["findings", "untrusting", "--records", `dir:${store}`], env)).toMatchObject({
+			status: 1,
+			stderr: "melian: the base's melian.yaml does not set trust.writers: true, so no record in the store counts\n",
+		});
+		expect(readdirSync(store)).toEqual([]);
+	});
+
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("exports nothing, and says why in one line, when the base %s", (_, trust) => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "untrusting", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(0);
+		expect(review.stderr.split("\n").filter((line) => line.includes("records not exported"))).toEqual([
+			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them",
+		]);
+		expect(existsSync(store)).toBe(false);
+	});
+
+	it("refuses --records outside review, and a store that is not a directory", () => {
+		expect(melian(root, ["telemetry", "main", "--records", "dir:x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining("--records is only available for review and findings"),
+		});
+		for (const extra of [["--open"], ["--rounds"]])
+			expect(melian(root, ["findings", "main", "--records", "dir:x", ...extra])).toMatchObject({
+				status: 64,
+				stderr: expect.stringContaining("findings --records takes no --open, --round or --rounds"),
+			});
+		expect(melian(root, ["findings", "--round", "range-0000000000000000.r1", "--records", "dir:x"])).toMatchObject({
+			status: 64,
+		});
+		expect(melian(root, ["findings", "main", "--records", "x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining('--records takes a store such as "dir:<path>"'),
+		});
+		expect(melian(root, ["review", "main", "--records", "x"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining('--records takes a store such as "dir:<path>"'),
+		});
+		expect(melian(root, ["review", "main", "--records", "dir:"])).toMatchObject({ status: 64 });
 	});
 
 	it("refuses a decision provider it has no adapter for, saying how to triage without one (issue #24)", () => {

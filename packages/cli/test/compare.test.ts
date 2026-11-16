@@ -295,9 +295,11 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 	// from a bare repository on disk, and scripted mode answers GitHub from a recording. The base commits a melian.yaml, since a pull
 	// request reads policy from its base.
 	// With `behind`, main gains a commit after the merge, so the base branch's tip is ahead of the diff's merge base.
-	function pullRequest(moved = false, behind = false) {
+	// With `policy`, the base commits that melian.yaml instead.
+	function pullRequest(moved = false, behind = false, policy?: string) {
 		const { repo, files, env } = checkout();
 		git(repo, "checkout", "--quiet", "main");
+		if (policy !== undefined) writeFileSync(join(repo, "melian.yaml"), policy);
 		git(repo, "add", "melian.yaml");
 		git(repo, "commit", "--quiet", "-m", "policy");
 		git(repo, "checkout", "--quiet", "feature");
@@ -424,6 +426,37 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		);
 		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });
 		expect(melian(repo, ["findings", "#7"], env).status).toBe(0);
+	});
+	it("decides a pull request's round from its records under the policy its base commits", () => {
+		const guardrails = "tiers:\n  fast: [guardrails]\n";
+		const { repo, files, env } = pullRequest(false, false, `${guardrails}trust:\n  writers: true\n`);
+		const base = git(repo, "rev-parse", "main");
+		const head = git(repo, "rev-parse", "feature");
+		const store = join(files, "records");
+		const review = melian(
+			repo,
+			[
+				"review",
+				"#7",
+				"--expect-base",
+				base,
+				"--expect-head",
+				head,
+				"--no-walkthrough",
+				"--records",
+				`dir:${store}`,
+			],
+			env,
+		);
+		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });
+		const host = JSON.parse(melian(repo, ["findings", "#7", "--json"], env).stdout) as StoredVerdict;
+		// The checked-out head's working tree silences the P1, and a pull request never reads it.
+		writeFileSync(join(repo, "melian.yaml"), `${guardrails}resolution:\n  P1: silent\n`);
+
+		const json = melian(repo, ["findings", "#7", "--records", `dir:${store}`, "--json"], env);
+
+		expect(json, json.stderr).toMatchObject({ status: 0 });
+		expect(JSON.parse(json.stdout)).toEqual([{ round: expect.any(String), verdict: host }]);
 	});
 	it("reviews a pull request at the base and head it expects", () => {
 		const { repo, env } = pullRequest();

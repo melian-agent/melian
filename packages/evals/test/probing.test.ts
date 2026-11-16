@@ -288,7 +288,12 @@ describe("a probing golden", { timeout: 120_000 }, () => {
 			kind: "scripted",
 			probes: "unconfined",
 		});
-		expect((run.verdict.ran ?? []).map(({ name }) => name).filter((name) => name.startsWith("lens."))).toEqual([
+		expect(
+			(run.verdict.ran ?? [])
+				.map(({ name }) => name)
+				.filter((name) => name.startsWith("lens."))
+				.sort(),
+		).toEqual([
 			"lens.contracts",
 			"lens.conventions",
 			"lens.correctness",
