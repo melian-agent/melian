@@ -108,7 +108,8 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			reason: "fine",
 			at: "2026-11-16T00:00:00.000Z",
 			severity: "P2",
-			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding },
+			// A static finding's dismissal is not shared at all, so a guardrail's carries the version here.
+			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
 			rounds: [],
 			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
 		});
@@ -221,8 +222,8 @@ describe("an exported record keeps what Melian defines", () => {
 	});
 
 	it("exports a sighting of a check that names no version as it was found", () => {
-		const finding = sighting(undefined);
-		const result = { name: "static.biome", status: "ran", findings: 1, notes: [] } as CheckRunRecord;
+		const finding = sighting(undefined, "guardrails");
+		const result = { name: "guardrails", status: "ran", findings: 1, notes: [] } as CheckRunRecord;
 		expect((payload(records.check("e".repeat(64), result, [finding])).sightings as StoredFinding[])[0]).toStrictEqual(
 			finding,
 		);

@@ -1,0 +1,1764 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "e436db907d8904a1507e1f11d5d6a5bfd1883458",
+		"head": "c5159ae626341d56f8bf494f3902a45f7bd030c3"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/check-request.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/review-records.ts",
+		"packages/pipeline/src/checks.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 81,
+			"column": 60,
+			"endLine": 86,
+			"endColumn": 1,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "14ffd7b178689dc7be80aff5f3173b938fae30653204affb32a1aaa760878fc3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 82,
+			"column": 1,
+			"endLine": 82,
+			"endColumn": 20,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "0fdb6b02b3bf97467a8b5b844891c5b53f5120d261787f09cf47da360a1532db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 82,
+			"column": 2,
+			"endLine": 82,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "787edfbc17978a0df5698d46a3df082982b742ec8e4a21db33ebf60496de99cd"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 83,
+			"column": 1,
+			"endLine": 83,
+			"endColumn": 18,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5df8e44180afcf95f35ea7f02f12e51f7fcde59a0a2e98f8e24b9d88a498a0e9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.tsc from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 83,
+			"column": 2,
+			"endLine": 83,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e298478a3cbeba0eef4979f38c2cec7582231c9feb05505912199e2c9744ae09"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 84,
+			"column": 1,
+			"endLine": 84,
+			"endColumn": 20,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "325ae581c03b4a58129f66959716a77de098600ea1005fff96d76c8d83806b4b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.enola from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 84,
+			"column": 2,
+			"endLine": 84,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "caa641ef400f34da711fb0bd8f949999388ba475b9b9e702aedd4b778edcd38e"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 85,
+			"column": 1,
+			"endLine": 85,
+			"endColumn": 23,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "f31ab73ef25c1a9124a34cb89da25d323973f3a8491edc182d14256d4a492177",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.mutation from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 85,
+			"column": 2,
+			"endLine": 85,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a953d0c6586c1be22dc33b565931966b81ea707d087888ec9177ffe7f0654125"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 92,
+			"column": 89,
+			"endLine": 98,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "396d183d351e265d385bab748f4ccf32d9d9d7532a9b3b3ea938162d798c48de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 94,
+			"column": 16,
+			"endLine": 94,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4380b5bbaf3f88a4a7f26adcbb939bc90daf576512d02cb3db461e50d41a7ba4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from another producer's request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 94,
+			"column": 16,
+			"endLine": 94,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ee534c01722cfc591484508598b7f073c7d7604a26fcdfeb1d6b925c721901db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 94,
+			"column": 16,
+			"endLine": 94,
+			"endColumn": 42,
+			"mutatorName": "EqualityOperator",
+			"replacement": "asked.producer !== \"check\"",
+			"status": "generated",
+			"id": "415bbe8b16b0d93f97b3d3430de3bb2eea9484bc3dc1a4d83b1a438d9e2b8b16",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 94,
+			"column": 35,
+			"endLine": 94,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "32eeb057075e06e6abf179b9ec60b0471d6f05e6b0e4359faeca0c72ab08f1ab"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 96,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e686cb51b135741e0c4446230bfa7925f072a4d9809da69904069cf7b0c85afe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from another producer's request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 96,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3ffc4f9e961d1c33983b069900508df49070b18ba4e5b26c4080a43841b829e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 96,
+			"endColumn": 47,
+			"mutatorName": "LogicalOperator",
+			"replacement": "typeof checks === \"object\" || checks !== null",
+			"status": "generated",
+			"id": "0806c4fe54c85b4804325f29286478603c09ce9d03000c9b9bed8b5f407ec4ff",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from another producer's request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 96,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce93cda51405b73281b68664a2fc089dd64e690a1fb9aa17413910d4bb6e26bd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from another producer's request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 96,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof checks !== \"object\"",
+			"status": "generated",
+			"id": "743fc7b2ff0f2c8cec3fdae6ca47024145f8d6c7c6082d0e3861d2dce88d3c39",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 20,
+			"endLine": 96,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c9e3bcc2f1689d827d6dec1cdad3a35da729f0943f189b0ca4e5cabd1ebb726d"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 32,
+			"endLine": 96,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "00e8a46b255cf4704d80bdd9d7b8f12d64758b7e3dfca472a37c97ffa843a441",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from a request whose checks are null"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 96,
+			"column": 32,
+			"endLine": 96,
+			"endColumn": 47,
+			"mutatorName": "EqualityOperator",
+			"replacement": "checks === null",
+			"status": "generated",
+			"id": "dd1455e5aae1a12dc91af06fa0be9a53be4a3024ca2137ea709ca5e7b4866052",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3751a1d839671a961486c55cd969698df3340cd12df5aa0c9aa78a7e033a931b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a0158788b3363c4222ce1af0e3c30821e314f9ddfa695b17b2d06b2045cdc168",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "LogicalOperator",
+			"replacement": "since !== undefined && typeof version === \"number\" || version >= since",
+			"status": "generated",
+			"id": "4aba3f4d3f01d27058aec6a694296760f62242836b5b5e755d7ec5c6e958a888",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4a8e520c5faa66347f5a343b1df9f8f628b3c14f553a2b104b09e60ca9a47fb5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from a request that names the check's version as text"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "since !== undefined || typeof version === \"number\"",
+			"status": "generated",
+			"id": "fbd07df68027e6f742bec0cf6e824f3aa10d8b27d94205f4df08dc9e8ecec21e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c231586218bb3933b6a46335891763fee19e051db0786bd792ac426cd8285157",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "With no fixed-text version for the check, since is undefined, and version >= undefined is false for every number, so the result is false either way."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 8,
+			"endLine": 97,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "since === undefined",
+			"status": "generated",
+			"id": "9d661d5e3035621ffd3be6d07b3a37e88e4a68b241f65bdbc050ce5e4cd37d32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 31,
+			"endLine": 97,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "81a17eecd0906e5cc3a20d2c3b10c9cdc41d32ed44bbeece0e9a3afb1e19bffd",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves nothing from a request that names the check's version as text"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 31,
+			"endLine": 97,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof version !== \"number\"",
+			"status": "generated",
+			"id": "4afd79059c5e7faecf77b4a38f59b31e9880a5a005fbe394380988107de5acdd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 50,
+			"endLine": 97,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7dcd08688b6d29f54ac41443b06ecc6bd7ec0de0077cd96244dc8cee40504645"
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 62,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9355f36cd8cb1d3622a7665388e20fadab263606f5bc240b3a1b92694cd3ec73",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 62,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version > since",
+			"status": "generated",
+			"id": "bcaa548333be4340e081fdfc0f5a5899b957605137a66237b9aea815b1676b4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 97,
+			"column": 62,
+			"endLine": 97,
+			"endColumn": 78,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version < since",
+			"status": "generated",
+			"id": "ff5c0902df70a1209a0861fb276e349e6cb6ad3ca1c9701fdb0470c5cff8bd11",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request.test.ts",
+					"path": [
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 842,
+			"column": 9,
+			"endLine": 842,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1d161c02a0b0fdc19e1d0cbcfe848cd87c8ecc203f48cdec768f0a4ea1454ead",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"preserves guardrail notes about binary files it cannot scan"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 842,
+			"column": 21,
+			"endLine": 842,
+			"endColumn": 50,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5a83d3d098c579867292376e115bbd59f6d9c595cc1ae0cecacf66e7e590048c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"reports exactly what the head introduced, marks what the base had as pre-existing, and drops what it resolved"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 120,
+			"column": 1,
+			"endLine": 120,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a8b9eeef8cba129cb16fad4c310b3823282f45b5634149199b27c6b7dfcb7201"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 6,
+			"endLine": 334,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "62083363a3a981a6bb253a9b81f235efa29b7e53a6965ef30d84981647589c09",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's rule ID, in a check's sightings and a dismissal's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 6,
+			"endLine": 334,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d2a23700b433750973d4523cb8321e619f095bd19774b7c66acc49477a2b160f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused with no request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 6,
+			"endLine": 334,
+			"endColumn": 108,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.startsWith(\"static.\") || facts.request === undefined || !writesFixedText(facts.request, check)",
+			"status": "generated",
+			"id": "4e22a7af1ddccd9b78b2a43d59daf3452cacc590086abf9a0ef886c68b3444ab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's rule ID, in a check's sightings and a dismissal's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 6,
+			"endLine": 334,
+			"endColumn": 33,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "71a135d39e1aaec09ccecdb031068f6c4b098f18b3c5b305c5eaef975f730cc6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused with no request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 23,
+			"endLine": 334,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ab8930eacdcfeec092c281e07d0692a6883be4b88902d49d7e73a8c1a4fb82df"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 38,
+			"endLine": 334,
+			"endColumn": 107,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1eebc8054a15af73035e27aab470e281c9ac49792d1f0ef2b956dbe3ba74600c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's rule ID, in a check's sightings and a dismissal's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 38,
+			"endLine": 334,
+			"endColumn": 107,
+			"mutatorName": "LogicalOperator",
+			"replacement": "facts.request === undefined && !writesFixedText(facts.request, check)",
+			"status": "generated",
+			"id": "b2a18b72fe790c59b349b20e2fc1c673addfa6d7451cc0f86a2ec5461d59186a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused with no request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 38,
+			"endLine": 334,
+			"endColumn": 65,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "420ad7beda840ed347ad793daee237a7d3e46fb4da4433db8f4b50b903a99730",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused with no request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 38,
+			"endLine": 334,
+			"endColumn": 65,
+			"mutatorName": "EqualityOperator",
+			"replacement": "facts.request !== undefined",
+			"status": "generated",
+			"id": "4565ee5cad7efd1b5bca3f3bbe60062df9f88d61b76549dd2571d41224a1a054",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's rule ID, in a check's sightings and a dismissal's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 334,
+			"column": 69,
+			"endLine": 334,
+			"endColumn": 107,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "writesFixedText(facts.request, check)",
+			"status": "generated",
+			"id": "5cbefb370963227356a11a864c8b3f7779c30bb05437f42ace4a00e8a60d184e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's rule ID, in a check's sightings and a dismissal's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 336,
+			"column": 4,
+			"endLine": 336,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "880a6765b0aa8cc03fb3ad2cd33eca67e8a5332db2dce95d608a97f64a53f6e7"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 337,
+			"column": 4,
+			"endLine": 337,
+			"endColumn": 143,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "661e7923d7d863d5ff201a193631b9f626ac25f6d0cc3a8a0b171dab0ec3b666"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 338,
+			"column": 4,
+			"endLine": 338,
+			"endColumn": 65,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "8521185dd7be29c2ee9e96dae7859d06ac8596f0b1cd238c35921df97f45f0d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused with no request"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3084,
+			"column": 18,
+			"endLine": 3084,
+			"endColumn": 38,
+			"mutatorName": "LogicalOperator",
+			"replacement": "run?.request && null",
+			"status": "generated",
+			"id": "5c9d8a274d3f71877ce1c095e37e18058e149b89d4082f45849d0367ea9456a6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3084,
+			"column": 18,
+			"endLine": 3084,
+			"endColumn": 30,
+			"mutatorName": "OptionalChaining",
+			"replacement": "run.request",
+			"status": "generated",
+			"id": "7298773d7ac0f92389a0dcf8afa92155b76090d284ed2d0a7ecb510a32b871e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3086,
+			"column": 17,
+			"endLine": 3087,
+			"endColumn": 97,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "1fd97bfc28a5a498eb78fe8a18d1928b54d317adbc0288b731e129e383ef0759",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bd0f5fbce5530c197264f88eb538f56fe34eaffb927876e64dbe2cc006e62fde",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "489a02f7ff4252df543f3017b169855ce9785ac7d8c50e33a24f6ef24d5dc33a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 97,
+			"mutatorName": "LogicalOperator",
+			"replacement": "run?.asked !== undefined && run.asked.key === run.request || writesFixedText(run.asked, check)",
+			"status": "generated",
+			"id": "839c3ee9eb9af7f1a8418b1a5251d3e319a55e43cb476c58fb105b103436a6db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fe056ce0ce7acc4c21f34cc9306096044c346fad9f69f1d54fd3619a532f73c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 60,
+			"mutatorName": "LogicalOperator",
+			"replacement": "run?.asked !== undefined || run.asked.key === run.request",
+			"status": "generated",
+			"id": "a4a4501d4c1b51241f3064439e086cc66f2c2a9becc8fe81ef675a70475b278b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "720221c4934f2d4cfea632a3f70d58dfaab151cfd1855b1adf7ef0cb6855ee42",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run?.asked === undefined",
+			"status": "generated",
+			"id": "4fbe3746cd84994163a6fc73d1246ce4ce9579619c99e00b9d4241ebafc3b521",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 3,
+			"endLine": 3087,
+			"endColumn": 13,
+			"mutatorName": "OptionalChaining",
+			"replacement": "run.asked",
+			"status": "generated",
+			"id": "fbf5bdd8b5c0ac47c745e428c4a38b7eddd4c39c0471b5800a0fc2a0a1ab10a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 31,
+			"endLine": 3087,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0e65ede70a4afd2c1f9500758ef1857da7c9bce1522ace95acee18feaad7b6da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from a run whose request is not the one it was keyed by"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3087,
+			"column": 31,
+			"endLine": 3087,
+			"endColumn": 60,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run.asked.key !== run.request",
+			"status": "generated",
+			"id": "1abfa5191c1c55021629298c2bcd78e34152e1055a93ca948a03ade1aa1ec0bb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from a run whose request is not the one it was keyed by"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce76f6e7a402d8e8ef4100a9d30e2d1b13b2cbeebc603d374ecc1f5da72b18a6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2cf4b6092be112e4a0d3a5589e554b203a971ac8f9e81bc3805a0ec3eb248868",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 86,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.name.startsWith(\"static.\") && sightings.length > 0 || !proven(check.name)",
+			"status": "generated",
+			"id": "7350d13ffda80fb0ffd79341f1732e20fc0768a4d945cf59b775973be121752b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e188c0d4208adc0a59f072a61c278b2c3e46489a2df5256326fffe21271f4d19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports a host's record that names an absent field as undefined"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.name.startsWith(\"static.\") || sightings.length > 0",
+			"status": "generated",
+			"id": "ac0055c502010e34e508cc703314a41acf1d8a7d4897d92bc4d7792ab0cf4fec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 7,
+			"endLine": 3095,
+			"endColumn": 39,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.name.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "84d8725d697b349e07d4c2d2a0c72c75ce4c6d49ba581db7e8510b6e2396cfb4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 29,
+			"endLine": 3095,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eed7609bc1bb1bcada6724dca3db4be04670164e158815528690decaf30534cc"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 43,
+			"endLine": 3095,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7c86a589066b0e821fc45bae28f25dffee2fae64f7fcbb10c456f89fdac222ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports a host's record that names an absent field as undefined"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 43,
+			"endLine": 3095,
+			"endColumn": 63,
+			"mutatorName": "EqualityOperator",
+			"replacement": "sightings.length >= 0",
+			"status": "generated",
+			"id": "b24890eea56de3391e68bcd8bfce8f95af044edc6c272a646c928a1fbb10691f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports a host's record that names an absent field as undefined"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 43,
+			"endLine": 3095,
+			"endColumn": 63,
+			"mutatorName": "EqualityOperator",
+			"replacement": "sightings.length <= 0",
+			"status": "generated",
+			"id": "c7a8b95c8474dd657b5bde5381b630f8e411efa9f5fb1d74e2ed3b4ef571694a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 67,
+			"endLine": 3095,
+			"endColumn": 86,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "proven(check.name)",
+			"status": "generated",
+			"id": "427bf9986903d6b1e30cdf6e02eff412f1d2010982c34451321422f7846d9017",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3095,
+			"column": 88,
+			"endLine": 3098,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "29be5db7f026ef0596d4d8b95977fb50c1d41bcc36697210864f6ef9f98c9dbd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3096,
+			"column": 37,
+			"endLine": 3096,
+			"endColumn": 106,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4e66401a8ca2f45795ac5d0ec8e9031f017eb3fbf5bc196b71d777a67630ba75",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3096,
+			"column": 65,
+			"endLine": 3096,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "aad89410da4473095d27d5b98fffd7bd98c096b01e3ca0270cf58e30e1cdec6c"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3096,
+			"column": 83,
+			"endLine": 3096,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5e45994d7dd6a800b36bcb6b2c557832c6d768f419bb8f9005a45037b1a70deb"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3096,
+			"column": 102,
+			"endLine": 3096,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9afc093c2dd6395a4de3cd786d48c7160108985ee1bed5ea9b20962cc9381828"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3097,
+			"column": 11,
+			"endLine": 3097,
+			"endColumn": 79,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5543e39a3f8f7032dd1172ad56f14dca2c2b6e76dac763fb5d4f47ef5d3b15d7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3097,
+			"column": 12,
+			"endLine": 3097,
+			"endColumn": 78,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "76e7ca271317b26c7ecd2dbedb3fedbc1eb107bacdfd3fd5fe504fc2c643d89f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3097,
+			"column": 73,
+			"endLine": 3097,
+			"endColumn": 75,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "041775c296245a857759ab963c60c37823b04c10282c2b0c8a7bd6bcdab9e03a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3108,
+			"column": 10,
+			"endLine": 3108,
+			"endColumn": 83,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "3c30b66f39eadfe9fb2f505c2839d96d8b231962d16a97c79e11b74ffab25b07",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3108,
+			"column": 11,
+			"endLine": 3108,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "67fd429eeeb614b140cbe1e85c9769c826a088eaa2368eaae299b76cfc4eeb8f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 85,
+	"omitted": 0,
+	"unmutated": []
+}

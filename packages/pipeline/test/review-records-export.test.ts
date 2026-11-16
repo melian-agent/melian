@@ -146,7 +146,15 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => named.includes(name)),
 		standards: [],
 		models: fake.review,
-		...(run.checkRun === undefined ? { checks: given } : { checkRun: run.checkRun }),
+		...(run.checkRun === undefined
+			? { checks: given }
+			: // A run built here names this review's revision, as a review refuses one that names another.
+				{
+					checkRun: {
+						...run.checkRun,
+						identity: { ...run.checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
+					},
+				}),
 		...(store === undefined ? {} : { records: store }),
 		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
 		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),

@@ -30,6 +30,7 @@ import {
 import { valid } from "semver";
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
+import { DismissError } from "./errors.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
@@ -114,6 +115,7 @@ const codes: ReadonlySet<string> = new Set([
 	"faulted",
 	"no record",
 	"unexpected",
+	"withheld",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
 // A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
@@ -160,6 +162,10 @@ export class ReviewRecords {
 	 */
 	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
 		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
+		if (result.status === "ran" && result.snapshots?.some((each) => !hashed(each))) {
+			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
+			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
+		}
 		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
 	}
 
@@ -340,6 +346,14 @@ export class ReviewRecords {
 
 	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
 	dismissal(facts: DismissalFacts): SharedRecord {
+		const { check } = facts.sighting.finding.properties.source;
+		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
+		if (check.startsWith("static."))
+			throw new DismissError(
+				"unprovenRun",
+				`The dismissed ${check} finding carries no proof that the run which sighted it stored none of its tool's text, so its dismissal is not shared.`,
+				{ revision: facts.sighting.revision, finding: facts.finding },
+			);
 		const payload: DismissalPayload = {
 			v: 1,
 			by: facts.by,
@@ -348,7 +362,7 @@ export class ReviewRecords {
 			severity: facts.severity,
 			sighting: {
 				revision: facts.sighting.revision,
-				finding: shareable(facts.sighting.finding) as unknown as RecordJson,
+				finding: shareable(sighting(facts.sighting.finding)) as unknown as RecordJson,
 			},
 			head: this.head,
 			rounds: [...new Set(facts.rounds)].sort(),
@@ -405,7 +419,46 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].sort(byId).map(shareable) as unknown as RecordJson[];
+	return [...sightings].map((finding) => shareable(sighting(finding))).sort(byId) as unknown as RecordJson[];
+}
+
+// A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome
+// and tsc are rewritten too: a build from before issue #281 stored their text, and the label cannot say which build wrote it.
+function sighting(finding: StoredFinding): StoredFinding {
+	const { check } = finding.properties.source;
+	if (!check.startsWith("static.")) return finding;
+	const what = `${check} reports ${finding.ruleId} here. ${withheld}.`;
+	return {
+		...finding,
+		message: { ...finding.message, text: what },
+		properties: { ...finding.properties, explanation: { what, whyHere: withheld, whatToDo: withheld } },
+	};
+}
+
+// Melian checks only these three fields of Enola's receipt; the rest is Enola's text.
+function receipt(text: string): string {
+	let parsed: { format_version?: unknown; snapshot_id?: unknown; enola_version?: unknown };
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		return withheld;
+	}
+	const { format_version, snapshot_id, enola_version } = parsed ?? {};
+	if (
+		format_version !== 1 ||
+		typeof snapshot_id !== "string" ||
+		!/^sha256:[a-f0-9]{64}$/.test(snapshot_id) ||
+		typeof enola_version !== "string" ||
+		!/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)
+	)
+		return withheld;
+	return JSON.stringify({ format_version, snapshot_id, enola_version });
+}
+
+// Melian computes each of a snapshot's identities as a SHA-256 hash, so anything else in one is text it did not write.
+function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
+	const ids = [cacheKey, coverage?.graph, coverage?.review, coverage?.test].filter((id) => id !== undefined);
+	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
 }
 
 function shareable(finding: StoredFinding): StoredFinding {
@@ -423,7 +476,7 @@ function snapshot(each: EnolaSnapshot): RecordJson {
 	return {
 		commit: each.commit,
 		snapshotId: each.snapshotId,
-		receipt: each.receipt,
+		receipt: receipt(each.receipt),
 		cacheKey: orNull(each.cacheKey),
 		coverage:
 			each.coverage === undefined

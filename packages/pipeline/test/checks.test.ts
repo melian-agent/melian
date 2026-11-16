@@ -776,10 +776,11 @@ describe("runChecks feeding reviewChangeset", () => {
 			cacheKey: String(index + 3).repeat(64),
 			coverage: { graph: String(index + 5).repeat(64), test: String(index + 7).repeat(64) },
 		}));
-		const log = normaliseEnolaSarif('{"version":"2.1.0","runs":[{"results":[]}]}', {
-			root: repo,
-			version: "0.0.1",
-		});
+		const log = normaliseEnolaSarif(
+			'{"version":"2.1.0","runs":[{"results":[]}]}',
+			{ root: repo, version: "0.0.1" },
+			new Set(),
+		);
 		const runner = vi.spyOn(staticRunner, "runStaticTool").mockResolvedValue({
 			status: "ran",
 			log,

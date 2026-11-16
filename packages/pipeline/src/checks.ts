@@ -12,10 +12,12 @@ import {
 	type EnolaSnapshot,
 	evaluateGuardrails,
 	hostFacts,
+	type KeyedRequest,
 	type MelianConfig,
 	type MutationSkipCause,
 	mutationSkips,
 	type PolicyText,
+	type RecordJson,
 	type RepositorySource,
 	Revision,
 	type StaticTool,
@@ -71,11 +73,20 @@ export type CheckRunRecord =
  */
 export type RunIdentity = { base: string; head: string; tier: string; policy: string; task: number };
 
+// The runs runChecks returned in this process. A run built anywhere else names a request it may never have run under.
+const ranHere = new WeakSet<CheckRun>();
+
+export function ranInThisProcess(run: CheckRun): boolean {
+	return ranHere.has(run);
+}
+
 /** One run of a tier: its identity, and one record per check the tier names, in the tier's order. */
 export interface CheckRun {
 	readonly identity: RunIdentity;
 	/** The full key of the request every check of the run answers, which `identity` holds only a prefix of. */
 	readonly request: string;
+	/** The request itself, whose key is `request`. A run without it proves no version of Melian's check code. */
+	readonly asked?: KeyedRequest<RecordJson>;
 	readonly records: readonly CheckRunRecord[];
 }
 
@@ -662,7 +673,13 @@ export interface RunChecksInput {
 async function runIdentity(
 	input: RunChecksInput,
 	tier: string,
-): Promise<{ identity: Omit<RunIdentity, "task">; request: string; reusable: boolean; lang: string | null }> {
+): Promise<{
+	identity: Omit<RunIdentity, "task">;
+	request: string;
+	asked: KeyedRequest<RecordJson>;
+	reusable: boolean;
+	lang: string | null;
+}> {
 	const { base, head } = input.changeset.revision;
 	const { repoRoot } = input.changeset;
 	const analyser = (tool: "biome" | "tsc") => ({
@@ -694,10 +711,12 @@ async function runIdentity(
 		lang: toolLocale(),
 		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
 	};
-	const request = checkRequest(facts).key;
+	const asked = checkRequest(facts);
+	const request = asked.key;
 	return {
 		identity: { base, head, tier, policy: request.slice(0, 16) },
 		request,
+		asked,
 		reusable: checkReusable(facts),
 		lang: facts.lang,
 	};
@@ -754,7 +773,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const { identity, request, reusable, lang } = await runIdentity(input, tier);
+	const { identity, request, asked, reusable, lang } = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
@@ -826,8 +845,11 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		}
 	}
 	const { outcome } = settled.state;
-	if (outcome.status === "completed")
-		return { identity: { ...identity, task: taskId }, request, records: outcome.result };
+	if (outcome.status === "completed") {
+		const run: CheckRun = { identity: { ...identity, task: taskId }, request, asked, records: outcome.result };
+		ranHere.add(run);
+		return run;
+	}
 	if (outcome.status === "failed") {
 		const code = (outcome.error.detail as { code?: CheckErrorCode } | undefined)?.code ?? "notCompleted";
 		throw new CheckError(code, tier, outcome.error.message);

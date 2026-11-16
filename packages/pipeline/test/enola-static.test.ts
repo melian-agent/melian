@@ -68,7 +68,7 @@ for config in "$@"; do :; done
 ${
 	requirePolicy
 		? `
-[ "$(cat enola/constraints/layer.yaml)" = 'rules: [] # base constraint' ] || exit 9
+[ "$(cat enola/constraints/layer.yaml)" = 'rules: [{ id: constraints/core-layer }] # base constraint' ] || exit 9
 [ "$(cat enola-intent.yaml)" = 'rules: [] # base intent' ] || exit 9
 [ "$(cat .enola/suppressions.yaml)" = 'suppressions: [] # base suppression' ] || exit 9
 [ ! -e enola/constraints/head-only.yaml ] || exit 9
@@ -547,7 +547,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
 		const policy = commit(repo, {
 			"melian.yaml": "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n",
-			"enola/constraints/layer.yaml": "rules: [] # target constraint\n",
+			"enola/constraints/layer.yaml": "rules: [{ id: constraints/core-layer }] # target constraint\n",
 		});
 		gitIn(repo, "checkout", "-b", "feature", base);
 		const head = commit(repo, { "src/a.ts": "export function Alpha() { return 2; } // BROKEN\n" });
@@ -619,7 +619,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",
 			"enola.yaml": "providers: []\n",
-			"enola/constraints/layer.yaml": "rules: [] # base constraint\n",
+			"enola/constraints/layer.yaml": "rules: [{ id: constraints/core-layer }] # base constraint\n",
 			"enola-intent.yaml": "rules: [] # base intent\n",
 			".enola/suppressions.yaml": "suppressions: [] # base suppression\n",
 			".enola/baseline/facts.jsonl": "do not reuse\n",
