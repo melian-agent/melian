@@ -40,7 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReviewRecords } from "../src/review-records.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -347,6 +347,31 @@ describe("a round read back from its records", () => {
 		const after = await read({ ...reviewed, stored: await store.list(reviewed.changeset.id) });
 		expect(after.toJSON()).toEqual(before.toJSON());
 		expect(after.status).toBe("findings");
+	});
+
+	it("resolves each finding under its own path's policy when a policy source is given", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"melian.yaml": lines("resolution:", "  P2: block"),
+				"src/melian.yaml": lines("resolution:", "  P2: advisory"),
+				"src/a.ts": lines("export const a = 1;"),
+			},
+			{ "src/a.ts": lines("export const a = 2;") },
+		);
+		const reviewed = await review(exported());
+		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: { kind: "revision", commit: gitIn(repo, "rev-parse", "main") },
+		});
+
+		expect(reviewed.verdict.findings.acknowledge.map(({ ruleId }) => ruleId)).toEqual([
+			"changed-return",
+		]);
+		expect(verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+		expect(verdict.findings.acknowledge).toEqual([]);
 	});
 });
 
