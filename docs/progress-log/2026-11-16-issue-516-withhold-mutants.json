@@ -125,10 +125,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"an exported record holds no text Enola or the mutation check wrote",
-						"as Enola's rule ID, in a check's sightings and a dismissal's"
+						"writesFixedText",
+						"proves static.enola from version 2 of its check, and not from version 1"
 					]
 				}
 			},
@@ -217,10 +217,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"an exported record holds no text Enola or the mutation check wrote",
-						"as the dismissed sighting of a static finding, refused with a request that is not a check run's"
+						"writesFixedText",
+						"proves nothing from another producer's request"
 					]
 				}
 			},
@@ -296,10 +296,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"an exported record holds no text Enola or the mutation check wrote",
-						"as the dismissed sighting of a static finding, refused with a request that is not a check run's"
+						"writesFixedText",
+						"proves nothing from another producer's request"
 					]
 				}
 			},
@@ -340,10 +340,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"an exported record holds no text Enola or the mutation check wrote",
-						"as the dismissed sighting of a static finding, refused with a request that is not a check run's"
+						"writesFixedText",
+						"proves nothing from another producer's request"
 					]
 				}
 			},
@@ -362,10 +362,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"an exported record holds no text Enola or the mutation check wrote",
-						"as the dismissed sighting of a static finding, refused with a request that is not a check run's"
+						"writesFixedText",
+						"proves nothing from another producer's request"
 					]
 				}
 			},
@@ -465,10 +465,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
-						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
 					]
 				}
 			},
@@ -509,10 +509,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
-						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
 					]
 				}
 			},
@@ -555,10 +555,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
-						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
 					]
 				}
 			},
@@ -676,10 +676,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
-						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
 					]
 				}
 			},
@@ -720,10 +720,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/pipeline/test/check-request.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
-						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+						"writesFixedText",
+						"proves static.biome from version 2 of its check, and not from version 1"
 					]
 				}
 			},
