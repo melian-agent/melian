@@ -32,9 +32,9 @@ const keyOf = (...candidates: ReturnType<typeof cutCandidate>[]) =>
 describe("verificationRequest's cut of probe evidence", () => {
 	// Issue #357: keys main computed at 10cc833a, before cuts, for these requests. A verification stored by main under
 	// one of them attaches here, so no stored verdict is asked again.
-	it("keys a request with no probe evidence, and one whose evidence fits, as main did before cuts", () => {
+	it("keys a request with no probe evidence as main did before cuts, and one whose evidence fits with the sandbox release its probe environment names", () => {
 		expect(keyOf(plain).key).toBe("ef214fda953e6857c44b5a584ba55e81901cde143f505d3d18d671fdfe25d0ea");
-		expect(keyOf(fitting).key).toBe("e199519230ba6738440d822f6ac9d7c5232872bc46dcdb6e7b13e14539744ebd");
+		expect(keyOf(fitting).key).toBe("d0977c502cfb646af564714b764e981fc7ce505aa70e879f8f95a82d1c9040cb");
 		expect(keyOf(plain, fitting).key).toBe("cf6791f7ad0aac2474634968d2d276d30de444bd92ed64f27bcfd78a902c0454");
 		expect(keyOf(plain, fitting).request).not.toHaveProperty("cuts");
 	});
