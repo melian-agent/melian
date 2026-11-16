@@ -221,7 +221,8 @@ describe("a static check's sightings, exported from a run that does not prove th
 		[
 			"a run whose stored request was edited after it was keyed",
 			{ checkRun: runUnder(current) },
-			{ ...proven, requests: { [asked.key]: old.request } },
+			// It still asks for today's code, so only its hash fails.
+			{ ...proven, requests: { [asked.key]: { checks: current, edited: true } } },
 		],
 		[
 			"a run of a build whose Biome check stored its text",

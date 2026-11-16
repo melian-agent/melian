@@ -87,6 +87,10 @@ describe("a check's stamp on its sightings at a revision", () => {
 			(tx: Tx, id: ConversationId) => replaceCheckFindings(tx, id, "static.biome", revision, [biome(1)]),
 		],
 		[
+			"a replacement that names no run and finds nothing",
+			(tx: Tx, id: ConversationId) => replaceCheckFindings(tx, id, "static.biome", revision, []),
+		],
+		[
 			"a clear of the check's sightings for a rerun",
 			(tx: Tx, id: ConversationId) =>
 				clearSightings(tx, id, revision, [{ check: "static.biome", version: "2.5.0" }]),
@@ -101,6 +105,25 @@ describe("a check's stamp on its sightings at a revision", () => {
 		await root.commit((tx) => write(tx, root.id), context);
 
 		expect(await stamps()).toEqual({ biome: undefined, tsc: run, elsewhere: run });
+	});
+
+	it("leaves no entry for a revision once its last check's stamp is deleted", async () => {
+		const { root } = await stamped();
+		await root.commit(
+			(tx) =>
+				clearSightings(tx, root.id, revision, [
+					{ check: "static.biome", version: "2.5.0" },
+					{ check: "static.tsc", version: "5.9.3" },
+				]),
+			context,
+		);
+		const state = await harness!.snapshot(FindingsDocument, root.id, context);
+
+		expect(state?.checkRuns).toEqual({ [other]: { "static.biome": run, "static.tsc": run } });
+	});
+
+	it("reads as absent from a root with no findings document", () => {
+		expect(stampOf(undefined, revision, "static.biome")).toBeUndefined();
 	});
 
 	it("is kept in a dismissal, which a later run's stamp does not change", async () => {

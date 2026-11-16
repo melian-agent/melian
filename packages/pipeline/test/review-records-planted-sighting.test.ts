@@ -3,10 +3,12 @@ import {
 	defaultConfig,
 	everyRecordCounts,
 	Finding,
+	KeyedRequest,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	type RecordJson,
 	Revision,
 	reviewPayloads,
 	SharedRecord,
@@ -29,6 +31,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ChecksDocument } from "../src/checks.ts";
 import { DismissError } from "../src/errors.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { type DismissalFacts, ReviewRecords } from "../src/review-records.ts";
@@ -84,8 +87,15 @@ afterEach(async () => {
 	removeRepository(repo);
 });
 
-// Runs the checks as a host does, lets `between` write into the store, then reviews with that run and exports.
-async function round(between: (root: Awaited<ReturnType<Harness["root"]>>, revision: string) => Promise<void>) {
+// Runs the checks as a host does, lets `between` write into the store, then reviews with the run it returns, or that
+// run, and exports.
+async function round(
+	between: (
+		root: Awaited<ReturnType<Harness["root"]>>,
+		revision: string,
+		run: CheckRun,
+	) => Promise<CheckRun | undefined>,
+) {
 	const changeset = await Changeset.resolve(repo, "HEAD~1..HEAD");
 	const root = await harness.root(context, { agent: { model: fake.ref() } });
 	const run: CheckRun = await runChecks(
@@ -99,7 +109,7 @@ async function round(between: (root: Awaited<ReturnType<Harness["root"]>>, revis
 		},
 		context,
 	);
-	await between(root, Revision.key(changeset.revision));
+	const handed = (await between(root, Revision.key(changeset.revision), run)) ?? run;
 	const quiet = () => fauxAssistantMessage("No findings.");
 	scriptConversations(fake, [{ match: "You are the correctness reviewer", replies: [quiet, quiet] }]);
 	const store = new MemoryRecordStore({ payloads: reviewPayloads });
@@ -110,7 +120,7 @@ async function round(between: (root: Awaited<ReturnType<Harness["root"]>>, revis
 		lenses: (await Lens.builtins()).filter(({ name }) => name === "correctness"),
 		standards: [],
 		models: fake.review,
-		checkRun: run,
+		checkRun: handed,
 		records: store,
 	});
 	return { changeset, verdict, root, store, stored: await store.list(changeset.id) };
@@ -148,6 +158,27 @@ describe("a static check's sightings, beside the run a host made of the same rev
 			config,
 		});
 		expect(read.status).toBe("not-reviewed");
+	});
+
+	// A caller can pair one run's records with another request, or a request can share a run's 16-character task key.
+	it("are withheld when the run handed in names a request the store keeps that did not write them", async () => {
+		let other = "";
+		const reviewed = await round(async (root, _, run) => {
+			const kept = (await harness.snapshot(ChecksDocument, root.id, context))!.requests![run.request]!;
+			const asked = KeyedRequest.of("check", { ...(kept as Record<string, RecordJson>), host: "another" });
+			other = asked.key;
+			await root.commit(async (tx) => {
+				(await tx.doc(ChecksDocument, root.id)).requests![asked.key] = asked.request;
+			}, context);
+			return { ...run, request: asked.key };
+		});
+
+		expect((await StaticProof.read(harness, reviewed.root.id, context)).asks("static.biome", other)).toBe(true);
+		expect(biome(reviewed.stored)).toEqual({
+			v: 1,
+			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },
+			sightings: [],
+		});
 	});
 });
 
