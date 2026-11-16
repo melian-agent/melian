@@ -13,10 +13,11 @@ import {
 	loadConfig,
 	type MelianConfig,
 	type MemberClaim,
-	openSource,
 	parseModelReference,
+	RevisionError,
+	type RevisionErrorCode,
+	readRevisionFile,
 	revisionLimits,
-	SourceError,
 	type Verification,
 	VerificationState,
 	visibleText,
@@ -43,6 +44,8 @@ import { EvalThinking } from "./thinking.ts";
 type Print = (line: string) => void;
 
 const probingLens = "trust-boundary";
+// What the lens's reader refuses in a file a lens could otherwise read, so no finding can cite it.
+const unreadable: readonly RevisionErrorCode[] = ["notFound", "notAFile", "symlink", "binary"];
 const probingCheck = `lens.${probingLens}`;
 
 /** The goldens a probing measurement scores: those named for `trust-boundary`'s level that probes. */
@@ -277,19 +280,21 @@ export class Miss {
 			return `${this.name}: the base's policy does not let the ${probingLens} lens review ${this.file}`;
 		if (!selection.lens.rules.some(({ id }) => id === this.rule))
 			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
-		const source = await openSource(this.repo, { kind: "revision", commit: target.head });
-		const text = await source.readText(this.file, revisionLimits.fileBytes).catch((error: unknown) => {
-			if (error instanceof SourceError && error.code === "tooLarge") return null;
+		// The lens's own reader, so the file is refused, or cut, as `report_finding` would refuse or cut it.
+		const read = await readRevisionFile(this.repo, target.head, this.file).catch((error: unknown) => {
+			if (error instanceof RevisionError && unreadable.includes(error.code)) return error;
 			throw error;
 		});
-		if (text === null)
-			return `${this.name}: ${this.file} at ${target.head} is larger than the ${revisionLimits.fileBytes} bytes a lens can read`;
-		if (text === undefined) return `${this.name}: ${this.file} does not exist at ${target.head}`;
-		if (text === "") return `${this.name}: ${this.file} is empty at ${target.head}`;
-		if (this.lines === undefined) return undefined;
-		const length = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
-		if (this.lines[1] <= length) return undefined;
-		return `${this.name}: lines ${this.lines[0]}-${this.lines[1]} run past ${this.file}, which has ${length} lines at ${target.head}`;
+		if (read instanceof RevisionError)
+			return `${this.name}: ${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`;
+		const { content, truncated } = read;
+		if (content === "") return `${this.name}: ${this.file} is empty at ${target.head}`;
+		const lines = content.split("\n");
+		if (truncated || lines.at(-1) === "") lines.pop();
+		if (this.lines === undefined ? !truncated || lines.length > 0 : this.lines[1] <= lines.length) return undefined;
+		if (truncated)
+			return `${this.name}: a lens reads only the first ${lines.length} lines of ${this.file} at ${target.head}, which it cuts at ${revisionLimits.fileBytes} bytes`;
+		return `${this.name}: lines ${this.lines![0]}-${this.lines![1]} run past ${this.file}, which has ${lines.length} lines at ${target.head}`;
 	}
 
 	/**

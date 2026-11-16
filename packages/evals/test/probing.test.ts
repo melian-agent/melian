@@ -1407,7 +1407,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow", async () => {
+	it("accepts a miss on a file at the size a lens can read, and refuses, before any provider, one the lens's reader cuts a byte past it, and a symlink it does not follow", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const file = defect[0]!.properties.path!;
@@ -1452,7 +1452,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await refused.result).toMatchObject({
 				status: 2,
 				errors: [
-					`The misses file cannot be scored: past-bound: ${file} at ${pastBound} is larger than the ${revisionLimits.fileBytes} bytes a lens can read`,
+					`The misses file cannot be scored: past-bound: a lens reads only the first 0 lines of ${file} at ${pastBound}, which it cuts at ${revisionLimits.fileBytes} bytes`,
 				],
 			});
 			expect(refused.using.models).not.toHaveBeenCalled();
@@ -1466,9 +1466,40 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const linked = run("linked", linkedHead);
 			expect(await linked.result).toMatchObject({
 				status: 2,
-				errors: [`${linkedHead.slice(0, 12)}:${file} is a symlink, which Melian does not follow`],
+				errors: [`The misses file cannot be scored: linked: ${file} is a symbolic link at ${linkedHead}`],
 			});
 			expect(linked.using.range).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses, before any provider, a miss on a file the lens's reader refuses as binary", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const file = defect[0]!.properties.path!;
+			const rule = defect[0]!.ruleId;
+			git(repo, "checkout", "--quiet", "-b", "binary", "feature");
+			writeFileSync(join(repo, file), `${readFileSync(join(repo, file), "utf8")}\0\n`);
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "binary");
+			const head = git(repo, "rev-parse", "HEAD");
+			const using = runners();
+			const result = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile([{ name: "binary", repo, base, head, file, rule }]),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				using,
+			);
+			expect({ status: result.status, errors: result.errors }).toEqual({
+				status: 2,
+				errors: [`The misses file cannot be scored: binary: ${file} is binary at ${head}`],
+			});
+			expect(using.models).not.toHaveBeenCalled();
+			expect(using.range).not.toHaveBeenCalled();
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
