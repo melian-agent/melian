@@ -74,6 +74,8 @@ export type RunIdentity = { base: string; head: string; tier: string; policy: st
 /** One run of a tier: its identity, and one record per check the tier names, in the tier's order. */
 export interface CheckRun {
 	readonly identity: RunIdentity;
+	/** The full key of the request every check of the run answers, which `identity` holds only a prefix of. */
+	readonly request: string;
 	readonly records: readonly CheckRunRecord[];
 }
 
@@ -660,7 +662,7 @@ export interface RunChecksInput {
 async function runIdentity(
 	input: RunChecksInput,
 	tier: string,
-): Promise<{ identity: Omit<RunIdentity, "task">; reusable: boolean; lang: string | null }> {
+): Promise<{ identity: Omit<RunIdentity, "task">; request: string; reusable: boolean; lang: string | null }> {
 	const { base, head } = input.changeset.revision;
 	const { repoRoot } = input.changeset;
 	const analyser = (tool: "biome" | "tsc") => ({
@@ -692,8 +694,13 @@ async function runIdentity(
 		lang: toolLocale(),
 		...(input.source.kind === "worktree" ? { policy: await worktreePolicy(input) } : {}),
 	};
-	const policy = checkRequest(facts).key.slice(0, 16);
-	return { identity: { base, head, tier, policy }, reusable: checkReusable(facts), lang: facts.lang };
+	const request = checkRequest(facts).key;
+	return {
+		identity: { base, head, tier, policy: request.slice(0, 16) },
+		request,
+		reusable: checkReusable(facts),
+		lang: facts.lang,
+	};
 }
 
 // A working tree's melian.yaml files are no commit's, so their text is keyed as the guardrails read it for the touched
@@ -747,7 +754,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const { identity, reusable, lang } = await runIdentity(input, tier);
+	const { identity, request, reusable, lang } = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
@@ -819,7 +826,8 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		}
 	}
 	const { outcome } = settled.state;
-	if (outcome.status === "completed") return { identity: { ...identity, task: taskId }, records: outcome.result };
+	if (outcome.status === "completed")
+		return { identity: { ...identity, task: taskId }, request, records: outcome.result };
 	if (outcome.status === "failed") {
 		const code = (outcome.error.detail as { code?: CheckErrorCode } | undefined)?.code ?? "notCompleted";
 		throw new CheckError(code, tier, outcome.error.message);
