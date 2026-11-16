@@ -3853,6 +3853,77 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
 	});
 
+	const ending = (script: string, prober: ScriptedReply[], gaps: unknown[], rewrite?: string) =>
+		review(
+			{ planner: plan, prober: [call("run_probe", { attack: 1, script }), ...prober] },
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				...(rewrite === undefined ? {} : { rewrite: (command) => (inHeadTree(command) ? rewrite : command) }),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+
+	it.each([
+		["timed out", "sleep 10"],
+		["was cut at its output limit", "yes x | head -c 40000"],
+		["was ended by a signal", "kill -9 $$"],
+	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(passing, [fauxAssistantMessage("Done.")], gaps, rewrite);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it.each([
+		["passed", passing],
+		["failed", failing],
+	])("passes a level whose probe of its attack %s", async (_, script) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(script, [fauxAssistantMessage("Done.")], gaps);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[call("skip_attack", { attack: 1, reason: "its probe timed out" }), fauxAssistantMessage("Skipped it.")],
+			gaps,
+			"sleep 10",
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 1 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect([heads, gaps]).toEqual([2, []]);
+	});
+
 	it("passes a level whose prober skipped every attack without asking for a probe", async () => {
 		const gaps: unknown[] = [];
 		const { run } = await review(

@@ -356,7 +356,8 @@ export type ProbeGapCause =
 	| "head-refuses"
 	| "prober-tier-refused"
 	| "prober-tier-unrouted"
-	| "probe-refused";
+	| "probe-refused"
+	| "probe-inconclusive";
 
 /** One fixed sentence for each {@link ProbeGapCause}, which a host may print where the reason's text may not go. */
 export const probeGapSentences: Readonly<Record<ProbeGapCause, string>> = {
@@ -368,6 +369,8 @@ export const probeGapSentences: Readonly<Record<ProbeGapCause, string>> = {
 	"prober-tier-refused": "the review plan refuses the prober's tier",
 	"prober-tier-unrouted": "the prober's tier reaches no model with credentials",
 	"probe-refused": "a probe the prober asked for could not open, run, stop or clean up",
+	"probe-inconclusive":
+		"every probe the prober ran for an attack timed out, was cut or was ended by a signal, and it did not skip the attack",
 };
 
 /** A level that probes and could not, under {@link ReviewSettings.requireProbes}: its check, level and cause. */
@@ -3391,7 +3394,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
-	// A probe the prober asked for that could not run leaves an attempt with no probe, which nothing else records.
+	// A probe the prober asked for that could not run leaves an attempt with no probe, which nothing else records. An
+	// attack whose every probe showed nothing, and that the prober did not skip, has no answer.
 	if (options.requireProbes === true)
 		for (let index = 0; index < settled.length; index++) {
 			const { run, outcome, escalatedFrom } = settled[index]!;
@@ -3400,15 +3404,29 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				if (prober === undefined) continue;
 				const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
 				const refused = (state.attempts ?? []).filter((id) => state.probes?.[id] === undefined).length;
-				if (refused === 0) continue;
+				const probes = Object.values(state.probes ?? {});
+				const answered = new Set([
+					...Object.keys(state.skips ?? {}).map(Number),
+					...probes.filter((probe) => probeConclusive(probe.result)).map((probe) => probe.attack),
+				]);
+				const inconclusive = new Set(probes.map((probe) => probe.attack).filter((attack) => !answered.has(attack)))
+					.size;
+				if (refused === 0 && inconclusive === 0) continue;
 				const record = records[index]!;
-				const why = `probes are required, and ${plural(refused, "probe")} the ${ran.level} prober asked for could not run`;
+				const why =
+					refused > 0
+						? `probes are required, and ${plural(refused, "probe")} the ${ran.level} prober asked for could not run`
+						: `probes are required, and every probe the ${ran.level} prober ran for ${plural(inconclusive, "attack")} showed nothing`;
 				records[index] = {
 					...record,
 					status: "failed",
 					reason: [why, ...(record.reason ? [record.reason] : [])].join("; "),
 				};
-				options.probeGap?.({ check: record.name, level: ran.level, cause: "probe-refused" });
+				options.probeGap?.({
+					check: record.name,
+					level: ran.level,
+					cause: refused > 0 ? "probe-refused" : "probe-inconclusive",
+				});
 				break;
 			}
 		}
