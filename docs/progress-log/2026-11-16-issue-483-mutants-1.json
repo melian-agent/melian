@@ -1,0 +1,3280 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "512c8ae29c582f376691365fb9dff1f064c602ea",
+    "head": "1482bec53025d70fdb7fe6d8b2e20468bf53e1aa"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 6,
+      "endLine": 413,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "de93e07cf46e1992097da9d727c366ad0bcc12aa93bfec2a8bf5c22e63597c30",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 6,
+      "endLine": 413,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2ab0387fde11784d4fff36fbb47ea3f215a08085a8acf9ee758f672f7149f470",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 6,
+      "endLine": 413,
+      "endColumn": 58,
+      "mutatorName": "LogicalOperator",
+      "replacement": "probe !== undefined || !lensProbingWording.has(name)",
+      "status": "generated",
+      "id": "aade26883cacfd77d4fe97e68b17853358bf8ea687a604409c97d01f537f8915",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 6,
+      "endLine": 413,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "62b4166ed8d007d100a98d76c563759d5715942c4cec356e60adc5a2157ce8ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 6,
+      "endLine": 413,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe === undefined",
+      "status": "generated",
+      "id": "41a961b15d22e72492fe2878cf30c4c2389920f8f2086019f7cf7f21ffcbc3e5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 29,
+      "endLine": 413,
+      "endColumn": 58,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "lensProbingWording.has(name)",
+      "status": "generated",
+      "id": "7db2ebcfee5c75b468ea4e352d0570e07b6df3c1dd197715710fc5530f9f3a29",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 413,
+      "column": 60,
+      "endLine": 421,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b4d986914f93be38ed2bb767c6279d81ef3866f24ca8a98abc2e148a86166451",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 414,
+      "column": 18,
+      "endLine": 414,
+      "endColumn": 48,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "66d8d1a811fdfe2ee57515bfa6129801ec4e8c8e3960044046616ad6a3400652",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 416,
+      "column": 4,
+      "endLine": 416,
+      "endColumn": 18,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5f2179e8fd3430b7d18286984219fd835b8ec5e34f138595c4605339c730f89c"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 418,
+      "column": 4,
+      "endLine": 418,
+      "endColumn": 222,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "934439784b0ec43f00c789b1abc72ccf09b15054477955da884aec15db60e652"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 418,
+      "column": 108,
+      "endLine": 418,
+      "endColumn": 127,
+      "mutatorName": "MethodExpression",
+      "replacement": "worded",
+      "status": "generated",
+      "id": "0ca67bc6640219d0379ae2db51280f9620287fbab4b75efa29e179713afc3cb3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 418,
+      "column": 124,
+      "endLine": 418,
+      "endColumn": 126,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "8194dd5485e1a4af68a47794d721c969b15ca3b97d15e1e78dd8572923a60ea9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 418,
+      "column": 133,
+      "endLine": 418,
+      "endColumn": 137,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3e021006bba4d681856fd1bac2250c04e6fdda30d0c59a4bd0c07526414363a6"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 418,
+      "column": 156,
+      "endLine": 418,
+      "endColumn": 158,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "55b5170206a79d65f1aba6a5bb035a0bb70c5fb8701265f059950ec6630d0235",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 419,
+      "column": 4,
+      "endLine": 419,
+      "endColumn": 57,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c14a27d0c44607dcc3b9b8e7aa6a5e1c5b3e833ab19b874fe2286096efe1dec9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens with no probing wording, naming the lens"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 419,
+      "column": 13,
+      "endLine": 419,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "80729efa51b90b5020c1e83e88780cd8cdf008964736726851cdcd86d4ed70cd"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 18,
+      "column": 1,
+      "endLine": 18,
+      "endColumn": 642,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5b1e3757a0e0d1938fec67883851c4e53e4928a7bf452c90ae9bcaf7b37f281e"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 20,
+      "column": 56,
+      "endLine": 31,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bd22ce280edbd22a7ba2dca07f77f811583caf4be68cd9cf7ca84c116a627e68",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/probing-wording.test.ts",
+          "path": [
+            "each lens's probing wording",
+            "gives each lens that may probe all six strings, none blank and none another lens's"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 22,
+      "column": 2,
+      "endLine": 22,
+      "endColumn": 214,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "368a34cc922a3fdd90361a04a8150d5f2d62636b82a292e5938f87e40d1849a0"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 24,
+      "column": 2,
+      "endLine": 24,
+      "endColumn": 850,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b80f20d6afed1d84985581c6d69b4dee27f682eae778816c6b975e9394602954"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 26,
+      "column": 2,
+      "endLine": 26,
+      "endColumn": 168,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "82d2122757342cb849fd36ea008c85a50eb818f1dae21bda12821ac7fc034b35"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 27,
+      "column": 9,
+      "endLine": 27,
+      "endColumn": 501,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bf0bb5bedcb1ebbce8447054e37e51b63d49c0e44e7ee36bd3ccbd4b402a6223"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 29,
+      "column": 2,
+      "endLine": 29,
+      "endColumn": 379,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e4c21c6fcb6029e505b1a56d87190c1c6bf3faffee4a8bef928b3dcb04637ff2"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 30,
+      "column": 8,
+      "endLine": 30,
+      "endColumn": 665,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2e161cd7a660e9200bce3492d9ba212edb06441ca6604320aa51d2be8b014ece"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 33,
+      "column": 48,
+      "endLine": 44,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7bcc23418f2a32359903387adfd6a154d7adaab2101e936f8bd1016319724cac",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/probing-wording.test.ts",
+          "path": [
+            "each lens's probing wording",
+            "gives each lens that may probe all six strings, none blank and none another lens's"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 35,
+      "column": 2,
+      "endLine": 35,
+      "endColumn": 237,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c810dd6bfb0ac29a0abffc46896eaff0384bea2e23fe28190bf4a79d3f401085"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 37,
+      "column": 2,
+      "endLine": 37,
+      "endColumn": 874,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b845a5bc24951b906e3d284e5f90270e08b19e7323d25eadfe3bba374f0e2490"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 39,
+      "column": 2,
+      "endLine": 39,
+      "endColumn": 190,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d3679bd10ac65996acac62ad78d7c27bb1a279925a72f2b3418a67d2b4c368cc"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 40,
+      "column": 9,
+      "endLine": 40,
+      "endColumn": 1080,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3c685ad67f4b5fe4773e97bce22f3e4f57966962b5f5b3be1f3e830172354b1d"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 42,
+      "column": 2,
+      "endLine": 42,
+      "endColumn": 444,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0dc44fb03fb51857230ce6e45eb58f0f2419dde00ec716687715995f71c8409d"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 43,
+      "column": 8,
+      "endLine": 43,
+      "endColumn": 870,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4e6ca2743e04bcf4425ca1ca9fc273a2f75df384b2884509e6ea5a17b9e9caea"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 46,
+      "column": 54,
+      "endLine": 57,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5ab19e13402f8f892a3094d9e1eb0829237e816e80b2273f0ff6a0f6e2e5d18e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/probing-wording.test.ts",
+          "path": [
+            "each lens's probing wording",
+            "gives each lens that may probe all six strings, none blank and none another lens's"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 48,
+      "column": 2,
+      "endLine": 48,
+      "endColumn": 218,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bd1526d4fd77c959e4e2b53ed17fdc6375488549f9f78959d612a51540b05a8f"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 50,
+      "column": 2,
+      "endLine": 50,
+      "endColumn": 901,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "345b39c4dad42a2dae28441e10746a8f76c8f1d8a9ec87584475e3a4e8f8ec43"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 52,
+      "column": 2,
+      "endLine": 52,
+      "endColumn": 181,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "59e755c9db87fc952cc7358c23b4e987c498d2d5642199584e416218664d6287"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 53,
+      "column": 9,
+      "endLine": 53,
+      "endColumn": 559,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "016acd3ca8acecef402d4f876329507125dc510534d47d513de90e8ada4c7d02"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 55,
+      "column": 2,
+      "endLine": 55,
+      "endColumn": 395,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "94714201ad7aa439c075d9b686046afe09fa5921933de24f26e0bf9f21d17f6a"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 56,
+      "column": 8,
+      "endLine": 56,
+      "endColumn": 713,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d10ddd0ea8b180ea749ef1de29a2cfb856bb2f2a705f6aef241aac1b0f6ac1b6"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 63,
+      "column": 83,
+      "endLine": 67,
+      "endColumn": 1,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "720ca0f2cccd01639f0b89864c5a2eef937666281b03d06a37d9f0585487919f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 64,
+      "column": 1,
+      "endLine": 64,
+      "endColumn": 34,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "e4088a98debbd51dbaae42fdccde9664e5e257b903ff0928c10d7ac62427b243",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 64,
+      "column": 2,
+      "endLine": 64,
+      "endColumn": 18,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "93a3db6c80b04953b8ba229cbbadcb5294d1b1e02eacd891a31276c431095d32"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 65,
+      "column": 1,
+      "endLine": 65,
+      "endColumn": 17,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "58c7933c0c00ce281de4e210c39373c80aad32beaf55de97f2fe43f6ee152266",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 65,
+      "column": 2,
+      "endLine": 65,
+      "endColumn": 9,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "12d197755868da5d0a9edc8e0dc28044df3e16cccef941dedeca081492c0444e"
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 66,
+      "column": 1,
+      "endLine": 66,
+      "endColumn": 29,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "bb104f5cddaa28cbfa64d689bc4ce426e5e74fd63472cc92ade1bb73835bcfe9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/core/src/probing-wording.ts",
+      "line": 66,
+      "column": 2,
+      "endLine": 66,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "38e8076c6b7c37e4712e96095ede30da7d2ab8363e7ec331ac0ad28a453e0883"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 122,
+      "column": 6,
+      "endLine": 122,
+      "endColumn": 47,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "eab265c572f7764e170ad54bd217e5742285f1d6fb366170c2fc66238adb0ce2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 6,
+      "endLine": 123,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "32d0494060547c0f08d095390b4ceea952d0a1fdd86ab5461af49a14caa84da1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 6,
+      "endLine": 123,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1c3c7006d5eb65d172d7943372a765906ef3b2ee1804f3696989de34c3818302",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 6,
+      "endLine": 123,
+      "endColumn": 66,
+      "mutatorName": "LogicalOperator",
+      "replacement": "input.escalation !== undefined || \"next\" in input.escalation",
+      "status": "generated",
+      "id": "ecb2b574a3a097fa62542499af0ec40fc336d8fe87a3e3645f7b0bf6a3b61787",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 6,
+      "endLine": 123,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "028cc591fb065854fa139e0e67f47862bc3f521f644fcad4f68bc8aa905545cb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 6,
+      "endLine": 123,
+      "endColumn": 36,
+      "mutatorName": "EqualityOperator",
+      "replacement": "input.escalation === undefined",
+      "status": "generated",
+      "id": "1644cddcb4cbc624bc9e521eb86aaa129e6ddfd3d17fdc622c4cff1ac62b8d6b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 123,
+      "column": 40,
+      "endLine": 123,
+      "endColumn": 46,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3404be27670bcee4627da8186f4d95ca507a5690446c70d99a4cbb01a0efa83e"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 124,
+      "column": 7,
+      "endLine": 124,
+      "endColumn": 34,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "84a6099ebaf4428c2049fe46ddcbe5b7e070f064ec685603ea35e80502296c78",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1234,
+      "column": 16,
+      "endLine": 1234,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "83a24ce76efaf1db2d35bc11fce8f8e27b2ad1e742d02292501129afa0112216"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1238,
+      "column": 16,
+      "endLine": 1238,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c3ab8babecd1a28f8d8969e196126dea9d5a18daf26a587719f384a6b10de860"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1272,
+      "column": 3,
+      "endLine": 1272,
+      "endColumn": 223,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c72ee65e278c0122fedaf9e276085aa9550954fab4c56f44eb269701702078e7"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1336,
+      "column": 5,
+      "endLine": 1336,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7340879bbeb41898b708255f1263bdb87160601a8f179ca12250c258d932577b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1336,
+      "column": 5,
+      "endLine": 1336,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ab9a787ae953ae9e686c894acc8df83bfea6caa4d70d24254f11063d6f89e92e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses each report a role may not make, and an attack or files the plan and the limits do not allow"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1336,
+      "column": 5,
+      "endLine": 1336,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "result.exitCode !== 0",
+      "status": "generated",
+      "id": "e66eecbb9119d3e66e0ceb0040cae8529d582ffd09bce7d9f392dafe0860147f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses each report a role may not make, and an attack or files the plan and the limits do not allow"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1336,
+      "column": 35,
+      "endLine": 1336,
+      "endColumn": 92,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e2914958f064ca192b7b9653ae2208f33c58625a0c7ca36743c19667aeccc4be"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 1351,
+      "column": 4,
+      "endLine": 1351,
+      "endColumn": 296,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "aa889ed7f77bcab3fd67b80e6a94a5697b14110246e4ec6f46e4cc6a9cceb56f"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 84,
+      "column": 8,
+      "endLine": 84,
+      "endColumn": 10,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c0bd5270866c35b45d4b2e3d1c0acde416c1ae91e7c0dd1ff1e442f6a854480f"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 104,
+      "column": 54,
+      "endLine": 110,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "21b6c21b2ec818382d808f7dae0c04ab424a118c1472d0d2df19413dc47a617d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verifier-version-load.test.ts",
+          "path": [
+            "the verifier's version, as its module loads",
+            "is the version main gave it, from the trust-boundary lens's own evidence wording"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 108,
+      "column": 5,
+      "endLine": 108,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4294db9d3850bd7feddbe787d115077693b2398c261480c867be1abfef78dded",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verifier-version-load.test.ts",
+          "path": [
+            "the verifier's version, as its module loads",
+            "is the version main gave it, from the trust-boundary lens's own evidence wording"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 108,
+      "column": 5,
+      "endLine": 108,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e538cee37effcdd28842a5c0992a7a8847422d40379bddda19410c61fea87b1b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "refuses to key a run that probes in a lens with no probing wording of its own"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 108,
+      "column": 5,
+      "endLine": 108,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "own !== undefined",
+      "status": "generated",
+      "id": "b3d21b9638b7eb92d078c0e4499b50f24a27caf99205996490594518c6617131",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verifier-version-load.test.ts",
+          "path": [
+            "the verifier's version, as its module loads",
+            "is the version main gave it, from the trust-boundary lens's own evidence wording"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 108,
+      "column": 24,
+      "endLine": 108,
+      "endColumn": 114,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "ada4e8d3dfa386cc6828d3873b4050e429e0a28429c926a1b7bf73b2289cfe76",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "refuses to key a run that probes in a lens with no probing wording of its own"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 108,
+      "column": 40,
+      "endLine": 108,
+      "endColumn": 112,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "db9ea7e7552ab7ea5d0b7e58f61793b76ecb131bcc35140603e88a9357872c84"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 113,
+      "column": 63,
+      "endLine": 116,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "aa5e75d3a7318da7fc909ad69a4abe65ced43fd29df8c8cae08a0d6c5ed02cdf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the trust-boundary lens's probing wording as the table main keyed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 115,
+      "column": 22,
+      "endLine": 115,
+      "endColumn": 51,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f66947d72446b6583ba71eb84ca4d880d06abae140b1d09913085d5e7a50a482",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the trust-boundary lens's probing wording as the table main keyed"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 122,
+      "column": 65,
+      "endLine": 124,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9e854fc99a5f56834043650a485a8a566a125b6998c0ddf9a61374f9f56a69c0",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verifier-version-load.test.ts",
+          "path": [
+            "the verifier's version, as its module loads",
+            "is the version main gave it, from the trust-boundary lens's own evidence wording"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 123,
+      "column": 22,
+      "endLine": 123,
+      "endColumn": 81,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f9593997cf6c0e163116b7832b842908c0440425fe1c1d40d2570099efd039b6",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verifier-version-load.test.ts",
+          "path": [
+            "the verifier's version, as its module loads",
+            "is the version main gave it, from the trust-boundary lens's own evidence wording"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 397,
+      "column": 55,
+      "endLine": 399,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "991cf0e558ea986f0ddac6ae80930245fd242ac8d41df0f815c6334aea02b211",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 415,
+      "column": 8,
+      "endLine": 415,
+      "endColumn": 109,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "f2410727bf5af441590c2522fb0f0638244077ff70e83a32b51c7dced6c45f3d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 416,
+      "column": 2,
+      "endLine": 416,
+      "endColumn": 8,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dd263f6b5e8d8a4ca1819f9c8b4d5a957dd31b1ad9d955fff454eb4e9744fed5"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 428,
+      "column": 27,
+      "endLine": 428,
+      "endColumn": 35,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "057aa4ad441ef6a7cd90a20845a0cdfe1245791a5976cf7cfadb680d77c630b5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 432,
+      "column": 9,
+      "endLine": 432,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c424b19b8f7b3ce5d4671a8d8033fb9e2a81c926d163a3b94b8516b76481ebce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the prober's instructions",
+            "give the time limit in seconds and the output limit in KiB, with the policy last"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 432,
+      "column": 9,
+      "endLine": 432,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8018e6ff64b9541d059791ec7885909e211814da8fb65a5ded3a63aa045a04a6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the prober's instructions",
+            "give the time limit in seconds and the output limit in KiB, with the policy last"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 432,
+      "column": 9,
+      "endLine": 432,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "seconds !== 1",
+      "status": "generated",
+      "id": "f46f10099e5fe64f1ba40c2ffd2125b77a9471a628bd551545c663b2b05a07c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the prober's instructions",
+            "give the time limit in seconds and the output limit in KiB, with the policy last"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 5,
+      "endLine": 494,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ddc9cc3ae9b630ac9f8433cca182eeba14077f376e89663ff14867fb4c9b47b0"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 45,
+      "endLine": 494,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2c690aade0b1e919cca4564dcff1889945f2c57b19cd4984762260b89ddcfce2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the findings earlier reviews reported",
+            "lists forty findings, and counts those past forty"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 45,
+      "endLine": 494,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0b662c9ce61f8464e060e4498972495df70c91bb99d0eca34389a0ee7c2cfa5d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the findings earlier reviews reported",
+            "lists forty findings, and counts those past forty"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 45,
+      "endLine": 494,
+      "endColumn": 55,
+      "mutatorName": "EqualityOperator",
+      "replacement": "left !== 0",
+      "status": "generated",
+      "id": "d2e349d1ff2ee1361de076695da421aaec6ac0288e975ea907d50699666e4237",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the findings earlier reviews reported",
+            "lists forty findings, and counts those past forty"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 58,
+      "endLine": 494,
+      "endColumn": 60,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d70f4d40be8349171566579dca938cc40cb4b48d27d4290935cb9ef0824c13a8"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 494,
+      "column": 96,
+      "endLine": 494,
+      "endColumn": 104,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "63427384784ecf9a709b75f00932756976db8fd24cdbc833b5b7dd8ad404d0cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing.test.ts",
+          "path": [
+            "the findings earlier reviews reported",
+            "lists forty findings, and counts those past forty"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 518,
+      "column": 5,
+      "endLine": 518,
+      "endColumn": 20,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0a8462c6b95b1ac05520919fecdf15821f35ea757e0889de42f7005f48bdc0ac",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 518,
+      "column": 5,
+      "endLine": 518,
+      "endColumn": 20,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "340e8e8a15ba165d4d77ffa57b6cb119ee96debaee2c647666ca6b29a934f65b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 519,
+      "column": 5,
+      "endLine": 519,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "42d4a057324c10a3720b843203b3fe344ad2b1815248e0cf7a14bb5833094eef",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 519,
+      "column": 5,
+      "endLine": 519,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2a8166966afac02a9828a8d4bc5d56f4b2f42a5a53f63e493cc5aadee40861f9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 520,
+      "column": 5,
+      "endLine": 520,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8ae09aa4724698b9e6b9aa435482b7c3e4e182bc4d0b7801301e3ffc356810c2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 520,
+      "column": 5,
+      "endLine": 520,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9cbc6c08dd751842908641447efe910f5da3159efcc8ed60aa07672cd52a960d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 520,
+      "column": 5,
+      "endLine": 520,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "result.exitCode !== null",
+      "status": "generated",
+      "id": "c4b776839764067193e99f0c08312cb4e43022cb507d736c142e2f22eaaaf97b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 520,
+      "column": 76,
+      "endLine": 520,
+      "endColumn": 109,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1e82f71de0b0dcccbe5710bc8d691545ce4aea7b416185e17254e8ba774a2fc1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 523,
+      "column": 39,
+      "endLine": 523,
+      "endColumn": 64,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "00cc3a8f03d311bc3725947b026703622022506c7430cccdf8288b02ac06ee15",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 8,
+      "endLine": 527,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2331d415b9e93204124bfda4c7b44bf5f83c8681d84064d5677ef0e49b459a4b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 8,
+      "endLine": 527,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e50dceb1671afe97c36fd35e831f77ff6a22ef3d6d0a75f7c45796bcd511d7f3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 8,
+      "endLine": 527,
+      "endColumn": 21,
+      "mutatorName": "EqualityOperator",
+      "replacement": "output !== \"\"",
+      "status": "generated",
+      "id": "d846d16d1d8b864dafef403211b79842fcac58203ed987d83c457914f4a6bc6d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 19,
+      "endLine": 527,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "070c5a35fe6ee1590567a4c03e318ca600086e99e1e74440fb438cc7ac23b6dc"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 69,
+      "endLine": 527,
+      "endColumn": 73,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "910115c9423f23f5c35c9913056dede215a7f742f61527d4e5f7f9f489d2b2ee"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 527,
+      "column": 97,
+      "endLine": 527,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2e672c40be4561a2efaff11819ff0dad6b6fdcc735bcb9922d787113464f4a70"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 548,
+      "column": 29,
+      "endLine": 548,
+      "endColumn": 63,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "cb36c52d6e60563ef9af445acb105a071417c9260dabc2a73862985748744745",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 550,
+      "column": 23,
+      "endLine": 550,
+      "endColumn": 47,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "609b212323882728106b17923ea5b40f84e79a00af28832b154d1baa6ed0db75",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 551,
+      "column": 21,
+      "endLine": 551,
+      "endColumn": 100,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "33c4c99997397ea947885c1a003d135f5f4960cc4cbed5279ce1421b5f09294c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 551,
+      "column": 50,
+      "endLine": 551,
+      "endColumn": 99,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e22c78bd32e3b64d1995586e9514280cf8cdfc118e367e3731a10ba0845f7997",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 552,
+      "column": 26,
+      "endLine": 552,
+      "endColumn": 98,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a2467a3c969c506ea5c375876c91aebc9d309d2f0126c372ce27bf4bf4815e83",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 555,
+      "column": 5,
+      "endLine": 555,
+      "endColumn": 65,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "3d4c272f0fe1be4d834e4bfdd7c233d54ab1392d5c1b30cba24457dadd8d1f5f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 555,
+      "column": 28,
+      "endLine": 555,
+      "endColumn": 63,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1a0356ac309c0854b5dd926e8803768da852360e122efd7965cc5d2e939d5405",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 558,
+      "column": 5,
+      "endLine": 558,
+      "endColumn": 72,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "58507eb928047ef036d7ebaba2d324b27fa9853bc1b82d507064388ce88800b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 558,
+      "column": 30,
+      "endLine": 558,
+      "endColumn": 70,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bf9e5ea82af8da92b2ae0693266c8bf4fd97c7a5b2178fb9785d470670457821",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 562,
+      "column": 24,
+      "endLine": 562,
+      "endColumn": 33,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9082b27ff3dc87b74d289ece8476b7d1584be707e21f4d18a1934c80cd138026",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 655,
+      "column": 35,
+      "endLine": 655,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "053e2177cec909bc161dd71e6e1c1f0c8ef5f1300e9c69bde501eec2c939606a"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 657,
+      "column": 58,
+      "endLine": 657,
+      "endColumn": 62,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "16e1095201059ad280b3ba00d8f06273508fa1fa7205b92d152f4132b4d5f98c"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 658,
+      "column": 52,
+      "endLine": 658,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "44fe1de52c27c5eac7ab490a3ddd879333b0f2e090103297591dd2a67652d861"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 658,
+      "column": 65,
+      "endLine": 658,
+      "endColumn": 81,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9d9be13d1dc445861d913a60720c77d4049a9761e316b53e900db7df37dc09fa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 658,
+      "column": 76,
+      "endLine": 658,
+      "endColumn": 79,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e9cf9cfd6a5ae38c59c6c7d6c5656cea33deff7bcf5cace07a2358807ac097d7"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 659,
+      "column": 51,
+      "endLine": 659,
+      "endColumn": 55,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3dc665f3090c4a93f661acc9b8a64974ccc4234cce3a4093563c8f7e31ed1a9c"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 659,
+      "column": 68,
+      "endLine": 659,
+      "endColumn": 95,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7d02c1ac5c259289de56db7fe49a7f03676c979349588e075d7276b9b856fa85",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 659,
+      "column": 91,
+      "endLine": 659,
+      "endColumn": 93,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d04cd01ed40d5d2c7151d40190f448bc351948678b549a775d569f297af5fd12"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 660,
+      "column": 54,
+      "endLine": 660,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "570516042ea23182f03d6703016702cb89c1813b9b7ee9ddf0e06df8157bbf8c"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 660,
+      "column": 71,
+      "endLine": 660,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "35b795e4aab2f69251fc0379d3949c97d2470f4e13f29653c44f03d00014ef68",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 660,
+      "column": 83,
+      "endLine": 660,
+      "endColumn": 87,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "81c2f81a7d51ca3c38482c2b4c3a80810e76a322b4cc5f1536b028b6228e3ed5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 661,
+      "column": 48,
+      "endLine": 661,
+      "endColumn": 52,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "010db9b428c8453582b2c14b27685f8849f1935c81b19f757083b23374539910"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 661,
+      "column": 65,
+      "endLine": 661,
+      "endColumn": 84,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "84bc9afdccc224ae55600e70f8b648cd642214bfe87c21d1daba657dac85f518",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 661,
+      "column": 78,
+      "endLine": 661,
+      "endColumn": 82,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f98da0fcc1aeeae591d92ae11fb3ba83eb709c8562f8b50a91fb6749c9839a22",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 664,
+      "column": 3,
+      "endLine": 664,
+      "endColumn": 7,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "875085562c468ef567abc50eccd04418c42102ed013f58a47bf464c0eb4d3294"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 666,
+      "column": 7,
+      "endLine": 666,
+      "endColumn": 44,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d4315278ba746adb30436e7a91dcb5583903bf4397b8346d2d8113715572f614",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "gives the verifier's version the evidence renderings the golden holds"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 666,
+      "column": 33,
+      "endLine": 666,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c299beacae1e4ee6a3b74da664e3e8cbf2e6d4f997a487a052e2c1bb1f90507f"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2649,
+      "column": 13,
+      "endLine": 2649,
+      "endColumn": 87,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1b1f4e3482b38f549b10fcd2adee4faa668bc53e3b329c64bf3e2f1d5f089ad3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2664,
+      "column": 4,
+      "endLine": 2664,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "731b4996c9795a10c92a19fb34c55d5c0916cebcf14a71b9a7714d46353c9261",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2664,
+      "column": 4,
+      "endLine": 2664,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f00e9a160e080b6b35ea04a1d9f1f31d8c013cc7641f9bbd69cf1be6fa9c3501",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2664,
+      "column": 4,
+      "endLine": 2664,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probing !== undefined",
+      "status": "generated",
+      "id": "5d2a21c35e8e615986558ff8cf951f08f6001c645e48273036f0329e0dbb111f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "the trust-boundary lens's probing turns",
+            "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2664,
+      "column": 28,
+      "endLine": 2664,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "66dcfe7b743c97b9a728a180ba1682059c8640f89c36c40e578769f1151bd88d"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2664,
+      "column": 33,
+      "endLine": 2664,
+      "endColumn": 99,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "319981a8fdb26f1fc577fbfb8bc68c48ab6d06742d1883a6a1cf38757b3e418b"
+    },
+    {
+      "file": "packages/pipeline/src/verification-instructions.ts",
+      "line": 62,
+      "column": 23,
+      "endLine": 62,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4948cf39f5b28b771a359b31831c69a5797fa4a3e95566ad942561c9cf0276fd"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 183,
+      "column": 15,
+      "endLine": 183,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c141f8b3374a4c6c3bf59aa59d629bad409538da2281a15242bf3b47dc2fe4c0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-wording.test.ts",
+          "path": [
+            "the tests lens at a level that probes",
+            "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 183,
+      "column": 15,
+      "endLine": 183,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3d858a10ad41f14888a23ef4e9c7767bc9fa24325b7a923ae80f059060aa8114",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-waves.test.ts",
+          "path": [
+            "verification as each lens ends",
+            "reads no wave for a candidate no wave verified, in SQLite storage"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 183,
+      "column": 15,
+      "endLine": 183,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe !== undefined",
+      "status": "generated",
+      "id": "dea19b3fe64382f2f050b6e9d214b0193feaa9b07287753d793c257ec2f3d8fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-wording.test.ts",
+          "path": [
+            "the tests lens at a level that probes",
+            "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 184,
+      "column": 11,
+      "endLine": 184,
+      "endColumn": 13,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "4965266fbe09b1ade7fb3ee063ee02e8dafb7adc11a5530f3112938a188edebf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-waves.test.ts",
+          "path": [
+            "verification as each lens ends",
+            "reads no wave for a candidate no wave verified, in SQLite storage"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 185,
+      "column": 11,
+      "endLine": 185,
+      "endColumn": 76,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "889bfb274f10f0994f11401e6d9eb10b1bc7dd7fa350044572c0accee20a365a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-wording.test.ts",
+          "path": [
+            "the tests lens at a level that probes",
+            "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 185,
+      "column": 12,
+      "endLine": 185,
+      "endColumn": 75,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a1e6d2d4cfc396c13b330ad3b73131b0644f464d1b8bf0185047a6c7c3eb5597",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-wording.test.ts",
+          "path": [
+            "the tests lens at a level that probes",
+            "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 477,
+      "column": 18,
+      "endLine": 477,
+      "endColumn": 112,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "49e9429e1aab8b79d1e53572a61aaf09f019163f3bc294bd3d055c48652a2b96",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 512,
+      "column": 60,
+      "endLine": 514,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f68ce89e165e06605ff1d973b55e4b91a8e40b4639a7593481d3fe6dbc879674",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 513,
+      "column": 8,
+      "endLine": 513,
+      "endColumn": 40,
+      "mutatorName": "MethodExpression",
+      "replacement": "source.check.endsWith(\"lens.\")",
+      "status": "generated",
+      "id": "cb49c630f5bc06ae83b624a5e32b2d70899a05bdc8230dc338f05fd7a4034336",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 513,
+      "column": 32,
+      "endLine": 513,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8dee5f23bb499d2f1cacbbb900e7dc1cfc1645136b7840aef5fc3d502a62a85d"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 513,
+      "column": 43,
+      "endLine": 513,
+      "endColumn": 77,
+      "mutatorName": "MethodExpression",
+      "replacement": "source.check",
+      "status": "generated",
+      "id": "7a17beabf9a350afcde1d1b07cd405dce8492c58135134e81aad236950cbcbf8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 513,
+      "column": 62,
+      "endLine": 513,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7f26bda08eed82b2fe4d9819bb179c59044381d29b2568307ff937de8ce23676"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 521,
+      "column": 35,
+      "endLine": 521,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dac7f68650f52f03ab213f402f6f6c49ab4ee4cef555914d36eee20ac045e886"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 537,
+      "column": 4,
+      "endLine": 537,
+      "endColumn": 74,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a297206947e4b3b0b4629d7aa090079e1e608575942e29dd9ab90f9f7d005052",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 537,
+      "column": 13,
+      "endLine": 537,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a2d87550de0371658a1721555f50dd471ecdc9e1c324e12cefb8072aaf0db7fc"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 538,
+      "column": 4,
+      "endLine": 538,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "25e7302ee9fc4542be5cfab840dbd538191473420feeafeaf56ee8a9eaf9a9c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 538,
+      "column": 13,
+      "endLine": 538,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "96981fa16a7c0a222cace86663148f4afcbef022f3d21000838cbdd0a75639d9"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 538,
+      "column": 63,
+      "endLine": 538,
+      "endColumn": 87,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1be30a1e8027382884be1748df50fa0a1aff69552f4b79dfe228464aaa8cc934",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 538,
+      "column": 74,
+      "endLine": 538,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ce69cf0374d63889ef8d07feebf760b37359a78e818450389b527ab388046be6"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 539,
+      "column": 4,
+      "endLine": 544,
+      "endColumn": 5,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "951d2559114ca4831d4d721b90ad328fc6f4e2eb525cf78cd0fcd174f9ddaf6a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 540,
+      "column": 12,
+      "endLine": 540,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "866e1ed1910525d97b903727bffa3626042f6987022fa8d31078313c1a330322"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 543,
+      "column": 12,
+      "endLine": 543,
+      "endColumn": 61,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "db91f59c3dd252608b5a5c37b7c223006474201ca54457aae4e9f3813138422d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 587,
+      "column": 35,
+      "endLine": 590,
+      "endColumn": 40,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "905f35abc18007e6d1dbba1e445e67d6112daf79255a0776c73274397644914c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 588,
+      "column": 2,
+      "endLine": 589,
+      "endColumn": 77,
+      "mutatorName": "MethodExpression",
+      "replacement": "candidate.state.claims",
+      "status": "generated",
+      "id": "5ddb2a488b18e6876891809818b52940097afdd7b9b58494df51216bc8c44c51",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 589,
+      "column": 11,
+      "endLine": 589,
+      "endColumn": 76,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ddf981b1396e63e010065a3867b53da179981f1e14283490d152a67da54d0cf2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 589,
+      "column": 22,
+      "endLine": 589,
+      "endColumn": 76,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "53842579c89a16cb4a6d99bc15857dbfeb1b8c32b7e51a9608d2b70132009703",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 589,
+      "column": 22,
+      "endLine": 589,
+      "endColumn": 76,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "48048d2c3f1b298a98b5472076e48311adda24c8fc4c4aeb98f088fef26017d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 589,
+      "column": 22,
+      "endLine": 589,
+      "endColumn": 76,
+      "mutatorName": "EqualityOperator",
+      "replacement": "candidate.probes?.[probeClaimKey(claim)] === undefined",
+      "status": "generated",
+      "id": "51996bc2a6fa1159069a796ae091fbc8d80b872bd65a54e1a260e416335e706d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 589,
+      "column": 22,
+      "endLine": 589,
+      "endColumn": 62,
+      "mutatorName": "OptionalChaining",
+      "replacement": "candidate.probes[probeClaimKey(claim)]",
+      "status": "generated",
+      "id": "6e3d7721ca79188e5a4faef3a6165822c0b663b6a90e461ec1f81b75460579b6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 590,
+      "column": 8,
+      "endLine": 590,
+      "endColumn": 39,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a9a8df1b17a650cbc946df0fe0a60f9c44638222904361d2cb80ef9cc6c87652",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 599,
+      "column": 7,
+      "endLine": 599,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9cdc8a95a9ba060d160f62e7c8a3f4f1ca9345a9812ac6609b14a746de7e7cb9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 599,
+      "column": 7,
+      "endLine": 599,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c90b3a91780276b1dc319ac5ae45744c075f6801347b43eaca6223d1a3a3a359",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification no probe evidence reaches",
+            "keeps the key and the verifier's version main gave it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 599,
+      "column": 7,
+      "endLine": 599,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "judged.length !== 0",
+      "status": "generated",
+      "id": "2e40501b04a984ce718450a3511dbbfbc42e6f325ec4669afc207251e6f127dd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 601,
+      "column": 6,
+      "endLine": 601,
+      "endColumn": 97,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ed36062a841e007ac53d85b1a836822d7b095e55665bed98a8e5220ed741b562",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 601,
+      "column": 46,
+      "endLine": 601,
+      "endColumn": 93,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "7356a3cc7835d60dc809021220fd5291119955c003a25e8b4aa42520814d0fb2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 601,
+      "column": 56,
+      "endLine": 601,
+      "endColumn": 93,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "f8a11dcbf95a9d828ad34d0876deadcc4ba15f830faeb2372eb4e2bbe9cbe4bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "a verification of claims that rest on probes",
+            "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    }
+  ],
+  "total": 170,
+  "omitted": 0,
+  "unmutated": []
+}

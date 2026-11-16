@@ -297,6 +297,7 @@ export {
 	type TierStatus,
 	type UnknownModel,
 } from "./plan.ts";
+export { type LensProbingWording, lensProbingWording } from "./probing-wording.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
@@ -486,6 +487,15 @@ export {
 	type MutationTestIdentity,
 	survivorClasses,
 } from "./mutation-inventory.ts";
+export {
+	type ProcessControl,
+	type ProcessEntry,
+	ProcessTable,
+	parseProcesses,
+	type RecordedProcess,
+	stopTree,
+	terminateRecorded,
+} from "./process-tree.ts";
 export {
 	type MembershipCandidate,
 	MembershipError,

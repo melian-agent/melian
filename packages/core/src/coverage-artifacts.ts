@@ -57,6 +57,8 @@ export type ReviewRead = {
 	revision: "head" | "base";
 	kind: "read" | "search";
 	lines: number[];
+	/** Set when the tool showed only the start of the one line it read. */
+	cut?: true;
 };
 /** Read and search coverage for each lens and changed file. */
 export type ReviewCoverageState = Static<typeof reviewSchema>;
