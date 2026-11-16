@@ -5,7 +5,6 @@ import {
 	Changeset,
 	defaultConfig,
 	everyRecordCounts,
-	KeyedRequest,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
