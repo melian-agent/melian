@@ -6,6 +6,7 @@ import {
 	disposalMark,
 	disposedError,
 	type PayloadChecks,
+	ProcessTable,
 	type RecordCell,
 	type RecordEnvelope,
 	RecordError,
@@ -13,7 +14,8 @@ import {
 	SharedRecord,
 } from "@melian-agent/core";
 import { type Clock, Deadline, systemClock } from "./deadline.ts";
-import { RecordRepository, type TreeChange } from "./repository.ts";
+import type { Processes } from "./owner.ts";
+import { RecordRepository, type Sweep, type TreeChange } from "./repository.ts";
 import { type Cell, cellBytes, cellPath, fileLimit, type Judged, StateTree } from "./state-tree.ts";
 
 /** Where a {@link GitRecordStore} keeps its repository and which branch of which remote it holds. */
@@ -29,6 +31,8 @@ export type GitRecordStoreOptions = {
 	/** How long one call may take, two minutes unless given. */
 	readonly deadlineMs?: number;
 	readonly clock?: Clock;
+	/** The process table the store reads to tell whose leftovers are stale, core's `ProcessTable` unless a test gives another. */
+	readonly processes?: Processes;
 };
 
 // A lost race waits a random time below this bound, which doubles from the first to the last, past one push's time.
@@ -56,9 +60,12 @@ export class GitRecordStore implements RecordStore {
 	readonly #clock: Clock;
 	readonly #judged = new Map<string, Judged>();
 	#closed = false;
+	/** What opening the store swept from its directory, for `melian doctor` to report. */
+	readonly sweep: Sweep;
 
-	private constructor(repository: RecordRepository, options: GitRecordStoreOptions) {
+	private constructor(repository: RecordRepository, sweep: Sweep, options: GitRecordStoreOptions) {
 		this.#repository = repository;
+		this.sweep = sweep;
 		this.#remote = options.remote;
 		this.#branch = options.branch ?? "melian/state";
 		this.#payloads = options.payloads ?? {};
@@ -66,10 +73,15 @@ export class GitRecordStore implements RecordStore {
 		this.#clock = options.clock ?? systemClock;
 	}
 
-	/** Opens the store, creating its repository in `options.directory` when it is not there. Reaches no remote. */
+	/**
+	 * Opens the store, creating its repository in `options.directory` when it is not there, and sweeps what calls whose
+	 * process has gone left there. Reaches no remote.
+	 */
 	static async open(options: GitRecordStoreOptions): Promise<GitRecordStore> {
 		const deadline = Deadline.after(options.clock ?? systemClock, options.deadlineMs ?? defaultDeadlineMs);
-		return new GitRecordStore(await RecordRepository.open(join(options.directory, "records.git"), deadline), options);
+		const processes = options.processes ?? new ProcessTable();
+		const repository = await RecordRepository.open(join(options.directory, "records.git"), deadline, processes);
+		return new GitRecordStore(repository, await repository.sweep(deadline, processes), options);
 	}
 
 	#check(changeset: string): void {

@@ -1,0 +1,200 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6dfaec35f3c7ebb91430428b0605e2a1ef70f587",
+		"head": "1037adc92c0edcedeb2b33e2d018c1e326a71151"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/mutation-enumeration.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 79,
+			"column": 66,
+			"endLine": 92,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "eee98a912e13b64b69880511ca62daf224dac8a020cca8eeb40492a80ae0081b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 80,
+			"column": 42,
+			"endLine": 91,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7b5eeb7a52e3b5f947f184a971fd4ee5802588184aa214290e83fed8037ccb37",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 82,
+			"column": 3,
+			"endLine": 88,
+			"endColumn": 5,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "15da58198c66f517534ab9aa0075409cefe17ed3885aba21fa3d7d0f353fb82a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 83,
+			"column": 22,
+			"endLine": 87,
+			"endColumn": 7,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "6f269a50acfa9543e7131af3b4b7641aadd4a4a166961a1789ff3b3a55f5b7ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 84,
+			"column": 25,
+			"endLine": 87,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dfbfa7ef893532575d29cf1c813696af9a7ca0e70524ce01ae8c5cfbc0ad3970",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 85,
+			"column": 6,
+			"endLine": 85,
+			"endColumn": 14,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "f8ec3e5d184d83003caf46719ef2fee6ad781026d7090ef8e852bfc15cc953a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 90,
+			"column": 2,
+			"endLine": 90,
+			"endColumn": 22,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "b7b7f32cf2d8274b1928456087279e8bedc8601edfd252bbec78933a3b08de90",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"lists the next file after an enumeration fails"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 165,
+			"column": 23,
+			"endLine": 165,
+			"endColumn": 43,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "30d3c68ccece1504a2ea76490069b153bbd3be70cf29e45c0f5d408c3d1bb28a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-enumeration.test.ts",
+					"path": [
+						"mutation enumeration",
+						"bounds output exactly and --all retains every row"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}
