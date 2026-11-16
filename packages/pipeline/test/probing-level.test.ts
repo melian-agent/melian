@@ -413,6 +413,71 @@ describe("a level that probes", () => {
 		);
 	});
 
+	it.each([
+		["2 probing claims", true],
+		["1 probing claim", false],
+	])("names the count of probing claims, %s, when a merged candidate's evidence cannot fit", async (count, probes) => {
+		evidenceBudget.bytes = 1;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		// A copy of trust-boundary shares its rules, so the two lenses' reports of one defect merge into one candidate. One
+		// without probes says so in its instructions, which its script matches.
+		const unprobed = "This copy runs without probes.";
+		const copy = (loaded: readonly Lens[]) => {
+			const lens = loaded.find(({ name }) => name === "trust-boundary")!;
+			const { probe: _, ...deep } = lens.level("deep");
+			return [
+				Lens.from({
+					...lens.toJSON(),
+					name: "boundary-copy",
+					...(probes
+						? {}
+						: { levels: { ...lens.levels, deep }, instructions: `${lens.instructions}\n\n${unprobed}` }),
+				}),
+			];
+		};
+		const { probe: _, ...plain } = finding("p0");
+		// A planner records its plan on its first turn and finishes on its next, whichever lens's planner asks.
+		const planning: ScriptedReply = (messages) =>
+			messages.some((message) => message.role === "assistant")
+				? fauxAssistantMessage("Planned 1 attack.")
+				: call("record_plan", { attacks: [attack] });
+		const { run } = await review(
+			{
+				planner: [planning, planning, planning, planning],
+				prober: probing(failing),
+				others: probes
+					? [{ match: "You are the prober for the boundary-copy lens", replies: probing(failing) }]
+					: [
+							{
+								match: unprobed,
+								replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+							},
+							// A lens without probes starts a wave, whose verifier judges the copy's claim alone first.
+							{ match: "Melian adversarial verifier", replies: [scriptVerifier] },
+						],
+			},
+			{
+				config: {
+					tiers: { full: ["lens.trust-boundary", "lens.boundary-copy"] },
+					lenses: {
+						"trust-boundary": { level: { floor: "deep" } },
+						"boundary-copy": { level: { floor: "deep" } },
+					},
+				},
+				lenses: copy,
+			},
+		);
+		const verdict = (await failure(run)).verdict!;
+		expect(verdict.notRun).toContainEqual(
+			expect.objectContaining({
+				name: "verifier",
+				reason: `Melian did not ask the verifier: the probe evidence of the candidate's ${count} passes the 1 bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget`,
+			}),
+		);
+	});
+
 	it("refuses a finding whose probe passed, so a probe that shows nothing reports nothing", async () => {
 		const { run, requests } = await review({ planner: plan, prober: probing(passing) });
 		const { verdict } = await run;
