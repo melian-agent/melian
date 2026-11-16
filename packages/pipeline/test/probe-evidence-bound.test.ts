@@ -8,6 +8,7 @@ import { modelsOf } from "../src/models.ts";
 import {
 	type Attack,
 	boundProbeEvidence,
+	evidenceWordingOf,
 	fill,
 	keepEnds,
 	type ProbeEvidence,
@@ -20,6 +21,8 @@ import {
 } from "../src/probing.ts";
 
 const nonce = "0123456789abcdef01234567";
+
+const wording = evidenceWordingOf("trust-boundary");
 
 const result = (output: string, exitCode = 1): StoredProbeResult => ({
 	exitCode,
@@ -48,6 +51,7 @@ const plan = (name: string): Attack[] =>
 // all the bytes a probe may hold, and both runs' output.
 const atLimits = (label: string): ProbeEvidence => ({
 	label,
+	wording,
 	probe: {
 		id: `p-${label}`,
 		attack: 1,
@@ -68,6 +72,7 @@ const atLimits = (label: string): ProbeEvidence => ({
 
 const small = (label: string, script: string): ProbeEvidence => ({
 	label,
+	wording,
 	probe: {
 		id: `p-${label}`,
 		attack: 1,
@@ -79,7 +84,7 @@ const small = (label: string, script: string): ProbeEvidence => ({
 
 const bytes = (blocks: readonly string[]) => Buffer.byteLength(blocks.join("\n\n"));
 const whole = (evidence: readonly ProbeEvidence[]) =>
-	evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, nonce));
+	evidence.map(({ label, probe, again }) => renderProbeEvidence(wording, label, probe, again, nonce));
 
 // Evidence whose whole rendering is exactly `size` bytes: three small claims, the first padded.
 const sized = (size: number) => {
@@ -128,6 +133,7 @@ describe("boundProbeEvidence", () => {
 	it("renders the last count of merged claims whose least cut fits, and nothing for one claim more", () => {
 		const wide = (label: string): ProbeEvidence => ({
 			label,
+			wording,
 			probe: {
 				id: `p-${label}`,
 				attack: 1,
@@ -211,7 +217,7 @@ describe("boundProbeEvidence", () => {
 		const short = small("c2", text("short script", 2_000));
 		const bound = boundProbeEvidence([long, short], nonce)!;
 		expect(bytes(bound)).toBeLessThanOrEqual(probeEvidenceBudget);
-		expect(bound[1]).toBe(renderProbeEvidence("c2", short.probe, undefined, nonce));
+		expect(bound[1]).toBe(renderProbeEvidence(wording, "c2", short.probe, undefined, nonce));
 		expect(bound[0]).toContain("long script begins");
 		expect(bound[0]).toContain("long script ends");
 	});
@@ -219,6 +225,7 @@ describe("boundProbeEvidence", () => {
 	it("says outside the boundary which parts were cut and by how much, naming a file by its number", () => {
 		const evidence: ProbeEvidence = {
 			label: "c1",
+			wording,
 			probe: {
 				id: "p1",
 				attack: 1,
