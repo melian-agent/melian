@@ -92,7 +92,7 @@ describe("boundProbeEvidence", () => {
 		expect(boundProbeEvidence(at, nonce)).toEqual(whole(at));
 
 		const past = sized(probeEvidenceBudget + 1);
-		const bound = boundProbeEvidence(past, nonce);
+		const bound = boundProbeEvidence(past, nonce)!;
 		expect(bound).not.toEqual(whole(past));
 		expect(bytes(bound)).toBeLessThanOrEqual(probeEvidenceBudget);
 		expect(bound[0]).toContain(probeEvidenceCutWording.conclude);
@@ -103,7 +103,7 @@ describe("boundProbeEvidence", () => {
 	it("fits three merged claims at every limit within the budget, keeping each cut part's ends", () => {
 		const evidence = [atLimits("c1"), atLimits("c2"), atLimits("c3")];
 		expect(bytes(whole(evidence))).toBeGreaterThan(3 * probeEvidenceBudget);
-		const bound = boundProbeEvidence(evidence, nonce);
+		const bound = boundProbeEvidence(evidence, nonce)!;
 		expect(bound).toHaveLength(3);
 		expect(bytes(bound)).toBeLessThanOrEqual(probeEvidenceBudget);
 		// The cut fills the budget rather than cut more than it must.
@@ -121,13 +121,51 @@ describe("boundProbeEvidence", () => {
 		}
 	});
 
+	// Each part cut to nothing still leaves Melian's own lines and each file's path, so enough merged claims pass the
+	// budget at any cut. Their verification asks no model, rather than show a verifier more than its context holds.
+	it("renders the last count of merged claims whose least cut fits, and nothing for one claim more", () => {
+		const wide = (label: string): ProbeEvidence => ({
+			label,
+			probe: {
+				id: `p-${label}`,
+				attack: 1,
+				plan: Array.from({ length: probingLimits.attacks }, () => ({
+					target: "t".repeat(100),
+					reason: "r".repeat(100),
+					passing: "p".repeat(100),
+					failing: "f".repeat(100),
+				})),
+				probe: {
+					attack: 1,
+					script: "s".repeat(1024),
+					files: Array.from({ length: probingLimits.files }, (_, index) => ({
+						path: `${label}/${String(index).padEnd(200, "f")}.ts`,
+						text: "x".repeat(256),
+					})),
+					result: result("o".repeat(1024)),
+					milliseconds: 5,
+				},
+			},
+			again: { result: result("m".repeat(1024)), milliseconds: 4 },
+		});
+		const claims = (count: number) => Array.from({ length: count }, (_, index) => wide(`c${index + 1}`));
+		let fits = 1;
+		while (fits < 100 && boundProbeEvidence(claims(fits + 1), nonce) !== undefined) fits++;
+		expect(fits).toBe(19);
+		const last = boundProbeEvidence(claims(fits), nonce)!;
+		expect(last).toHaveLength(fits);
+		expect(bytes(last)).toBeLessThanOrEqual(probeEvidenceBudget);
+		expect(last[fits - 1]).toContain(probeEvidenceCutWording.conclude);
+		expect(boundProbeEvidence(claims(fits + 1), nonce)).toBeUndefined();
+	});
+
 	it("keeps a cut that fills the budget to the byte", () => {
 		const evidence = [atLimits("c1"), atLimits("c2")];
-		const bound = boundProbeEvidence(evidence, nonce);
+		const bound = boundProbeEvidence(evidence, nonce)!;
 		const filled = bytes(bound);
 		expect(filled).toBeLessThan(probeEvidenceBudget);
 		// The note names the budget, in as many digits at either budget, so only that number differs.
-		const refilled = boundProbeEvidence(evidence, nonce, filled).map((block) =>
+		const refilled = boundProbeEvidence(evidence, nonce, filled)!.map((block) =>
 			block.replaceAll(`fit the ${filled} bytes`, `fit the ${probeEvidenceBudget} bytes`),
 		);
 		expect(refilled).toEqual(bound);
@@ -136,7 +174,7 @@ describe("boundProbeEvidence", () => {
 	it("cuts the longest parts first and leaves shorter ones whole", () => {
 		const long = small("c1", text("long script", 200_000));
 		const short = small("c2", text("short script", 2_000));
-		const bound = boundProbeEvidence([long, short], nonce);
+		const bound = boundProbeEvidence([long, short], nonce)!;
 		expect(bytes(bound)).toBeLessThanOrEqual(probeEvidenceBudget);
 		expect(bound[1]).toBe(renderProbeEvidence("c2", short.probe, undefined, nonce));
 		expect(bound[0]).toContain("long script begins");
@@ -163,7 +201,7 @@ describe("boundProbeEvidence", () => {
 			},
 			again: { refused: "no sandbox" },
 		};
-		const [block] = boundProbeEvidence([evidence], nonce);
+		const [block] = boundProbeEvidence([evidence], nonce)!;
 		const outside = block!.slice(0, block!.indexOf(`<untrusted-${nonce}`));
 		const note = outside.split("\n\n").find((paragraph) => paragraph.startsWith("Melian cut"));
 		expect(note).toMatch(
@@ -186,7 +224,7 @@ describe("boundProbeEvidence", () => {
 
 	it("cuts at a character boundary, never inside one", () => {
 		const evidence = small("c1", "é".repeat(100_000));
-		const [block] = boundProbeEvidence([evidence], nonce);
+		const [block] = boundProbeEvidence([evidence], nonce)!;
 		expect(block).not.toContain("\u{FFFD}");
 		expect(Buffer.byteLength(block!)).toBeLessThanOrEqual(probeEvidenceBudget);
 	});

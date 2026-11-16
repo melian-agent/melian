@@ -60,6 +60,20 @@ import { ReviewIndex } from "../src/review-index.ts";
 import { injectionPolicy } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
+// The evidence budget a test may lower, so one claim's least rendering passes it; every other test keeps the real one.
+const evidenceBudget = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
+vi.mock("../src/probing.ts", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../src/probing.ts")>();
+	return {
+		...actual,
+		get probeEvidenceBudget() {
+			return evidenceBudget.bytes ?? actual.probeEvidenceBudget;
+		},
+		boundProbeEvidence: (...[evidence, nonce, budget]: Parameters<typeof actual.boundProbeEvidence>) =>
+			actual.boundProbeEvidence(evidence, nonce, budget ?? evidenceBudget.bytes),
+	};
+});
+
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
 // sandbox that runs them unconfined, since every probe here is the test's own, and the verifier judges what they show.
 
@@ -373,6 +387,30 @@ describe("a level that probes", () => {
 		expect(judged).toContain(probeEvidenceCutWording.conclude);
 		const evidence = judged.slice(judged.indexOf("## Claim c1's probe"), judged.lastIndexOf("\n</instructions>"));
 		expect(Buffer.byteLength(evidence)).toBeLessThanOrEqual(probeEvidenceBudget);
+	});
+
+	it("asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed", async () => {
+		evidenceBudget.bytes = 1;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		const { run, requests } = await review({ planner: plan, prober: probing(failing) });
+		const error = await run.then(
+			() => undefined,
+			(thrown: unknown) => thrown,
+		);
+		expect(error).toBeInstanceOf(ReviewError);
+		expect((error as ReviewError).code).toBe("verifierFailed");
+		const verdict = (error as ReviewError).verdict!;
+		expect(verdict.status).toBe("not-reviewed");
+		expect(requests["Melian adversarial verifier"]).toBeUndefined();
+		expect(verdict.notRun).toContainEqual(
+			expect.objectContaining({
+				status: "failed",
+				reason:
+					"Melian did not ask the verifier: the probe evidence of the candidate's 1 probing claim passes the 1 bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget",
+			}),
+		);
 	});
 
 	it("refuses a finding whose probe passed, so a probe that shows nothing reports nothing", async () => {

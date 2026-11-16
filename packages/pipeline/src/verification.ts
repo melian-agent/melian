@@ -142,8 +142,6 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					if (task.input.reused?.[candidate.key] !== undefined) continue;
-					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
-					children[candidate.key] = child.id;
 					const probed = (claim: { id: string; source: { check: string; version?: string } }) => {
 						const probe = candidate.probes?.[probeClaimKey(claim)];
 						return probe === undefined ? undefined : { probe, again: reruns[rerunKey(claim, probe)] };
@@ -174,19 +172,24 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						};
 					});
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
+					const instructions = verifierPrompt(
+						candidate,
+						claims,
+						dismissed,
+						claims.flatMap(({ label, id, source }) => {
+							const probe = probed({ id, source });
+							return probe === undefined ? [] : [{ label, ...probe }];
+						}),
+						task.input.revision.nonce,
+					);
+					// A candidate with no conversation is one whose evidence no verifier may be shown; it ends unasked.
+					if (instructions === undefined) continue;
+					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
+					children[candidate.key] = child.id;
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
-						instructions: verifierPrompt(
-							candidate,
-							claims,
-							dismissed,
-							claims.flatMap(({ label, id, source }) => {
-								const probe = probed({ id, source });
-								return probe === undefined ? [] : [{ label, ...probe }];
-							}),
-							task.input.revision.nonce,
-						),
+						instructions,
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
 					});
@@ -215,7 +218,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 			const started = task.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
 			const result: VerificationResult = { ...task.input.reused };
 			const run = async (candidate: VerificationCandidate): Promise<Outcome> => {
-				const id = started.children[candidate.key]!;
+				const id = started.children[candidate.key];
+				if (id === undefined) return { status: "unanswered", reason: unshown(candidate) };
 				const child = (await runtime.conversation(id, context))!;
 				for (let attempt = started.attempts[candidate.key] ?? 0; ; attempt++) {
 					if (await replaced(runtime, task.input, runtime.taskId, context))
@@ -456,7 +460,9 @@ function verifierPrompt(
 	dismissed: readonly { label: string; id: string }[],
 	evidence: readonly ProbeEvidence[],
 	nonce: string,
-): string {
+): string | undefined {
+	const bound = boundProbeEvidence(evidence, nonce);
+	if (bound === undefined) return undefined;
 	return [
 		verifierInstructions,
 		...(decisionsAtBase === undefined
@@ -470,8 +476,15 @@ function verifierPrompt(
 				]),
 		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
 		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
-		...boundProbeEvidence(evidence, nonce),
+		...bound,
 	].join("\n\n");
+}
+
+function unshown(candidate: VerificationCandidate): string {
+	const probing = candidate.state.claims.filter(
+		(claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined,
+	).length;
+	return `Melian did not ask the verifier: the probe evidence of the candidate's ${probing} probing claim${probing === 1 ? "" : "s"} passes the ${probeEvidenceBudget} bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget`;
 }
 
 function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[], nonce: string): string {
@@ -528,7 +541,7 @@ function verifierText(): unknown {
 				{ label: "c3", probe: placeholderProbe(0), again: { result: placeholderResult(1), milliseconds: 0 } },
 			],
 			nonce,
-		),
+		)!,
 		wording: probeEvidenceWording,
 		planRow: probingWording.planRow,
 		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),

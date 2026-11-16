@@ -635,17 +635,19 @@ export type ProbeEvidence = {
  * Each claim's probe evidence, rendered so that together, joined as the verifier's prompt joins them, they fit `budget`
  * bytes. Evidence that fits renders whole. Otherwise every part a model or the head's code wrote is cut to the largest
  * common size that fits, so the longest parts lose the most and shorter ones none. The stored records stay whole.
+ * Evidence that passes `budget` with every part cut to nothing renders as nothing: `undefined`.
  */
 export function boundProbeEvidence(
 	evidence: readonly ProbeEvidence[],
 	nonce: string,
 	budget: number = probeEvidenceBudget,
-): string[] {
+): string[] | undefined {
 	const rendered = (keep?: number) =>
 		evidence.map((claim) => renderedEvidence(claim, nonce, keep === undefined ? undefined : { keep, budget }));
 	const size = (blocks: readonly string[]) => Buffer.byteLength(blocks.join("\n\n"));
 	const whole = rendered();
 	if (size(whole) <= budget) return whole;
+	if (size(rendered(0)) > budget) return undefined;
 	// No part is longer than the whole, so keeping that many bytes cuts nothing and does not fit.
 	let low = 0;
 	let high = size(whole) - 1;
@@ -699,7 +701,7 @@ export const ProbeReruns = defineDoc<{
 
 /**
  * Probe evidence cut on every part it holds, over fixed sample inputs: one claim Melian could not run again and one it
- * ran, at a budget nothing fits. A verification whose candidates carry probe evidence keys it beside the cut wording, so
+ * ran, with every part cut to nothing. A verification whose candidates carry probe evidence keys it beside the cut wording, so
  * a change in how a cut is put together changes that key as a changed word does.
  */
 export function probeEvidenceCutRendering(): string {
@@ -725,14 +727,13 @@ export function probeEvidenceCutRendering(): string {
 			milliseconds: 5,
 		},
 	};
-	return boundProbeEvidence(
-		[
-			{ label: "c1", probe, again: { refused: "R" } },
-			{ label: "c2", probe, again: { result: result("M"), milliseconds: 4 } },
-		],
-		"0123456789abcdef01234567",
-		0,
-	).join("\n\n");
+	const nonce = "0123456789abcdef01234567";
+	return [
+		{ label: "c1", probe, again: { refused: "R" } },
+		{ label: "c2", probe, again: { result: result("M"), milliseconds: 4 } },
+	]
+		.map((claim) => renderedEvidence(claim, nonce, { keep: 0, budget: 0 }))
+		.join("\n\n");
 }
 
 let renderings: string | undefined;

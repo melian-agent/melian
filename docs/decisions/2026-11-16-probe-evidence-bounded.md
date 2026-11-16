@@ -4,7 +4,7 @@ Amends: [A trust-boundary level that runs probes](2026-11-07-trust-boundary-leve
 Amends: [A finished probing run is never reused](2026-11-14-probing-runs-not-reused.md), "The verifier's version hashes how a claim's probe evidence is worded and rendered", for the wording of a cut
 Amends: [Request keys as built](2026-11-14-request-keys-as-built.md), the verification's request contents, for a verification whose candidates carry probe evidence
 
-Status: the maintainer ruled on 2026-11-16, as the coordinator relayed in its session, to turn probing on for Melian's own rounds before this bound exists, on the condition that it comes next. The budget, keeping both ends of a cut part, repeating the plan for each claim, and keying the cut only where probe evidence is shown are the coordinator's answers on approach, given on 2026-11-16 in its session. They are not maintainer rulings.
+Status: the maintainer ruled on 2026-11-16, as the coordinator relayed in its session, to turn probing on for Melian's own rounds before this bound exists, on the condition that it comes next. The budget, keeping both ends of a cut part, repeating the plan for each claim, and keying the cut only where probe evidence is shown are the coordinator's answers on approach, given on 2026-11-16 in its session. Failing closed when even the least cut does not fit is the coordinator's answer on approach, given on 2026-11-16 in its session after Codex's adversarial review found the overflow. They are not maintainer rulings.
 
 ## The problem
 
@@ -19,6 +19,7 @@ For example, a merged defect of four probing claims at their limits renders abou
 - Past the budget, Melian cuts each part a model or the head's code wrote: the plan, the script, each file, what the probe printed for the prober, why Melian could not run it again, and what it printed for Melian. It finds the largest size every part may keep and still fit, so the longest parts lose the most and a part shorter than that size loses nothing.
 - A cut part keeps its first and last halves, at character boundaries, around a line that says how many bytes were cut there.
 - Melian's own text is never cut: the headings, the line that says how the probe ended each time, the judging rule and the files' paths.
+- When the evidence passes the budget even with every part cut to nothing, Melian asks no verifier of that candidate. Its verification fails, and the review reads not reviewed. The check's reason names the budget and the count of the candidate's probing claims.
 - A note outside the review's boundary says which parts were cut and by how much. It names a file by its number, never its path, since the path is the head's text.
 - When anything was cut, the verifier reads a rule for cut evidence. It may confirm what the shown parts show. It must not refute or lower a claim because the part that would show it was cut. When the lines that decide the claim fall in a cut, it answers plausible and says which part was cut.
 - The stored records stay whole. The cut is made in the verifier's prompt alone. The candidate's probes and the review's probe reruns keep every byte, and a rerun runs the stored probe.
@@ -37,5 +38,5 @@ Hashing the cut's wording into the verifier's version would judge every stored c
 
 - The tightest accepted models, `openai/gpt-5.5` and `openai-codex/gpt-5.6-terra`, have a context of 272,000 tokens. Twice the budget is 262,144, so the budget can grow only about 3% before the test fails.
 - Each claim repeats the plan, as before, so a merged defect spends its budget on copies of one plan. The copies are cut like any other part.
-- Melian's own text is not bounded. With up to 16 file paths of 200 characters, it comes to about 6.3 KiB a claim, so a candidate would need about 20 probing claims to pass the budget on that text alone. A candidate merges the claims lens runs made of one defect, and only a probing run's claims carry evidence, so it stays far below that.
+- Melian's own text is not cut. With up to 16 file paths of 200 characters, it comes to about 6.3 KiB a claim, so a candidate of about 20 probing claims passes the budget on that text alone. Such a candidate is never judged: its review reads not reviewed until it merges fewer probing claims or the budget grows. A candidate merges the claims lens runs made of one defect, and only a probing run's claims carry evidence, so it stays far below that.
 - A verification of probe evidence stored before this change has a new key, so it runs again once.
