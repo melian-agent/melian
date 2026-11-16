@@ -394,7 +394,7 @@ function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
 
 // Each field a level leaves out comes from the top level, then from Melian's default. `careful` always exists, and is
 // resolved first, so a lens with no tier anywhere is refused for its top-level `tier`.
-function resolveLevels(file: string, name: string, declared: Declared): LensLevels {
+function resolveLevels(file: string, name: string, declared: Declared, builtin: boolean): LensLevels {
 	const resolved = (level: ScrutinyLevel, own: DeclaredLevel | undefined): LensLevel => {
 		const tier = own?.tier ?? declared.tier;
 		if (tier === undefined && level === defaultScrutinyLevel) required(file, "tier", tier);
@@ -416,6 +416,24 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 				"missingField",
 				file,
 				`${file}: lens ${name}, level ${level}: "probe" needs probing wording of the lens's own, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
+				{ field: `levels.${level}.probe`, lens: name, level },
+			);
+		}
+		// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
+		// would leave the lens clean.
+		if (probe !== undefined && name === "tests") {
+			throw new LensError(
+				"missingField",
+				file,
+				`${file}: lens tests, level ${level}: "probe" is refused in the tests lens until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
+				{ field: `levels.${level}.probe`, lens: name, level },
+			);
+		}
+		if (probe !== undefined && !builtin) {
+			throw new LensError(
+				"missingField",
+				file,
+				`${file}: lens ${name}, level ${level}: "probe" reads the built-in ${name} lens's probing wording, which this lens does not extend; add "extends: ${name}" to probe under it`,
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
@@ -461,6 +479,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
+	const builtin = file.startsWith("builtin:") || (own.extends === own.name && base?.builtin === true);
 	const resolution = own.resolution ?? base?.lens.resolution;
 	const emoji = own.emoji ?? base?.lens.emoji;
 	if (own.emoji !== undefined) checkEmoji(file, own.emoji);
@@ -472,7 +491,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		rules,
 		paths: own.paths?.map((path) => anchor(file, scope, path)) ?? base?.lens.paths ?? [anchor(file, scope, "**")],
 		scope,
-		levels: resolveLevels(file, own.name, declared),
+		levels: resolveLevels(file, own.name, declared, builtin),
 		standards: own.standards ?? base?.lens.standards ?? true,
 		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
@@ -480,7 +499,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		resolution,
 		emoji,
 	});
-	return { lens, declared };
+	return { lens, declared, builtin };
 }
 
 // One emoji, which the findings guideline's table does not already give a meaning.
@@ -511,6 +530,8 @@ function checkEmojiClashes(lenses: readonly LensFields[]): void {
 interface Layered {
 	readonly lens: LensFields;
 	readonly declared: Declared;
+	/** Whether the lens is the built-in of its name, or extends it under that name. */
+	readonly builtin: boolean;
 }
 
 function fromSource(file: string) {
