@@ -4,6 +4,7 @@ import {
 	type CheckPayload,
 	type CheckRecord,
 	type ConfigFor,
+	type DismissalPayload,
 	type FindingSource,
 	type LensPayload,
 	type MelianConfig,
@@ -20,7 +21,8 @@ import {
 	type VerificationPayload,
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
-import { mergeSightings, type Producer, type VerificationClaim } from "./findings.ts";
+import { mergeSightings, type Producer, type SharedDismissal, type VerificationClaim } from "./findings.ts";
+import { provingHunk, reviewFiles } from "./lens-tools.ts";
 import { accountKey, inManifestOrder } from "./review-records.ts";
 
 /** What a recorded round's verdict is decided under, which its records do not hold. */
@@ -43,6 +45,7 @@ type Pieces =
 			readonly checks: CheckRecord[];
 			readonly sightings: StoredFinding[];
 			readonly claims: VerificationClaim[];
+			readonly dismissals: ReadonlyMap<string, SharedDismissal>;
 	  }
 	| { readonly refused: string };
 
@@ -50,8 +53,9 @@ type Pieces =
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
  * verdict is decided from the records the round names by ID and nothing else, so it never passes a round the review
  * that wrote it would not. A round whose records are missing, refused, or do not account for every check reads as
- * not reviewed. Until dismissal records exist, every finding reads as new, so a dismissed finding blocks here where the
- * host's verdict would not.
+ * not reviewed. A finding reads as dismissed when a dismissal record of the changeset that counts, the latest for its
+ * ID, still meets every sighting by the host's reopen rule, and as new otherwise. A finding the host holds dismissed by
+ * inheritance from another finding's dismissal reads as new here, so it blocks where the host's verdict would not.
  */
 export class RecordedRound {
 	readonly id: string;
@@ -91,7 +95,8 @@ export class RecordedRound {
 			...(version === null ? {} : { version }),
 			...(ids === null ? {} : { ids }),
 		}));
-		const findings = mergeSightings(pieces.sightings, pieces.claims, producers);
+		const hunks = reviewFiles(context.revision.files).flatMap((file) => file.hunks.map(provingHunk));
+		const findings = mergeSightings(pieces.sightings, pieces.claims, producers, pieces.dismissals, hunks);
 		const { repoRoot, policy } = context;
 		const policies =
 			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
@@ -110,7 +115,9 @@ export class RecordedRound {
 			checks: pieces.checks,
 			config,
 			allowSkip: pieces.account.allowSkip,
-			verificationRan: true,
+			// The host's round runs no verifier when every finding is dismissed, and its records then carry no claim of an
+			// earlier round's verification, so a finding whose dismissal does not count here stays uncapped.
+			verificationRan: pieces.account.checks.includes("verifier"),
 			...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
 			revision: context.revision,
 		}).adjudicate();
@@ -177,7 +184,20 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	checks.push(...account.filled.map((each) => present(each) as unknown as CheckRecord));
 	// The verifier's record follows every other check's, as the review appends it after the lenses.
 	const ordered = [...inManifestOrder(account.checks, checks), ...(verifier === undefined ? [] : [verifier])];
-	return { account, checks: ordered, sightings, claims };
+	return { account, checks: ordered, sightings, claims, dismissals: dismissalsOf(set, round.changeset) };
+}
+
+// The latest dismissal of each finding among the set's dismissal records of `changeset`. A dismissal record names no
+// round, so every round of the changeset reads it.
+function dismissalsOf(set: RecordSet, changeset: string): Map<string, SharedDismissal> {
+	const latest = new Map<string, SharedDismissal>();
+	const records = set
+		.records()
+		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
+		.map((record) => ({ id: record.key, ...(record.payload as DismissalPayload) }))
+		.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+	for (const { id, by, reason, at, trigger } of records) latest.set(id, { by, reason, at, trigger });
+	return latest;
 }
 
 function once(values: readonly { readonly id: string; readonly source: FindingSource }[]): boolean {

@@ -380,6 +380,76 @@ describe("a round read back from its records", () => {
 	});
 });
 
+// The finding `reported` makes, dismissed by the maintainer after a first review, and a second review that exports
+// the dismissal.
+async function dismissedAndReviewedAgain(reported: object = changedReturn) {
+	const store = exported();
+	const first = await review(store, { contracts: [reports(reported), quiet, quiet] });
+	const { id } = Object.values(first.verdict.findings).flat()[0]!.properties;
+	await recordDismissal({
+		harness: harness!,
+		revision: first.changeset.revision,
+		id,
+		dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" },
+		repoRoot: repo,
+	});
+	return { reviewed: await review(store, { contracts: [reports(reported), quiet, quiet] }), id };
+}
+
+const isDismissal = (envelope: RecordEnvelope) => envelope.kind === "dismissal";
+const blocks = { ...changedReturn, severity: "P1" };
+
+// What a verdict says of each finding, live or dismissed: its ID, whether it stands, and the dismissal it carries.
+const standingOf = (verdict: Verdict) =>
+	[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map(({ properties }) => [
+		properties.id,
+		properties.status,
+		properties.dismissal,
+	]);
+
+describe("a round read with the dismissals shared beside it", () => {
+	it("dismisses a finding as the host does once a later round exports the dismissal", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		expect(reviewed.stored.filter(isDismissal)).toHaveLength(1);
+		expect(reviewed.verdict.status).toBe("passed");
+		const verdict = await read(reviewed);
+		// The host's round ran no verifier, so its records hold no claim of the first round's verification.
+		const unverified = (each: Verdict) =>
+			JSON.parse(JSON.stringify(each.toJSON(), (key, value) => (key === "verification" ? undefined : value)));
+		expect(unverified(verdict)).toEqual(unverified(reviewed.verdict));
+		expect(standingOf(verdict)).toEqual([
+			[id, "dismissed", { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" }],
+		]);
+	});
+
+	it("leaves the finding live and blocking, never dropped, when the dismissal record does not count", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const verdict = await RecordedRound.of(
+			reviewed.stored,
+			roundOf(reviewed.stored),
+			(record) => record.kind !== "dismissal",
+		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config });
+		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
+		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("leaves the finding live and blocking, never dropped, when its sighting no longer meets the trigger the dismissal accepted", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const stale = reviewed.stored.map((envelope) => {
+			if (!isDismissal(envelope)) return envelope;
+			const payload = envelope.payload as { trigger: { hash: string; proof: unknown[] } };
+			return SharedRecord.parseEnvelope({
+				...envelope,
+				payload: { ...payload, trigger: { ...payload.trigger, hash: "f".repeat(64) } },
+			}).toJSON();
+		});
+		expect(stale).not.toEqual(reviewed.stored);
+		const verdict = await read(reviewed, stale);
+		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
+		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+});
+
 describe("a round decided under another policy", () => {
 	const worktree: RepositorySource = { kind: "worktree" };
 	const accountOf = (reviewed: Reviewed) =>
