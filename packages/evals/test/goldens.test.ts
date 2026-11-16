@@ -27,6 +27,7 @@ import {
 import {
 	buildGoldenRepository,
 	type Golden,
+	type GoldenComment,
 	type GoldenMode,
 	goldensDirectory,
 	loadGoldens,
@@ -494,6 +495,21 @@ describe("a golden's standards and policy", () => {
 			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(expected);
 		}
 		expect(root).toContain("lens.trust-boundary-probes");
+	});
+
+	// An expectation's lines decide whether a finding answers it, so they must hold the line its evidence names as cause.
+	it("give every expectation that names lines a first line no later than its last, holding its cause", () => {
+		const named = goldens.flatMap((golden) =>
+			golden.expected.comments.flatMap((comment) => (comment.lines === undefined ? [] : [{ golden, comment }])),
+		);
+		expect(named.length).toBeGreaterThan(0);
+		for (const { golden, comment } of named) {
+			const [first, last] = comment.lines!;
+			const causes = comment.evidence.filter((each) => each.role === "cause" && each.file === comment.file);
+			expect(first, golden.name).toBeLessThanOrEqual(last);
+			expect(causes.length, golden.name).toBeGreaterThan(0);
+			for (const cause of causes) expect(first <= cause.line && cause.line <= last, golden.name).toBe(true);
+		}
 	});
 
 	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
@@ -1180,6 +1196,107 @@ describe("scoreGolden", () => {
 			precision: 0,
 			recall: 0,
 		});
+	});
+
+	it("matches a rule the expectation names as an alternative, by a finding or a merged claim", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = (fields: Partial<GoldenComment>) => ({
+			...nullDeref!,
+			expected: { ...nullDeref!.expected, comments: [{ ...comment!, ...fields }] },
+		});
+		const alternative = golden({ alternativeRules: ["wrong-result"] });
+		const claimed = (rule: string, check: string) =>
+			({
+				ruleId: "data-loss",
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
+				properties: {
+					path: "src/user.ts",
+					reportedBy: [{ check: "lens.tests", version: "v" }],
+					otherClaims: [{ ruleId: rule, source: { check, version: "v" } }],
+				},
+			}) as never;
+
+		expect(scoreGolden(alternative, [finding("src/user.ts", "wrong-result")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(alternative, [finding("src/user.ts", "null-dereference")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(alternative, [finding("src/user.ts", "data-loss")])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(nullDeref!, [finding("src/user.ts", "wrong-result")])).toMatchObject({ recall: 0 });
+		expect(scoreGolden(alternative, [claimed("wrong-result", "lens.design")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(nullDeref!, [claimed("wrong-result", "lens.design")])).toMatchObject({ recall: 0 });
+		expect(
+			scoreGolden(golden({ alternativeRules: ["wrong-result"], source: "lens.tests" }), [
+				claimed("wrong-result", "lens.design"),
+			]),
+		).toMatchObject({ recall: 0 });
+	});
+
+	it("answers the claim golden by any lens under either rule, since its expectation names no source", () => {
+		const golden = goldens.find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const [comment] = golden.expected.comments;
+		const report = (check: string, rule: string) =>
+			Finding.create({
+				rule,
+				file: comment!.file,
+				startLine: comment!.evidence[0]!.line,
+				discriminator: "release",
+				message: "A release is lost.",
+				severity: "P2",
+				cause: comment!.cause,
+				source: { check, version: "v" },
+				explanation: { what: "The label stays.", whyHere: "The run reads its own event.", whatToDo: "Skip it." },
+			});
+		expect(comment!.source).toBeUndefined();
+		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden, [report("lens.correctness", "fail-open")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden, [report("lens.trust-boundary", "fail-open")])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden, [report("lens.correctness", "wrong-result")])).toMatchObject({ recall: 0 });
+	});
+
+	it.each([
+		{ startLine: 8, endLine: 9, answers: false },
+		{ startLine: 9, endLine: 10, answers: true },
+		{ startLine: 11, endLine: undefined, answers: true },
+		{ startLine: 12, endLine: 13, answers: true },
+		{ startLine: 13, endLine: 14, answers: false },
+		{ startLine: 8, endLine: 14, answers: true },
+	])("with lines 10-12, a finding at $startLine-$endLine answers: $answers", ({ startLine, endLine, answers }) => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: { ...nullDeref!.expected, comments: [{ ...comment!, lines: [10, 12] as [number, number] }] },
+		};
+		const placed = Finding.create({
+			rule: comment!.rule,
+			file: comment!.file,
+			startLine,
+			...(endLine === undefined ? {} : { endLine }),
+			discriminator: "user",
+			message: "The user can be null.",
+			severity: "P1",
+			cause: comment!.cause,
+			source: { check: "lens.correctness", version: "v" },
+			explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+		});
+		expect(scoreGolden(golden, [placed])).toMatchObject({ recall: answers ? 1 : 0 });
+		expect(scoreGolden(nullDeref!, [placed])).toMatchObject({ recall: 1 });
+	});
+
+	it("keeps two expectations apart that differ only in their lines or their alternative rules", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const twice = (first: Partial<GoldenComment>, second: Partial<GoldenComment>) => ({
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [
+					{ ...comment!, ...first },
+					{ ...comment!, ...second },
+				],
+			},
+		});
+		expect(scoreGolden(twice({ lines: [1, 2] }, { lines: [5, 6] }), [])).toMatchObject({ expected: 2 });
+		expect(scoreGolden(twice({ alternativeRules: ["a"] }, { alternativeRules: ["b"] }), [])).toMatchObject({
+			expected: 2,
+		});
+		expect(scoreGolden(twice({ lines: [1, 2] }, { lines: [1, 2] }), [])).toMatchObject({ expected: 1 });
 	});
 
 	it("counts a second finding matching one expectation as a false positive", () => {

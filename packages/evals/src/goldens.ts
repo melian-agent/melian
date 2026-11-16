@@ -62,7 +62,8 @@ export const goldenEvidenceSchema = Type.Object(
 
 /**
  * The JSON Schema of one expected finding: Martian's golden comment (`comment`, `severity`, `category`), so Martian's
- * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`, and `source`, a check that must be among
+ * judge reads it unchanged, plus the fields Melian matches on (`file` or one of `alternativeFiles`, `rule` or one of
+ * `alternativeRules`, `lines`, the first and last line a finding must overlap, and `source`, a check that must be among
  * the finding's `reportedBy`, such as `lens.tests`) and those a scripted run checks (`cause`, `failureScenario`,
  * `evidence`).
  */
@@ -79,6 +80,8 @@ export const goldenCommentSchema = Type.Object(
 		file: text,
 		alternativeFiles: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
 		rule: text,
+		alternativeRules: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
+		lines: Type.Optional(Type.Tuple([Type.Integer({ minimum: 1 }), Type.Integer({ minimum: 1 })])),
 		source: Type.Optional(text),
 		cause: causeSchema,
 		failureScenario: text,
@@ -608,8 +611,8 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 }
 
 /**
- * How well one review matched its golden. A finding matches an expected one with the same file and rule, reported by
- * the expected one's `source` when it names one.
+ * How well one review matched its golden. A finding matches an expected one at its file or an alternative, under its
+ * rule or an alternative, overlapping its `lines` when it names them, and reported by its `source` when it names one.
  */
 export interface GoldenScore {
 	readonly golden: string;
@@ -625,13 +628,20 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-// What a match reads of an expected finding, so a probing miss matches as a golden's comment does.
-type ExpectedClaim = Pick<GoldenComment, "file" | "alternativeFiles" | "rule" | "source">;
+// What a match reads of an expected finding.
+type ExpectedClaim = Pick<
+	GoldenComment,
+	"file" | "alternativeFiles" | "rule" | "alternativeRules" | "lines" | "source"
+>;
+
+function namesRule(comment: ExpectedClaim, rule: string): boolean {
+	return rule === comment.rule || (comment.alternativeRules ?? []).includes(rule);
+}
 
 function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 	return (
 		claim.verification?.verdict !== "refuted" &&
-		claim.ruleId === comment.rule &&
+		namesRule(comment, claim.ruleId) &&
 		(comment.source === undefined || claim.source.check === comment.source)
 	);
 }
@@ -640,9 +650,13 @@ function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
 	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
+	if (comment.lines !== undefined) {
+		const [start, end] = finding.lines();
+		if (end < comment.lines[0] || comment.lines[1] < start) return false;
+	}
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
 	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (finding.ruleId !== comment.rule) return false;
+	if (!namesRule(comment, finding.ruleId)) return false;
 	const original = otherClaims.find(
 		(claim) =>
 			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
@@ -657,7 +671,7 @@ export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 }
 
 /**
- * Scores adjudicated defects against their expected file alternatives, rule and source. An expected
+ * Scores adjudicated defects against their expected file and rule alternatives, lines and source. An expected
  * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
  * expectation is a false positive, since it is the same defect reported twice.
  */
@@ -665,7 +679,14 @@ export function scoreGolden(golden: Golden, findings: readonly Finding[]): Golde
 	const expected = [
 		...new Map(
 			golden.expected.comments.map((comment) => [
-				JSON.stringify([comment.file, comment.alternativeFiles, comment.rule, comment.source]),
+				JSON.stringify([
+					comment.file,
+					comment.alternativeFiles,
+					comment.rule,
+					comment.alternativeRules,
+					comment.lines,
+					comment.source,
+				]),
 				comment,
 			]),
 		).values(),
