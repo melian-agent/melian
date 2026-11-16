@@ -38,7 +38,7 @@ afterEach(() => {
 	removeRepository(repo);
 });
 
-async function call(head: string, args: { path: string; startLine?: number; endLine?: number }) {
+async function call(head: string, args: { path: string; startLine?: number; endLine?: number }, review = nonce) {
 	const files = reviewFiles((await Changeset.resolve(repo, `${base}..${head}`)).revision.files);
 	const api = {
 		conversationId: 1,
@@ -55,7 +55,7 @@ async function call(head: string, args: { path: string; startLine?: number; endL
 					rules: [],
 					budget: 8,
 					coverage: { scope: "", paths: ["**"], nearer: [] },
-					revision: { repoRoot: repo, nonce, base, head, files },
+					revision: { repoRoot: repo, nonce: review, base, head, files },
 				},
 			};
 		},
@@ -359,6 +359,14 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const result = await call(head, { path: "src/value.ts" });
 		expect(result.text).toContain("No mutants in the file asked about: the change adds or alters no line of it");
 		expect(result.details).toEqual({ mutants: [], excluded: 0 });
+	});
+
+	it("enumerates again for another review of the same head, which may resolve another instrumenter", async () => {
+		const head = commit(repo, { "src/flags.ts": flags(2) });
+		const list = vi.spyOn(MutationEnumeration.prototype, "list");
+		await call(head, { path: "src/flags.ts" });
+		await call(head, { path: "src/flags.ts" }, "b".repeat(24));
+		expect(list).toHaveBeenCalledTimes(2);
 	});
 
 	it("enumerates again for a review of another head", async () => {
