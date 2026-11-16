@@ -25,6 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { TaskId } from "../src/harness.ts";
 import {
+	exportedWalkthrough,
 	publishedWalkthrough,
 	publishedWalkthroughNote,
 	SummaryIndex,
@@ -1515,5 +1516,118 @@ describe("the walkthrough publication posts", () => {
 		],
 	])("posts %s as its note", (_name, state, note) => {
 		expect(publishedWalkthroughNote(state as never, revision)).toBe(note);
+	});
+});
+
+describe("the walkthrough a round exports", () => {
+	const revision = () => Revision.key(changeset.revision);
+	const exported = async () => exportedWalkthrough(harness, (await harness.root(context)).id, revision(), context);
+	const scripted = () => `${models.ref("scripted").provider}/scripted@`;
+	// Names a new task on the scripted route in the summary index, as a later review would.
+	async function indexed(input: { key?: string } = { key: "f".repeat(64) }) {
+		const root = await harness.root(context);
+		return root.commit(async (tx) => {
+			const task = await tx.createTask(
+				SummaryTask,
+				{
+					root: root.id,
+					revision: revision(),
+					prompt: "Summarise the change.",
+					model: models.ref("scripted"),
+					paths: ["src/a.ts"],
+					...input,
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+			(await tx.doc(SummaryIndex, root.id)).tasks[revision()] = task;
+			return task;
+		}, context);
+	}
+
+	it("is the walkthrough the task the index names wrote, under that task's key", async () => {
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const doc = await summarize();
+		const task = (await harness.snapshot(SummaryIndex, (await harness.root(context)).id, context))!.tasks[
+			revision()
+		]!;
+		const { key } = (await harness.getTask(task as TaskId, context))!.input as unknown as { key: string };
+
+		expect(key).toMatch(/^[0-9a-f]{64}$/);
+		expect(await exported()).toEqual({
+			key,
+			route: scripted(),
+			walkthrough: doc!.routedWalkthroughs![revision()]![scripted()],
+		});
+	});
+
+	it("is none when the summariser recorded no walkthrough", async () => {
+		scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("None.")] },
+		]);
+		await summarize();
+		expect(await exported()).toBeUndefined();
+	});
+
+	it("is none when publication would post no walkthrough of the route the task wrote", async () => {
+		const routed = (id: string) =>
+			ReviewPlan.from({
+				tiers: [
+					{
+						tier: "light",
+						status: "routed",
+						models: [{ model: `${models.ref(id).provider}/${id}`, credential: "test" }],
+					},
+				],
+				lenses: [],
+			});
+		scriptConversations(models, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [success("Written on scripted."), success("Written on other.")],
+			},
+		]);
+		const pullRequest = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "example" },
+			pullRequest: 7,
+			base: changeset.revision.base,
+			head: changeset.revision.head,
+		} as const;
+		await summarize({ origin: pullRequest, plan: routed("scripted") });
+		await summarize({ origin: pullRequest, plan: routed("other") });
+
+		// The verdict's provenance names no plan, so publication posts neither of the two routes' walkthroughs.
+		expect(Object.keys((await stored())?.routedWalkthroughs?.[revision()] ?? {})).toHaveLength(2);
+		expect(await exported()).toBeUndefined();
+	});
+
+	it("is none while the task the index names is live, though its route holds an earlier walkthrough", async () => {
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		await summarize();
+		await indexed();
+		expect(await exported()).toBeUndefined();
+	});
+
+	it("is none once the task the index names was aborted, though its route holds an earlier walkthrough", async () => {
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		await summarize();
+		const task = await indexed();
+		await harness.abortTask(task as TaskId, context);
+		harness.resume();
+		expect((await harness.waitForTask(task as TaskId, context)).state.outcome.status).toBe("aborted");
+		expect((await stored())?.routedWalkthroughs?.[revision()]?.[scripted()]).toBeDefined();
+		expect(await exported()).toBeUndefined();
+	});
+
+	it("is none for a walkthrough a task with no key wrote, as an older Melian's did", async () => {
+		const task = await indexed({});
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		harness.resume();
+		expect((await harness.waitForTask(task as TaskId, context)).state.outcome).toEqual({
+			status: "completed",
+			result: "recorded",
+		});
+		expect((await stored())?.routedWalkthroughs?.[revision()]?.[scripted()]).toBeDefined();
+		expect(await exported()).toBeUndefined();
 	});
 });

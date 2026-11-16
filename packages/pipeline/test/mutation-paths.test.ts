@@ -45,6 +45,7 @@ describe("mutation paths", () => {
 		const { signalFiles } = await load();
 		expect([...signalFiles]).toEqual([
 			"packages/core/src/git.ts",
+			"packages/core/src/process-tree.ts",
 			"packages/pipeline/src/cache-scratch.ts",
 			"packages/pipeline/src/mutation-process.ts",
 			"packages/pipeline/src/probe-process.ts",

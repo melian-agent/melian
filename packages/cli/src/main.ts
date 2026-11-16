@@ -41,6 +41,9 @@ Commands:
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
                          dismissed findings too; --json prints JSON. --rounds lists the target's stored rounds.
   findings --round <id>  Print a round's frozen verdict without resolving its former range.
+  findings <range|#pr> --records dir:<path>
+                         Decide each round a record store holds at the target's revision from its records alone,
+                         under the base's policy, when that policy sets trust.writers: true.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -92,6 +95,9 @@ Options:
                          Review the pull request only at this base and head, as the pull request reports them;
                          refuse before reading a model credential if it moved (review).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
+  --records dir:<path>   Export the review's records to a directory store as its tasks finish, when the base's
+                         melian.yaml sets trust.writers: true; otherwise say so and export nothing (review). Read
+                         the rounds a directory store holds (findings).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
                          stored; a completed triage decision is never asked again (review).
@@ -172,6 +178,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				records: { type: "string" },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -222,6 +229,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
+		if (name !== "review" && name !== "findings" && values.records !== undefined)
+			throw new UsageError("--records is only available for review and findings");
+		if (values.records !== undefined && !/^dir:./.test(values.records))
+			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
 		if (name !== "review" && (expectBase !== undefined || expectHead !== undefined))
@@ -280,6 +291,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						walkthrough: values.walkthrough,
 						trustHead: values["trust-head"],
 						cold: values.cold,
+						...(values.records === undefined ? {} : { records: values.records }),
 						...(values.json ? { json: true } : {}),
 					},
 				);
@@ -300,6 +312,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					throw new UsageError("findings --round takes a round ID alone");
 				if (values.rounds && (values.open || values.all))
 					throw new UsageError("findings --rounds lists rounds alone");
+				if (values.records !== undefined && (values.open || values.round !== undefined || values.rounds))
+					throw new UsageError("findings --records takes no --open, --round or --rounds");
 				return await findings(scoped, values.round === undefined ? one(rest, name, "range or pull request") : "", {
 					open: values.open,
 					all: values.all,
@@ -307,6 +321,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					json: values.json,
 					round: values.round,
 					rounds: values.rounds,
+					...(values.records === undefined ? {} : { records: values.records }),
 				});
 			case "telemetry":
 				return await telemetry(scoped, one(rest, name, "range or pull request"), { json: values.json });

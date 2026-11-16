@@ -34,7 +34,7 @@ tiers:
   # The default full tier plus Melian's own repository lenses under .melian/lenses/. static.mutation is off this
   # repository's rounds from 2026-10-24 (decisions/2026-10-24-stryker-off-the-hot-path.md); opt in with
   # tiers: { full: [static.mutation] } in an uncommitted melian.local.yaml.
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
+  full: [standard, lens.contracts, lens.trust-boundary, lens.trust-boundary-probes, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
 static:
   enola: { enabled: true }
@@ -47,6 +47,11 @@ lenses:
   correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
   contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
   trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  # The probing half of trust-boundary, held at deep, its level that probes, while trust-boundary keeps reading
+  # (decisions/2026-11-16-probing-on-for-melians-own-rounds.md).
+  trust-boundary-probes:
+    paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"]
+    level: { floor: deep }
   removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
   tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
   conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }

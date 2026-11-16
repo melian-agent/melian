@@ -195,6 +195,9 @@ export type LensPolicy = {
 	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers, and the head
 	// path of each file the review moved out of them.
 	coverage: { scope: string; paths: string[]; nearer: string[]; moved?: string[] };
+	// The head path of each file whose diff the lens's prompt carried whole; absent from a prober, which reads the plan
+	// alone, and from a lens an older Melian created.
+	shown?: string[];
 	// The cache root and key of the head's verified Enola snapshot, which the graph tools read; absent when the review
 	// had none, and from a lens an older Melian created.
 	graph?: { root: string; parts: GraphKeyParts };
@@ -262,22 +265,23 @@ function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>, limit = 81
 	);
 }
 
-function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean } {
+function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean; lineCut: boolean } {
 	const shown: string[] = [];
 	let size = 0;
 	for (const row of rows) {
 		const bytes = Buffer.byteLength(row) + (shown.length === 0 ? 0 : 1);
 		if (shown.length === maxReadLines || size + bytes > maxShownBytes) {
-			if (shown.length === 0)
+			const lineCut = shown.length === 0;
+			if (lineCut)
 				shown.push(
 					`${new TextDecoder().decode(Buffer.from(row).subarray(0, maxShownBytes - 64), { stream: true })} [line cut]`,
 				);
-			return { body: shown.join("\n"), count: shown.length, cut: true };
+			return { body: shown.join("\n"), count: shown.length, cut: true, lineCut };
 		}
 		shown.push(row);
 		size += bytes;
 	}
-	return { body: shown.join("\n"), count: shown.length, cut: false };
+	return { body: shown.join("\n"), count: shown.length, cut: false, lineCut: false };
 }
 
 async function lensOf(reader: DocumentReader, conversationId: ConversationId, context: Context): Promise<LensPolicy> {
@@ -288,11 +292,14 @@ async function lensOf(reader: DocumentReader, conversationId: ConversationId, co
 
 function text(content: string | readonly string[], render: (body: string, count: number) => string = (body) => body) {
 	const rows = typeof content === "string" ? content.split("\n") : content.flatMap((row) => row.split("\n"));
-	const { body, count, cut } = fitting(rows);
+	const { body, count, cut, lineCut } = fitting(rows);
 	const note = cut
 		? `\n[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]`
 		: "";
-	return { content: [{ type: "text" as const, text: `${render(body, count)}${note}` }] };
+	return {
+		content: [{ type: "text" as const, text: `${render(body, count)}${note}` }],
+		...(lineCut ? { details: { lineCut: true } satisfies LensToolDetails } : {}),
+	};
 }
 
 // Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are
@@ -411,8 +418,12 @@ async function meter(
 	}, context);
 }
 
+// `lineCut` marks a result that showed only the start of its one line.
+export type LensToolDetails = { lineCut: true };
+
 type ToolResult = {
 	content?: { type: "text"; text: string }[];
+	details?: LensToolDetails;
 	isError?: boolean;
 	diagnostics?: { severity: "error"; code: string; message: string }[];
 };
@@ -1231,11 +1242,11 @@ const attackParameter = Type.Object(
 		}),
 		reason: Type.String({
 			...bounded(probingLimits.reason),
-			description: "Why something untrusted might cross a boundary there, and who controls it",
+			description: "Why a probe might show a defect there, and what supplies its input",
 		}),
 		passing: Type.String({
 			...bounded(probingLimits.outcome),
-			description: "What a probe that passes, exiting 0, prints when the boundary holds",
+			description: "What a probe that passes, exiting 0, prints when it shows no defect",
 		}),
 		failing: Type.String({
 			...bounded(probingLimits.outcome),
@@ -1269,7 +1280,7 @@ export const recordPlan = defineLensTool(
 		// A later call replaces the plan, so calls in one turn run in order and the last one stands, on replay too.
 		executionMode: "sequential",
 		description:
-			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why something untrusted might cross a boundary there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
+			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why a probe might show a defect there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
 		parameters: Type.Object(
 			{ attacks: Type.Array(attackParameter, { maxItems: probingLimits.attacks }) },
 			{ additionalProperties: false },
@@ -1336,7 +1347,7 @@ function describeProbe(id: string, result: ProbeRecord["result"], timeout: numbe
 		return result.signal === null
 			? `probe ${id} ended with no record of how, which shows nothing`
 			: `probe ${id} was ended by ${result.signal}, which shows nothing`;
-	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so the boundary held`;
+	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so it showed no defect`;
 	if (result.exitCode === 125)
 		return `probe ${id} exited 125, which says it could not test its attack, so it shows nothing`;
 	return `probe ${id} failed: it exited ${result.exitCode}, so it shows the defect if it exercises the attack. Report a finding it shows with probe "${id}"`;
@@ -1353,7 +1364,7 @@ export function runProbeTool(sandbox?: ProbeSandbox) {
 			// Each probe writes its head's tree before its sandbox starts, so one at a time bounds a lens's scratch to one tree.
 			executionMode: "sequential",
 			description:
-				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 when the boundary holds and non-zero when the probe shows the defect. Returns the probe's ID, its exit, and its output.",
+				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 for the attack's passing outcome, 125 when the probe cannot test its attack, and any other non-zero code when it shows the defect. Returns the probe's ID, its exit, and its output.",
 			parameters: Type.Object(
 				{
 					attack: Type.Integer({ minimum: 1, description: "The attack's number in the plan" }),

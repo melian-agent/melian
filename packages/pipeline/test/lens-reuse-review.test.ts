@@ -186,7 +186,7 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(second.review.findings.map(({ id }) => id)).toEqual(first.review.findings.map(({ id }) => id));
 		expect(
 			(second.review.verdict.ran ?? []).filter(({ name }) => name.startsWith("lens.")).map(({ name }) => name),
-		).toEqual(["lens.contracts", "lens.correctness"]);
+		).toEqual(["lens.correctness", "lens.contracts"]);
 		expect(second.lensStages.contracts).toEqual({ outcome: "reused", tokens: undefined });
 		expect(first.usage.contracts).toBeDefined();
 		expect(second.usage.contracts).toBeUndefined();

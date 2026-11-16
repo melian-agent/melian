@@ -1484,8 +1484,8 @@ describe("reviewChangeset", () => {
 			status: "not-reviewed",
 			blocking: true,
 			notRun: [
-				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 				allowedDecisionSkip,
+				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 			],
 		});
 		const root = (await harness.root(context)).id;
@@ -1503,14 +1503,14 @@ describe("reviewChangeset", () => {
 		expect(verdict.ran).toEqual([
 			...deterministicRan,
 			{
-				name: "lens.contracts",
-				version: lenses.find(({ name }) => name === "contracts")!.version,
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
 				status: "ran",
 				level: "careful",
 			},
 			{
-				name: "lens.correctness",
-				version: lenses.find(({ name }) => name === "correctness")!.version,
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "ran",
 				level: "careful",
 			},
@@ -2157,7 +2157,10 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 		const error = (await review().catch((caught: unknown) => caught)) as ReviewError;
-		expect(error.verdict?.notRun[0]).toMatchObject({ name: "lens.correctness", status: "failed", level: "careful" });
+		expect(error.verdict?.notRun.find(({ name }) => name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			level: "careful",
+		});
 	});
 
 	it("refuses the reads past the tools budget, lets the lens report, and ends it at its next read", async () => {
@@ -3144,7 +3147,7 @@ describe("adjudication", () => {
 
 			expect(verdict).toMatchObject({
 				status: "passed",
-				notRun: [skipped, { name: "lens.contracts", status: "skipped" }],
+				notRun: [{ name: "lens.contracts", status: "skipped" }, skipped],
 			});
 		});
 
@@ -3353,6 +3356,7 @@ describe("adjudication", () => {
 				{
 					"melian.yaml": own("melian.yaml"),
 					".melian/lenses/durability/LENS.md": own(".melian/lenses/durability/LENS.md"),
+					".melian/lenses/trust-boundary-probes/LENS.md": own(".melian/lenses/trust-boundary-probes/LENS.md"),
 					"docs/notes.md": lines("Notes."),
 				},
 				{ "docs/notes.md": notes },
@@ -3369,13 +3373,14 @@ describe("adjudication", () => {
 				"conventions",
 				"design",
 			];
-			scriptConversations(
-				fake,
-				everyBuiltIn.map((name) => ({
+			// The probing trust-boundary lens holds the reading one's instructions, so its own body line answers it first.
+			scriptConversations(fake, [
+				{ match: "This lens is its second half", replies: [fauxAssistantMessage("Done.")] },
+				...everyBuiltIn.map((name) => ({
 					match: `You are the ${name} reviewer`,
 					replies: [fauxAssistantMessage("Done.")],
 				})),
-			);
+			]);
 
 			const { verdict } = await reviewed({
 				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },

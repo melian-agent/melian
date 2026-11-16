@@ -113,6 +113,7 @@ export {
 	stricter,
 	type TscSettings,
 	thinkingLevelSchema,
+	writesWriterTrust,
 } from "./config.ts";
 export {
 	type ChoiceAnswer,
@@ -297,6 +298,7 @@ export {
 	type TierStatus,
 	type UnknownModel,
 } from "./plan.ts";
+export { type LensProbingWording, lensProbingWording } from "./probing-wording.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
@@ -487,6 +489,15 @@ export {
 	survivorClasses,
 } from "./mutation-inventory.ts";
 export {
+	type ProcessControl,
+	type ProcessEntry,
+	ProcessTable,
+	parseProcesses,
+	type RecordedProcess,
+	stopTree,
+	terminateRecorded,
+} from "./process-tree.ts";
+export {
 	type MembershipCandidate,
 	MembershipError,
 	PullRequestMembership,
@@ -505,6 +516,27 @@ export {
 	type RoundManifest,
 	SharedRecord,
 } from "./record.ts";
+export {
+	type AccountPayload,
+	accountPayloadSchema,
+	type CheckPayload,
+	checkPayloadSchema,
+	checkResultSchema,
+	type DismissalPayload,
+	dismissalPayloadSchema,
+	type LensPayload,
+	lensOutcomeSchema,
+	lensPayloadSchema,
+	reviewPayloads,
+	type TelemetryPayload,
+	type TriagePayload,
+	telemetryPayloadSchema,
+	triagePayloadSchema,
+	type VerificationPayload,
+	verificationPayloadSchema,
+	type WalkthroughPayload,
+	walkthroughPayloadSchema,
+} from "./record-payloads.ts";
 export {
 	checkCellValue,
 	checkChangeset,
@@ -546,6 +578,7 @@ export {
 	loweringSchema,
 	type StoredLowering,
 	type StoredVerificationState,
+	trustFloorChecks,
 	type Verification,
 	VerificationRecord,
 	VerificationState,
