@@ -2462,7 +2462,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(8);
+		expect(definition.version).toBe(9);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,

@@ -545,8 +545,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
 	// runs have no request key, so no later task copies them, and it copies none. Version 8 answers an attack only with a
 	// skip or a probe that showed something, and lists the skipped attacks in the outcome's `probing.skipped`, which an
-	// older task stored as a count; an older task's input and checkpoint are unchanged.
-	version: 8,
+	// older task stored as a count; an older task's input and checkpoint are unchanged. Version 9 lets each model of a
+	// run's route name the thinking level it runs at; a version 8 or 7 route names none, so each of its fallbacks runs at
+	// the run's level, as it did, and both read unchanged.
+	version: 9,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
