@@ -789,8 +789,8 @@ export function mergeSightings(
 	sightings: readonly StoredFinding[],
 	claims: readonly VerificationClaim[],
 	producers: readonly Producer[],
-	dismissals: ReadonlyMap<string, SharedDismissal> = new Map(),
-	hunks: readonly ProvingHunk[] = [],
+	dismissals: ReadonlyMap<string, SharedDismissal>,
+	hunks: readonly ProvingHunk[],
 ): Finding[] {
 	const at = "revision";
 	const items: Record<string, Pick<FindingRecord, "sightings" | "verifications">> = {};
