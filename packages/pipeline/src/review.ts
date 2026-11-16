@@ -2603,7 +2603,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		if (plan === undefined || level === undefined || level === "skip") continue;
 		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
 		if (reason === undefined) continue;
-		const unasked = lineage === undefined ? undefined : unanswered(lineage);
 		refused.add(lens);
 		if (refusals.has(`${lens.name}@${lens.version}`)) continue;
 		const name = `lens.${lens.name}`;
@@ -2613,7 +2612,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			status: "failed",
 			level,
 			reason,
-			...(unasked === undefined ? {} : { lineage: unasked }),
+			...(lineage === undefined ? {} : { lineage: unanswered(lineage) }),
 		});
 	}
 	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
