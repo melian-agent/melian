@@ -673,7 +673,7 @@ describe("main", () => {
 			return {
 				code,
 				logs: log.mock.calls,
-				// GitHub's runner image wraps git, which counts its calls in $RUNNER_TEMP; main did not plant that file.
+				// A CI runner's git counts its calls in a file under HOME or RUNNER_TEMP; main did not plant it.
 				left: [...readdirSync(join(root, "home")), ...readdirSync(join(root, "temp"))].filter(
 					(name) => name !== ".git-invocation-counts.json",
 				),
