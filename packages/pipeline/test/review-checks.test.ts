@@ -10,8 +10,10 @@ import {
 	Lens,
 	loadConfig,
 	type MelianConfig,
+	MemoryRecordStore,
 	ReviewPlan,
 	Revision,
+	reviewPayloads,
 } from "@melian-agent/core";
 import {
 	type Context,
@@ -31,6 +33,7 @@ import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@me
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as checks from "../src/checks.ts";
 import { ChecksDocument } from "../src/checks.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import { RoundsDocument } from "../src/rounds.ts";
 import { commit, createRepository, fakeTool, lines, writeFiles } from "./fixtures/repo.ts";
 
@@ -86,6 +89,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 						policy: changed ? "new" : "original",
 						task: changed ? 2 : 1,
 					},
+					request: (changed ? "b" : "a").repeat(64),
 					records: [{ name: "static.mutation", status: "ran", findings: 0, notes: [] }],
 				};
 			});
@@ -118,6 +122,24 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 			expect((await options.harness.harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(2);
 		},
 	);
+	it("keys each exported check record on the full request of the run it started", async () => {
+		const options = await setup();
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const started = vi.spyOn(checks, "runChecks");
+		await reviewChangeset({ ...options, records: store });
+		expect(started).toHaveBeenCalledTimes(1);
+		const run = await started.mock.results[0]!.value;
+		expect(run.request).toMatch(/^[0-9a-f]{64}$/);
+		const records = ReviewRecords.of(options.changeset.id, options.changeset.revision);
+		const exported = (await store.list(options.changeset.id))
+			.filter(({ kind }) => kind === "check")
+			.map(({ key }) => key)
+			.sort();
+		expect(exported).toHaveLength(run.records.length);
+		expect(exported).toEqual(
+			run.records.map((record: checks.CheckRunRecord) => records.check(run.request, record, []).key).sort(),
+		);
+	});
 	it("decides again when only a check's resolution entry changes in the working tree", async () => {
 		const policyFile = (requirement: string) =>
 			lines(
