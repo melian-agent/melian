@@ -1,4 +1,4 @@
-import { defaultConfig, deterministicChecks, KeyedRequest } from "@melian-agent/core";
+import { defaultConfig, deterministicChecks, KeyedRequest, type RecordJson } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { type CheckRequestInput, checkRequest, checkReusable, writesFixedText } from "../src/check-request.ts";
@@ -104,8 +104,7 @@ describe("checkRequest", () => {
 });
 
 describe("writesFixedText", () => {
-	const asked = (request: Record<string, unknown>, producer = "check") =>
-		KeyedRequest.of(producer, request as Parameters<typeof KeyedRequest.of>[1]);
+	const asked = (request: RecordJson, producer = "check") => KeyedRequest.of<RecordJson>(producer, request);
 
 	it.each(["static.biome", "static.tsc", "static.enola", "static.mutation"])(
 		"proves %s from version 2 of its check, and not from version 1",
@@ -116,7 +115,7 @@ describe("writesFixedText", () => {
 		},
 	);
 
-	it.each<[string, Record<string, unknown>, string?]>([
+	it.each<[string, RecordJson, string?]>([
 		["another producer's request", { checks: { "static.biome": 2 } }, "lens"],
 		["a request with no checks", {}],
 		["a request whose checks are null", { checks: null }],
