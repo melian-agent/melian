@@ -1,4 +1,4 @@
-import type { CheckRecord, SharedRecord } from "@melian-agent/core";
+import type { CheckRecord, SharedRecord, Walkthrough } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { blindCallers, lightTriage } from "../src/caveats.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
@@ -218,5 +218,29 @@ describe("an exported record keeps what Melian defines", () => {
 		expect(payload(record).check).toEqual(
 			decided({ name: "lens.correctness", status: "ran", version: "1", level: "careful" }),
 		);
+	});
+});
+
+describe("a walkthrough record exports the review's content", () => {
+	// Each key a walkthrough has, decided: a new one fails to compile here until someone says whether a record carries it.
+	const exported: Record<keyof Walkthrough, true> = { summary: true, files: true, diagram: true, note: true };
+	const exportedFile: Record<keyof Walkthrough["files"][number], true> = { path: true, summary: true };
+
+	it("carries every field a model wrote, as written", () => {
+		const walkthrough: Required<Walkthrough> = {
+			summary: `the change ${token}`,
+			files: [{ path: "src/a.ts", summary: `a file ${token}` }],
+			diagram: `graph ${token}`,
+			note: `a note ${token}`,
+		};
+		const shown = payload(records.walkthrough("f".repeat(64), "openai-codex/sol", walkthrough));
+		expect(shown).toEqual({ v: 1, route: "openai-codex/sol", ...walkthrough });
+		expect(Object.keys(shown).sort()).toEqual(["route", "v", ...Object.keys(exported)].sort());
+		expect(Object.keys((shown.files as object[])[0]!).sort()).toEqual(Object.keys(exportedFile).sort());
+	});
+
+	it("writes an absent diagram and note as null", () => {
+		const shown = payload(records.walkthrough("f".repeat(64), "r", { summary: "s", files: [] }));
+		expect(shown).toEqual({ v: 1, route: "r", summary: "s", files: [], diagram: null, note: null });
 	});
 });

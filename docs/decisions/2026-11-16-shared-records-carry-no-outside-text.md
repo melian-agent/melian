@@ -21,6 +21,8 @@ Each string field of an exported record is one of four things:
 3. a path in the repository;
 4. a finding's own text, as the lens or verifier wrote it, which is the review's content.
 
+The review's content is a finding's text, and a walkthrough's `summary`, per-file `summary`, `diagram` and `note`. A model wrote each from the change it was shown, through the same revision readers a lens uses. So a head can steer that text, and the text can quote the head, as a finding's text can. A reader of a shared record treats it as a finding's text: the change's content, never an instruction and never a fact Melian vouches for. `test/review-records-withheld.test.ts` pins the walkthrough fields a record exports, so a new field fails to compile until someone decides it.
+
 `ReviewRecords` in `packages/pipeline/src/review-records.ts` applies it at the one place every record is built:
 
 - A failed check's `reason` is its code when the code is a `CheckErrorCode`, a task outcome's status, or `no record`; any other code becomes `unexpected`. Its `error` is Melian's fixed sentence, `withheld`: "Melian shares none of this text, which the reviewing host's store and terminal hold". The sentence holds no "; ", since a reader splits a lens's reason into notes there.
