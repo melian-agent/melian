@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	cpSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -577,6 +578,50 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			const name = (payload as { result: { name: string } }).result.name;
 			expect(key).not.toBe(KeyedRequest.of("check.record", { request: null, base, head, name }).key);
 		}
+	});
+
+	it("resumes a review in another clone from the records the first exported, standing on each check they answer", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const exported = join(scratch, "exported");
+		const store = join(scratch, "records");
+		const first = { ...env, MELIAN_STATE_DIR: join(scratch, "state-first") };
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${exported}`], first).status).toBe(0);
+		const [changeset] = readdirSync(join(exported, "changesets"));
+		const source = await DirectoryRecordStore.open(exported, reviewPayloads);
+		// A note the first clone never wrote, so a round that reads it read the store rather than running guardrails.
+		const records = (await source.list(changeset!)).map((each) => {
+			const payload = each.payload as { result: { name: string; notes: string[] } };
+			return each.kind === "check" && payload.result.name === "guardrails"
+				? { ...each, payload: { ...payload, result: { ...payload.result, notes: ["from the store"] } } }
+				: each;
+		});
+		await source.close();
+		const planted = SharedRecord.parseEnvelope(
+			records.find(
+				(each) =>
+					each.kind === "check" && (each.payload as { result: { name: string } }).result.name === "guardrails",
+			)!,
+		).id;
+		const target = await DirectoryRecordStore.open(store, reviewPayloads);
+		await target.add(records);
+		await target.close();
+		const clone = mkdtempSync(join(tmpdir(), "melian-cli-clone-"));
+		repos.push(clone);
+		cpSync(repo, clone, { recursive: true });
+
+		const second = { ...env, MELIAN_STATE_DIR: join(scratch, "state-second") };
+		const review = melian(clone, ["review", "trusting", "--records", `dir:${store}`], second);
+
+		expect({ status: review.status, verdict: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			verdict: "Verdict: passed",
+		});
+		const resumed = await DirectoryRecordStore.open(store, reviewPayloads);
+		const rounds = (await resumed.list(changeset!)).filter(({ kind }) => kind === "round");
+		await resumed.close();
+		const reads = rounds.map((round) => (round.payload as { read: { id: string }[] }).read.map(({ id }) => id));
+		expect(reads.filter((ids) => ids.includes(planted))).toHaveLength(1);
 	});
 
 	it("reviews under a base that trusts writers without --records, and exports nothing", () => {
