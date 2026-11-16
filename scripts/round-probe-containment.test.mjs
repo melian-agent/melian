@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Probe } from "../packages/pipeline/src/probe.ts";
 import {
+	containmentPlan,
 	expectedEnvironment,
 	judge,
 	loginNames,
@@ -13,6 +14,7 @@ import {
 	outcome,
 	publicRoots,
 	recording,
+	shmId,
 	tokenShapes,
 	unfinished,
 	walked,
@@ -429,6 +431,90 @@ describe("outcome", () => {
 	});
 });
 
+describe("containmentPlan", () => {
+	const input = {
+		canary,
+		shm: "7",
+		policy: { read: ["/r/tree", "/usr/lib", "/opt/x", "/usr/x/run", "/usr/x/probe"], write: ["/usr/x/run"] },
+		files: ["/s/canary", "/h/.melian-canary-1"],
+		scratch: "/s",
+		temp: "/t",
+		checkout: "/c",
+		home: "/h",
+		pid: 42,
+		held: 9,
+		runtimeUrl: undefined,
+		lang: "C.UTF-8",
+	};
+
+	it("tries every route out, and counts only public roots that are not the probe's own as public", () => {
+		expect(containmentPlan(input)).toEqual({
+			canary,
+			shm: "7",
+			shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
+			environment: [...expectedEnvironment],
+			readable: ["/r/tree/package.json", "/r/tree"],
+			read: [
+				"/r/tree/package.json",
+				"/r/tree",
+				"/s/canary",
+				"/h/.melian-canary-1",
+				"/s",
+				"/t",
+				"/c",
+				"/c/.git/config",
+				"/c/package.json",
+				"/h/.gitconfig",
+				"/h",
+				"/home/runner/actions-runner",
+				"/home/runner/actions-runner/.credentials",
+				"/home/runner/actions-runner/.runner",
+				"/proc/42/environ",
+				"/proc/42/fd/9",
+				"/proc/42/cwd/package.json",
+				"/proc/42/root/etc/passwd",
+				"/etc/passwd",
+				"/etc/hostname",
+			],
+			writable: ["/usr/x/run/home/written"],
+			write: [
+				"/usr/x/run/home/written",
+				"/r/tree/written",
+				"/s/written",
+				"/tmp/melian-written",
+				"/h/melian-written",
+			],
+			network: [
+				{ host: "api.github.com", port: 443 },
+				{ host: "169.254.169.254", port: 80 },
+			],
+			walk: input.policy.read,
+			own: ["/r/tree", "/usr/x/run", "/usr/x/probe"],
+			public: ["/usr/lib"],
+			self: "/usr/x/probe/targets.json",
+		});
+	});
+
+	it("tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it", () => {
+		const plan = containmentPlan({ ...input, runtimeUrl: "https://runtime.example/x", lang: undefined });
+		expect(plan.network).toEqual([
+			{ host: "api.github.com", port: 443 },
+			{ host: "169.254.169.254", port: 80 },
+			{ host: "runtime.example", port: 443 },
+		]);
+		expect(plan.environment).toEqual(expectedEnvironment.filter((name) => name !== "LANG"));
+		expect(expectedEnvironment).toContain("LANG");
+	});
+});
+
+describe("shmId", () => {
+	it("reads the last number ipcmk printed, with or without a line end, and none when it printed none", () => {
+		expect(shmId("Shared memory id: 1234\n")).toBe("1234");
+		expect(shmId("Shared memory id: 1234")).toBe("1234");
+		expect(shmId("Shared memory id: 12 x")).toBe("");
+	});
+});
+
 describe("main", () => {
 	it("fails, and opens no probe, when the sandbox cannot run", async () => {
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -441,6 +527,87 @@ describe("main", () => {
 		} finally {
 			log.mockRestore();
 		}
+	});
+
+	function stoppedProbes(root, removed) {
+		const tree = join(root, "tree");
+		const run = join(root, "run");
+		mkdirSync(tree);
+		mkdirSync(run);
+		mkdirSync(join(root, "probe"));
+		return {
+			availability: async () => ({ available: true }),
+			sandbox: {},
+			open: async () => ({
+				policy: { read: [tree], write: [run] },
+				run: async () => ({ exitCode: null, signal: "SIGKILL", timedOut: true, truncated: false, output: "" }),
+				close: async () => ({ removed, leftover: removed ? undefined : join(root, "left") }),
+			}),
+		};
+	}
+
+	async function mainWith(probes) {
+		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
+		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", ...loginNames].map((name) => [name, process.env[name]]));
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		const segments = () => spawnSync("ipcs", ["-m"], { encoding: "utf8" }).stdout;
+		const before = { segments: segments(), fds: readdirSync("/proc/self/fd").length };
+		try {
+			mkdirSync(join(root, "home"));
+			mkdirSync(join(root, "temp"));
+			process.env.HOME = join(root, "home");
+			process.env.RUNNER_TEMP = join(root, "temp");
+			const code = await main(probes(root));
+			return {
+				code,
+				logs: log.mock.calls,
+				left: [...readdirSync(join(root, "home")), ...readdirSync(join(root, "temp"))],
+				segmentsKept: segments() === before.segments,
+				fdsKept: readdirSync("/proc/self/fd").length === before.fds,
+			};
+		} finally {
+			log.mockRestore();
+			for (const [name, value] of Object.entries(saved))
+				if (value === undefined) delete process.env[name];
+				else process.env[name] = value;
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+
+	it.runIf(process.platform === "linux")(
+		"fails a probe that did not finish, and leaves nothing it planted",
+		async () => {
+			const result = await mainWith((root) => stoppedProbes(root, true));
+			expect(result).toEqual({
+				code: 1,
+				logs: [["the containment probe did not finish: exit SIGKILL, timed out true, cut false"]],
+				left: [],
+				segmentsKept: true,
+				fdsKept: true,
+			});
+		},
+	);
+
+	it.runIf(process.platform === "linux")("names the probe's scratch when closing it left some", async () => {
+		const result = await mainWith((root) => stoppedProbes(root, false));
+		expect(result.logs).toEqual([
+			["the containment probe did not finish: exit SIGKILL, timed out true, cut false"],
+			[expect.stringMatching(/^the probe's scratch was left at \/.*\/left$/)],
+		]);
+	});
+
+	it("runs nothing when another module imports it", () => {
+		const run = spawnSync(
+			process.execPath,
+			[
+				"--conditions=@melian-agent/source",
+				"--input-type=module",
+				"-e",
+				`await import(${JSON.stringify(join(import.meta.dirname, "round-probe-containment.mjs"))});`,
+			],
+			{ encoding: "utf8", timeout: 120_000 },
+		);
+		expect([run.status, run.stdout]).toEqual([0, ""]);
 	});
 });
 

@@ -414,6 +414,81 @@ export function outcome(failures) {
 	return { code: 1, lines: failures.map((failure) => `not contained: ${failure}`) };
 }
 
+/** What the containment probe tries, from the policy Probe gave it and what the step planted on the host. */
+export function containmentPlan({
+	canary,
+	shm,
+	policy,
+	files,
+	scratch,
+	temp,
+	checkout,
+	home,
+	pid,
+	held,
+	runtimeUrl,
+	lang,
+}) {
+	const tree = policy.read[0];
+	const run = policy.write[0];
+	const probeDirectory = join(run, "..", "probe");
+	const runtime = new URL(runtimeUrl ?? "http://localhost").hostname;
+	return {
+		canary,
+		shm,
+		shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
+		// Probe passes the host's LANG on, so the probe holds it exactly when the host does.
+		environment: expectedEnvironment.filter((name) => name !== "LANG" || lang !== undefined),
+		readable: [join(tree, "package.json"), tree],
+		read: [
+			join(tree, "package.json"),
+			tree,
+			...files,
+			scratch,
+			temp,
+			checkout,
+			join(checkout, ".git", "config"),
+			join(checkout, "package.json"),
+			join(home, ".gitconfig"),
+			home,
+			"/home/runner/actions-runner",
+			"/home/runner/actions-runner/.credentials",
+			"/home/runner/actions-runner/.runner",
+			`/proc/${pid}/environ`,
+			`/proc/${pid}/fd/${held}`,
+			`/proc/${pid}/cwd/package.json`,
+			`/proc/${pid}/root/etc/passwd`,
+			"/etc/passwd",
+			"/etc/hostname",
+		],
+		writable: [join(run, "home", "written")],
+		write: [
+			join(run, "home", "written"),
+			join(tree, "written"),
+			join(scratch, "written"),
+			"/tmp/melian-written",
+			join(home, "melian-written"),
+		],
+		network: [
+			{ host: "api.github.com", port: 443 },
+			{ host: "169.254.169.254", port: 80 },
+			...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
+		],
+		walk: policy.read,
+		own: [tree, run, probeDirectory],
+		// A probe's own directories are never public, wherever they sit.
+		public: policy.read.filter(
+			(path) => ![tree, run, probeDirectory].includes(path) && publicRoots.some((root) => root.matches(path)),
+		),
+		self: join(probeDirectory, "targets.json"),
+	};
+}
+
+/** The id ipcmk printed for the segment it made, or "" when it printed none. */
+export function shmId(made) {
+	return /(\d+)\s*$/.exec(made)?.[1] ?? "";
+}
+
 /** Runs the containment probe through `probes`, Probe unless a test gives another, and returns the step's exit code. */
 export async function main(probes = Probe) {
 	const available = await probes.availability();
@@ -430,7 +505,7 @@ export async function main(probes = Probe) {
 	// An open descriptor, as a login file would be, which the probe must not reach through /proc/<pid>/fd.
 	const held = openSync(files[0], "r");
 	const made = execFileSync("ipcmk", ["--shmem", "64"], { encoding: "utf8" });
-	const shm = /(\d+)\s*$/.exec(made)?.[1] ?? "";
+	const shm = shmId(made);
 	const checkout = realpathSync(process.cwd());
 	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
 	try {
@@ -453,59 +528,20 @@ export async function main(probes = Probe) {
 		let plan;
 		const { policy } = probe;
 		try {
-			const tree = policy.read[0];
-			const run = policy.write[0];
-			const probeDirectory = join(run, "..", "probe");
-			const runtime = new URL(process.env.ACTIONS_RUNTIME_URL ?? "http://localhost").hostname;
-			plan = {
+			plan = containmentPlan({
 				canary,
 				shm,
-				shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
-				// Probe passes the host's LANG on, so the probe holds it exactly when the host does.
-				environment: expectedEnvironment.filter((name) => name !== "LANG" || process.env.LANG !== undefined),
-				readable: [join(tree, "package.json"), tree],
-				read: [
-					join(tree, "package.json"),
-					tree,
-					...files,
-					scratch,
-					temp,
-					checkout,
-					join(checkout, ".git", "config"),
-					join(checkout, "package.json"),
-					join(homedir(), ".gitconfig"),
-					homedir(),
-					"/home/runner/actions-runner",
-					"/home/runner/actions-runner/.credentials",
-					"/home/runner/actions-runner/.runner",
-					`/proc/${process.pid}/environ`,
-					`/proc/${process.pid}/fd/${held}`,
-					`/proc/${process.pid}/cwd/package.json`,
-					`/proc/${process.pid}/root/etc/passwd`,
-					"/etc/passwd",
-					"/etc/hostname",
-				],
-				writable: [join(run, "home", "written")],
-				write: [
-					join(run, "home", "written"),
-					join(tree, "written"),
-					join(scratch, "written"),
-					"/tmp/melian-written",
-					join(homedir(), "melian-written"),
-				],
-				network: [
-					{ host: "api.github.com", port: 443 },
-					{ host: "169.254.169.254", port: 80 },
-					...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
-				],
-				walk: policy.read,
-				own: [tree, run, probeDirectory],
-				// A probe's own directories are never public, wherever they sit.
-				public: policy.read.filter(
-					(path) => ![tree, run, probeDirectory].includes(path) && publicRoots.some((root) => root.matches(path)),
-				),
-				self: join(probeDirectory, "targets.json"),
-			};
+				policy,
+				files,
+				scratch,
+				temp,
+				checkout,
+				home: homedir(),
+				pid: process.pid,
+				held,
+				runtimeUrl: process.env.ACTIONS_RUNTIME_URL,
+				lang: process.env.LANG,
+			});
 			writeFileSync(plan.self, JSON.stringify(plan));
 			const result = await probe.run();
 			const stopped = unfinished(result);
@@ -539,4 +575,4 @@ export async function main(probes = Probe) {
 	}
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exitCode = await main();
