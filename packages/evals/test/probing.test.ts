@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
@@ -1407,7 +1407,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it", async () => {
+	it("accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it and, as a symlink, one Melian does not follow", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
 			const file = defect[0]!.properties.path!;
@@ -1457,6 +1457,18 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			});
 			expect(refused.using.models).not.toHaveBeenCalled();
 			expect(refused.using.range).not.toHaveBeenCalled();
+			git(repo, "checkout", "--quiet", "-b", "linked", "feature");
+			rmSync(join(repo, file));
+			symlinkSync("elsewhere", join(repo, file));
+			git(repo, "add", "--all");
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "linked");
+			const linkedHead = git(repo, "rev-parse", "HEAD");
+			const linked = run("linked", linkedHead);
+			expect(await linked.result).toMatchObject({
+				status: 2,
+				errors: [`${linkedHead.slice(0, 12)}:${file} is a symlink, which Melian does not follow`],
+			});
+			expect(linked.using.range).not.toHaveBeenCalled();
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
