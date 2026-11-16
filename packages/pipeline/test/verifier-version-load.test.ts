@@ -6,6 +6,6 @@ describe("the verifier's version, as its module loads", () => {
 	it("is the version issue #493's wording gives it, from the trust-boundary lens's own evidence wording", async () => {
 		vi.resetModules();
 		const { verifierVersion } = await import("../src/verification-instructions.ts");
-		expect(verifierVersion).toBe("acefd18046ef5d04");
+		expect(verifierVersion).toBe("c458134278f8c3ab");
 	});
 });

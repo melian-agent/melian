@@ -91,6 +91,7 @@ const sharedEvidenceWording = Object.freeze({
 	cut: "printed past its output limit and was ended",
 	signalled: "was ended by {signal}",
 	unrecorded: "ended with no record of how",
+	untestable: "exited 125 to say it could not test its attack, which shows nothing",
 	passed: "passed, exiting 0",
 	failed: "failed, exiting {code}",
 	nothing: "(nothing)",
@@ -549,6 +550,7 @@ function outcome(result: StoredProbeResult): string {
 		return result.signal === null
 			? sharedEvidenceWording.unrecorded
 			: fill(sharedEvidenceWording.signalled, { signal: result.signal });
+	if (result.exitCode === 125) return sharedEvidenceWording.untestable;
 	return result.exitCode === 0
 		? sharedEvidenceWording.passed
 		: fill(sharedEvidenceWording.failed, { code: result.exitCode });
@@ -802,6 +804,7 @@ export function probeEvidenceRenderings(): string {
 			nonce,
 		),
 		"evidence, unrecorded": renderProbeEvidence(wording, "c1", claim, ran({ exitCode: null, signal: null }), nonce),
+		"evidence, untestable": renderProbeEvidence(wording, "c1", claim, ran({ exitCode: 125 }), nonce),
 	})
 		.map(([name, text]) => `=== ${name} ===\n${text}\n`)
 		.join("\n");

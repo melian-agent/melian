@@ -436,6 +436,7 @@ describe("the plan as a prober and a verifier read it", () => {
 			[result({ truncated: true }), "printed past its output limit and was ended"],
 			[result({ exitCode: null, signal: "SIGKILL" }), "was ended by SIGKILL"],
 			[result({ exitCode: null, signal: null }), "ended with no record of how"],
+			[result({ exitCode: 125 }), "exited 125 to say it could not test its attack, which shows nothing"],
 		] as const)
 			expect(
 				renderProbeEvidence(

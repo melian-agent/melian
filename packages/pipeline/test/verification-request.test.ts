@@ -148,11 +148,11 @@ describe("verificationRequest", () => {
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
 // that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #493 changed the shared
-// evidence wording on purpose, for a probe that ended with no record of how, so these values moved once.
+// evidence wording on purpose, for a probe that ended with no record of how and one that exited 125, so these values moved.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
-		expect(verifierVersion).toBe("acefd18046ef5d04");
-		expect(verificationRequest(sample).key).toBe("aba29c85ec2348866566f1193683412d6adf5ed6abf0ec0957368505211dac66");
+		expect(verifierVersion).toBe("c458134278f8c3ab");
+		expect(verificationRequest(sample).key).toBe("3fd4e7e3989d48157fa7a7d4027588f3ff738ccf74773b3fe335cf075d0518d8");
 	});
 });
 
@@ -245,6 +245,13 @@ describe("a verification of claims that rest on probes", () => {
 			words.set("tests", own);
 		}
 		expect(verificationRequest(probed("tests")).key).toBe(tests);
+	});
+
+	// Codex's review of pull request #532: a probe that exits 125 says it could not test its attack, and the verifier
+	// read it as "failed, exiting 125", a failure that confirms the claim. The request keys the wording it is shown.
+	it("keys the wording that shows the verifier a probe that exited 125 could not test the attack", () => {
+		const keyed = JSON.stringify(verificationRequest(probed("trust-boundary")).request);
+		expect(keyed).toContain("exited 125 to say it could not test its attack, which shows nothing");
 	});
 
 	it("refuses to key a probed claim of a lens with no probing wording of its own", () => {
