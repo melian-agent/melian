@@ -1,4 +1,4 @@
-import type { CheckRecord, SharedRecord, Walkthrough } from "@melian-agent/core";
+import { type CheckRecord, Finding, type SharedRecord, type StoredFinding, type Walkthrough } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { blindCallers, lightTriage } from "../src/caveats.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
@@ -22,6 +22,27 @@ const decided = (record: CheckRecord) => ({
 	lineage: null,
 	...record,
 });
+
+const sighting = (version: string | undefined, check = "static.biome"): StoredFinding =>
+	Finding.create({
+		rule: "lint/style",
+		message: "Unsafe input",
+		file: "src/run.ts",
+		startLine: 7,
+		snippet: "run(input)",
+		occurrence: 0,
+		severity: "P2",
+		cause: "introduced",
+		source: { check, version },
+		explanation: { what: "Unsafe input", whyHere: "New input", whatToDo: "Validate it" },
+	}).toJSON();
+const verdict = {
+	verdict: "confirmed",
+	reason: "It runs",
+	executor: "llm",
+	model: "anthropic/claude",
+	version: "1",
+} as const;
 
 const checks: CheckRunRecord[] = [
 	{ name: "static.enola", status: "ran", findings: 0, notes: [`line 3: ${token}`] },
@@ -68,6 +89,30 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			check: { name: "verifier", status: "failed", reason: token, error: token },
 		});
 		expect(bytes(record)).not.toContain(token);
+	});
+
+	it("as a tool version that names a finding's source, wherever the finding goes", () => {
+		const finding = sighting(token);
+		const result = { name: "static.biome", status: "ran", findings: 1, notes: [], version: token } as CheckRunRecord;
+		expect(bytes(records.check("e".repeat(64), result, [finding]))).not.toContain(token);
+		const claims = [{ id: finding.properties.id, source: finding.properties.source, verification: verdict }];
+		expect(bytes(records.verification("f".repeat(64), { claims, dismissals: [], outcomes: [] }))).not.toContain(
+			token,
+		);
+		const producers = [{ check: "static.biome", version: token }];
+		const account = { checks: ["static.biome"], records: [], filled: [], allowSkip: [], producers };
+		expect(bytes(records.account(account))).not.toContain(token);
+		const dismissal = records.dismissal({
+			finding: finding.properties.id,
+			by: "writer",
+			reason: "fine",
+			at: "2026-11-16T00:00:00.000Z",
+			severity: "P2",
+			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding },
+			rounds: [],
+			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
+		});
+		expect(bytes(dismissal)).not.toContain(token);
 	});
 
 	it("as a triage whose decider failed with a provider's message", () => {
@@ -157,6 +202,51 @@ describe("an exported record keeps what Melian defines", () => {
 				version,
 			);
 		}
+	});
+
+	it("exports a check whose version it withholds with the sightings that name that version", () => {
+		const result = {
+			name: "static.biome",
+			status: "ran",
+			findings: 1,
+			notes: [],
+			version: "1.2.3+build",
+		} as CheckRunRecord;
+		const exported = payload(records.check("e".repeat(64), result, [sighting("1.2.3+build")]));
+		expect((exported.result as { version: string }).version).toBe(withheld);
+		expect((exported.sightings as StoredFinding[])[0]!.properties.source).toEqual({
+			check: "static.biome",
+			version: withheld,
+		});
+	});
+
+	it("keeps a lens's own version where a finding's source names it", () => {
+		const finding = sighting("abc@careful", "lens.security");
+		const claims = [{ id: finding.properties.id, source: finding.properties.source, verification: verdict }];
+		const record = records.verification("f".repeat(64), { claims, dismissals: [], outcomes: [] });
+		expect((payload(record).claims as { source: unknown }[])[0]!.source).toEqual({
+			check: "lens.security",
+			version: "abc@careful",
+		});
+		const producers = [{ check: "lens.security", version: "abc@careful" }];
+		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		expect((account.producers as { version: string }[])[0]!.version).toBe("abc@careful");
+	});
+
+	it("keeps a version of 64 characters and withholds one of 65", () => {
+		const of = (length: number) => `1.0.0-${"a".repeat(length - 6)}`;
+		const exported = (version: string) =>
+			(
+				payload(
+					records.check(
+						"e".repeat(64),
+						{ name: "static.biome", status: "ran", findings: 0, notes: [], version } as CheckRunRecord,
+						[],
+					),
+				).result as { version: string }
+			).version;
+		expect(exported(of(64))).toBe(of(64));
+		expect(exported(of(65))).toBe(withheld);
 	});
 
 	it("writes a check that names no version with a null version", () => {
