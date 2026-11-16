@@ -1329,14 +1329,20 @@ describe("recording a dismissal", () => {
 	});
 
 	describe("a review stored with a fingerprint of an older computation", () => {
-		async function dismissStoredWith(fingerprint: string, source: "revision" | "worktree") {
+		async function dismissStoredWith(
+			fingerprint: string,
+			source: "revision" | "worktree" | ((base: string) => string),
+		) {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptFinding();
 			const changeset = await Changeset.resolve(repo, "main...feature");
 			const policy =
-				source === "revision"
-					? { kind: "revision" as const, commit: changeset.revision.base }
-					: { kind: "worktree" as const };
+				source === "worktree"
+					? { kind: "worktree" as const }
+					: {
+							kind: "revision" as const,
+							commit: source === "revision" ? changeset.revision.base : source(changeset.revision.base),
+						};
 			const { findings } = await reviewChangeset({
 				harness,
 				changeset,
@@ -1366,6 +1372,24 @@ describe("recording a dismissal", () => {
 
 		it("refuses when the policy is the working tree, which may have changed since", async () => {
 			const { recorded } = await dismissStoredWith("2:0000000000000000", "worktree");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy names a branch, which can move to another commit since the review", async () => {
+			const { recorded } = await dismissStoredWith("2:0000000000000000", () => "main");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy names an abbreviated commit, which a later object can make ambiguous", async () => {
+			const { recorded } = await dismissStoredWith("2:0000000000000000", (base) => base.slice(0, 12));
 
 			await expect(recorded).rejects.toMatchObject({
 				code: "adjudicationFailed",

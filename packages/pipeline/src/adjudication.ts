@@ -264,10 +264,14 @@ export const AdjudicationTask = defineTask<
 				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input. A
 				// commit's policy cannot change, so a fingerprint an older computation made decides again under this one, by
 				// the maintainer's ruling of 2026-11-17 on issue #502. A fingerprint with no version stays refused, by the
-				// ruling of 2026-10-24 that retired it, and so does a later version, which this build cannot compute.
+				// ruling of 2026-10-24 that retired it, and so does a later version, which this build cannot compute. Only a
+				// full object ID fixes the commit: a branch or an abbreviated ID can name another commit by now.
 				const { resolutionPolicy } = task.input;
 				const version = Number(resolutionPolicy?.match(/^(\d+):/)?.[1]);
-				const olderComputation = policy?.kind === "revision" && version < fingerprintVersion;
+				const olderComputation =
+					policy?.kind === "revision" &&
+					/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit) &&
+					version < fingerprintVersion;
 				if (
 					policies !== undefined &&
 					resolutionPolicy !== undefined &&
