@@ -21,6 +21,7 @@ import {
 } from "typescript/unstable/ast";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeadProgram } from "../src/compiler-graph.ts";
+import { runProbe } from "../src/lens-tools.ts";
 import { Probe, probeLimits } from "../src/probe.ts";
 import {
 	type Attack,
@@ -370,6 +371,15 @@ describe("probeConclusive", () => {
 
 	it("reads only 125 as inconclusive, beside 124 and 126", () => {
 		expect([124, 125, 126].map((exitCode) => probeConclusive(result({ exitCode })))).toEqual([true, false, true]);
+	});
+});
+
+// Exit 125 means inconclusive only if the prober knows to use it, and the tool's description is where it learns that.
+describe("run_probe's description", () => {
+	it("tells the prober to exit 125 when its probe cannot test the attack", () => {
+		expect(runProbe.description).toContain(
+			"Exit 0 for the attack's passing outcome, 125 when the probe cannot test its attack, and any other non-zero code when it shows the defect.",
+		);
 	});
 });
 
