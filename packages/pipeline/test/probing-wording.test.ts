@@ -88,6 +88,46 @@ const probing: ScriptedReply[] = [
 	fauxAssistantMessage("Reported 1 finding."),
 ];
 
+const planner = "Your role at this level: the attack planner";
+const prober = "You are the prober for the tests lens";
+
+// Reviews the change with the tests lens at a level that probes, its planner and prober answering from the scripts.
+async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
+	const changeset = await Changeset.resolve(repo, "main...feature");
+	const policy = { kind: "revision", commit: changeset.revision.base } as const;
+	const paths = changeset.revision.paths();
+	const fake = createFakeModels();
+	const ref = fake.ref();
+	const requests = scriptConversations(fake, [
+		{ match: planner, replies: planned },
+		{ match: prober, replies: probed },
+	]);
+	harness = await openReviewHarness(createMemoryStorage(), fake.review, {
+		retry: false,
+		probeSandbox: unconfinedSandbox(),
+	});
+	const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
+		lens.name === "tests"
+			? Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } })
+			: lens,
+	);
+	const { verdict } = await reviewChangeset({
+		harness,
+		changeset,
+		config: {
+			...defaultConfig,
+			tiers: { full: ["lens.tests"] },
+			lenses: { tests: { level: { floor: "deep" } } },
+			models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
+		},
+		lenses,
+		standards: await Standards.load(repo, policy, paths),
+		models: fake.review,
+		writer: { trusted: true, by: "reviewer" },
+	});
+	return { verdict, requests };
+}
+
 // The words that name the trust-boundary lens's concern, which no other lens's probing turn should carry.
 const boundaryWords = /boundary|untrusted|hostile|trust-boundary/i;
 
@@ -104,8 +144,6 @@ describe("the tests lens at a level that probes", () => {
 			lenses: { tests: { level: { floor: "deep" } } },
 			models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
 		};
-		const planner = "Your role at this level: the attack planner";
-		const prober = "You are the prober for the tests lens";
 		const requests = scriptConversations(fake, [
 			{ match: planner, replies: planning },
 			{ match: prober, replies: probing },
@@ -177,62 +215,31 @@ describe("the tests lens at a level that probes", () => {
 		expect(sent.filter((text) => boundaryWords.test(text)).map((text) => text.match(boundaryWords)![0])).toEqual([]);
 	});
 
+	it("reminds a tests planner that recorded no plan in the tests lens's own words", async () => {
+		const { requests } = await reviewTests([fauxAssistantMessage("Nothing."), ...planning], probing);
+		const reminder = textOf(requests[planner]![1]!.at(-1)!);
+		expect(reminder).toBe(lensProbingWording.get("tests")!.recordPlan);
+	});
+
 	it("has a probe whose test fails unchanged exit 125, which reports no finding and refutes none", async () => {
-		const changeset = await Changeset.resolve(repo, "main...feature");
-		const policy = { kind: "revision", commit: changeset.revision.base } as const;
-		const paths = changeset.revision.paths();
-		const fake = createFakeModels();
-		const ref = fake.ref();
-		const config: MelianConfig = {
-			...defaultConfig,
-			tiers: { full: ["lens.tests"] },
-			lenses: { tests: { level: { floor: "deep" } } },
-			models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
-		};
-		const planner = "Your role at this level: the attack planner";
-		const prober = "You are the prober for the tests lens";
 		const baseline =
 			'console.log("unchanged: test/total.test.ts failed: Cannot find module vitest");\nprocess.exit(125);\n';
-		const requests = scriptConversations(fake, [
-			{ match: planner, replies: planning },
-			{
-				match: prober,
-				replies: [
-					call("run_probe", { attack: 1, script: baseline }),
-					(messages) =>
-						call("report_finding", {
-							file: "src/total.ts",
-							line: 2,
-							rule: "untested-behaviour",
-							severity: "P2",
-							explanation: { what: "a refutation", why: "the probe ended", fix: "none" },
-							failureScenario: "the unchanged test fails, so the probe shows nothing about line 2",
-							evidence: [{ file: "src/total.ts", line: 2, role: "cause" }],
-							probe: /probe (p[0-9]+)/.exec(messages.map(textOf).join("\n"))?.[1] ?? "p0",
-							refuted: "0123456789abcdef",
-						}),
-					fauxAssistantMessage("The unchanged test fails, so I report nothing."),
-				],
-			},
+		const { verdict, requests } = await reviewTests(planning, [
+			call("run_probe", { attack: 1, script: baseline }),
+			(messages) =>
+				call("report_finding", {
+					file: "src/total.ts",
+					line: 2,
+					rule: "untested-behaviour",
+					severity: "P2",
+					explanation: { what: "a refutation", why: "the probe ended", fix: "none" },
+					failureScenario: "the unchanged test fails, so the probe shows nothing about line 2",
+					evidence: [{ file: "src/total.ts", line: 2, role: "cause" }],
+					probe: /probe (p[0-9]+)/.exec(messages.map(textOf).join("\n"))?.[1] ?? "p0",
+					refuted: "0123456789abcdef",
+				}),
+			fauxAssistantMessage("The unchanged test fails, so I report nothing."),
 		]);
-		harness = await openReviewHarness(createMemoryStorage(), fake.review, {
-			retry: false,
-			probeSandbox: unconfinedSandbox(),
-		});
-		const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
-			lens.name === "tests"
-				? Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } })
-				: lens,
-		);
-		const { verdict } = await reviewChangeset({
-			harness,
-			changeset,
-			config,
-			lenses,
-			standards: await Standards.load(repo, policy, paths),
-			models: fake.review,
-			writer: { trusted: true, by: "reviewer" },
-		});
 
 		const proberPrompt = systemPromptOf(requests[prober]![0]!);
 		expect(proberPrompt).toContain(
