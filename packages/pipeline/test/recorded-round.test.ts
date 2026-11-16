@@ -16,11 +16,13 @@ import {
 	Standards,
 	type Verdict,
 } from "@melian-agent/core";
+import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type CheckRunRecord,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	decisionExtension,
 	type Harness,
 	type Message,
 	openHarness,
@@ -90,6 +92,8 @@ type Scenario = {
 	readonly verifier?: readonly ScriptedReply[];
 	readonly lenses?: (lens: Lens) => Lens;
 	readonly standards?: (changeset: Changeset) => Promise<Standards>;
+	// Triage's answer for contracts, so it can run at quick and escalate.
+	readonly triage?: RecordedDecider;
 };
 
 // One review of the fixture under `scenario`, exporting to `store`. A review that throws carries the verdict it
@@ -100,11 +104,17 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: twoLensTiers,
-		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+		models: {
+			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+			...(scenario.triage === undefined ? {} : { medium: { model: `${heavy.provider}/${heavy.modelId}` } }),
+		},
+		...(scenario.triage === undefined ? {} : { triage: { escalateAt: "P2" as const } }),
 	};
+	const registry = createReviewRegistry();
+	if (scenario.triage !== undefined) registry.install(decisionExtension(scenario.triage));
 	harness ??= await openHarness(createMemoryStorage(), {
 		models: fake.models,
-		registry: createReviewRegistry(),
+		registry,
 		settings: { retry: { enabled: false } },
 	});
 	scriptConversations(fake, [
@@ -125,6 +135,7 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		models: fake.review,
 		checks: [...(scenario.given ?? checks)],
 		records: store,
+		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
 	}).then(
 		(result) => result.verdict,
 		(error: unknown) => {
@@ -249,6 +260,24 @@ describe("a round read back from its records", () => {
 	])("decides as the review did when %s", async (_, scenario, status) => {
 		const verdict = await decidesAsTheHost(scenario);
 		expect(verdict.status).toBe(status);
+	});
+
+	it("decides as the review did when a quick run escalated and the next level left its finding standing", async () => {
+		const triage = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: { contracts: { distribution: { quick: 1 } }, correctness: { distribution: { careful: 1 } } },
+			},
+		});
+		const verdict = await decidesAsTheHost({ triage, contracts: [reports(changedReturn), quiet, quiet, quiet] });
+		expect(verdict.ran).toContainEqual(
+			expect.objectContaining({
+				name: "lens.contracts",
+				level: "careful",
+				reason: expect.stringContaining("which careful neither restated nor refuted"),
+			}),
+		);
+		expect(verdict.status).toBe("findings");
 	});
 
 	it("decides as the review did when the lens's standards were cut", async () => {

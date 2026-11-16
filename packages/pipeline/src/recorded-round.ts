@@ -131,7 +131,10 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	if (accountRecord.key !== key || account.records.join() !== ids.join())
 		return { refused: "names an account of other records than its own" };
 	const byId = new Map(set.records().map((record) => [record.id, record]));
-	const producers = new Set(account.producers.map(({ check, version }) => `${check}@${version ?? ""}`));
+	// A run that stands for its lens counts every finding; an escalated run's kept quick run counts only those it names.
+	const producers = new Set(
+		account.producers.filter(({ ids }) => ids === null).map(({ check, version }) => `${check}@${version ?? ""}`),
+	);
 	const checks: CheckRecord[] = [];
 	let verifier: CheckRecord | undefined;
 	const sightings: StoredFinding[] = [];
