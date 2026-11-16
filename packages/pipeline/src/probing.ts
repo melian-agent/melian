@@ -114,7 +114,8 @@ export const probeEvidenceCutWording = Object.freeze({
 		"Judge cut evidence by what it still shows. Confirm what the shown parts show. Never refute a claim, or lower it, because the part that would show it was cut. When the lines that decide the claim fall in a cut, answer plausible and say which part was cut.",
 	part: "{part}, cut by {bytes} of its {of} bytes",
 	separator: "; ",
-	plan: "the plan",
+	before: "the plan's attacks before attack {number}",
+	after: "the plan's attacks after attack {number}",
 	script: "the script",
 	file: "file {number}",
 	proberRan: "what the probe printed when the prober ran it",
@@ -571,7 +572,15 @@ function renderedEvidence(
 			: "refused" in again
 				? probeEvidenceWording.rerunRefused
 				: fill(probeEvidenceWording.rerunRan, { outcome: outcome(again.result) });
-	const plan = part(probeEvidenceCutWording.plan)(renderedPlan(claim.plan));
+	// A cut keeps whole the row of the attack the probe answered, which says what a failing probe of it shows.
+	const rows = planRows(claim.plan);
+	const plan = [
+		part(fill(probeEvidenceCutWording.before, { number: claim.attack }))(rows.slice(0, claim.attack - 1).join("\n")),
+		rows[claim.attack - 1],
+		part(fill(probeEvidenceCutWording.after, { number: claim.attack }))(rows.slice(claim.attack).join("\n")),
+	]
+		.filter(Boolean)
+		.join("\n");
 	const shown = [
 		fill(probeEvidenceWording.script, { script: part(probeEvidenceCutWording.script)(probe.script) }),
 		...probe.files.map((file, index) =>
@@ -660,17 +669,19 @@ export function boundProbeEvidence(
 }
 
 function renderedPlan(plan: readonly Attack[]): string {
-	return plan
-		.map((attack, index) =>
-			fill(probingWording.planRow, {
-				number: index + 1,
-				target: visibleText(attack.target),
-				reason: visibleText(attack.reason),
-				passing: visibleText(attack.passing),
-				failing: visibleText(attack.failing),
-			}),
-		)
-		.join("\n");
+	return planRows(plan).join("\n");
+}
+
+function planRows(plan: readonly Attack[]): string[] {
+	return plan.map((attack, index) =>
+		fill(probingWording.planRow, {
+			number: index + 1,
+			target: visibleText(attack.target),
+			reason: visibleText(attack.reason),
+			passing: visibleText(attack.passing),
+			failing: visibleText(attack.failing),
+		}),
+	);
 }
 
 /**

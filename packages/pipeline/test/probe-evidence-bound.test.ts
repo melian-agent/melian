@@ -1,18 +1,20 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig } from "@melian-agent/core";
+import { loadConfig, visibleText } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { createReviewModels } from "../src/credentials.ts";
 import { modelsOf } from "../src/models.ts";
 import {
 	type Attack,
 	boundProbeEvidence,
+	fill,
 	keepEnds,
 	type ProbeEvidence,
 	probeEvidenceBudget,
 	probeEvidenceCutWording,
 	probingLimits,
+	probingWording,
 	renderProbeEvidence,
 	type StoredProbeResult,
 } from "../src/probing.ts";
@@ -151,12 +153,30 @@ describe("boundProbeEvidence", () => {
 		const claims = (count: number) => Array.from({ length: count }, (_, index) => wide(`c${index + 1}`));
 		let fits = 1;
 		while (fits < 100 && boundProbeEvidence(claims(fits + 1), nonce) !== undefined) fits++;
-		expect(fits).toBe(19);
+		expect(fits).toBe(18);
 		const last = boundProbeEvidence(claims(fits), nonce)!;
 		expect(last).toHaveLength(fits);
 		expect(bytes(last)).toBeLessThanOrEqual(probeEvidenceBudget);
 		expect(last[fits - 1]).toContain(probeEvidenceCutWording.conclude);
 		expect(boundProbeEvidence(claims(fits + 1), nonce)).toBeUndefined();
+	});
+
+	// Without that row a verifier cannot tell a failing probe from a passing one, so it could confirm nothing.
+	it("keeps whole the plan's row for the attack each cut claim's probe answered", () => {
+		for (const count of [1, 2, 3, 4]) {
+			const evidence = Array.from({ length: count }, (_, index) => {
+				const claim = atLimits(`c${index + 1}`);
+				return { ...claim, probe: { ...claim.probe, attack: 12 } };
+			});
+			const shown = boundProbeEvidence(evidence, nonce);
+			expect(shown).toHaveLength(count);
+			shown?.forEach((block, index) => {
+				const row = evidence[index]!.probe.plan[11]!;
+				const shown = Object.fromEntries(Object.entries(row).map(([key, value]) => [key, visibleText(value)]));
+				expect(block).toContain(fill(probingWording.planRow, { number: 12, ...shown }));
+			});
+			expect(bytes(shown!)).toBeLessThanOrEqual(probeEvidenceBudget);
+		}
 	});
 
 	it("renders the least cut at a budget of exactly its size, and nothing a byte below it", () => {
