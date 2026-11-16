@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import type * as Fs from "node:fs/promises";
 import { readdir, rename } from "node:fs/promises";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import type * as Core from "@melian-agent/core";
-import { git, RecordError } from "@melian-agent/core";
+import { git, ProcessTable, RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Deadline, systemClock } from "../src/deadline.ts";
 import { RecordRepository } from "../src/repository.ts";
@@ -69,4 +71,16 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 			expect((await RecordRepository.open(path, Deadline.after(systemClock, 30_000))).path).toBe(path);
 			expect(await readdir(host)).toEqual(["records.git"]);
 		});
+
+	it("names the repository it builds after this host and process, so a sweep can tell when its maker has gone", async () => {
+		const path = join(remote.host(), "records.git");
+		await RecordRepository.open(path, Deadline.after(systemClock, 30_000));
+		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
+		const start = new ProcessTable().start(process.pid) as string;
+		const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
+		const owner = `${host}-${process.pid}-${Buffer.from(start, "utf8").toString("hex")}`;
+		expect(init?.[1][3]).toMatch(
+			new RegExp(`^${path}\\.${owner}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		);
+	});
 });

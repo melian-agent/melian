@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, rename, rm } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { ChangesetError, type GitResult, git, RecordError, stderrLimit } from "@melian-agent/core";
+import { lstat, mkdir, readdir, rename, rm } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
+import { ChangesetError, type GitResult, git, ProcessTable, RecordError, stderrLimit } from "@melian-agent/core";
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 import type { Deadline } from "./deadline.ts";
+import { Owner, type Processes } from "./owner.ts";
 
 // Settings that would run a program, set on every command so that no configuration of the user's or this repository's
 // turns them back on. The configuration check covers the keys a command line cannot clear, such as a credential helper
@@ -40,6 +41,18 @@ const contention = /cannot lock ref|Unable to create '.*\.lock'/;
 // is no race and no retry clears it.
 const lostRace =
 	/\t\[rejected\] \((stale info|fetch first|non-fast-forward|already exists)\)|\t\[remote rejected\] \((failed to update ref|cannot lock ref|incorrect old value|reference already exists)/;
+
+/**
+ * What a store's sweep did with the leftovers of calls that ended before they removed what they made: the temporary
+ * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
+ * tell, which it kept; and those it found stale but could not remove. `unread` says why it swept nothing, when the
+ * process table could not be read. A leftover a live call holds is in none of the lists.
+ */
+export type Sweep = { removed: string[]; kept: string[]; failed: string[]; unread?: string };
+
+// A leftover as the sweep lists it: its name, the owner its name records, whether it is the kind of thing the store
+// makes under that name, and how to remove it.
+type Leftover = { name: string; owner: Owner | undefined; fits: boolean; remove(): Promise<void> };
 
 // One entry of a commit's tree, as `ls-tree -r -z` gives it.
 export type TreeEntry = { readonly mode: string; readonly type: string; readonly oid: string; readonly path: Buffer };
@@ -79,22 +92,35 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 // branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
 export class RecordRepository {
 	readonly path: string;
+	readonly #owner: Owner | undefined;
 
-	private constructor(path: string) {
+	private constructor(path: string, owner: Owner | undefined) {
 		this.path = path;
+		this.#owner = owner;
 	}
 
 	// Opens the repository at `given`, creating it with Melian's configuration when it is not there. The path is made
-	// absolute, since git runs inside the repository and would read a relative one from there.
-	static async open(given: string, deadline: Deadline): Promise<RecordRepository> {
+	// absolute, since git runs inside the repository and would read a relative one from there. What a call makes is
+	// named after this process as `processes` lists it, so a later sweep can tell when its maker has gone.
+	static async open(
+		given: string,
+		deadline: Deadline,
+		processes: Processes = new ProcessTable(),
+	): Promise<RecordRepository> {
 		const path = resolve(given);
+		let owner: Owner | undefined;
+		try {
+			owner = Owner.current(processes.list());
+		} catch {
+			// With no table to read, a call names what it makes by a UUID alone, which no sweep removes.
+		}
 		const found = await lstat(path).catch((cause: unknown) => {
 			if ((cause as NodeJS.ErrnoException).code !== "ENOENT")
 				throw unreachable(`${path} cannot be read`, undefined, cause);
 		});
-		if (found === undefined) await RecordRepository.#create(path, deadline);
+		if (found === undefined) await RecordRepository.#create(path, deadline, owner);
 		else if (!found.isDirectory()) throw unreachable(`${path} is not a directory`);
-		const repository = new RecordRepository(path);
+		const repository = new RecordRepository(path, owner);
 		await checkConfiguration(path);
 		// An earlier build fetched one commit deep, and a plain fetch keeps that history shallow, so a landed push could
 		// read as lost.
@@ -106,8 +132,8 @@ export class RecordRepository {
 	}
 
 	// Built under a name of its own and renamed, so two processes opening at once never share a half-made repository.
-	static async #create(path: string, deadline: Deadline): Promise<void> {
-		const building = `${path}.${randomUUID()}`;
+	static async #create(path: string, deadline: Deadline, owner: Owner | undefined): Promise<void> {
+		const building = `${path}.${owner?.name() ?? randomUUID()}`;
 		try {
 			await mkdir(dirname(path), { recursive: true });
 			const left = deadline.left();
@@ -128,6 +154,77 @@ export class RecordRepository {
 		} finally {
 			await rm(building, { recursive: true, force: true });
 		}
+	}
+
+	#name(): string {
+		return this.#owner?.name() ?? randomUUID();
+	}
+
+	// Removes what a call left when its owner has gone: a half-made repository beside this one, a temporary index or its
+	// lock, or a fetch ref. It removes only what has the kind the store makes under that name, and follows no link.
+	async sweep(deadline: Deadline, processes: Processes): Promise<Sweep> {
+		// Listed before the table is read: a call still running when it is read made only what it is listed beside, and a
+		// call that starts later made nothing the listing holds.
+		const leftovers = await this.#leftovers(deadline);
+		const sweep: Sweep = { removed: [], kept: [], failed: [] };
+		let table: ReturnType<Processes["list"]> | undefined;
+		try {
+			table = processes.list();
+		} catch (error) {
+			sweep.unread = error instanceof Error ? error.message : String(error);
+		}
+		for (const leftover of leftovers) {
+			if (!leftover.fits || leftover.owner === undefined || !leftover.owner.isHere()) sweep.kept.push(leftover.name);
+			else if (table !== undefined && leftover.owner.isGone(table)) {
+				try {
+					await leftover.remove();
+					sweep.removed.push(leftover.name);
+				} catch {
+					sweep.failed.push(leftover.name);
+				}
+			}
+		}
+		return sweep;
+	}
+
+	async #leftovers(deadline: Deadline): Promise<Leftover[]> {
+		const leftovers: Leftover[] = [];
+		const state = dirname(this.path);
+		const folder = `${basename(this.path)}.`;
+		for (const name of (await readdir(state)).filter((entry) => entry.startsWith(folder)).sort()) {
+			const found = await lstat(join(state, name)).catch(() => undefined);
+			if (found === undefined) continue;
+			leftovers.push({
+				name,
+				owner: Owner.parse(name.slice(folder.length)),
+				fits: found.isDirectory(),
+				remove: () => rm(join(state, name), { recursive: true, force: true }),
+			});
+		}
+		const index = "melian-index-";
+		for (const name of (await readdir(this.path)).filter((entry) => entry.startsWith(index)).sort()) {
+			const found = await lstat(join(this.path, name)).catch(() => undefined);
+			if (found === undefined) continue;
+			leftovers.push({
+				name: `${basename(this.path)}/${name}`,
+				owner: Owner.parse(name.slice(index.length).replace(/\.lock$/, "")),
+				fits: found.isFile(),
+				remove: () => rm(join(this.path, name), { force: true }),
+			});
+		}
+		const fetch = "refs/melian/fetch/";
+		const refs = await this.#succeed(["for-each-ref", "--format=%(refname)", fetch], deadline);
+		for (const ref of refs
+			.split("\n")
+			.filter((line) => line !== "")
+			.sort())
+			leftovers.push({
+				name: ref,
+				owner: Owner.parse(ref.slice(fetch.length)),
+				fits: true,
+				remove: () => this.#deleteRef(ref, deadline),
+			});
+		return leftovers;
 	}
 
 	async run(
@@ -166,7 +263,7 @@ export class RecordRepository {
 	// Fetches `branch` from `url`, its whole history, and returns its tip's object ID, or `undefined` when the branch does
 	// not exist. Each fetch writes a ref of its own and deletes it, so concurrent fetches never share one.
 	async fetch(url: string, branch: string, deadline: Deadline): Promise<string | undefined> {
-		const ref = `refs/melian/fetch/${randomUUID()}`;
+		const ref = `refs/melian/fetch/${this.#name()}`;
 		const result = await this.run(
 			[
 				"fetch",
@@ -286,7 +383,7 @@ export class RecordRepository {
 
 	// Builds one commit on `parent`, or a root commit, that applies `changes` to its tree, and returns its object ID.
 	async commit(parent: string | undefined, changes: readonly TreeChange[], deadline: Deadline): Promise<string> {
-		const index = join(this.path, `melian-index-${randomUUID()}`);
+		const index = join(this.path, `melian-index-${this.#name()}`);
 		try {
 			await this.#succeed(parent === undefined ? ["read-tree", "--empty"] : ["read-tree", parent], deadline, {
 				index,
