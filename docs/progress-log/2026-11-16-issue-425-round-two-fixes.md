@@ -1,0 +1,7 @@
+The fix pass after the second own-build round on [pull request #476](https://github.com/melian-agent/melian/pull/476), for [issue #425](https://github.com/melian-agent/melian/issues/425).
+
+The round blocked on one finding. A later review of the same revision could replace this review's lens runs and clear their sightings while this one waited for its walkthrough. This review then exported a round with no sightings, which read passed. The export now reads the findings once, beside the decision adjudication recorded, and writes no round when another review has since changed the findings or decided the verdict again (ce928b0f). Its test failed on the head before the fix with `expected [] to deeply equal [ 'changed-return' ]`, and passes after it. Each operand of the new ownership check was mutated by hand against its named test, and each mutant failed.
+
+A test now reads a round's findings under each path's own `melian.yaml`, which no test had exercised; it fails when the reader uses one configuration for every path (53b18ea5). The replacement decision links its issue references, and a long sentence in the design is split (88e51066). Biome's comma-operator finding was fixed earlier (df8df671).
+
+The round's other acknowledge finding asks whether the reader should refuse a working-tree range whose policy changed since its review. The coordinator took it to the maintainer on 2026-11-16, and the pull request changes nothing for it until he rules.
