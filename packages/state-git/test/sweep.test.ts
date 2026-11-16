@@ -611,22 +611,24 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 
 describe("the owner's process namespace", () => {
 	const other = { dev: 4, ino: 4026532000 };
+	const ours = { dev: 4, ino: 4026531836 };
 	const platform = (name: NodeJS.Platform) => vi.spyOn(process, "platform", "get").mockReturnValue(name);
 
 	it("keeps what a process in another pid namespace under this host's name left, and removes what this one's left", async () => {
 		platform("linux");
-		// Each prefix is the one the store gives this host under that namespace, and each pid names no live process.
+		// Each prefix is the one the store gives this host under that namespace, and each pid names no live process. This
+		// one's namespace is fixed too, since macOS, which runs this file, has no `/proc` to read it from.
 		const prefix = () => Owner.current(new ProcessTable().list())?.name().split("-")[0] as string;
 		namespace.read = () => other;
 		const theirs = owned((await exited()).pid, prefix());
-		namespace.read = undefined;
-		const ours = owned((await exited()).pid, prefix());
+		namespace.read = () => ours;
+		const mine = owned((await exited()).pid, prefix());
 		plant(theirs);
-		plant(ours);
+		plant(mine);
 		const store = await remote.open({ directory });
 		expect(planted(theirs)).toEqual(there);
-		expect(planted(ours)).toEqual(gone);
-		expect(store.sweep).toEqual({ removed: names(ours).sort(), kept: names(theirs).sort(), failed: [] });
+		expect(planted(mine)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(mine).sort(), kept: names(theirs).sort(), failed: [] });
 	});
 
 	it("names what it makes after the pid namespace it reads", async () => {
