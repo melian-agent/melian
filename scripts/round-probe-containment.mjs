@@ -480,7 +480,6 @@ export function hostAddress(interfaces) {
 		.find((entry) => entry.family === "IPv4" && !entry.internal)?.address;
 }
 
-/** Waits up to five seconds for `test` to hold, and says whether it did. */
 async function until(test) {
 	for (let waited = 0; waited < 5000 && !test(); waited += 20) await new Promise((resolve) => setTimeout(resolve, 20));
 	return test();
