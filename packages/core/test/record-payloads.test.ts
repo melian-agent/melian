@@ -389,6 +389,21 @@ describe("RecordSet.account", () => {
 		expect(set([round, own]).account(round)).toBeUndefined();
 	});
 
+	it("is the account the round names by ID, of two that share its key", () => {
+		// The set holds records in ID order, so the named account takes the later ID and a lookup that ignores the ID finds the other.
+		const [other, named] = [account({ payload: { n: 1 } }), account()].sort((a, b) => (a.id < b.id ? -1 : 1));
+		const round = roundOf(named);
+		expect(named.key).toBe(other.key);
+		expect(set([round, named, other]).account(round)?.id).toBe(named.id);
+	});
+
+	it("is none for a record of another kind that the round names as its account", () => {
+		const check = parse({ kind: "check", key: "static.biome", revision });
+		const named = { kind: "account", key: check.key, id: check.id };
+		const round = parse({ kind: "round", key: "r", revision, payload: { ...manifest, read: [named] } });
+		expect(set([round, check]).account(round)).toBeUndefined();
+	});
+
 	it("is none for a record that is no round", () => {
 		const own = account();
 		expect(set([own]).account(own)).toBeUndefined();
