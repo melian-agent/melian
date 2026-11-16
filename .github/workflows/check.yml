@@ -42,6 +42,10 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
       - run: npm ci --ignore-scripts
+      # The round job runs probes on this image under Node 24, so the image proves the sandbox holds here first.
+      - if: matrix.node == 24
+        name: Prove a probe cannot reach the runner's secrets
+        run: node --conditions=@melian-agent/source scripts/round-probe-containment.mjs
       # The triage gate compares questions.json with main's, at origin/main. A push run already has origin/main at the
       # pushed commit, so the gate has nothing to compare; fetching would be refused as a non-fast-forward once main
       # moved on, and would compare the commit with a later one. No --depth: it would make the clone shallow again.
