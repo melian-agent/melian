@@ -3353,6 +3353,7 @@ describe("adjudication", () => {
 				{
 					"melian.yaml": own("melian.yaml"),
 					".melian/lenses/durability/LENS.md": own(".melian/lenses/durability/LENS.md"),
+					".melian/lenses/trust-boundary-probes/LENS.md": own(".melian/lenses/trust-boundary-probes/LENS.md"),
 					"docs/notes.md": lines("Notes."),
 				},
 				{ "docs/notes.md": notes },
@@ -3369,13 +3370,14 @@ describe("adjudication", () => {
 				"conventions",
 				"design",
 			];
-			scriptConversations(
-				fake,
-				everyBuiltIn.map((name) => ({
+			// The probing trust-boundary lens holds the reading one's instructions, so its own body line answers it first.
+			scriptConversations(fake, [
+				{ match: "This lens is its second half", replies: [fauxAssistantMessage("Done.")] },
+				...everyBuiltIn.map((name) => ({
 					match: `You are the ${name} reviewer`,
 					replies: [fauxAssistantMessage("Done.")],
 				})),
-			);
+			]);
 
 			const { verdict } = await reviewed({
 				config: { ...melian, models: config.models, lenses: unrouted(melian.lenses) },

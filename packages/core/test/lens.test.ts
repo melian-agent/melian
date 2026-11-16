@@ -261,6 +261,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "32db6552d78d",
 			tests: "ced1d9dc147a",
 			"trust-boundary": "e78af31b1e01",
+			"trust-boundary-probes": "e97c17e2fe1d",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
@@ -272,6 +273,28 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "0885fd05330f",
 			tests: "a9ed7d3ea22c",
 			"trust-boundary": "7d072a9e5e2c",
+			"trust-boundary-probes": "caf41cbbdb7e",
+		});
+	});
+
+	// The probing lens would inherit the reading lens's emoji, and two names may not share one.
+	it("load Melian's own lenses when the reading trust-boundary lens declares an emoji, since its probing half has its own", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		writeFiles(
+			repo,
+			Object.fromEntries(melianLensFiles(melian).map((path) => [path, readFileSync(join(melian, path), "utf8")])),
+		);
+		const reading = ".melian/lenses/trust-boundary/LENS.md";
+		const brick = "\u{1F9F1}";
+		writeFiles(repo, {
+			[reading]: readFileSync(join(melian, reading), "utf8").replace(/^---\n/, `---\nemoji: "${brick}"\n`),
+		});
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(
+			Object.fromEntries(lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [[lens.name, lens.emoji]]))),
+		).toEqual({
+			"trust-boundary": brick,
+			"trust-boundary-probes": "\u{1F52C}",
 		});
 	});
 
@@ -330,9 +353,16 @@ describe("built-in lenses", () => {
 		);
 		const quick = levels.filter(([level]) => level!.endsWith(".quick"));
 		expect(quick.map(([level]) => level).sort()).toEqual(
-			["contracts", "conventions", "correctness", "durability", "removed-behaviour", "tests", "trust-boundary"].map(
-				(lens) => `${lens}.quick`,
-			),
+			[
+				"contracts",
+				"conventions",
+				"correctness",
+				"durability",
+				"removed-behaviour",
+				"tests",
+				"trust-boundary-probes",
+				"trust-boundary",
+			].map((lens) => `${lens}.quick`),
 		);
 		const terra = {
 			model: "openai-codex/gpt-5.6-terra",

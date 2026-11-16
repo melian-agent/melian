@@ -175,6 +175,18 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
 }
 
+const idDigits = 16;
+const idShape = new RegExp(`^(?:pull|range)-[0-9a-f]{${idDigits}}$`);
+
+/**
+ * Whether `text` has the shape of an ID that {@link pullRequestChangesetId} or {@link Changeset.resolve} returns: `pull-`
+ * or `range-` and sixteen lowercase hex digits, nothing before or after. A store file's name, or a round ID, is such an
+ * ID plus a suffix its caller strips first.
+ */
+export function isChangesetId(text: string): boolean {
+	return idShape.test(text);
+}
+
 /**
  * The changeset ID of a pull request reviewed as one: a hash of the kind, the provider, the repository, and the number,
  * so every push to the pull request is a new revision of one changeset. A range hashes its kind too, so a range that
@@ -186,7 +198,7 @@ export function pullRequestChangesetId(
 	number: number,
 ): string {
 	const identity = ["pull-request", provider, repository.owner.toLowerCase(), repository.name.toLowerCase(), number];
-	return `pull-${createHash("sha256").update(identity.join("\0")).digest("hex").slice(0, 16)}`;
+	return `pull-${createHash("sha256").update(identity.join("\0")).digest("hex").slice(0, idDigits)}`;
 }
 
 function onlyMoved(file: ChangedFile): boolean {
@@ -513,7 +525,7 @@ export class Changeset {
 		const files = await diff(root, base, head);
 		return new Changeset({
 			kind: "range",
-			id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`,
+			id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, idDigits)}`,
 			repoRoot: root,
 			spec,
 			revision: Revision.from({ head, base, files }),
