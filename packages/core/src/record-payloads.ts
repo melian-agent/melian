@@ -383,10 +383,8 @@ export const reviewPayloads: PayloadChecks = {
 	triage: (payload) => shape(triagePayloadSchema, payload),
 	telemetry: (payload) => shape(telemetryPayloadSchema, payload),
 	account: (payload) => {
-		const refused = shape(
-			(payload as { v?: unknown }).v === 1 ? legacyAccountPayloadSchema : accountPayloadSchema,
-			payload,
-		);
+		const legacy = typeof payload === "object" && payload !== null && "v" in payload && payload.v === 1;
+		const refused = shape(legacy ? legacyAccountPayloadSchema : accountPayloadSchema, payload);
 		if (refused !== undefined) return refused;
 		const { checks, records, filled, allowSkip, producers } = payload as AccountPayload | LegacyAccountPayload;
 		if (new Set(checks).size !== checks.length) return "names one check twice";

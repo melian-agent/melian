@@ -573,6 +573,10 @@ describe("review payload checks", () => {
 		expect(check("account", { ...legacy, checks: ["guardrails", "guardrails"] })).toBe("names one check twice");
 	});
 
+	it.each([null, "account", 2, [account]])("refuses an account payload of %j as a breach of its schema", (payload) => {
+		expect(check("account", payload as RecordJson)).toMatch(/schema/);
+	});
+
 	it("takes an account whose producers share a check and differ in version, the one with none first", () => {
 		const producers = [
 			{ check: "static.biome", version: null, ids: null },

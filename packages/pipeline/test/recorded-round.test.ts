@@ -585,6 +585,11 @@ describe("a round its records cannot stand for", () => {
 			"judges one finding twice for one producer",
 		],
 		[
+			"the account's payload is null",
+			(reviewed, records, round) => rebuilt(reviewed, records, round, namedOf(records, round, "account"), null),
+			"its records fail their checks",
+		],
+		[
 			"a record fails its kind's check",
 			(reviewed, records, round) => {
 				const check = namedOf(records, round, "check");
