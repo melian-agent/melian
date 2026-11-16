@@ -435,7 +435,17 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const store = join(files, "records");
 		const review = melian(
 			repo,
-			["review", "#7", "--expect-base", base, "--expect-head", head, "--no-walkthrough", "--records", `dir:${store}`],
+			[
+				"review",
+				"#7",
+				"--expect-base",
+				base,
+				"--expect-head",
+				head,
+				"--no-walkthrough",
+				"--records",
+				`dir:${store}`,
+			],
 			env,
 		);
 		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });

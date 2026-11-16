@@ -19,7 +19,6 @@ import {
 	DirectoryRecordStore,
 	findingId,
 	KeyedRequest,
-	type RecordEnvelope,
 	Rendering,
 	reviewPayloads,
 	SharedRecord,
