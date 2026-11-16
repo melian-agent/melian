@@ -252,7 +252,7 @@ describe("a review that names a record store", () => {
 		expect(biome.result.notes).toEqual([]);
 	});
 
-	it("names another host's blocking round as replaced, which leaves what blocks unchanged", async () => {
+	it("names no round as replaced, though another host's blocking round is stored, which leaves what blocks unchanged", async () => {
 		const plain = await review(new MemoryRecordStore({ payloads: reviewPayloads }));
 		await harness?.close(context);
 		harness = undefined;
@@ -269,7 +269,7 @@ describe("a review that names a record store", () => {
 		const { verdict, stored } = await review(store);
 
 		const own = stored.filter(({ kind }) => kind === "round").find(({ key }) => key !== foreign.key)!;
-		expect((own.payload as { replaces: string[] }).replaces).toEqual([foreign.id]);
+		expect((own.payload as { replaces: string[] }).replaces).toEqual([]);
 		expect(verdict.status).toBe(plain.verdict.status);
 		expect(verdict.blocking).toBe(plain.verdict.blocking);
 		expect(verdict.all().map(({ id }) => id)).toEqual(plain.verdict.all().map(({ id }) => id));

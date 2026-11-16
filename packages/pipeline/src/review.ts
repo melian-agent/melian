@@ -3088,18 +3088,19 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 		});
 		const read = [...counted.map(({ record }) => record), account];
-		const own = records.round(read, undefined, [], []).key;
 		const stored = await store.list(changeset.id);
-		const roundsAt = (revision: string | undefined) =>
-			stored.filter((each) => each.kind === "round" && each.revision === revision);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
+		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
+		// issue #395 data it had to distrust.
 		const round = records.round(
 			read,
 			walkthrough,
-			roundsAt(reviewed)
-				.filter((each) => each.key !== own)
-				.map((each) => SharedRecord.parseEnvelope(each).id),
-			previous === undefined ? [] : roundsAt(previous).map((each) => SharedRecord.parseEnvelope(each).id),
+			[],
+			previous === undefined
+				? []
+				: stored
+						.filter((each) => each.kind === "round" && each.revision === previous)
+						.map((each) => SharedRecord.parseEnvelope(each).id),
 		);
 		await store.add(
 			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),

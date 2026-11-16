@@ -784,7 +784,7 @@ export async function findings(
 }
 
 // Decides each round a record store holds at the target's revision from its records alone, under the policy source the
-// review read. Every round is shown: naming an earlier round in `replaces` gives it no standing until issue #395.
+// review read. Every round is shown, by ID, since no round names another it replaces until issue #395 decides who may.
 async function recordedFindings(
 	io: Io,
 	argument: string,
@@ -824,7 +824,7 @@ async function recordedFindings(
 			}
 		})
 		.filter((record) => record.kind === "round" && record.revision === revision)
-		.sort((left, right) => replaced(left) - replaced(right) || (left.id < right.id ? -1 : 1));
+		.sort((left, right) => (left.id < right.id ? -1 : 1));
 	if (rounds.length === 0) throw new CliError(`the record store holds no round of ${short(changeset.revision.head)}`);
 	const emoji = await terminalEmoji(io, repoRoot);
 	const render = new Rendering({
@@ -857,12 +857,6 @@ async function recordedFindings(
 			: decided.map(({ round, verdict }) => `Round ${round}\n${verdict.render(render)}`).join("\n"),
 	);
 	return 0;
-}
-
-// How many earlier rounds a round names, which orders the rounds of one revision as the review wrote them.
-function replaced(round: SharedRecord): number {
-	const { replaces } = round.payload as { readonly replaces?: readonly string[] };
-	return replaces?.length ?? 0;
 }
 
 async function roundFindings(
