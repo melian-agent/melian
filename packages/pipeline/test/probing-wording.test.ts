@@ -1,6 +1,12 @@
 import { readdirSync, rmSync } from "node:fs";
 import { Changeset, defaultConfig, Lens, lensProbingWording, type MelianConfig, Standards } from "@melian-agent/core";
-import { createMemoryStorage, openReviewHarness, type ReviewHarness, reviewChangeset } from "@melian-agent/pipeline";
+import {
+	createMemoryStorage,
+	openReviewHarness,
+	ReviewError,
+	type ReviewHarness,
+	reviewChangeset,
+} from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -128,6 +134,15 @@ async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
 	return { verdict, requests };
 }
 
+// An earlier build let any lens probe, so a review in flight across the upgrade can hold a probing run of a lens the
+// table no longer names. Removing the tests lens's entry while `reply` runs puts that run on the same path.
+function withoutWording(reply: ScriptedReply): ScriptedReply {
+	return (messages, model) => {
+		(lensProbingWording as Map<string, unknown>).delete("tests");
+		return typeof reply === "function" ? reply(messages, model) : reply;
+	};
+}
+
 // The words that name the trust-boundary lens's concern, which no other lens's probing turn should carry.
 const boundaryWords = /boundary|untrusted|hostile|trust-boundary/i;
 
@@ -252,6 +267,43 @@ describe("the tests lens at a level that probes", () => {
 		);
 		expect(verdict.counted()).toEqual([]);
 		expect(JSON.stringify(verdict)).not.toContain("0123456789abcdef");
+	});
+
+	describe("when its probing wording is gone by the time it resumes", () => {
+		const own = lensProbingWording.get("tests")!;
+		afterEach(() => {
+			(lensProbingWording as Map<string, typeof own>).set("tests", own);
+		});
+
+		it("ends the lens failed, and the review not reviewed, once its planner finishes", async () => {
+			const refused = await reviewTests([withoutWording(planning[0]!), planning[1]!], probing).catch(
+				(error: unknown) => error,
+			);
+			expect(refused).toBeInstanceOf(ReviewError);
+			const { code, verdict } = refused as ReviewError;
+			expect(code).toBe("lensFailed");
+			expect(verdict!.status).toBe("not-reviewed");
+			expect(verdict!.counted()).toEqual([]);
+			expect(verdict!.notRun).toEqual([
+				{
+					name: "lens.tests",
+					status: "failed",
+					level: "deep",
+					reason: "the lens task did not complete",
+					version: expect.any(String),
+				},
+			]);
+		});
+
+		it("ends the review before it has a verdict, once a claim rests on its probe", async () => {
+			const refused = await reviewTests(planning, [probing[0]!, withoutWording(probing[1]!), probing[2]!]).catch(
+				(error: unknown) => error,
+			);
+			expect(refused).not.toBeInstanceOf(ReviewError);
+			expect((refused as Error).message).toBe(
+				"the tests lens has no probing wording of its own, so it cannot probe",
+			);
+		});
 	});
 
 	it("offers a planner and a prober tools whose descriptions name no boundary", () => {
