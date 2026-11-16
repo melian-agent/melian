@@ -5,8 +5,7 @@
 		"head": "9372323881bb3667a5bb2bf4202b48f70e7cf3f5"
 	},
 	"claimsIn": [
-		"packages/pipeline/src/review.ts",
-		"packages/pipeline/src/errors.ts"
+		"packages/pipeline/src/review.ts"
 	],
 	"adapters": [
 		{
