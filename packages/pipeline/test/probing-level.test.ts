@@ -8,6 +8,8 @@ import {
 	Lens,
 	type LensBudget,
 	type LensProbing,
+	type LensProbingWording,
+	lensProbingWording,
 	type MelianConfig,
 	ReviewPlan,
 	Revision,
@@ -45,7 +47,14 @@ import type { TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingHost, probingLimits, probingWording } from "../src/probing.ts";
+import {
+	headTreeLimits,
+	ProbeReruns,
+	probingHost,
+	probingLimits,
+	probingWording,
+	probingWordingOf,
+} from "../src/probing.ts";
 import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -850,7 +859,7 @@ describe("a level that probes", () => {
 		expect(probed[4]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[5]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[6]).toContain("a probe's files hold at most 131072 bytes; these hold 131073");
-		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so the boundary held/);
+		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so it showed no defect/);
 		expect(probed[7]).toContain("65536");
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["melian/injection-attempt"]);
 	});
@@ -2190,7 +2199,13 @@ describe("a level that probes", () => {
 			messages.some((message) => message.role === "assistant")
 				? fauxAssistantMessage("Planned 1 attack.")
 				: call("record_plan", { attacks: [attack] });
-		// A copy of trust-boundary shares its rules, so the two lenses' reports of one defect merge into one finding.
+		// A copy of trust-boundary shares its rules and its probing wording, so the two lenses' reports of one defect merge
+		// into one finding.
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		words.set("boundary-copy", words.get("trust-boundary")!);
+		onTestFinished(() => {
+			words.delete("boundary-copy");
+		});
 		const copy = (loaded: readonly Lens[]) => [
 			probingWith({ timeout: 40_000 })(
 				Lens.from({ ...loaded.find((lens) => lens.name === "trust-boundary")!.toJSON(), name: "boundary-copy" }),
@@ -3294,7 +3309,7 @@ describe("the turns a lens run is sent", () => {
 		);
 		for (const section of ["instructions", injectionPolicySection.key])
 			keyed.add(`<${section}>`).add(`</${section}>`);
-		const templates = Object.values(probingWording).flatMap(linesOf).map(template);
+		const templates = Object.values(probingWordingOf("trust-boundary")).flatMap(linesOf).map(template);
 		const sent = [reviewer, planner, prober].flatMap((who) =>
 			requests[who]!.flatMap((messages) =>
 				messages
@@ -3305,7 +3320,7 @@ describe("the turns a lens run is sent", () => {
 		// The script reached each kind of turn it claims to: the carried findings, the plan, and both reminders.
 		expect(sent).toContain(probingWording.carriedHeading);
 		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
-		expect(sent).toContain(probingWording.recordPlan);
+		expect(sent).toContain(probingWordingOf("trust-boundary").recordPlan);
 		expect(sent.some((line) => line.startsWith("Attack 2 has neither a probe nor a skip"))).toBe(true);
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
 	});

@@ -632,7 +632,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				let plan = await planOf();
 				const failed = await remind(
 					planner,
-					recordPlanPrompt,
+					recordPlanPrompt(lens.name),
 					`lens:${lens.key}:plan`,
 					"the planner's reminder",
 					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
@@ -2646,7 +2646,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						host: probingHost(probeSandboxOf(options)),
 					},
 				},
-				context: (boundary: string) => plannerContext(atBase, earlier, boundary),
+				context: (boundary: string) => plannerContext(lens.name, atBase, earlier, boundary),
 			};
 		};
 		// A run at `level`, keyed by its request, with `escalation` for a quick run: the run it moves to, built first, so
@@ -2661,7 +2661,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const probing =
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
 			const planning = (boundary: string) =>
-				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
+				probing === undefined ? "" : `\n\n${plannerInstructions(lens.name, probing.context(boundary))}`;
 			const thinking = routeAt(lens, level).route?.thinking;
 			const route = [...(routeFor(lens, level) as { route: ModelReference[] }).route];
 			const keyed = lensRequest({

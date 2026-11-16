@@ -29,10 +29,11 @@ import {
 } from "./lens-tools.ts";
 import {
 	type ClaimProbe,
+	type EvidenceWording,
+	evidenceWordingOf,
 	ProbeReruns,
 	type ProbeRun,
 	probeClaimKey,
-	probeEvidenceWording,
 	probeFailed,
 	probingWording,
 	renderProbeEvidence,
@@ -179,7 +180,9 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 							dismissed,
 							claims.flatMap(({ label, id, source }) => {
 								const probe = probed({ id, source });
-								return probe === undefined ? [] : [{ label, ...probe }];
+								return probe === undefined
+									? []
+									: [{ label, wording: evidenceWordingOf(lensOf(source)), ...probe }];
 							}),
 							task.input.revision.nonce,
 						),
@@ -450,7 +453,12 @@ function verifierPrompt(
 	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
 	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
 	dismissed: readonly { label: string; id: string }[],
-	evidence: readonly { label: string; probe: Omit<ClaimProbe, "environment">; again: ProbeRun | undefined }[],
+	evidence: readonly {
+		label: string;
+		wording: EvidenceWording;
+		probe: Omit<ClaimProbe, "environment">;
+		again: ProbeRun | undefined;
+	}[],
 	nonce: string,
 ): string {
 	return [
@@ -466,7 +474,7 @@ function verifierPrompt(
 				]),
 		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
 		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
-		...evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, nonce)),
+		...evidence.map(({ label, wording, probe, again }) => renderProbeEvidence(wording, label, probe, again, nonce)),
 	].join("\n\n");
 }
 
@@ -500,10 +508,17 @@ function placeholderProbe(exitCode: number): Omit<ClaimProbe, "environment"> {
 	};
 }
 
+// The lens a claim's source names, whose judgement of a probe its verifier reads.
+function lensOf(source: { readonly check: string }): string {
+	return source.check.startsWith("lens.") ? source.check.slice("lens.".length) : source.check;
+}
+
 // The text a verifier is given that its version does not hash, rendered by the task's own functions with placeholders
-// for what varies, so every fixed fragment it is shown reaches the key.
+// for what varies, so every fixed fragment it is shown reaches the key. The probe evidence renders under the
+// trust-boundary lens's wording, as the version does; a request whose claims carry probes keys their own lenses'.
 function verifierText(): unknown {
 	const nonce = identityNonce;
+	const wording = evidenceWordingOf("trust-boundary");
 	return {
 		tools: [...Object.values(lensReadTools), reportVerdict].map(({ name, description, parameters }) => ({
 			name,
@@ -519,13 +534,18 @@ function verifierText(): unknown {
 			],
 			[{ label: "d1", id: "<id>" }],
 			[
-				{ label: "c1", probe: placeholderProbe(1), again: undefined },
-				{ label: "c2", probe: placeholderProbe(1), again: { refused: "<refused>" } },
-				{ label: "c3", probe: placeholderProbe(0), again: { result: placeholderResult(1), milliseconds: 0 } },
+				{ label: "c1", wording, probe: placeholderProbe(1), again: undefined },
+				{ label: "c2", wording, probe: placeholderProbe(1), again: { refused: "<refused>" } },
+				{
+					label: "c3",
+					wording,
+					probe: placeholderProbe(0),
+					again: { result: placeholderResult(1), milliseconds: 0 },
+				},
 			],
 			nonce,
 		),
-		wording: probeEvidenceWording,
+		wording,
 		planRow: probingWording.planRow,
 		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
 		continue: continueJudging,
@@ -548,8 +568,8 @@ export function waveVersion(version: string): string {
 /**
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
  * nonce, which is drawn afresh on every review, and the outcomes it reuses. It holds each candidate by its identity, the
- * fixed text the verifier is given beyond its version, and `reruns`, the probe reruns this review read, which the
- * verifier is shown.
+ * fixed text the verifier is given beyond its version, `judges`, the own judgement of a probe of each lens whose claims
+ * carry probe evidence, and `reruns`, the probe reruns this review read, which the verifier is shown.
  */
 export function verificationRequest(
 	{
@@ -563,6 +583,12 @@ export function verificationRequest(
 	}: VerificationInput,
 	reruns: Record<string, ProbeRun> = {},
 ): KeyedRequest<RecordJson> {
+	// The lenses whose claims carry probe evidence, whose verifier reads each one's own judgement of a probe.
+	const judged = candidates.flatMap((candidate) =>
+		candidate.state.claims
+			.filter((claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined)
+			.map((claim) => lensOf(claim.source)),
+	);
 	return KeyedRequest.of(
 		"verification",
 		requestJson({
@@ -570,6 +596,9 @@ export function verificationRequest(
 			revision,
 			candidates: candidates.map(candidateIdentity),
 			text: verifierText(),
+			...(judged.length === 0
+				? {}
+				: { judges: Object.fromEntries(judged.map((lens) => [lens, evidenceWordingOf(lens).judge])) }),
 			reruns,
 		}),
 		{ nonce },

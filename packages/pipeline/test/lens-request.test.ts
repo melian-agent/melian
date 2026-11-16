@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { LensToolName, Severity } from "@melian-agent/core";
+import { type LensProbingWording, type LensToolName, lensProbingWording, type Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { piVersions } from "../src/harness.ts";
@@ -12,7 +12,7 @@ import {
 	runProbe,
 	skipAttack,
 } from "../src/lens-tools.ts";
-import { probingWording } from "../src/probing.ts";
+import { probingWording, probingWordingOf } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
 const sample = {
@@ -102,8 +102,13 @@ const specOf = ({
 describe("lensRequest", () => {
 	it("keys every input but the nonce", () => {
 		const tools = ["read_file", "search", "list_files", "graph_definitions"];
+		// A run that probes names a lens with probing wording of its own.
 		const vary = (name: string, value: unknown) =>
-			name.startsWith("run.tools.") ? tools.find((tool) => tool !== value) : undefined;
+			name.startsWith("run.tools.")
+				? tools.find((tool) => tool !== value)
+				: name === "run.name"
+					? "tests"
+					: undefined;
 		expect(keyCoverage(build, sample, { excluded: ["nonce", "callers"], vary })).toEqual([]);
 	});
 
@@ -201,12 +206,12 @@ describe("lensRequest", () => {
 		expect(new Set([moves, capped, none]).size).toBe(3);
 	});
 
-	it("keys the whole probing wording table for a run that probes or carries its findings on, and only then", () => {
+	it("keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise", () => {
 		const { probe: _, ...plain } = sample.run;
 		const capped = { cap: "at its ceiling" } as unknown as Sample["escalation"];
 		const none = undefined as unknown as Sample["escalation"];
-		expect(build(sample).request.wording).toEqual(probingWording);
-		expect(build({ ...sample, escalation: none }).request.wording).toEqual(probingWording);
+		expect(build(sample).request.wording).toEqual(probingWordingOf("correctness"));
+		expect(build({ ...sample, escalation: none }).request.wording).toEqual(probingWordingOf("correctness"));
 		expect(build({ ...sample, run: plain as Sample["run"] }).request.wording).toEqual(probingWording);
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: capped }).request).not.toHaveProperty(
 			"wording",
@@ -219,7 +224,35 @@ describe("lensRequest", () => {
 		const golden = JSON.parse(
 			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),
 		);
-		expect(probingWording).toEqual(golden);
+		const run = { ...sample.run, name: "trust-boundary" };
+		expect(build({ ...sample, run }).request.wording).toEqual(golden);
+	});
+
+	it("changes a probing run's key when its own lens's wording changes, and no other lens's key", () => {
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		const { probe: _, ...plain } = sample.run;
+		const runs = {
+			probing: sample,
+			other: { ...sample, run: { ...sample.run, name: "trust-boundary" } },
+			escalating: { ...sample, run: plain as Sample["run"] },
+		};
+		const before = Object.fromEntries(Object.entries(runs).map(([name, each]) => [name, build(each).key]));
+		const own = words.get("correctness")!;
+		words.set("correctness", { ...own, plannerPlan: `${own.plannerPlan} Plan again.` });
+		try {
+			expect(build(runs.probing).key).not.toBe(before.probing);
+			expect(build(runs.other).key).toBe(before.other);
+			expect(build(runs.escalating).key).toBe(before.escalating);
+		} finally {
+			words.set("correctness", own);
+		}
+		expect(build(runs.probing).key).toBe(before.probing);
+	});
+
+	it("refuses to key a run that probes in a lens with no probing wording of its own", () => {
+		expect(() => build({ ...sample, run: { ...sample.run, name: "security" } })).toThrow(
+			"the security lens has no probing wording of its own, so it cannot probe",
+		);
 	});
 
 	it("writes neither escalation field for a run with no escalation severity and no next run", () => {
