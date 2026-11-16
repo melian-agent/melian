@@ -1238,6 +1238,36 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					"unadjudicated",
 				],
 				["shown", lensRun({ shown: [at.file] }), true, "found"],
+				["second run shown", lensRun({ shown: [] }, { shown: [at.file], usage: undefined }), true, "found"],
+				[
+					"read another first",
+					lensRun({
+						shown: [],
+						read: [
+							{ path: "elsewhere.ts", ranges: [[start, end]] },
+							{ path: at.file, ranges: [[start, start]] },
+						],
+					}),
+					true,
+					"found",
+				],
+				[
+					"one range inside",
+					lensRun({
+						shown: [],
+						read: [
+							{
+								path: at.file,
+								ranges: [
+									[1, 1],
+									[start, start],
+								],
+							},
+						],
+					}),
+					true,
+					"found",
+				],
 				["read to start", lensRun({ shown: [], ...read(at.file, 1, start) }), true, "found"],
 				["read from end", lensRun({ shown: [], ...read(at.file, end, end + 9) }), true, "found"],
 				[
@@ -1296,11 +1326,17 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			git(repo, "checkout", "--quiet", "-b", "hunks", "feature");
 			const path = join(repo, at.file);
 			const text = readFileSync(path, "utf8").split("\n");
-			// Head-side hunks at 30, 50-52, and a deletion of line 70, which the head holds as none after line 69.
+			// Head-side hunks at 30, 50-52, and a deletion of line 70, which the head holds as no lines after line 69.
 			text[29] = "# changed 30";
 			for (const line of [49, 50, 51]) text[line] = `# changed ${line + 1}`;
 			text.splice(69, 1);
 			writeFileSync(path, text.join("\n"));
+			// Another file the range adds, whose one hunk holds every line the misses name.
+			writeFileSync(
+				join(repo, "other.txt"),
+				`${Array.from({ length: 100 }, (_, index) => `line ${index + 1}`).join("\n")}\n`,
+			);
+			git(repo, "add", "other.txt");
 			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "hunks");
 			const head = git(repo, "rev-parse", "hunks");
 			const shown = ran([], {
@@ -1314,7 +1350,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				["hunk's last line", [52, 52], "missed"],
 				["before hunk", [49, 49], "unadjudicated"],
 				["after hunk", [53, 53], "unadjudicated"],
-				["deletion", [69, 70], "unadjudicated"],
+				// The deletion's hunk holds no head line, though one counted as a line would end at 68 and start at 69.
+				["deletion", [68, 70], "unadjudicated"],
 			];
 			const range = vi.fn(async () => shown);
 			const { lines } = await measure(
