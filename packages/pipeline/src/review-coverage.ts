@@ -1,5 +1,6 @@
 import { type ReviewRead, repositoryPath, visibleText } from "@melian-agent/core";
 import type { Context, Conversation, EntryRecord, ToolCall } from "./harness.ts";
+import type { LensToolDetails } from "./lens-tools.ts";
 
 function canonicalPath(path: unknown): string | undefined {
 	if (typeof path !== "string") return undefined;
@@ -78,6 +79,7 @@ export class ReviewTranscript {
 						revision: call.arguments.revision === "base" ? "base" : "head",
 						kind: "read",
 						lines,
+						...((result.details as LensToolDetails | undefined)?.lineCut ? { cut: true as const } : {}),
 					});
 				} else
 					for (const line of body.split("\n")) {
