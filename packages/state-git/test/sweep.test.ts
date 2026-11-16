@@ -497,9 +497,31 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 			return real.apply(this, args);
 		});
 		const store = await remote.open({ directory });
-		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unswept: 3, unlisted: true });
+		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
 		expect(planted(suffix)).toEqual(there);
 	});
+
+	for (const [where, at] of [
+		["the state directory", () => directory],
+		["records.git", () => records],
+	] as const)
+		it(`removes nothing, and the open still succeeds, when ${where} cannot be listed`, async () => {
+			const owner = await exited();
+			const suffix = owned(owner.pid);
+			plant(suffix);
+			const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
+			vi.mocked(readdir).mockImplementation((async (path: string) => {
+				if (path === at()) throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+				return listed(path);
+			}) as unknown as typeof readdir);
+			try {
+				const store = await remote.open({ directory });
+				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
+				expect(planted(suffix)).toEqual(there);
+			} finally {
+				vi.mocked(readdir).mockImplementation(listed);
+			}
+		});
 });
 
 describe("the names a call gives what it makes", { timeout: 60_000 }, () => {

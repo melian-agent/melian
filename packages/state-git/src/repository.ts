@@ -47,8 +47,8 @@ const lostRace =
  * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
  * tell, which it kept; and those it found stale but could not remove. `unread` says why it swept nothing, when the
  * process table could not be read, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
- * which the next open removes. `unlisted` says it could not list the fetch refs, for want of time or because git
- * failed, so it removed nothing and counted every stale leftover it found as unswept.
+ * which the next open removes. `unlisted` says it could not list every leftover: a listing failed, and it removed
+ * nothing, or no time was left to list the fetch refs, and it counted the stale leftovers it had listed as unswept.
  */
 export type Sweep = {
 	removed: string[];
@@ -174,7 +174,8 @@ export class RecordRepository {
 	async sweep(deadline: Deadline, processes: Processes): Promise<Sweep> {
 		// Listed before the table is read: a call still running when it is read made only what it is listed beside, and a
 		// call that starts later made nothing the listing holds.
-		const { leftovers, unlisted } = await this.#leftovers(deadline);
+		// No failure inside the sweep fails the open: a listing that fails removes nothing and reports `unlisted`.
+		const { leftovers, unlisted } = await this.#leftovers(deadline).catch(() => ({ leftovers: [], unlisted: true }));
 		const sweep: Sweep = { removed: [], kept: [], failed: [], ...(unlisted ? { unlisted: true } : {}) };
 		let table: ReturnType<Processes["list"]> | undefined;
 		try {
@@ -223,15 +224,10 @@ export class RecordRepository {
 				remove: () => rm(join(this.path, name), { force: true }),
 			});
 		}
-		// Housekeeping never fails an open: a listing with no time left, or one that fails, leaves the sweep unlisted.
+		// A listing with no time left is not started, so the sweep is unlisted rather than past its deadline.
+		if (deadline.left() <= 0) return { leftovers, unlisted: true };
 		const fetch = "refs/melian/fetch/";
-		const refs =
-			deadline.left() <= 0
-				? undefined
-				: await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline).catch(
-						() => undefined,
-					);
-		if (refs === undefined) return { leftovers, unlisted: true };
+		const refs = await this.#succeed(["for-each-ref", "--sort=refname", "--format=%(refname)", fetch], deadline);
 		for (const ref of refs.split("\n").filter((line) => line !== ""))
 			leftovers.push({
 				name: ref,

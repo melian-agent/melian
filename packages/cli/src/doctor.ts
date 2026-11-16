@@ -566,8 +566,8 @@ function sweepNotes(sweep: Sweep): string[] {
 	if (sweep.unlisted === true)
 		notes.push(
 			sweep.unswept === undefined
-				? "the state directory's fetch refs were not swept, since the sweep could not list them, which the next open retries"
-				: `the state directory holds ${sweep.unswept === 1 ? "a leftover of an exited call" : `${sweep.unswept} leftovers of exited calls`} that the sweep left, since it could not list its fetch refs, which the next open removes`,
+				? "the state directory was not swept, since the sweep could not list its leftovers, which the next open retries"
+				: `the state directory holds ${sweep.unswept === 1 ? "a leftover of an exited call" : `${sweep.unswept} leftovers of exited calls`} that the sweep left, since it could not list them all, which the next open removes`,
 		);
 	else if (sweep.unswept !== undefined)
 		notes.push(
