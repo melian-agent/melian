@@ -14,4 +14,4 @@ Tests first. On `f8ad6450`, the new tests in `packages/evals/test/goldens.test.t
 
 The [mutant inventory](2026-11-16-issue-511-scoring-mutants.json) lists all 32 mutants of `82e08c71...4a087617`, every one in `goldens.ts`. A scratch runner applied each of the 31 claimed killed and ran its named test alone, by its anchored title, and counted a kill only when exactly one test was collected and failed. All 31 were killed. One is equivalent: `?? []` replaced by a seeded rule matches only a finding named with Stryker's own text. The schema's bounds test lives in `packages/evals/test/golden-schema.test.ts`, which loads no corpus. A mutant that empties the `lines` tuple stops every golden loading, so a test beside the corpus could never collect.
 
-Part B, the probing wording, the rendered notes line and the prober's telemetry, follows on this branch.
+Part B, the probing wording and the prober's telemetry, is in [its own entry](2026-11-16-issue-511-wording-telemetry.md).
