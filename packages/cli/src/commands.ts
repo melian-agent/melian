@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import {
 	Changeset,
 	checksOfTier,
@@ -30,6 +31,7 @@ import {
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
+	type ProbeGap,
 	type Publication,
 	PublishError,
 	publishReview,
@@ -189,6 +191,10 @@ export async function review(
 		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
 		// since is refused before any model credential is read.
 		readonly expect?: { readonly base: string; readonly head: string };
+		// Fail each level that probes and cannot, rather than run it without probes, and write each such level's check,
+		// level and cause to `probeGaps` as JSON, where the reason's text, which can name a path in the head, never goes.
+		readonly requireProbes?: boolean;
+		readonly probeGaps?: string;
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -384,6 +390,7 @@ export async function review(
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;
+		const gaps: ProbeGap[] = [];
 		try {
 			({ verdict, decisionIndexWarning } = await reviewChangeset({
 				harness: reviewHarness,
@@ -405,6 +412,7 @@ export async function review(
 				origin,
 				writer,
 				lensesStarted: summarize,
+				...(options.requireProbes === true ? { requireProbes: true, probeGap: (gap) => gaps.push(gap) } : {}),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
@@ -412,6 +420,7 @@ export async function review(
 			verdict = error.verdict;
 			decisionIndexWarning = error.decisionIndexWarning;
 		}
+		if (options.probeGaps !== undefined) await writeFile(options.probeGaps, `${JSON.stringify(gaps)}\n`, "utf8");
 		summarize();
 		spans.end();
 		await walkthrough;

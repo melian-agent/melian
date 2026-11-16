@@ -337,9 +337,12 @@ jobs:
           node packages/cli/bin/melian.js doctor || true
           set +e
           # Melian refuses, before it reads a login, a pull request that moved after the gate approved this base and head.
+          # A level that probes and cannot probe here fails rather than pass without probes; this log names each one's cause
+          # from a closed set, since its reason can name a path in the head.
           node packages/cli/bin/melian.js review "#$NUMBER" --expect-base "$BASE" --expect-head "$HEAD" --json --no-walkthrough \
-            > "$raw/verdict.json" 2> "$raw/round.err"
+            --require-probes --probe-gaps "$raw/probe-gaps.json" > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
+          node --conditions=@melian-agent/source scripts/round-probe-gaps.mjs "$raw/probe-gaps.json" "$out/probe-gaps.json"
           node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
@@ -448,7 +451,7 @@ jobs:
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
-            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --probe-gaps "$out/probe-gaps.json" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
           # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post

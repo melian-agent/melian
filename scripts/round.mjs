@@ -128,6 +128,18 @@ function checkLine({ name, status }) {
 	return oneLine(`  ${name}  ${status}`);
 }
 
+const unprobed = "since it probes and could not probe here; the round's log names why";
+
+// The checks the round's probe gaps name, from the file the round job wrote. The comment marks only a check the verdict
+// also lists, so nothing else in the file reaches the comment.
+function probeGapChecks(text) {
+	try {
+		return new Set(JSON.parse(text).map((gap) => field(gap, "check")));
+	} catch {
+		return new Set();
+	}
+}
+
 const localRun = "A local run of melian review shows why each check did not run.";
 
 function lineageLine({ name, lineage }) {
@@ -315,8 +327,9 @@ const staticText = "A static check's finding; a local run shows its text.";
 // either is undefined when its read failed. Finding text comes from models that read the head, so everything after
 // the link sits inside one code fence that no backtick run in it can close.
 export class RoundComment {
-	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current }) {
+	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current, unprobed }) {
 		this.verdict = verdict;
+		this.unprobed = unprobed ?? new Set();
 		this.runId = runId;
 		this.nonce = nonce;
 		this.exitCode = exitCode;
@@ -328,7 +341,7 @@ export class RoundComment {
 		this.current = current;
 	}
 
-	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current }) {
+	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current, probeGaps }) {
 		let parsed;
 		try {
 			parsed = publicVerdict(readFileSync(verdict, "utf8"));
@@ -347,6 +360,7 @@ export class RoundComment {
 			mergeBase,
 			reviewed,
 			current,
+			unprobed: probeGapChecks(probeGaps === undefined ? "" : readOr(probeGaps, "")),
 		});
 	}
 
@@ -391,7 +405,16 @@ export class RoundComment {
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);
 		if (notRun.length > 0)
-			quoted.push("", `${plural(notRun.length, "check")} did not run:`, ...notRun.map(checkLine), localRun);
+			quoted.push(
+				"",
+				`${plural(notRun.length, "check")} did not run:`,
+				...notRun.map((check) =>
+					check.status === "failed" && this.unprobed.has(check.name)
+						? oneLine(`  ${check.name}  failed, ${unprobed}`)
+						: checkLine(check),
+				),
+				localRun,
+			);
 		const lineage = [...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.lineage !== undefined);
 		if (lineage.length > 0)
 			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));

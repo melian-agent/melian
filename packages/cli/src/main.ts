@@ -98,6 +98,8 @@ Options:
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
                          For probe, run the probe in your checkout; pass it only for code you have read.
+  --require-probes       Fail each level that probes and cannot probe here, rather than run it without probes (review).
+  --probe-gaps <file>    Write each level --require-probes failed, by check, level and cause, to <file> as JSON (review).
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review, telemetry and probe.
@@ -172,6 +174,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				"require-probes": { type: "boolean", default: false },
+				"probe-gaps": { type: "string" },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -259,6 +263,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			}
 			case "review": {
 				const target = one(rest, name, "range or pull request");
+				if (values["probe-gaps"] !== undefined && !values["require-probes"])
+					throw new UsageError("--probe-gaps writes what --require-probes finds, so it needs --require-probes");
 				if (expected !== undefined && parseTarget(target).kind !== "pullRequest")
 					throw new UsageError('--expect-base and --expect-head take a pull request such as "#12", not a range');
 				return await review(
@@ -281,6 +287,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						trustHead: values["trust-head"],
 						cold: values.cold,
 						...(values.json ? { json: true } : {}),
+						...(values["require-probes"] ? { requireProbes: true } : {}),
+						...(values["probe-gaps"] === undefined ? {} : { probeGaps: values["probe-gaps"] }),
 					},
 				);
 			}
