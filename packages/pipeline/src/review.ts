@@ -384,6 +384,14 @@ type LensResult = Record<
 	LensOutcome & { readonly conversation?: ConversationId; readonly prober?: ConversationId }
 >;
 
+// A check that asked no model names no level one answered at, which the plan gives the model it would have run on.
+function unanswered({
+	answeredAt: _,
+	...lineage
+}: NonNullable<CheckRecord["lineage"]>): NonNullable<CheckRecord["lineage"]> {
+	return lineage;
+}
+
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
 }
@@ -2595,6 +2603,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		if (plan === undefined || level === undefined || level === "skip") continue;
 		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
 		if (reason === undefined) continue;
+		const unasked = lineage === undefined ? undefined : unanswered(lineage);
 		refused.add(lens);
 		if (refusals.has(`${lens.name}@${lens.version}`)) continue;
 		const name = `lens.${lens.name}`;
@@ -2604,7 +2613,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			status: "failed",
 			level,
 			reason,
-			...(lineage === undefined ? {} : { lineage }),
+			...(unasked === undefined ? {} : { lineage: unasked }),
 		});
 	}
 	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
@@ -3431,7 +3440,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				status: "failed",
 				version: verifierVersion,
 				reason: refusal ?? "the verifier has no model with credentials",
-				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
+				...(request.plan?.lineage("verifier") === undefined
+					? {}
+					: { lineage: unanswered(request.plan.lineage("verifier")!) }),
 			};
 		} else {
 			if (!(await rerunProbes(harness, root, state, candidates, lensTask, context))) throw replaced();
