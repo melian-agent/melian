@@ -6,6 +6,7 @@
 	},
 	"claimsIn": [
 		"packages/core/src/verification.ts",
+		"packages/core/src/findings.ts",
 		"packages/pipeline/src/findings.ts"
 	],
 	"adapters": [
