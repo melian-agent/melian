@@ -1993,6 +1993,8 @@ type SettledLens = {
 	readonly outcome: LensOutcome | undefined;
 	readonly notes: string[];
 	readonly kept?: Producer;
+	// The run that escalated to this one, which `--require-probes` must still read.
+	readonly escalatedFrom?: { readonly level: ScrutinyLevel; readonly outcome: LensOutcome | undefined };
 };
 
 function plural(count: number, noun: string): string {
@@ -2024,6 +2026,7 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 		outcome: result?.[next.key],
 		notes,
 		...(kept.length === 0 ? {} : { kept: { ...source, ids: [...kept] } }),
+		escalatedFrom: { level: first.level, outcome },
 	};
 }
 
@@ -3391,20 +3394,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// A probe the prober asked for that could not run leaves an attempt with no probe, which nothing else records.
 	if (options.requireProbes === true)
 		for (let index = 0; index < settled.length; index++) {
-			const { outcome } = settled[index]!;
-			const prober = outcome?.status === "done" ? outcome.probing?.prober : undefined;
-			if (prober === undefined) continue;
-			const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
-			const refused = (state.attempts ?? []).filter((id) => state.probes?.[id] === undefined).length;
-			if (refused === 0) continue;
-			const record = records[index]!;
-			const why = `probes are required, and ${plural(refused, "probe")} the prober asked for could not run`;
-			records[index] = {
-				...record,
-				status: "failed",
-				reason: [why, ...(record.reason ? [record.reason] : [])].join("; "),
-			};
-			options.probeGap?.({ check: record.name, level: record.level!, cause: "probe-refused" });
+			const { run, outcome, escalatedFrom } = settled[index]!;
+			for (const ran of [...(escalatedFrom === undefined ? [] : [escalatedFrom]), { level: run.level, outcome }]) {
+				const prober = ran.outcome?.status === "done" ? ran.outcome.probing?.prober : undefined;
+				if (prober === undefined) continue;
+				const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
+				const refused = (state.attempts ?? []).filter((id) => state.probes?.[id] === undefined).length;
+				if (refused === 0) continue;
+				const record = records[index]!;
+				const why = `probes are required, and ${plural(refused, "probe")} the ${ran.level} prober asked for could not run`;
+				records[index] = {
+					...record,
+					status: "failed",
+					reason: [why, ...(record.reason ? [record.reason] : [])].join("; "),
+				};
+				options.probeGap?.({ check: record.name, level: ran.level, cause: "probe-refused" });
+				break;
+			}
 		}
 	if (callers.coverage)
 		for (let index = 0; index < settled.length; index++)

@@ -3848,7 +3848,7 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(failed).toEqual({
 			...passed,
 			status: "failed",
-			reason: `probes are required, and 1 probe the prober asked for could not run; ${passed.reason}`,
+			reason: `probes are required, and 1 probe the deep prober asked for could not run; ${passed.reason}`,
 		});
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
 	});
@@ -3942,6 +3942,48 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 			},
 		);
 		expect((await settled(run)).status).toBe("failed");
+	});
+
+	it("fails a level whose quick run's probe could not run, though the level it escalated to probed", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const base = unconfinedSandbox();
+		let refusals = 1;
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{
+				planner: [...plan, ...plan],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					...probing(failing),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				...options,
+				lens: (lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: {
+							...lens.levels,
+							quick: { ...lens.level("quick"), probe: {} },
+							careful: { ...lens.level("careful"), probe: {} },
+						},
+					}),
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command) && refusals-- > 0) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "careful" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "probe-refused" }]);
 	});
 
 	it("fails as the lens failed when its task ended with no result", async () => {
