@@ -1,13 +1,17 @@
 import {
 	type CheckPayload,
 	canonicalJson,
+	Decision,
+	type DecisionRequest,
 	KeyedRequest,
 	type RecordEnvelope,
 	type RecordJson,
 	RecordSet,
 	reviewPayloads,
 	type SharedRecord,
+	type StoredDecision,
 	type StoredFinding,
+	type TriagePayload,
 	type Verification,
 	type VerificationPayload,
 } from "@melian-agent/core";
@@ -147,6 +151,39 @@ export class ImportedRecords {
 		return {
 			outcomes: Object.fromEntries(candidates.map(({ key }) => [key, outcomes[key]!])),
 			claims,
+		};
+	}
+
+	/**
+	 * The decision that answers triage's `request`, keyed `key` at `revision`, or `undefined` when no record holds one
+	 * whose answers still parse against the request's questions and choose as the record says. A record of a decider that
+	 * failed answers nothing, and the decider is asked.
+	 */
+	triage(key: string, revision: string, request: DecisionRequest): StoredDecision | undefined {
+		const decision = (this.match("triage", revision, key)?.payload as unknown as TriagePayload | undefined)?.decision;
+		if (decision === undefined || decision === null) return undefined;
+		const answers = decision.answers.map(({ question, distribution, chosen }) => ({
+			question,
+			distribution: Object.fromEntries(
+				Object.entries(distribution).map(([option, weight]) => [option, weight / 1_000_000]),
+			),
+			chosen,
+		}));
+		const parsed = (() => {
+			try {
+				return Decision.parse(request, { answers }, { name: decision.decider, calibrated: decision.calibrated });
+			} catch {
+				return undefined;
+			}
+		})();
+		if (parsed === undefined || answers.some(({ question, chosen }) => parsed.chosen(question) !== chosen))
+			return undefined;
+		return {
+			questionSet: { ...decision.questionSet },
+			decider: decision.decider,
+			calibrated: decision.calibrated,
+			...(decision.model === null ? {} : { model: decision.model }),
+			answers,
 		};
 	}
 }

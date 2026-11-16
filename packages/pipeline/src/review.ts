@@ -6,7 +6,7 @@ import {
 	checksOfTier,
 	configLookup,
 	type Decider,
-	type Decision,
+	Decision,
 	defaultScrutinyLevel,
 	describeLineage,
 	EscalationRule,
@@ -2205,12 +2205,45 @@ async function triage(
 	context: Context,
 	providers: readonly string[],
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
+	imported?: ImportedRecords,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
 	const request = asked.unkeyed.nonce;
 	const { inputCut } = asked.request;
 	const set = request.questionSet.name;
 	const { key } = asked;
+	// What a new decision replaces, read before the commit's first write, as a transaction requires.
+	const readIndex = async (tx: Tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const previous = index.reviews[revision];
+		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
+		return { index, previous, record };
+	};
+	// A new decision for the revision: the lens run and verdict another decision chose go with the one it replaces.
+	const invalidate = async (tx: Tx, { index, previous, record }: Awaited<ReturnType<typeof readIndex>>) => {
+		// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
+		if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
+		else if (previous !== undefined) index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
+		// Its waves go with the verification, so the sweep aborts any still live.
+		delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision];
+		const verdicts = await tx.doc(VerdictDocument, root.id);
+		await new RoundWriter(tx, root.id).preserve(revision);
+		delete verdicts.verdicts[revision];
+		if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
+		if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
+	};
+	// Another host's decision of this request stands where this host has asked no decider for the revision; one it
+	// already asked keeps its own entry, attached to or asked again as below.
+	const fromRecord = imported?.triage(key, revision, request);
+	if (
+		fromRecord !== undefined &&
+		(await root.commit(async (tx) => {
+			if ((await tx.doc(DecisionDocument, root.id)).decisions[revision]?.[set] !== undefined) return false;
+			await invalidate(tx, await readIndex(tx));
+			return true;
+		}, context))
+	)
+		return { decision: Decision.from(fromRecord) };
 	const input: DecisionTaskInput = {
 		root: root.id,
 		revision,
@@ -2240,9 +2273,7 @@ async function triage(
 		const retry = rerun && known?.decision === undefined;
 		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
 		if (attachesTo !== undefined && !(attach && known.task === attachesTo)) return undefined;
-		const index = await tx.doc(ReviewIndex, root.id);
-		const previous = index.reviews[revision];
-		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
+		const replacing = await readIndex(tx);
 		const task = attach
 			? (known.task as TaskId<DecisionResult>)
 			: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
@@ -2256,19 +2287,7 @@ async function triage(
 				},
 			};
 		}
-		if (!attach || (known.decision === undefined && known.failure === undefined)) {
-			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
-			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
-			else if (previous !== undefined)
-				index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
-			// Its waves go with the verification, so the sweep aborts any still live.
-			delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision];
-			const verdicts = await tx.doc(VerdictDocument, root.id);
-			await new RoundWriter(tx, root.id).preserve(revision);
-			delete verdicts.verdicts[revision];
-			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
-			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
-		}
+		if (!attach || (known.decision === undefined && known.failure === undefined)) await invalidate(tx, replacing);
 		return task;
 	};
 	let taskId = await root.commit(decide, context);
@@ -2521,26 +2540,31 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
-	const triaged =
+	const triageAsked =
 		options.decider === undefined || covering.length === 0
+			? undefined
+			: triageRequest({
+					decider: options.decider,
+					questionSet: triageQuestionSet,
+					questions: sharedQuestions(
+						covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
+					),
+					change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
+					nonce,
+				});
+	const triaged =
+		triageAsked === undefined
 			? {}
 			: await triage(
 					harness,
 					reviewed,
-					options.decider,
-					triageRequest({
-						decider: options.decider,
-						questionSet: triageQuestionSet,
-						questions: sharedQuestions(
-							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
-						),
-						change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
-						nonce,
-					}),
+					options.decider!,
+					triageAsked,
 					options.rerun === true,
 					context,
 					options.triageProviders ?? [],
 					unlockModels,
+					request.imported,
 				);
 	spans.step("lenses.prepare");
 	const choices = new Map(
@@ -3117,6 +3141,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 		const dismissals =
 			state === undefined ? [] : Object.keys(state.items).flatMap((id) => records.dismissalOf(state, id) ?? []);
+		// Triage's record stands beside the round, which reads the levels it chose through each lens run's request.
+		const triageRecord =
+			triageAsked === undefined
+				? []
+				: [
+						records.triage(triageAsked.key, {
+							...(triaged.decision === undefined ? {} : { decision: triaged.decision.toJSON() }),
+							...(triaged.failure === undefined ? {} : { failure: triaged.failure }),
+							inputCut: triageAsked.request.inputCut,
+						}),
+					];
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
@@ -3133,8 +3168,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.map((each) => SharedRecord.parseEnvelope(each).id),
 		);
 		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
-				record.toJSON(),
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals, ...triageRecord].map(
+				(record) => record.toJSON(),
 			),
 		);
 	};
