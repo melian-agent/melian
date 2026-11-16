@@ -6,7 +6,13 @@ import type {
 	StoredVerificationState,
 } from "@melian-agent/core";
 import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
-import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
+import {
+	clearVerifications,
+	FindingsDocument,
+	sightingIn,
+	sightingVerification,
+	upsertVerification,
+} from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -18,6 +24,7 @@ import {
 	type TaskId,
 	type Tx,
 } from "./harness.ts";
+import type { ImportedRecords } from "./imported-records.ts";
 import {
 	budgetEnded,
 	LensDocument,
@@ -314,12 +321,25 @@ export async function startVerification(
 	own: ReadonlySet<string> = new Set(),
 	// The lens task whose findings these are; a review whose lens task another replaced starts no verification.
 	lensTask?: number,
+	imported?: ImportedRecords,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	// A rerun the sandbox refused runs again on a repeat review, so a verification attaches only to the reruns it read.
 	// The reruns document exists: a review starts verification only after its rerun task, and stops if another replaced it.
 	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const { key } = verificationRequest(input, reruns);
+	// A record of this request stands for the candidates no wave answered, when it answers them all; the commit that starts
+	// the task writes the verdicts it holds, and the task asks no verifier.
+	const answered = imported?.verification(
+		key,
+		Revision.key(input.revision),
+		input.candidates
+			.filter((candidate) => input.reused?.[candidate.key] === undefined)
+			.map((candidate) => ({ key: candidate.key, claims: candidate.state.claims.map(claimKey) })),
+		refused,
+	);
+	if (answered !== undefined) input = { ...input, reused: { ...input.reused, ...answered.outcomes } };
+	const fromRecord = new Set(Object.keys(answered?.outcomes ?? {}));
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
 	const providers = asking.flatMap((candidate) => candidate.route.map((model) => model.provider));
 	// The task the read below found to attach to without unlocking. The commit acts on that alone: any other outcome
@@ -391,7 +411,8 @@ export async function startVerification(
 		);
 		for (const candidate of input.candidates)
 			if (
-				(input.reused?.[candidate.key] !== undefined || own.has(candidateKey(candidate))) &&
+				((input.reused?.[candidate.key] !== undefined && !fromRecord.has(candidate.key)) ||
+					own.has(candidateKey(candidate))) &&
 				standing.standing(
 					candidateKey(candidate),
 					candidate.state.claims.map(claimKey),
@@ -400,6 +421,15 @@ export async function startVerification(
 			)
 				return undefined;
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
+		for (const claim of answered?.claims ?? [])
+			await upsertVerification(
+				tx,
+				input.root,
+				Revision.key(input.revision),
+				claim.id,
+				claim.source,
+				claim.verification,
+			);
 		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it, and a
 		// wave that has not finished, which another review's watcher may have started, loses its authority to write.
 		const waves = (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)];

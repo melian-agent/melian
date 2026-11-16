@@ -8,6 +8,8 @@ import {
 	reviewPayloads,
 	type SharedRecord,
 	type StoredFinding,
+	type Verification,
+	type VerificationPayload,
 } from "@melian-agent/core";
 import type { CheckRunRecord } from "./checks.ts";
 
@@ -92,6 +94,59 @@ export class ImportedRecords {
 		return {
 			result: { name, status: "ran", ...(version === null ? {} : { version }), findings, notes: [...notes] },
 			sightings: sightings as unknown as StoredFinding[],
+		};
+	}
+
+	/**
+	 * The outcomes and claim verdicts that answer the verification of `request` at `revision`, or `undefined` unless one
+	 * record answers it whole: every candidate done, by a model `refused` does not refuse, and every claim judged. Short of
+	 * that, the verifier runs for every candidate.
+	 */
+	verification(
+		request: string,
+		revision: string,
+		candidates: readonly { readonly key: string; readonly claims: readonly string[] }[],
+		refused: (model: string) => boolean,
+	):
+		| {
+				readonly outcomes: Readonly<Record<string, { readonly status: "done"; readonly model: string }>>;
+				readonly claims: readonly {
+					readonly id: string;
+					readonly source: { readonly check: string; readonly version?: string };
+					readonly verification: Verification;
+				}[];
+		  }
+		| undefined {
+		const record = this.match("verification", revision, request);
+		if (record === undefined) return undefined;
+		const payload = record.payload as unknown as VerificationPayload;
+		const outcomes: Record<string, { status: "done"; model: string }> = {};
+		for (const { candidate, outcome } of payload.outcomes)
+			if (outcome.status === "done" && !refused(outcome.model))
+				outcomes[candidate] = { status: "done", model: outcome.model };
+		const judged = new Map(
+			payload.claims.map(({ id, source, verification }) => [
+				`${id} ${source.check}@${source.version ?? ""}`,
+				{
+					id,
+					source:
+						source.version === null ? { check: source.check } : { check: source.check, version: source.version },
+					verification: verification as Verification,
+				},
+			]),
+		);
+		const claims = [];
+		for (const candidate of candidates) {
+			if (outcomes[candidate.key] === undefined) return undefined;
+			for (const claim of candidate.claims) {
+				const verdict = judged.get(claim);
+				if (verdict === undefined) return undefined;
+				claims.push(verdict);
+			}
+		}
+		return {
+			outcomes: Object.fromEntries(candidates.map(({ key }) => [key, outcomes[key]!])),
+			claims,
 		};
 	}
 }

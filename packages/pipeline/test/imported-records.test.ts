@@ -100,8 +100,80 @@ describe("ImportedRecords", () => {
 			.toJSON();
 		const imported = ImportedRecords.from(changeset, [early, decided]);
 		expect(imported.records()).toHaveLength(2);
-		expect((imported.match("lens", revision, request)?.payload as { sightings: unknown[] }).sightings).toHaveLength(
+		expect((imported.match("lens", revision, request)!.payload as { sightings: unknown[] }).sightings).toHaveLength(
 			1,
 		);
+	});
+});
+
+describe("ImportedRecords.verification", () => {
+	const id = "0123456789abcdef";
+	const verdict = {
+		verdict: "confirmed",
+		reason: "It is.",
+		executor: "llm",
+		model: "openai/sol",
+		version: "v1",
+	} as const;
+	const claim = { id, source: { check: "lens.security", version: "abc@careful" }, verification: verdict };
+	const claimKey = `${id} lens.security@abc@careful`;
+	const verification = (
+		outcomes: {
+			candidate: string;
+			outcome: { status: "done"; model: string } | { status: "unanswered"; reason: string };
+		}[],
+		claims: (
+			| typeof claim
+			| { id: string; source: { check: string; version?: string }; verification: typeof verdict }
+		)[] = [claim],
+	) =>
+		ReviewRecords.of(changeset, { base, head })
+			.verification(request, { claims, dismissals: [], outcomes, check: undefined })
+			.toJSON();
+	const one = [{ key: "k1", claims: [claimKey] }];
+
+	it("answers every candidate the record says is done, with the verdicts of their claims", () => {
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		expect(imported.verification(request, revision, one, () => false)).toEqual({
+			outcomes: { k1: done },
+			claims: [claim],
+		});
+	});
+
+	it("names no version on a claim whose source the record holds with none", () => {
+		const bare = { id, source: { check: "static.biome" }, verification: verdict };
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }], [bare])]);
+		expect(
+			imported.verification(request, revision, [{ key: "k1", claims: [`${id} static.biome@`] }], () => false),
+		).toEqual({ outcomes: { k1: done }, claims: [bare] });
+	});
+
+	it("answers nothing under another request or revision", () => {
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		expect(imported.verification("f".repeat(64), revision, one, () => false)).toBeUndefined();
+		expect(imported.verification(request, `${other}..${head}`, one, () => false)).toBeUndefined();
+	});
+
+	it("answers nothing when one candidate of two is not done, so the verifier asks for both", () => {
+		const imported = ImportedRecords.from(changeset, [
+			verification([
+				{ candidate: "k1", outcome: done },
+				{ candidate: "k2", outcome: { status: "unanswered", reason: "superseded" } },
+			]),
+		]);
+		const both = [...one, { key: "k2", claims: [claimKey] }];
+		expect(imported.verification(request, revision, both, () => false)).toBeUndefined();
+		expect(imported.verification(request, revision, [{ key: "k3", claims: [] }], () => false)).toBeUndefined();
+	});
+
+	it("answers nothing when this host refuses the model that judged a candidate", () => {
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		expect(imported.verification(request, revision, one, (model) => model === "openai/sol")).toBeUndefined();
+		expect(imported.verification(request, revision, one, (model) => model === "openai/terra")).toBeDefined();
+	});
+
+	it("answers nothing when the record judged none of a candidate's claims", () => {
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }], [])]);
+		expect(imported.verification(request, revision, one, () => false)).toBeUndefined();
 	});
 });

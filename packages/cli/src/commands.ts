@@ -432,6 +432,7 @@ export async function review(
 				writer,
 				lensesStarted: summarize,
 				...(records === undefined ? {} : { records }),
+				...(imported === undefined ? {} : { imported }),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;

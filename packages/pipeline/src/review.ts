@@ -120,6 +120,7 @@ import {
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
+import type { ImportedRecords } from "./imported-records.ts";
 import { continuePrompt, lensRequest } from "./lens-request.ts";
 import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
@@ -1361,6 +1362,8 @@ interface ReviewSettings {
 	readonly cold?: boolean;
 	/** The store a review exports its records to as its tasks finish. */
 	readonly records?: RecordStore;
+	/** The records another host exported for this changeset, which answer the producers whose requests they share. */
+	readonly imported?: ImportedRecords;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;
 	readonly context?: Context;
@@ -2951,6 +2954,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const verifyAsLensesEnd = async (task: number, done: Promise<unknown>) => {
 		if (request.plan?.refusal("verifier") !== undefined) return;
+		// A wave's request is not the final step's, which an imported record of this revision's verification may answer.
+		if (request.imported?.records().some(({ kind, revision }) => kind === "verification" && revision === reviewed))
+			return;
 		const record = await harness.getTask(task as TaskId, context);
 		if (record === undefined || record.state.status === "terminal") return;
 		const runs = record.input as unknown as StoredLensTaskInput;
@@ -3430,6 +3436,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				unlockModels,
 				own,
 				lensTask,
+				request.imported,
 			);
 			// A final task this call starts stands on its reused waves' judgements, made under the dismissals each wave was
 			// shown, whichever process started it; one replaced since is not the one judged. A final task this call attaches
