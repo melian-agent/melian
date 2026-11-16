@@ -215,6 +215,9 @@ interface LensRun {
 	readonly coverage: LensCoverage;
 	// The change as this lens sees it: only the files it covers, with the head's functions the call read.
 	readonly prompt: string;
+	// The head path of each file whose diff `prompt` carries whole. Set after `lensRequest` keys the run, since the prompt
+	// the key holds decides it; absent from a task an older Melian created.
+	readonly shown?: readonly string[];
 	// Why the first call could not read the head's functions for this run, when it could not; absent from a task an
 	// older Melian created, whose records carry no such note.
 	readonly unread?: string;
@@ -433,6 +436,8 @@ function lensPolicy(
 		...(input.callers?.coverage === undefined
 			? {}
 			: { graph: { root: input.callers.coverage.root, parts: structuredClone(input.callers.coverage.parts) } }),
+		// The prober reads the plan alone, never the change's prompt.
+		...(role === "prober" || lens.shown === undefined ? {} : { shown: [...lens.shown] }),
 	};
 }
 
@@ -1078,11 +1083,14 @@ export class ChangePrompt {
 		return this.renderInput(only, options).text;
 	}
 
-	/** The bounded prompt and whether its size limit omitted any file's diff. */
+	/**
+	 * The bounded prompt, whether its size limit omitted any file's diff, and the head path of each file whose diff it
+	 * carried whole.
+	 */
 	renderInput(
 		only?: readonly string[],
 		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): { readonly text: string; readonly cut: boolean } {
+	): { readonly text: string; readonly cut: boolean; readonly shown: readonly string[] } {
 		const { nonce } = this;
 		const { base, head } = this.changeset.revision;
 		const files = this.changeset.revision.files.filter(
@@ -1104,6 +1112,7 @@ export class ChangePrompt {
 		const parts = [header];
 		let size = Buffer.byteLength(header);
 		let cut = false;
+		const shown: string[] = [];
 		for (const file of files) {
 			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
 			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
@@ -1118,6 +1127,7 @@ export class ChangePrompt {
 				break;
 			}
 			parts.push(part);
+			shown.push(file.path);
 		}
 		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
 		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
@@ -1128,7 +1138,7 @@ export class ChangePrompt {
 					nonce,
 				),
 			);
-		return { text: parts.join("\n\n"), cut };
+		return { text: parts.join("\n\n"), cut, shown };
 	}
 }
 
@@ -2682,8 +2692,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					: `\n\n${plannerInstructions(lens.probesAs ?? lens.name, probing.context(boundary))}`;
 			const thinking = routeAt(lens, level).route?.thinking;
 			const route = [...(routeFor(lens, level) as { route: ModelReference[] }).route];
+			const rendering = functions === undefined ? {} : { functions };
 			const keyed = lensRequest({
-				run: (boundary, callers): Omit<LensRun, "request" | "escalation"> => ({
+				run: (boundary, callers): Omit<LensRun, "request" | "escalation" | "shown"> => ({
 					key: `${lens.name}@${lens.version}@${level}`,
 					band: `${band.floor}-${band.ceiling}`,
 					name: lens.name,
@@ -2710,9 +2721,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					rules,
 					budget: settings.budget,
 					coverage,
-					prompt: new ChangePrompt(changeset, boundary).render(files, {
-						...(functions === undefined ? {} : { functions }),
-					}),
+					prompt: new ChangePrompt(changeset, boundary).render(files, rendering),
 					...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
 					...(probing === undefined ? {} : { probe: probing.run }),
 				}),
@@ -2734,6 +2743,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			return {
 				...keyed.unkeyed.bestEffort,
 				request: keyed.key,
+				shown: new ChangePrompt(changeset, nonce).renderInput(files, rendering).shown,
 				...(escalation === undefined ? {} : { escalation }),
 			};
 		};
