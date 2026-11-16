@@ -18,4 +18,4 @@ A pid means something only inside the namespace whose table is read. The device 
 
 One limit stays. Every Linux kernel gives its first pid namespace the same inode, so two separate machines with one host name and a shared state directory still read as one. Melian does not support sharing a state directory across hosts.
 
-Leftovers that an earlier build named on Linux, after the host's name alone, no longer match this host and are kept and named by `melian doctor`. That build never shipped beyond pull request #519, so a person removes any by hand.
+Leftovers that an earlier build named on Linux, after the host's name alone, no longer match this host and are kept and named by `melian doctor`. That build was on `main` only from [pull request #519](https://github.com/melian-agent/melian/pull/519)'s merge until this change, so few exist, and a person removes any by hand.
