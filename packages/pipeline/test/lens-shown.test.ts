@@ -109,6 +109,44 @@ describe("what each lens was shown and read", { timeout: 60_000 }, () => {
 		expect(unread).not.toHaveProperty("read");
 	});
 
+	it("counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base", async () => {
+		const six = (value: number) =>
+			lines(...Array.from({ length: 6 }, (_, index) => `export const b${index} = ${value};`));
+		repo = baseAndHead(
+			{ "src/seed.ts": lines("export const seed = 1;"), "src/b.ts": six(1) },
+			{ "src/b.ts": six(2) },
+		);
+		const read = (args: Record<string, unknown>) =>
+			fauxAssistantMessage(fauxToolCall("read_file", { path: "src/b.ts", ...args }), { stopReason: "toolUse" });
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					read({ startLine: 4, maxLines: 1 }),
+					read({ startLine: 1, maxLines: 2 }),
+					read({ startLine: 2, maxLines: 1 }),
+					read({ startLine: 6, maxLines: 1, revision: "base" }),
+					fauxAssistantMessage(fauxToolCall("read_file", { path: "src/seed.ts", startLine: 1, maxLines: 1 }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage(fauxToolCall("search", { pattern: "b5" }), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		expect((await lensStage("correctness")).read).toEqual([
+			{
+				path: "src/b.ts",
+				ranges: [
+					[1, 2],
+					[4, 4],
+				],
+			},
+		]);
+	});
+
 	it("names every file whose diff block the prompt carried whole", async () => {
 		repo = baseAndHead(
 			{ "src/seed.ts": lines("export {};") },
