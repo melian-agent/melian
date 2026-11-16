@@ -99,7 +99,9 @@ export async function configsFor(
 	});
 	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
 	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
-	// variant maps to, or the nearest lens's where that variant is no longer defined.
+	// variant maps to, or the nearest lens's where that variant is no longer defined. The lens's name stays with its
+	// entry: a file moved out of a folder keeps that folder's lenses, which no path default names, so two of them could
+	// otherwise swap their defaults unseen.
 	const declared = findings
 		.flatMap(({ properties: { path, source, reportedBy = [source] } }) =>
 			reportedBy
@@ -108,7 +110,7 @@ export async function configsFor(
 					const name = check.slice("lens.".length);
 					const variant = `${name}@${version}`;
 					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : defaultsAt.get(path)![name];
-					return JSON.stringify([path, entry]);
+					return JSON.stringify([path, name, entry]);
 				}),
 		)
 		.sort();

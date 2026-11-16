@@ -223,6 +223,31 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			expect(await fingerprintOf(sha, [noLens])).not.toBe(alone);
 		});
 
+		it("changes when two lenses of the folder a file left swap their declared resolutions", async () => {
+			// A file moved out of services/payments/ keeps that folder's lenses, which no path default above it names.
+			const lenses = (cleanup: string, tidy: string) => ({
+				"services/payments/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${cleanup} }`),
+				"services/payments/.melian/lenses/tidy/LENS.md": lensFile("tidy", `resolution: { P2: ${tidy} }`),
+			});
+			const reports = async (sha: string) => {
+				const loaded = await Lens.everywhere(repo, { kind: "revision", commit: sha });
+				const version = (name: string) => loaded.find((lens) => lens.name === name)!.version;
+				return [
+					finding({ file: "src/ledger.ts", source: { check: "lens.cleanup", version: version("cleanup") } }),
+					finding({
+						file: "src/ledger.ts",
+						snippet: "return 1;",
+						source: { check: "lens.tidy", version: version("tidy") },
+					}),
+				];
+			};
+			const before = commit(repo, lenses("block", "advisory"));
+			const swapped = commit(repo, lenses("advisory", "block"));
+			expect(await fingerprintOf(swapped, await reports(swapped))).not.toBe(
+				await fingerprintOf(before, await reports(before)),
+			);
+		});
+
 		it("does not depend on the order of the findings, though their entries differ by path", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md":
