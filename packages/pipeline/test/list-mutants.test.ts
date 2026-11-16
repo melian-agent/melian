@@ -1,4 +1,5 @@
 import type * as ChildProcess from "node:child_process";
+import type * as FsPromises from "node:fs/promises";
 import { promisify } from "node:util";
 import { Changeset, defaultConfig, Lens, openSource, type SourceReader } from "@melian-agent/core";
 import {
@@ -21,6 +22,27 @@ import { EnumerationQueue, LensDocument, lensListedTools, reviewFiles } from "..
 import { describeMutant, MutantListing, maxListedMutants, maxReplacementChars } from "../src/mutant-listing.ts";
 import { MutationEnumeration, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
+
+// Records the enumeration's scratch directory calls made while a worker holds the queue.
+const scratch = vi.hoisted(() => ({ held: 0, calls: 0, during: [] as string[] }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof FsPromises>();
+	const record =
+		<A extends unknown[], R>(name: string, call: (...args: A) => R) =>
+		(...args: A): R => {
+			if (String(args[0]).includes("melian-enumerate-")) {
+				scratch.calls++;
+				if (scratch.held > 0) scratch.during.push(name);
+			}
+			return call(...args);
+		};
+	return {
+		...original,
+		mkdtemp: record("mkdtemp", original.mkdtemp),
+		writeFile: record("writeFile", original.writeFile),
+		rm: record("rm", original.rm),
+	};
+});
 
 // Counts the enumeration workers the process starts, by the flags only the worker is spawned with.
 const workers = vi.hoisted(() => ({ active: 0, most: 0, started: 0 }));
@@ -47,6 +69,7 @@ let base: string;
 
 beforeEach(() => {
 	Object.assign(workers, { active: 0, most: 0, started: 0 });
+	Object.assign(scratch, { held: 0, calls: 0, during: [] });
 	repo = createRepository();
 	base = commit(repo, {
 		"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["StringLiteral"] } }),
@@ -495,7 +518,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("reads nothing while an enumeration worker holds the queue", async () => {
+	it("reads nothing, and touches no scratch directory, while an enumeration worker holds the queue", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
 		let held = 0;
 		const during: string[] = [];
@@ -507,10 +530,12 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		) {
 			return run.call(this, async () => {
 				held++;
+				scratch.held++;
 				try {
 					return await worker();
 				} finally {
 					held--;
+					scratch.held--;
 				}
 			});
 		});
@@ -540,7 +565,9 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			expect((await call(head, { path }, review)).details?.mutants).toHaveLength(1);
 		expect(read).toBeGreaterThanOrEqual(6);
 		expect(workers.started).toBe(3);
+		expect(scratch.calls).toBe(9);
 		expect(during).toEqual([]);
+		expect(scratch.during).toEqual([]);
 	});
 
 	it("starts no worker for a call whose deadline passed while it waited in the queue", async () => {
@@ -551,21 +578,15 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			this: EnumerationQueue,
 			worker: () => Promise<unknown>,
 		) {
-			queued++;
-			return run.call(this, worker);
+			const first = queued++ === 0;
+			return run.call(this, async () => {
+				if (first) await holding;
+				return worker();
+			});
 		});
-		const enumerate = TypeScriptMutationAdapter.prototype.enumerate;
 		let release: () => void = () => {};
 		const holding = new Promise<void>((resolve) => {
 			release = resolve;
-		});
-		let enumerated = 0;
-		vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(async function (
-			this: TypeScriptMutationAdapter,
-			...args
-		) {
-			if (enumerated++ === 0) await holding;
-			return enumerate.apply(this, args);
 		});
 		const first = call(head, { path: "src/a.ts" });
 		const second = call(head, { path: "src/b.ts" });
@@ -584,20 +605,23 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 
 	it("lists the next file after an enumeration fails", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
-		const enumerate = TypeScriptMutationAdapter.prototype.enumerate;
-		const order: string[] = [];
-		vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(async function (
-			this: TypeScriptMutationAdapter,
-			...args
+		const run = EnumerationQueue.prototype.run;
+		let turns = 0;
+		vi.spyOn(EnumerationQueue.prototype, "run").mockImplementation(function (
+			this: EnumerationQueue,
+			worker: () => Promise<unknown>,
 		) {
-			order.push(args[0][0]?.name ?? "");
-			if (order.length === 1) throw new Error("worker failed");
-			return enumerate.apply(this, args);
+			const failing = turns++ === 0;
+			return run.call(this, async () => {
+				if (failing) throw new Error("worker failed");
+				return worker();
+			});
 		});
 		const results = await Promise.all([call(head, { path: "src/a.ts" }), call(head, { path: "src/b.ts" })]);
-		const [failed, next] = order.map((path) => results[path === "src/a.ts" ? 0 : 1]!);
-		expect(failed!.isError).toBe(true);
-		expect(next!.details?.mutants).toHaveLength(1);
+		expect(results.map((result) => result.isError === true)).toContain(true);
+		expect(results.filter((result) => result.isError !== true).map(({ details }) => details?.mutants.length)).toEqual(
+			[1],
+		);
 	});
 
 	it("enumerates again for a review of another head", async () => {
