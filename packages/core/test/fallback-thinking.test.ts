@@ -343,6 +343,27 @@ describe("a preference that changes a fallback's level", () => {
 		expect(plan.tier("heavy").models.map(({ model }) => model)).toEqual(["faux/first"]);
 	});
 
+	it("drops a fallback a preference moves ahead of a promoted fallback under acceptOverridden false, since it would lose the level it inherits", async () => {
+		const { config, routes } = await loaded({
+			"melian.yaml":
+				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [{ model: faux/second, thinking: high }, faux/third]\n    accept: [nowhere/first, faux/second, faux/third]\n    acceptOverridden: false\n",
+			"melian.local.yaml":
+				"models:\n  heavy:\n    model: nowhere/first\n    fallbacks: [faux/third, { model: faux/second, thinking: high }]\n",
+		});
+		const plan = ReviewPlan.resolve({
+			config,
+			routes,
+			catalog,
+			credentials: { faux: "test" },
+			lenses: [],
+			checks: [],
+		});
+		expect(plan.tier("heavy")).toMatchObject({ status: "routed" });
+		expect(plan.tier("heavy").models).toEqual([
+			{ model: "faux/second", credential: "test", family: "second", thinking: "high" },
+		]);
+	});
+
 	it("refuses the tier, naming the level, when the only accepted model left is relevelled", async () => {
 		const plan = await planWith(
 			"models:\n  heavy:\n    model: faux/second\n    fallbacks: [{ model: faux/first, thinking: high }]\n",

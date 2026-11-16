@@ -1985,6 +1985,28 @@ describe("a fallback's level in melian doctor", () => {
 		]);
 	});
 
+	it("warns when a bare fallback on another provider inherits a low level from a fallback promoted to first", () => {
+		const unreachable = "nowhere/first";
+		const promoted = plan(
+			{ heavy: { model: unreachable, fallbacks: [{ model: opus, thinking: "low" }, gpt] } },
+			both,
+		);
+		expect(promoted.lines()).toContainEqual({ state: "warn", text: warning("heavy", gpt, "low", opus) });
+		const named = plan(
+			{
+				heavy: {
+					model: unreachable,
+					fallbacks: [
+						{ model: opus, thinking: "low" },
+						{ model: gpt, thinking: "low" },
+					],
+				},
+			},
+			both,
+		);
+		expect(texts(named).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
 	it("does not warn for a route that does not run", () => {
 		const resolved = plan({ heavy: { model: gpt, thinking: "low", fallbacks: [opus] } }, {});
 		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
