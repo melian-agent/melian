@@ -1040,6 +1040,221 @@ describe("publication planning recovery", () => {
 		expect(threadState).toHaveBeenCalledExactlyOnceWith(7, "1");
 		expect(state.resolvedThreads).toEqual([1]);
 	});
+
+	describe("an inherited dismissal at one head", () => {
+		const rootA = "0123456789abcdef";
+		const rootB = "fedcba9876543210";
+		const lensFinding = () =>
+			Finding.from({
+				...finding.toJSON(),
+				properties: { ...finding.properties, source: { check: "lens.correctness", version: "1" } },
+			});
+		const inherit = (from: string) =>
+			Finding.from({
+				...lensFinding().toJSON(),
+				properties: {
+					...lensFinding().properties,
+					status: "dismissed",
+					dismissal: { by: "melian", reason: "Same defect.", at: "2026-11-02T00:00:00Z", inheritedFrom: from },
+				},
+			});
+		const decide = async (...findings: Finding[]) => {
+			const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			}, context);
+			return verdict.fingerprint();
+		};
+		const reviews = () =>
+			state.reviews.map(({ body }) => {
+				const { kind, id, round } = parseMarker(body.split("\n")[0]!)!;
+				return { kind, id, round };
+			});
+		const status = () => {
+			const { state: outcome, description } = state.statuses.at(-1)!;
+			return { state: outcome, description };
+		};
+		const counted = (outcome: string, description: string) => ({
+			state: outcome,
+			description: `${description}; base ${options.base}`,
+		});
+		const replies = () =>
+			state.comments
+				.filter((comment) => comment.in_reply_to_id !== undefined)
+				.map((comment) => comment.body.split("\n").find((line) => line.startsWith("Dismissed")));
+
+		it("posts a review and recounts the status when one of two live findings inherits", async () => {
+			const other = Finding.from({
+				...lensFinding().toJSON(),
+				properties: { ...lensFinding().properties, id: "fedcba9876543211" },
+			});
+			const live = await decide(lensFinding(), other);
+			await publish();
+			expect(status()).toEqual(counted("failure", "2 findings, 0 blocking, 2 unresolved acknowledgements"));
+			const inherited = await decide(inherit(rootA), other);
+			await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: inherited, round: 2 },
+			]);
+			expect(status()).toEqual(counted("failure", "1 finding, 0 blocking, 1 unresolved acknowledgement"));
+		});
+
+		it("posts a review again and fails the status again when the inheritance is revoked", async () => {
+			const live = await decide(lensFinding());
+			await publish();
+			const inherited = await decide(inherit(rootA));
+			await publish();
+			expect(status()).toEqual(counted("success", `0 findings, 1 dismissed, 1 inherited from ${rootA}`));
+			expect(await decide(lensFinding())).toBe(live);
+			await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: inherited, round: 2 },
+				{ kind: "verdict", id: live, round: 3 },
+			]);
+			expect(status()).toEqual(counted("failure", "1 finding, 0 blocking, 1 unresolved acknowledgement"));
+			expect(state.ledgers[0]!.body).toContain(`"round":3,"verdict":"${live}"`);
+		});
+
+		it("posts no review when the root switches, and names the new root in a reply, the status and the ledger", async () => {
+			const live = await decide(lensFinding());
+			await publish();
+			const fromA = await decide(inherit(rootA));
+			await publish();
+			const ledgerA = state.ledgers[0]!.body;
+			expect(await decide(inherit(rootB))).toBe(fromA);
+			await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: fromA, round: 2 },
+			]);
+			const short = state.pull.head.sha.slice(0, 12);
+			expect(replies()).toEqual([
+				`Dismissed at \`${short}\`, inherited from \`${rootA}\`: Same defect.`,
+				`Dismissed at \`${short}\`, inherited from \`${rootB}\`: Same defect.`,
+			]);
+			expect(status()).toEqual(counted("success", `0 findings, 1 dismissed, 1 inherited from ${rootB}`));
+			const ledger = state.ledgers[0]!.body.split("\n");
+			expect(ledger).not.toEqual(ledgerA.split("\n"));
+			expect(ledger.filter((line) => line.startsWith("melian/review:"))).toEqual([
+				`melian/review: success (0 findings, 1 dismissed, 1 inherited from ${rootB}).`,
+			]);
+			expect(ledger.filter((line) => line.includes("Dismissed, inherited from"))).toEqual([
+				`- ${finding.id}: Dismissed, inherited from \`${rootA}\`: Same defect.`,
+				`- ${finding.id}: Dismissed, inherited from \`${rootB}\`: Same defect.`,
+			]);
+		});
+
+		it("names a merged report's new root in the ledger alone while its speaker stays live", async () => {
+			const asDesign = (report: Finding) =>
+				Finding.from({
+					...report.toJSON(),
+					properties: { ...report.properties, source: { check: "lens.design", version: "1" } },
+				});
+			const live = await decide(lensFinding(), asDesign(lensFinding()));
+			await publish();
+			const fromA = await decide(lensFinding(), asDesign(inherit(rootA)));
+			await publish();
+			const surfaces = () => ({ status: status(), comments: state.comments.map(({ body }) => body) });
+			const before = surfaces();
+			expect(await decide(lensFinding(), asDesign(inherit(rootB)))).toBe(fromA);
+			await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: fromA, round: 2 },
+			]);
+			expect(replies()).toEqual([]);
+			expect(surfaces()).toEqual(before);
+			expect(status()).toEqual(counted("failure", "1 finding, 0 blocking, 1 unresolved acknowledgement"));
+			const named = (root: string) =>
+				state.ledgers[0]!.body.split("\n").filter((line) => line.includes(`inherited from \`${root}\``));
+			expect(named(rootA)).toEqual([]);
+			expect(named(rootB)).toEqual([
+				`- \`${finding.id}\` \`unsafe\` in \`src/a.ts\`, inherited from \`${rootB}\`: Same defect.`,
+				`- ${finding.id} \`unsafe\`, inherited from \`${rootB}\`: Same defect.`,
+			]);
+		});
+
+		it("keeps the status as it was when the switched root is among the roots it counts, and names it in the ledger", async () => {
+			const at = (i: number, from: string) =>
+				Finding.from({
+					...inherit(from).toJSON(),
+					properties: { ...inherit(from).properties, id: `20000000000000${i}0`, path: `src/s${i}.ts` },
+				});
+			const others = ["1111111111111111", "2222222222222222", "3333333333333333", "4444444444444444"].map(
+				(root, i) => at(i, root),
+			);
+			await decide(lensFinding());
+			await publish();
+			const fromA = await decide(...others, at(9, rootA));
+			await publish();
+			const before = status();
+			const reviewed = reviews();
+			expect(before).toEqual(
+				counted(
+					"success",
+					"0 findings, 5 dismissed, 5 inherited from 1111111111111111, 2222222222222222 and 3 more",
+				),
+			);
+			expect(await decide(...others, at(9, rootB))).toBe(fromA);
+			await publish();
+			expect(reviews()).toEqual(reviewed);
+			expect(status()).toEqual(before);
+			const named = (root: string) =>
+				state.ledgers[0]!.body.split("\n").filter((line) => line.includes(`inherited from \`${root}\``));
+			expect(named(rootA)).toEqual([]);
+			expect(named(rootB)).toHaveLength(2);
+		});
+
+		it("names a merged report's switched root only in publish's attestations once the ledger's dismissals pass GitHub's limit", async () => {
+			const asDesign = (report: Finding) =>
+				Finding.from({
+					...report.toJSON(),
+					properties: { ...report.properties, source: { check: "lens.design", version: "1" } },
+				});
+			// Their paths sort before src/a.ts, so the attested list reaches its cut before the merged report.
+			const filler = Array.from({ length: 90 }, (_, i) =>
+				Finding.from({
+					...lensFinding().toJSON(),
+					properties: {
+						...lensFinding().properties,
+						id: `10000000000000${i.toString(16).padStart(2, "0")}`,
+						path: `src/0${i}.ts`,
+						status: "dismissed",
+						dismissal: { by: "maintainer", reason: `Reason ${i} `.padEnd(1000, "x"), at: "2026-11-02T00:00:00Z" },
+					},
+				}),
+			);
+			const live = await decide(lensFinding(), asDesign(lensFinding()), ...filler);
+			await publish();
+			const fromA = await decide(lensFinding(), asDesign(inherit(rootA)), ...filler);
+			await publish();
+			const before = { status: status(), comments: state.comments.map(({ body }) => body) };
+			const ledgerA = state.ledgers[0]!.body;
+			expect(state.reviews[1]!.body).not.toContain(rootA);
+			expect(await decide(lensFinding(), asDesign(inherit(rootB)), ...filler)).toBe(fromA);
+			const published = await publish();
+			expect(reviews()).toEqual([
+				{ kind: "verdict", id: live, round: 1 },
+				{ kind: "verdict", id: fromA, round: 2 },
+			]);
+			expect(replies()).toEqual([]);
+			expect({ status: status(), comments: state.comments.map(({ body }) => body) }).toEqual(before);
+			expect(status()).toEqual(counted("failure", "1 finding, 0 blocking, 1 unresolved acknowledgement"));
+			const ledger = state.ledgers[0]!.body;
+			expect(ledger).toBe(ledgerA);
+			expect(ledger.length).toBeLessThanOrEqual(65_536);
+			expect(ledger).toContain("This ledger was cut to fit GitHub's limit");
+			expect(ledger).not.toContain(rootA);
+			expect(ledger).not.toContain(rootB);
+			const attested = published.attestations
+				.flatMap(({ dismissals }) => dismissals)
+				.filter(({ dismissal }) => dismissal?.inheritedFrom !== undefined)
+				.map(({ id, dismissal }) => ({ id, root: dismissal!.inheritedFrom }));
+			expect(attested).toEqual([{ id: finding.id, root: rootB }]);
+		});
+	});
 });
 
 it.each(["current", "pending", "failed task"])(
