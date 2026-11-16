@@ -119,7 +119,7 @@ describe("a step the deadline cannot start late", { timeout: 60_000 }, () => {
 	it("starts a push with a millisecond left, and refuses it, starting nothing, with none", async () => {
 		const { repository, tip } = await fetched();
 		const commit = await repository.commit(tip, [], Deadline.after(systemClock, 30_000));
-		expect(["timedOut", "landed"]).toContain(
+		expect(["stopped", "landed"]).toContain(
 			await repository.push(remote.url, remote.branch, commit, tip, deadlineAt(1)),
 		);
 		const before = remote.tip();

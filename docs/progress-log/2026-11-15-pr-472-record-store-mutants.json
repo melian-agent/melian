@@ -1,0 +1,846 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "9ebb763f4019edf83c013bd671558d6629657a68",
+		"head": "6f70d6f16aabaca6afc657c83664d9015a4a24a4"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 7,
+			"endLine": 119,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b1970810c57188cfd024ab37ed3c412ee994b0c5cf9e046c2e99da50c1fa3fb0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 7,
+			"endLine": 119,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "052591b3744cba3957d12ff0de29367c16ef88eb5618ac3548452ee670acaa37",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 7,
+			"endLine": 119,
+			"endColumn": 75,
+			"mutatorName": "LogicalOperator",
+			"replacement": "outcome === \"stopped\" || (await this.#landed(commit, tip, deadline))",
+			"status": "generated",
+			"id": "7ae9e7b9efa21b65b6db76ca4a79fb82421fb6f26ff038ac54aa39965ebcc69d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 7,
+			"endLine": 119,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a4995f3860d40bae077170444dabb5a70efe95d3cced5ff0b4790d3731dc425d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"concurrent writers",
+						"a lost race reads the newer tip and pushes again, leased on it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 7,
+			"endLine": 119,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outcome !== \"stopped\"",
+			"status": "generated",
+			"id": "77f0d5bca1e8ff1d44f4575769a2bf9fdc72b288e2f2afd62f76bd826b3fefb4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 119,
+			"column": 19,
+			"endLine": 119,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6e98d91a9de521532e90deb82b0e051c9189bcfc9241fd1a195d7cb0495cf1f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 136,
+			"column": 4,
+			"endLine": 136,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "46b9fe68696be8397618d8022c48658a4426aa4df16698a150257284d7514778",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/writes.test.ts",
+					"path": [
+						"a push stopped at its deadline",
+						"fails as unreachable, saying it may have landed, when the tip is still the one it was built on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 69,
+			"column": 45,
+			"endLine": 71,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a35834f7c1a15516d01289d2615798a999b6aea6af14e4b076d02b210fc8814a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a1eab522051f473f117d39ac07b2e5e1d7c7a4e23456d68f5727155a29d5ecd1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"leaves core's other git errors as they are, such as a git that cannot start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "14d067a12b339d8bdcd3406ae530a178a2ac521c9ba685b98f3ac923363f5bbc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 8,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "LogicalOperator",
+			"replacement": "error instanceof ChangesetError || error.code === \"gitOutputTooLarge\"",
+			"status": "generated",
+			"id": "81b861161b3143587d6a5a4b2b8f855fa7f8ddbaa1953aad6162bd6ded51273e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"leaves core's other git errors as they are, such as a git that cannot start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 43,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8f35ba7c4cb976bea84376ce66c07b720dc87926242c19b9cd67118f7348645c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"leaves core's other git errors as they are, such as a git that cannot start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 43,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "EqualityOperator",
+			"replacement": "error.code !== \"gitOutputTooLarge\"",
+			"status": "generated",
+			"id": "76ef96cf247abc2820e2e743fadf75f20790532e77a68975443975e65d259f9e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 70,
+			"column": 58,
+			"endLine": 70,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e530f06df6b226dd54ad304c8a24edb75277a030fd6bc6b0df4f42fcc7517393",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 147,
+			"column": 7,
+			"endLine": 147,
+			"endColumn": 25,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "overflowed(cause)",
+			"status": "generated",
+			"id": "2fba8068a043eba3e21cec0f6579a57a633e366632c28ae9182b72f591c205a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 147,
+			"column": 7,
+			"endLine": 147,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0bbd7de9fe37a993bddfec743f30f02519cba1aff969856ff8f430f3271217e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 147,
+			"column": 7,
+			"endLine": 147,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ae7b20075bf75adcc5c409156a0c0b6ec6c3dc73b65ab798160d72f172141108",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"leaves core's other git errors as they are, such as a git that cannot start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 149,
+			"column": 4,
+			"endLine": 149,
+			"endColumn": 91,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "34d606f7d1787302216a02fd86638bfd08fa3546c567d5886ffbf7ad1dfe4446",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 325,
+			"column": 6,
+			"endLine": 338,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "072041ef4a6da9cef8bdcd5e7ff518f4b412c9eb019fa23ad18138f6674a3301",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 327,
+			"column": 4,
+			"endLine": 335,
+			"endColumn": 5,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "e77d2e78ee3c99e0eb1f692d010447248736a4b1436880892fd2a4f197646713",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 328,
+			"column": 5,
+			"endLine": 328,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "301128359e90fd9b1f07e3e2fd71854df538a374995aa661f8f324f6ae35819c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 329,
+			"column": 5,
+			"endLine": 329,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d60519375ce021e72a3c4eaa4ff6b6410a7e1fb9ec221c9a5413346bf877998e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 330,
+			"column": 5,
+			"endLine": 330,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c2cf9b9fc76c95ad83533f5fa6762ce6d46fe067415fc5274156d4fef13e2a8f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 331,
+			"column": 5,
+			"endLine": 331,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d1d0842bed60e0f8cda10d3fd89f68eaaae76ebf62acd48127858f7b9b3e5afd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 331,
+			"column": 34,
+			"endLine": 331,
+			"endColumn": 48,
+			"mutatorName": "LogicalOperator",
+			"replacement": "expected && \"\"",
+			"status": "generated",
+			"id": "ed90237be215bbd5e9a703fc82819e2109336dda1eb291d2bd1951821565b5d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 331,
+			"column": 46,
+			"endLine": 331,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be4896cb418ce58335362897eba2abd35bacad1b7568994950854e47f50ebee8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 332,
+			"column": 5,
+			"endLine": 332,
+			"endColumn": 23,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4cf6a3956cf229792a09f389e2e05e8631f469ce41aef8dc3b89f4182c66db2a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 334,
+			"column": 5,
+			"endLine": 334,
+			"endColumn": 23,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cc5f35ebbe28f00aeff44f75b534e222b753636a3f7797156889e9e983a1d55d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"fetching the tip",
+						"fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 338,
+			"column": 18,
+			"endLine": 342,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1d79270af3988d98b0ebf4390821e0a6a4ddcfa6ad2e4b2d9672bae7449d5d9c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"fails as unreachable, and never answers stopped, when its deadline has passed before git starts"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 340,
+			"column": 7,
+			"endLine": 340,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "75b6e9c1e0ee549fcd4b6351a72f940bab39716c593fedc0f72b606fb6d38a7d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"fails as unreachable, and never answers stopped, when its deadline has passed before git starts"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 340,
+			"column": 7,
+			"endLine": 340,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e1a76601f0df1044f55f7c88c91eb390ecc7bc8907754e034bf20281623342c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"answers stopped when the remote floods standard error after the push lands, and the remote holds the commit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 340,
+			"column": 7,
+			"endLine": 340,
+			"endColumn": 62,
+			"mutatorName": "LogicalOperator",
+			"replacement": "cause instanceof RecordError || overflowed(cause.cause)",
+			"status": "generated",
+			"id": "be6755f5d1b921091898db6c0a52309acf255b12183392729c6b3ebafb72813b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"fails as unreachable, and never answers stopped, when its deadline has passed before git starts"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 340,
+			"column": 71,
+			"endLine": 340,
+			"endColumn": 80,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "124ebac10a57ff8ba62b6a900f4f843bb190687cc3b48edbd0a3bd1fd60318a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"answers stopped when the remote floods standard error after the push lands, and the remote holds the commit"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 343,
+			"column": 6,
+			"endLine": 343,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c4374bb1bae218658053425e0a2515ecbb2751627ae1a5edb0fe4913f536247a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"answers stale for a race the push reports as [rejected] (stale info)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 343,
+			"column": 6,
+			"endLine": 343,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "86ac40ec585ac9197ae3beb4f30d7473b2e27c28ed74e537d563c7ddb0f6dd6c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"answers stopped when git is stopped at its deadline"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 343,
+			"column": 30,
+			"endLine": 343,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e13df4fd1b69106e632f6edf0acf0f9191bb3267e080b5788a417768e7c0207d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/repository.test.ts",
+					"path": [
+						"pushing",
+						"answers stopped when git is stopped at its deadline"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 36,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/core/src/git.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

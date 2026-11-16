@@ -116,13 +116,13 @@ export class GitRecordStore implements RecordStore {
 			const push = deadline.within((deadline.left() * 3) / 4);
 			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, push);
 			if (outcome === "landed") return value;
-			if (outcome === "timedOut" && (await this.#landed(commit, tip, deadline))) return value;
+			if (outcome === "stopped" && (await this.#landed(commit, tip, deadline))) return value;
 			await deadline.sleep(Math.random() * bound);
 		}
 	}
 
-	// Whether a push stopped at its deadline landed: its commit is the tip or an ancestor of it, in the whole history the
-	// fetch brought. Only a tip that has moved without it proves it lost; an unmoved tip leaves the call unsure.
+	// Whether a push Melian stopped before git ended landed: its commit is the tip or an ancestor of it, in the whole
+	// history the fetch brought. Only a tip that has moved without it proves it lost; an unmoved tip leaves it unsure.
 	async #landed(commit: string, parent: string | undefined, deadline: Deadline): Promise<boolean> {
 		try {
 			const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
@@ -133,7 +133,7 @@ export class GitRecordStore implements RecordStore {
 		} catch (cause) {
 			throw new RecordError(
 				"unreachable",
-				`a push to ${this.#branch} ran past its deadline and may have landed; repeat the call`,
+				`a push to ${this.#branch} was stopped before git ended and may have landed; repeat the call`,
 				{ cause },
 			);
 		}
