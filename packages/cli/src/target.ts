@@ -105,6 +105,26 @@ export async function fetchedPullRequest(
 	return { pullRequest, changeset: await asPullRequest(cwd, number) };
 }
 
+// Refuses a pull request that moved from the base and head the caller approved, such as the melian round workflow's
+// gate approved. The fetched refs are checked too, since a second fetch of the pull request in this clone can move them
+// after GitHub answered. `outcome` ends each message, saying what did not happen.
+export async function checkExpected(
+	pullRequest: PullRequest,
+	fetched: Changeset,
+	expect: { readonly base: string; readonly head: string },
+	outcome: string,
+): Promise<void> {
+	if (pullRequest.base.sha !== expect.base || pullRequest.head.sha !== expect.head)
+		throw new CliError(
+			`pull request #${pullRequest.number} is at base ${pullRequest.base.sha} and head ${pullRequest.head.sha}, not the expected base ${expect.base} and head ${expect.head}, so ${outcome}`,
+		);
+	const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]);
+	if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
+		throw new CliError(
+			`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so ${outcome}`,
+		);
+}
+
 // The commit the pull request diffs from now: the merge base of its base branch, fetched afresh, and its head. A
 // retargeted pull request, or one whose base branch took some of its commits, keeps its head but not this, and the
 // stored review covers a different diff. Undefined when the head is not here, which happens only once it moved.

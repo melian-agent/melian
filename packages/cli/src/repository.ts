@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { isChangesetId } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
@@ -121,4 +121,12 @@ export async function fetchBase(
 		remote,
 		`+refs/heads/${pullRequest.base.ref}:refs/melian/pull/${pullRequest.number}/current-base`,
 	]);
+}
+
+// Git reads a remote with no colon, or a slash before its first colon, as a path relative to the checkout, by
+// url_is_local_not_ssh in its connect.c, which no command answers; the store runs git in its own repository instead.
+export function fromCheckout(root: string, url: string): string {
+	const colon = url.indexOf(":");
+	const slash = url.indexOf("/");
+	return colon === -1 || (slash !== -1 && slash < colon) ? resolve(root, url) : url;
 }

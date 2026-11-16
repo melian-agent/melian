@@ -65,7 +65,14 @@ import {
 	Triage,
 } from "./models.ts";
 import { CliError, git, openStorage, pullRequestRefs, roundChangeset, storagePath } from "./repository.ts";
-import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
+import {
+	checkExpected,
+	currentBase,
+	fetchedPullRequest,
+	gitHubFor,
+	parseTarget,
+	pullRequestChangeset,
+} from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
 export interface Io {
@@ -215,20 +222,9 @@ export async function review(
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
-		const { expect } = options;
-		if (expect !== undefined && (pullRequest.base.sha !== expect.base || pullRequest.head.sha !== expect.head))
-			throw new CliError(
-				`pull request #${pullRequest.number} is at base ${pullRequest.base.sha} and head ${pullRequest.head.sha}, not the expected base ${expect.base} and head ${expect.head}, so nothing was reviewed`,
-			);
-		// The policy and origin come from GitHub's answer, above, and the diff from the refs the fetch wrote, which a second
-		// review of the pull request in this clone can move before they resolve.
-		if (expect !== undefined) {
-			const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]);
-			if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
-				throw new CliError(
-					`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so nothing was reviewed`,
-				);
-		}
+		// The policy and origin come from GitHub's answer, and the diff from the refs the fetch wrote.
+		if (options.expect !== undefined)
+			await checkExpected(pullRequest, fetched, options.expect, "nothing was reviewed");
 		changeset = fetched;
 		source = { kind: "revision", commit: pullRequest.base.sha };
 		origin = {
@@ -520,7 +516,7 @@ const committedRange =
 
 const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
 
-async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+export async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
 	const head = pullRequest.head.repository;
 	if (head === undefined)
 		return { trusted: false, detail: "the provider names no repository for the pull request head" };
@@ -662,7 +658,7 @@ export class StoredReview {
 }
 
 // A changeset and the source a review of it reads its policy from.
-class ReviewSource {
+export class ReviewSource {
 	readonly changeset: Changeset;
 	readonly source: RepositorySource;
 
