@@ -1091,7 +1091,12 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		for (const level of ["quick", "careful", "deep"] as const) {
 			rmSync(join(repo, ".melian/lenses"), { recursive: true, force: true });
 			writeFiles(repo, {
-				".melian/lenses/tests/LENS.md": lensFile(["name: tests", "extends: tests", "levels:", `  ${level}: { probe: {} }`]),
+				".melian/lenses/tests/LENS.md": lensFile([
+					"name: tests",
+					"extends: tests",
+					"levels:",
+					`  ${level}: { probe: {} }`,
+				]),
 				".melian/lenses/tests-probes/LENS.md": lensFile([
 					"name: tests-probes",
 					"extends: tests",
