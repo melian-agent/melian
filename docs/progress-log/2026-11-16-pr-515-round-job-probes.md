@@ -20,3 +20,5 @@ The first own-build round, at `5eaf5970`, raised four P2 findings in the contain
 - Every line the step prints now goes through `visibleText` (`fc40b18c`).
 
 All 29 generated mutants of those commits are killed by a named test, in [their inventory](2026-11-16-pr-515-round-two-mutants.json). Stryker cannot mutate the walk, which sits inside the probe's script string. So five mutants of it were run by hand against the new tests, and each failed: no overlap between reads, the old 256 KiB read, no token-shape check, no byte-limit cut, and a cut at one byte past the limit.
+
+Codex's adversarial review at `ffe3c401` found that the containment step's cleanup removed whatever stood at `/tmp/melian-written` or `~/melian-written` after the probe ran, so a contributor's own file of that name was deleted. A test of `main` failed at `ffe3c401`: a file planted at `~/melian-written` before the step ran was gone afterwards. Both targets now take a fresh random name each run, and the test passes (`3e1fddad`). [The fix's inventory](2026-11-16-pr-515-cleanup-mutants.json) lists three mutants, all string literals the configuration ignores, so it owes no claims.
