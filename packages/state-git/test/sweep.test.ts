@@ -213,6 +213,25 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("counts as removed, not failed, a leftover another call removed before this one could", async () => {
+		const table = new ProcessTable().list();
+		const suffix = owned(4_000_000);
+		plant(suffix);
+		let reads = 0;
+		// The first read names this process for what it makes; the second is the sweep's, after it listed the leftovers.
+		const list = () => {
+			if (++reads === 2) {
+				rmSync(join(directory, `records.git.${suffix}`), { recursive: true });
+				rmSync(join(records, `melian-index-${suffix}`));
+				rmSync(join(records, `melian-index-${suffix}.lock`));
+			}
+			return table;
+		};
+		const store = await remote.open({ directory, processes: { list } });
+		expect(planted(suffix)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
+	});
+
 	it("keeps and names what another host made, whose processes it cannot see", async () => {
 		const owner = await exited();
 		const suffix = owned(owner.pid, "0123456789abcdef");
