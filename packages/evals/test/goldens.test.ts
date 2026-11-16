@@ -1251,33 +1251,36 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden, [report("lens.correctness", "wrong-result")])).toMatchObject({ recall: 0 });
 	});
 
-	it.each([
-		{ startLine: 8, endLine: 9, answers: false },
-		{ startLine: 9, endLine: 10, answers: true },
-		{ startLine: 11, endLine: undefined, answers: true },
-		{ startLine: 12, endLine: 13, answers: true },
-		{ startLine: 13, endLine: 14, answers: false },
-		{ startLine: 8, endLine: 14, answers: true },
-	])("with lines 10-12, a finding at $startLine-$endLine answers: $answers", ({ startLine, endLine, answers }) => {
+	it("answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound", () => {
 		const [comment] = nullDeref!.expected.comments;
 		const golden = {
 			...nullDeref!,
 			expected: { ...nullDeref!.expected, comments: [{ ...comment!, lines: [10, 12] as [number, number] }] },
 		};
-		const placed = Finding.create({
-			rule: comment!.rule,
-			file: comment!.file,
-			startLine,
-			...(endLine === undefined ? {} : { endLine }),
-			discriminator: "user",
-			message: "The user can be null.",
-			severity: "P1",
-			cause: comment!.cause,
-			source: { check: "lens.correctness", version: "v" },
-			explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
-		});
-		expect(scoreGolden(golden, [placed])).toMatchObject({ recall: answers ? 1 : 0 });
-		expect(scoreGolden(nullDeref!, [placed])).toMatchObject({ recall: 1 });
+		const cases = [
+			{ startLine: 8, endLine: 9, answers: false },
+			{ startLine: 9, endLine: 10, answers: true },
+			{ startLine: 11, endLine: undefined, answers: true },
+			{ startLine: 12, endLine: 13, answers: true },
+			{ startLine: 13, endLine: 14, answers: false },
+			{ startLine: 8, endLine: 14, answers: true },
+		];
+		for (const { startLine, endLine, answers } of cases) {
+			const placed = Finding.create({
+				rule: comment!.rule,
+				file: comment!.file,
+				startLine,
+				...(endLine === undefined ? {} : { endLine }),
+				discriminator: "user",
+				message: "The user can be null.",
+				severity: "P1",
+				cause: comment!.cause,
+				source: { check: "lens.correctness", version: "v" },
+				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+			});
+			expect(scoreGolden(golden, [placed]).recall, `${startLine}-${endLine}`).toBe(answers ? 1 : 0);
+			expect(scoreGolden(nullDeref!, [placed]).recall).toBe(1);
+		}
 	});
 
 	it("keeps two expectations apart that differ only in their lines or their alternative rules", () => {
