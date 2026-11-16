@@ -209,6 +209,23 @@ describe("verificationRequest's cut of probe evidence", () => {
 		expect(unclaimed.request).not.toHaveProperty("evidence");
 	});
 
+	it("keys the cut when any one candidate's claim carries probe evidence, beside candidates and claims that carry none", () => {
+		const second = { ...claim, id: "1123456789abcdef" };
+		const mixed: VerificationInput = {
+			...sample,
+			candidates: [
+				candidate,
+				{
+					...candidate,
+					key: "lens.trust-boundary@1@deep",
+					state: { ...candidate.state, claims: [claim, second] },
+					probes: { [probeClaimKey(second)]: probe },
+				},
+			],
+		};
+		expect(verificationRequest(mixed).request).toHaveProperty("evidence.budget", probeEvidenceBudget);
+	});
+
 	it("renders a cut of every part a model or the head wrote in the rendering it keys", () => {
 		const rendering = probeEvidenceCutRendering();
 		for (const part of [
