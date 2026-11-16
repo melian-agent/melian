@@ -27,6 +27,7 @@ import {
 	type Walkthrough,
 	type WalkthroughPayload,
 } from "@melian-agent/core";
+import { valid } from "semver";
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
@@ -115,6 +116,10 @@ const codes: ReadonlySet<string> = new Set([
 	"unexpected",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
+// A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
+// form, or Melian's `unavailable`, leaves the machine.
+const toolVersion = (version: string | undefined): string | null =>
+	version === undefined ? null : version === "unavailable" || valid(version) === version ? version : withheld;
 const caveat = (text: string): string =>
 	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? text : withheld;
 const byId = (a: StoredFinding, b: StoredFinding): number =>
@@ -413,7 +418,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "ran",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				snapshots: result.snapshots === undefined ? null : (result.snapshots.map(snapshot) as never),
@@ -422,7 +427,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "provisional",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				reason: shared(result.reason),
