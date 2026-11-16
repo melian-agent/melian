@@ -30,4 +30,4 @@ The trust-boundary lens's resolved wording is the value its key held before, but
 ## What it gives up
 
 - The `tests` and `correctness` wording is unmeasured. No committed lens sets `probe`; turning it on is the maintainer's decision.
-- The `tests` prober copies the head's tree under its scratch folder to change a line and run a test, since the test runner writes beside its dependencies. The coordinator ran that under the real sandbox for [issue #483](https://github.com/melian-agent/melian/issues/483), and its result is in the pull request.
+- The `tests` prober copies the head's tree under its scratch folder to change a line and run a test, since the test runner writes beside its dependencies. The builder ran that under the real sandbox for [issue #483](https://github.com/melian-agent/melian/issues/483): unchanged and changed, the run took 5.2 and 6.4 seconds of a 30-second limit, and the pull request has the details.
