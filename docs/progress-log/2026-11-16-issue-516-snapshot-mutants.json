@@ -30,10 +30,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/cli/test/cli.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that proves its version of the check writes fixed text",
-						"are shared with Melian's sentence in place of the tool's, and read back as the host decided"
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
 					]
 				}
 			},
@@ -75,10 +75,10 @@
 			"claim": "killed",
 			"evidence": {
 				"test": {
-					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"file": "packages/cli/test/cli.test.ts",
 					"path": [
-						"a static check's sightings, exported from a run that proves its version of the check writes fixed text",
-						"are shared with Melian's sentence in place of the tool's, and read back as the host decided"
+						"melian review and findings",
+						"exports what Biome finds, from the run this review's checks made"
 					]
 				}
 			},
