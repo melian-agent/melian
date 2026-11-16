@@ -273,7 +273,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "0885fd05330f",
 			tests: "a9ed7d3ea22c",
 			"trust-boundary": "7d072a9e5e2c",
-			"trust-boundary-probes": "caf41cbbdb7e",
+			"trust-boundary-probes": "07e117503895",
 		});
 	});
 
