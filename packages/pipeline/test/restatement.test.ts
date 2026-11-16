@@ -34,7 +34,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument, findingsVersion } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, verificationClaims } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
@@ -187,6 +187,33 @@ async function dismissedRoot(reported = nullDeref): Promise<string> {
 }
 
 describe("a dismissal carrying to a restatement", () => {
+	it("shares a verification's match only against a dismissal the verifier was shown", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const [restated] = (await review()).findings;
+		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+		const at = Revision.key(await revision());
+		const matchesShown = (shown: string[]) =>
+			verificationClaims(state, at, [restated!.properties.source], new Set(shown)).map(({ id, verification }) => [
+				id,
+				verification.matches,
+			]);
+		expect(matchesShown([root])).toEqual([[restated!.id, { [root]: "same" }]]);
+		expect(matchesShown(["0".repeat(16)])).toEqual([[restated!.id, undefined]]);
+	});
+
+	it("shows the verifier no dismissed finding when nothing was dismissed", async () => {
+		const requests = script([nullDeref]);
+		await review();
+		const input = requests[verifierMarker]!.at(-1)!
+			.filter((message) => message.role === "user")
+			.map(textOf)
+			.join("\n");
+		expect(input).toContain("Claim c1");
+		expect(input).not.toContain("Dismissed d");
+	});
+
 	it("dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser", async () => {
 		const root = await dismissedRoot();
 		pushElsewhere("other");
