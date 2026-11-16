@@ -473,6 +473,15 @@ describe("the findings earlier reviews reported", () => {
 		expect(text).not.toContain(`<untrusted-${nonce}`);
 	});
 
+	it("asks each lens's planner to revisit earlier findings in that lens's own words", () => {
+		for (const [lens, wording] of lensProbingWording) {
+			const text = renderEarlierFindings(lens, [finding(1)], nonce);
+			expect(text, lens).toContain(wording.earlierSome);
+			for (const [other, theirs] of lensProbingWording)
+				if (other !== lens) expect(text, `${lens} given ${other}'s words`).not.toContain(theirs.earlierSome);
+		}
+	});
+
 	it("lists forty findings, and counts those past forty", () => {
 		const forty = renderEarlierFindings(
 			"trust-boundary",
