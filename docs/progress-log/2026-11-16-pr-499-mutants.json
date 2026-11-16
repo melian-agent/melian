@@ -1,0 +1,4198 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "374fdaf760e18af963362c38b9fb5487778b80b2",
+    "head": "812fd2f6128f761d53711dbd1a5fd16eded637b0"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/probing.ts",
+    "packages/pipeline/src/verification.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 103,
+      "column": 35,
+      "endLine": 103,
+      "endColumn": 45,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "128 / 1024",
+      "status": "generated",
+      "id": "e8d0f2abe7e6e27986a77034215c93c29c62f376317e860b40deeb8a3b5787f2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 110,
+      "column": 53,
+      "endLine": 123,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e089bd5c206fcfa031950e17405ea0252ec537a0daca8e66f6e461d13d40a5ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 111,
+      "column": 9,
+      "endLine": 111,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c86c99246199cb25e9c2294254e2bf7ae4f73063fac68c9db315328bbbd0548e"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 112,
+      "column": 7,
+      "endLine": 112,
+      "endColumn": 308,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "be49ddc8e5c1f7d45314c4559d8d1faa65174c3501f4bc11d878eb6928e15e93"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 114,
+      "column": 2,
+      "endLine": 114,
+      "endColumn": 258,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "caa144ae54aa62778b25ead5fbe3d704ebdb4053e8f239c0814c90f83fa5b829"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 115,
+      "column": 7,
+      "endLine": 115,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7b587a0cbf26f852413a1a538e1426a13bdb2e1b537af7ddfc658dca8ecd3102"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 116,
+      "column": 12,
+      "endLine": 116,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ef513e95d8218935af9dc2e903db9cbc406f03bab9b8d102ab23541462c02d5c"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 117,
+      "column": 7,
+      "endLine": 117,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ce607924568b5ecdb85ff4704a20cd7a2610b141f83693960162a6138b567133"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 118,
+      "column": 9,
+      "endLine": 118,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0f8f11b4498932963c5d4ceb291a9ff84650ae9322ba38a0444170f7df7a76db"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 119,
+      "column": 7,
+      "endLine": 119,
+      "endColumn": 22,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "44d543ffe1b4d962931b68b97fa4849c839e246441143ee04788f49bcee5f303"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 120,
+      "column": 12,
+      "endLine": 120,
+      "endColumn": 59,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "094adf9b16520953d8a2d2e5207426755e740e76562aaaf6085ffb7d6b1b3122"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 121,
+      "column": 10,
+      "endLine": 121,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e420e030c39bfd863c4cadcbcb77b8f79c1340019061354eb29ced1c5db52c33"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 122,
+      "column": 12,
+      "endLine": 122,
+      "endColumn": 61,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "75b73bdd5b7bd57b0618de0cc05d9e205f3bbf96a7909f7de2d3d7bc8b088645"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 520,
+      "column": 74,
+      "endLine": 522,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f4559c68389c9a44918449cd1686c49af237fe20fb653e613a50bafffe36c808",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 8,
+      "endLine": 521,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cea227b7e0af6b33ec99fa5b4148dda52bd02142ab64a4faf3ba479c84e8ee15",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 8,
+      "endLine": 521,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a5817655cb07da49b4d7679733846f762e4e1f898b1dc6fd8cbc4f0e972191bc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 8,
+      "endLine": 521,
+      "endColumn": 21,
+      "mutatorName": "EqualityOperator",
+      "replacement": "output !== \"\"",
+      "status": "generated",
+      "id": "ab11c22d0f7dd39992c1473b2b15717bc14f436b4508855c7797d4a9125c9071",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 19,
+      "endLine": 521,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a3310854fabda7fce2c05a45a0f0660a79074632956f6f8a894c424e64c54402"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 74,
+      "endLine": 521,
+      "endColumn": 78,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d2e1afd5b6d1fa0a0746b3d3f3ac2cdcec26cc7460bfca079e81479dad587c79"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 521,
+      "column": 102,
+      "endLine": 521,
+      "endColumn": 106,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bd35b09dfbb2218098d8838c28c444c434c20cf60f3127ed33eed0945b197f94"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 530,
+      "column": 5,
+      "endLine": 530,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "eaca0831d7997b0e6295dc5fcb4da6239d53961588f3bdd30972f98d83e0e0a7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 530,
+      "column": 5,
+      "endLine": 530,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d95373aed201fbae0e8b9dcb3063a7c3ee78c6cadfdf935135ed10128ec443c5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 530,
+      "column": 5,
+      "endLine": 530,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "encoded.length < keep",
+      "status": "generated",
+      "id": "db7cff1968e85250185b0c6586534c78f57b92ea5db19ec05bd79843ef63d524",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "keeps a text of exactly the bytes it may keep whole, and cuts one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 530,
+      "column": 5,
+      "endLine": 530,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "encoded.length > keep",
+      "status": "generated",
+      "id": "8e671c8574a689fed91e8b52c9fcf7d829326ee0c23eba6c8f8a768d6049bcb1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 530,
+      "column": 36,
+      "endLine": 530,
+      "endColumn": 52,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c72d46c383d0de8f7fb174464fbdfea21eebe99814b4d06edf9582b4c29c6d8c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 531,
+      "column": 23,
+      "endLine": 531,
+      "endColumn": 31,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "keep * 2",
+      "status": "generated",
+      "id": "0b63a799829ae8af6f1ba46de88b12cd8b07e0c215dd4b6e51332673e6b4f087",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "keeps a text of exactly the bytes it may keep whole, and cuts one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 8,
+      "endLine": 532,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fffa21b85222803414705c8a8d2523db6da9ca43f0661e6e7e2ca20110f63a75",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "cuts at a character boundary, never inside one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 8,
+      "endLine": 532,
+      "endColumn": 52,
+      "mutatorName": "LogicalOperator",
+      "replacement": "head > 0 || (encoded[head]! & 0xc0) === 0x80",
+      "status": "generated",
+      "id": "f7a0c4dd2577c08c39ff2252e1a3f410a368a69de884a9f1495b86cee5f095a9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 8,
+      "endLine": 532,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f4840ac2180f7ecd62afd35456a4f94fcadf3a33492287e94e2ca444c6d8a8d8",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "head is half a keep of at least 0, and the first byte of text Buffer.from encodes is never a UTF-8 continuation byte, so the loop stops at 0 before head > 0 decides"
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 8,
+      "endLine": 532,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "head >= 0",
+      "status": "generated",
+      "id": "a826c75e3ef8972b5c027967aa1cec73b03654f328813b5b894229d431e15853",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "the first byte of text Buffer.from encodes is never a UTF-8 continuation byte, so the loop stops at 0 and never reaches -1, whichever of > 0 and >= 0 guards it"
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 8,
+      "endLine": 532,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "head <= 0",
+      "status": "generated",
+      "id": "15cb1b480e81343d503af9277a46dccfd5940966176a2bac59dfef3269467b7c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "cuts at a character boundary, never inside one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 20,
+      "endLine": 532,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8a10c1d174154610e3cfd166f964aa02d1c5d6e8127b054bb459f87d67979dd2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 20,
+      "endLine": 532,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "(encoded[head]! & 0xc0) !== 0x80",
+      "status": "generated",
+      "id": "700e8dc07ef3aaf7c797fffd0a91333d3b4c72b58208036997d309f98a3fb8ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 532,
+      "column": 54,
+      "endLine": 532,
+      "endColumn": 60,
+      "mutatorName": "UpdateOperator",
+      "replacement": "head++",
+      "status": "generated",
+      "id": "d291e7a8dfb0efa8f6e6232a4206f5af7aea504d84683743439893ccc854b462",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "moves a head that would end inside a character back to its start"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 533,
+      "column": 12,
+      "endLine": 533,
+      "endColumn": 58,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "encoded.length + (keep - Math.floor(keep / 2))",
+      "status": "generated",
+      "id": "78921eb61293bcdf7c9a940318c7715fefa96299c3ab95a0dae62b7e1dcb8870",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 533,
+      "column": 30,
+      "endLine": 533,
+      "endColumn": 57,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "keep + Math.floor(keep / 2)",
+      "status": "generated",
+      "id": "d0113347d13d5266e582ec35f9c5f5e2122ee5eb35edeeb4dda2011fe34fac35",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "keeps a text of exactly the bytes it may keep whole, and cuts one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 533,
+      "column": 48,
+      "endLine": 533,
+      "endColumn": 56,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "keep * 2",
+      "status": "generated",
+      "id": "e5383c28032779c3b8f0df4f8b401845e5ff9d4c40a0b99695882ff93d3a3088",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 8,
+      "endLine": 534,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cd70026ba25eca89a98b69f579c8cf694c3278e3ae1be681927b8e39323b352d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "moves a tail that would start inside a character on past it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 8,
+      "endLine": 534,
+      "endColumn": 65,
+      "mutatorName": "LogicalOperator",
+      "replacement": "tail < encoded.length || (encoded[tail]! & 0xc0) === 0x80",
+      "status": "generated",
+      "id": "2e5dbc44909ba81979d84adc84c7d137e74f3f0a83ef52dc9146b327268d9b9c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 8,
+      "endLine": 534,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a2ba6590dd0caf4afff0f59c8c7dbc3b8d6cca6b632be159e44f744e7b65df13",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "at tail === encoded.length the byte read is undefined, and undefined & 0xc0 is 0, so the loop stops there without tail < encoded.length"
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 8,
+      "endLine": 534,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "tail <= encoded.length",
+      "status": "generated",
+      "id": "8968b6ad53c15ee96a4d71edd1325911521daa2553e7ccfd50db89e842df6173",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "at tail === encoded.length the byte read is undefined, and undefined & 0xc0 is 0, so the loop stops there whichever of < and <= guards it"
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 8,
+      "endLine": 534,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "tail >= encoded.length",
+      "status": "generated",
+      "id": "47535d6e39a628036f94a34c8ff7b0c23d52d7a5115a1e20205bbbaf4e122362",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "moves a tail that would start inside a character on past it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 33,
+      "endLine": 534,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "410cbf5096d9fd0341a3fc7832c9f4c92fa99e70a61591e21bd72128e1b4c299",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 33,
+      "endLine": 534,
+      "endColumn": 65,
+      "mutatorName": "EqualityOperator",
+      "replacement": "(encoded[tail]! & 0xc0) !== 0x80",
+      "status": "generated",
+      "id": "8658221d48c0e8cc0a853a5ed96dea336d80f2fa8e15c5a1aef147de7470fcb6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 534,
+      "column": 67,
+      "endLine": 534,
+      "endColumn": 73,
+      "mutatorName": "UpdateOperator",
+      "replacement": "tail--",
+      "status": "generated",
+      "id": "54c0e4e9d6a718597da039fbdcb1db80bdd0f30379127364ed8ebfead886ba2c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "moves a tail that would start inside a character on past it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 535,
+      "column": 13,
+      "endLine": 535,
+      "endColumn": 24,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "tail + head",
+      "status": "generated",
+      "id": "7706d55e789945fc3bdcbf01bd7c92fed5fd9e8f7b13f9ac2a451da1b9885ce5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "keepEnds",
+            "keeps a text of exactly the bytes it may keep whole, and cuts one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 536,
+      "column": 53,
+      "endLine": 536,
+      "endColumn": 67,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b048746f4526b26ab17c8e9479fc66be555044b6c8447cfc7b7c4aa8be2b07e3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 537,
+      "column": 8,
+      "endLine": 537,
+      "endColumn": 107,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a7815d48ca40fff65de87c42afd663ebff266ccd4ea2edd4da966d474374b62f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 537,
+      "column": 16,
+      "endLine": 537,
+      "endColumn": 100,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "27d8e5af703cf2a039f2c40abd882864ec9ee6e821e8eba74d6bfdd5b351e301"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 537,
+      "column": 36,
+      "endLine": 537,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7ef08085013c8d02c91734cf95e1358a5217b248ce85f23ce3753ce7b3e67578"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 537,
+      "column": 85,
+      "endLine": 537,
+      "endColumn": 91,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0b69a4f1b7a916fdfdb4554667192c4f8295992442085a53f127ece9b7e5c3c5"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 550,
+      "column": 10,
+      "endLine": 552,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fbfbd88869f471050d9dc10939aa4ffd749fa03e98893c9ae7c53d20576b775f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 551,
+      "column": 25,
+      "endLine": 551,
+      "endColumn": 55,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4b14d7d57bac00a85ba5fca4750b9e7bdedc4a448dabf44b04aaca2620c6e8f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 560,
+      "column": 24,
+      "endLine": 560,
+      "endColumn": 26,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "5ab32ca48d63c277723068b94d18682aa8037a3a341ee473dff2442ccb762f54",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 561,
+      "column": 14,
+      "endLine": 567,
+      "endColumn": 2,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "64615c9e91add6fabfb2e55a97a09f1d2e37aa03c19d6daa4b43d4289da2be5b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 561,
+      "column": 50,
+      "endLine": 567,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ee314ba5862279b6b8582a8ba9b4824959fe6b2f23b776ae17a36479f6aa37c0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 562,
+      "column": 6,
+      "endLine": 562,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b189e2dbd9dda27e40aa88a551ad51477db5ab3815f2b91098f9e476818db206",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 562,
+      "column": 6,
+      "endLine": 562,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "726e2d9bc6610ef0b2a349013293908492ea8c3e6ec3719257904332e5eab5a0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 562,
+      "column": 6,
+      "endLine": 562,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "bound !== undefined",
+      "status": "generated",
+      "id": "645148f12a0d97d3f98f5ba59367cb797c56be15a8e1a1d68340a0855368445e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 564,
+      "column": 6,
+      "endLine": 564,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6022931e10bb6c4d7b405aa7ae4b0f30c0e0b8963c57d50c3ca2910a2b5d7e87",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 564,
+      "column": 6,
+      "endLine": 564,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6f7f3257e1a9bf07222a091082046813043fc7d19f7229328b102f4bd115f714",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 564,
+      "column": 6,
+      "endLine": 564,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "kept.cut >= 0",
+      "status": "generated",
+      "id": "cd6de4e26a2c6074aad4c4afd1d1666842f80fbb113079d5927149038362ab2f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 564,
+      "column": 6,
+      "endLine": 564,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "kept.cut <= 0",
+      "status": "generated",
+      "id": "a57fbae238f6006886354f31f286535767f1020210f4da59be4ea7185ace4587",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 565,
+      "column": 48,
+      "endLine": 565,
+      "endColumn": 108,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2ee97220bba866d3cd29efb7919091fc348e3baee5d8df145f02234523c0a4d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "says outside the boundary which parts were cut and by how much, naming a file by its number"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 576,
+      "column": 36,
+      "endLine": 576,
+      "endColumn": 98,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ed40dd086897c355083b996881572bafc6fc51ebe4bc8b37b42113c740b94122",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 577,
+      "column": 21,
+      "endLine": 581,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "8f46177df500c9353d552ad48b4474216359cf645827072ee53b542514a55c0b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 578,
+      "column": 35,
+      "endLine": 581,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "08bf01d30a38e8edbd6814b701b146f40011f32581e8889d51a4660bfe4e5c5d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 580,
+      "column": 50,
+      "endLine": 580,
+      "endColumn": 71,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ab9c329f95c02cdedc84ba2b1863bc2809a3d5fdb5c5a0455560080db520e9ab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "says outside the boundary which parts were cut and by how much, naming a file by its number"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 580,
+      "column": 60,
+      "endLine": 580,
+      "endColumn": 69,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "a77b9b10dbe425c3d9f9324b8c90d864a52557abbc82f1e3a9c231f554deb700",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "says outside the boundary which parts were cut and by how much, naming a file by its number"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 583,
+      "column": 39,
+      "endLine": 586,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e5ec03a2b70e9d348851425c4290aad3e0b2b509adc6f731846b587d140a7333",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 589,
+      "column": 5,
+      "endLine": 593,
+      "endColumn": 5,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "74dbf351f9c1b62554a5a1754ff821c495d689b2f2d40dece6915991f866cc0b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 590,
+      "column": 40,
+      "endLine": 592,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ebff4ec2d72f802a443e24d014c4ba75dcd9672ddc60334bccea34229ae0e945",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 596,
+      "column": 5,
+      "endLine": 600,
+      "endColumn": 5,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "9f7179b36ae7494b904429745ee37bf5939664f7286698759d76ee91844a9646",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 597,
+      "column": 42,
+      "endLine": 599,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1a6b32259fe58bda4ff700f7eae1d80add325e55bcf398ee13ffde926084b42c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 6,
+      "endLine": 613,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f9179ccc6ae2ecfc4b3a37d13954c6c6e87eddeb543c8d3c9cd1b63305137dd0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 6,
+      "endLine": 613,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "370257766dd843642986be336023a2bbdbfcd7481e5941c1575427384d25fab7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 6,
+      "endLine": 613,
+      "endColumn": 46,
+      "mutatorName": "LogicalOperator",
+      "replacement": "cuts.length === 0 && bound === undefined",
+      "status": "generated",
+      "id": "3542d7a66cf59454c7c36a3f7213d7fe61d5510fa91f3152a9f7aeefaf0d76bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 6,
+      "endLine": 613,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bc309dfb1a7b4a116c2f9774bf130ceb1dd1410b8d960853994cbe4ae4800125",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 6,
+      "endLine": 613,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "cuts.length !== 0",
+      "status": "generated",
+      "id": "46564f75d3b22eab9ddcca364c381eee2a1e3fde24ab01fe2b346c6eb9799721",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 27,
+      "endLine": 613,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5388827eceb6406b4210af9d0504570fa6414c19dc3232f301eab18c731b8d27",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "part() cuts nothing and pushes no cut when bound is undefined, so cuts.length === 0 already holds there; the operand narrows bound for tsc alone"
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 613,
+      "column": 27,
+      "endLine": 613,
+      "endColumn": 46,
+      "mutatorName": "EqualityOperator",
+      "replacement": "bound !== undefined",
+      "status": "generated",
+      "id": "5f0b3e59417f34d6b31779ca70cb57bc18bbc3468253c585589b3b7f66f47eb5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 614,
+      "column": 5,
+      "endLine": 614,
+      "endColumn": 7,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "f494861e214a7809aab83e6bd040b88bb643cea2926b1831d747928e71dfd863",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 615,
+      "column": 5,
+      "endLine": 621,
+      "endColumn": 5,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "faf294cbcc5b053a2fc5b6fd1c1bcc2951bbdeb7e6ef0aeedc5bfae8c1a0dee9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 616,
+      "column": 40,
+      "endLine": 619,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c46ee3d0e8e7cfb1dbe0278766410160911559431696f48a90c39c28e4adc947",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders the last count of merged claims whose least cut fits, and nothing for one claim more"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 644,
+      "column": 24,
+      "endLine": 660,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1b53cfc69f0dc908bb67bce33bb455a9f260cc19563888600dcaabbec20ca7f5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 645,
+      "column": 18,
+      "endLine": 646,
+      "endColumn": 108,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ece850e778d884be04d577640cecce71e7ba562eb0eb11063c166c18468ddaaa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 646,
+      "column": 15,
+      "endLine": 646,
+      "endColumn": 107,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "552f9e3fc5859f8f8600a43ad0369691725b9b101edfd5967af2c4036e95904c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 646,
+      "column": 57,
+      "endLine": 646,
+      "endColumn": 75,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c9e9fc910080d5de0ffc33ff4dee2967e3a71bcb7769d07596bbf8fd1cd37312",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 646,
+      "column": 57,
+      "endLine": 646,
+      "endColumn": 75,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a63471a71602e09a0749856022d3a8a120292724eabc4e57a2dc7b723ece097c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 646,
+      "column": 57,
+      "endLine": 646,
+      "endColumn": 75,
+      "mutatorName": "EqualityOperator",
+      "replacement": "keep !== undefined",
+      "status": "generated",
+      "id": "17763b12873593a655c86a0ddd15ffb443e1627a324676220147b1bb7741331b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 646,
+      "column": 90,
+      "endLine": 646,
+      "endColumn": 106,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3ee8706f204f9d5e02a8060f1b48fd4de3180ddd8b02d5ebbe9ac68b17af50fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 647,
+      "column": 14,
+      "endLine": 647,
+      "endColumn": 83,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "984904789443a549457c7a5e9d207bcc3ca037c2606954c619a041155b9a2283",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 647,
+      "column": 75,
+      "endLine": 647,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1c8c0aa09cae8f81cfe51b47e34bfbcd2bbb26c3565e9aaaf0903e2f718e9a51"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 649,
+      "column": 5,
+      "endLine": 649,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f654c8b12d22aeb4bc0125e716798c5d94175c767d70b5a93b4277f4b22644c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 649,
+      "column": 5,
+      "endLine": 649,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2d50268567847eaa5748d9e20e6a4cbeb8736c3be04b48caf068777846c2cad1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 649,
+      "column": 5,
+      "endLine": 649,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(whole) < budget",
+      "status": "generated",
+      "id": "6ffccc79df35829975c3c8c2b827e041d2e33ce77eec46bd9e2e99db5c2aa0be",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 649,
+      "column": 5,
+      "endLine": 649,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(whole) > budget",
+      "status": "generated",
+      "id": "68d0dd7d81d083ba06a675a1e475cb366df46ab6aaae4f2668f64beec3f47e6b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 650,
+      "column": 5,
+      "endLine": 650,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "046c3ce4929c8ede4d71b3df383aec25f315de102fc0ad81fb21418c2d197711",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 650,
+      "column": 5,
+      "endLine": 650,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ede691868488d620c62d355d8335aabb40b073b2530ec598bb68f668dbf8ff7d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders the last count of merged claims whose least cut fits, and nothing for one claim more"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 650,
+      "column": 5,
+      "endLine": 650,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(rendered(0)) >= budget",
+      "status": "generated",
+      "id": "e4ad5e599cd8c95d50c749eb3ec0ad414a472f351edcef4142e9b08835eb4cdb",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders the least cut at a budget of exactly its size, and nothing a byte below it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 650,
+      "column": 5,
+      "endLine": 650,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(rendered(0)) <= budget",
+      "status": "generated",
+      "id": "0d55886c24ee924885614951002ec91d852a873f38442ddc1d39bf7f093bf577",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 653,
+      "column": 12,
+      "endLine": 653,
+      "endColumn": 27,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "size(whole) + 1",
+      "status": "generated",
+      "id": "50682b05f6c44e14f06555178c874ad55854c72d5153a05db5a7d7bf03f27705",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "keep = size(whole) cuts no part, so its rendering is the whole, which does not fit; as the search's top it only adds a step that rejects it, and the search returns a keep whose rendering fits either way"
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "22df87e3628bfeef35ce5d6a9357c22273e24ff8470540e4a8df12b76b144b98",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "low <= high",
+      "status": "generated",
+      "id": "a8602b169275df4d98b2080fb41e73fc84789b5669578774e840fa346c392c63",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "low >= high",
+      "status": "generated",
+      "id": "8b6c0fe17119fdba6884988c773eb041ff3bd0db86268b2f247953967d1d2daf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 654,
+      "column": 20,
+      "endLine": 658,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "22d65069f7026f8b71dce7f8853643f8e1920abbcbbaa95ca2908485173879f3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 655,
+      "column": 25,
+      "endLine": 655,
+      "endColumn": 41,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "(low + high) * 2",
+      "status": "generated",
+      "id": "d1ff1ab641f82fc2048b644b3f253d2483be872e6408306da6c1acf9e67664f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 655,
+      "column": 26,
+      "endLine": 655,
+      "endColumn": 36,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "low - high",
+      "status": "generated",
+      "id": "db9bc4eae258c0ba507d499b83afa126adf888fe6579898a4bfe8d9b9bee05ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 656,
+      "column": 6,
+      "endLine": 656,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a6bf17b8ef664c61e7b96371e557a12e288fd0f05b6f0ff01bc7477f06725da0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 656,
+      "column": 6,
+      "endLine": 656,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "30590efa50fab39c4b126aed32023fd2aa9a2aae159f47b312676d1370873624",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 656,
+      "column": 6,
+      "endLine": 656,
+      "endColumn": 36,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(rendered(keep)) < budget",
+      "status": "generated",
+      "id": "a904fae37882abc6b36e550d48feadd1c906c7f140e7d81a6ad78bcdcbe31d79",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "keeps a cut that fills the budget to the byte"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 656,
+      "column": 6,
+      "endLine": 656,
+      "endColumn": 36,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size(rendered(keep)) > budget",
+      "status": "generated",
+      "id": "d8719325f73af1d61f903b13e8fe51024a61764e13d420cc575e339a9cadb9cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 657,
+      "column": 14,
+      "endLine": 657,
+      "endColumn": 22,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "keep + 1",
+      "status": "generated",
+      "id": "c8bbb764532ed6a3b6027d45d38024502f32ae33b8466ceb3ecae07f8fcfcac5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "renders evidence of exactly the budget whole, and cuts evidence one byte past it to fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 707,
+      "column": 52,
+      "endLine": 754,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5090eeac2b03149256f55e67e554119dae927ce397bec92b4ddfb977ca3ae89e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 708,
+      "column": 16,
+      "endLine": 714,
+      "endColumn": 3,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "734bc6822b789f0170b026b3cb4014355e08d3ab4f87a7adfc0851287e9e4ea4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 708,
+      "column": 56,
+      "endLine": 714,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7a75ab6de30f8766fe77affc7767a31871d4d9f4b69c61404b5a531c49c0d331",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 712,
+      "column": 13,
+      "endLine": 712,
+      "endColumn": 18,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "399dcc5f585ed5117ed79bacb4665c454bb2c88aeb079d33365abf521b3a05d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 713,
+      "column": 12,
+      "endLine": 713,
+      "endColumn": 17,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "696d7a9281bb24da27223363f712c17f7875edb50b491be806fa1ae34eb26b2c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 715,
+      "column": 48,
+      "endLine": 729,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9d0c9006fb3aeb38fbdd002db6c98668a5993bbd14ba393746ebdc3bec5b8e48",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 716,
+      "column": 6,
+      "endLine": 716,
+      "endColumn": 10,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3064db948115a7223b2d1e9bb2d37496e9c5fe52f90d9d7f1ed46a859b58a8ab"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 8,
+      "endLine": 718,
+      "endColumn": 66,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "828f217429dbdc05f53ccfe8615e32c8447b07ebbfa934d993996ff8ee6f148f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 9,
+      "endLine": 718,
+      "endColumn": 65,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "79a61c536c7768c20bc7f8b88784f7a789c2c80c20af13f5aa8452bc25bf3f35",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 19,
+      "endLine": 718,
+      "endColumn": 22,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c96a1bff38d763e0ae31c743097deea5763cde6dbc8991a6f630b51f7e03e48d"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 32,
+      "endLine": 718,
+      "endColumn": 35,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ff090d666aaf1003cf8fa5455204dbd5b93a5959b50f8de99285ca89e0c08a3d"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 46,
+      "endLine": 718,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "acd2fe29e41d57746b511d3805304b1b1269633cb8a9a113a01c250c3dfd64fa"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 718,
+      "column": 60,
+      "endLine": 718,
+      "endColumn": 63,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "db908a83a5557674d7dae638e786f70400f5c7be3174d63bc5e4e4bd78b57bf4"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 719,
+      "column": 9,
+      "endLine": 728,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a59fbe46d1bbe1d9553248a888f291665e72452e82bf17e0f265983ac5c366f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 721,
+      "column": 11,
+      "endLine": 721,
+      "endColumn": 14,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5a851f26f9a55104fe30a65f6dae58bd473e9cc057459a1499d4d9390a91368c"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 722,
+      "column": 10,
+      "endLine": 725,
+      "endColumn": 4,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "3f98545c70de40088fc52bcc03cea641c06e2bba4d5db6f75c2a7671a209178c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 723,
+      "column": 4,
+      "endLine": 723,
+      "endColumn": 28,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c1516bb011743c2ef8d5f11a174c9facd7f6f9bad740c64cd67027ebf53474c7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 723,
+      "column": 12,
+      "endLine": 723,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "92127a25c7c1c358edba687db690eea0a2748584a0d6c7de93d40eb1e0304441"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 723,
+      "column": 23,
+      "endLine": 723,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "46422efdbac4722d0614c04359fba0faaa64de8b1a06cd2305131a3c1b20cf33"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 724,
+      "column": 4,
+      "endLine": 724,
+      "endColumn": 28,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3e7b7835166071b5297cd85ac9b99d2c6bbb27e898d979b713f8e14b3a0bf9fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 724,
+      "column": 12,
+      "endLine": 724,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a0cdbf7ff385c7f7194ce03093e65e5542b9aa2760e7f3d9a39a8906cbde588f"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 724,
+      "column": 23,
+      "endLine": 724,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a16353a400cf788a8b2359db3acc96490d57e1aa70ed9c1e8f1ee5b35d2fb399"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 726,
+      "column": 18,
+      "endLine": 726,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "735f0f7282f7fe2469e757722f6752dfa9b1c155be17a41ca539de8b024ba5fe"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 730,
+      "column": 15,
+      "endLine": 730,
+      "endColumn": 41,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0ea461d564500415589b72427f19a12691df7d1c8e3b5e23d873ef3b850892e5"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 731,
+      "column": 14,
+      "endLine": 731,
+      "endColumn": 85,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "3f837b12b49150c09f897a0306ca4493cdb10902708523b364209d0383a62292",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 731,
+      "column": 32,
+      "endLine": 731,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d735a9a8a063e24a8eace7292ddb0f557423774c7923f01d1056833a4f680e62"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 731,
+      "column": 50,
+      "endLine": 731,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "048a90a8b4dc3760e56f2982cfecded7b5940326b0d531c0a46d5cabca407534"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 732,
+      "column": 32,
+      "endLine": 744,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "dd49e8cb1907124d333e3ed310c1913c3cc227e9d117debd28fa2f3662f0ccea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 733,
+      "column": 9,
+      "endLine": 733,
+      "endColumn": 13,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "413933635ac7d744a88386d73a86d5daacbd5db30b71e6a86bc8506331af1511"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 734,
+      "column": 9,
+      "endLine": 742,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e248a9d5e75e90071003c3a0a22e3d00c0fbd1474b7d12046c3fab8aa5c54480",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 736,
+      "column": 10,
+      "endLine": 741,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fbe15aee7abf87cbdc5f1fe7d97e15da5a71d0475965b65f3704315ae1fbe217",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 738,
+      "column": 17,
+      "endLine": 738,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ef5df8d26acd7337f2fdc064ebce3cadee2f4fd0c9171ea73b47c28a1d37b505"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 739,
+      "column": 11,
+      "endLine": 739,
+      "endColumn": 48,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "86f5e1a16971d28e0b218ab451ea1c62a56c77b4ccf730b0390203906fa3ff67",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 739,
+      "column": 12,
+      "endLine": 739,
+      "endColumn": 47,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0aa1b5abd27b11a43b324cc9cef4b7f48f5f27533516f5f87e19d551fa406a0c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 739,
+      "column": 20,
+      "endLine": 739,
+      "endColumn": 23,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5c5eca862d8e425c497c94154c52b7f4d63df9755a1aa84605d4354bc47ef6e1"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 739,
+      "column": 36,
+      "endLine": 739,
+      "endColumn": 44,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9c5385851969bf0c958611c9935b36e2a58f36480ec42fdc9d088b4b083b351a"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 740,
+      "column": 24,
+      "endLine": 740,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "042a42f697bb0c10231c6aae8c9ca4047f87726ba14d649b0575a3eda35d2b71"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 743,
+      "column": 9,
+      "endLine": 743,
+      "endColumn": 60,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ee67808c62efca729b6a50d3c9d0b1781a1aab6fd8671285c2abfa2739c16c25",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 743,
+      "column": 31,
+      "endLine": 743,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "623658404dac0010d368100fd1581de1843726073cd117dcdb493413174debcc"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 746,
+      "column": 8,
+      "endLine": 753,
+      "endColumn": 2,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "c75c5aba7b6c40e3bf95bf3ae2ca08e3562404631ac14abdec6aa0418739b3af",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 747,
+      "column": 5,
+      "endLine": 750,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "c5dd4687a871039d04bda40f42de65aeabcd19fe73495578d33a32f0f8bb6438",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 748,
+      "column": 3,
+      "endLine": 748,
+      "endColumn": 50,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1c252d747ef3bb0d52a6641a932dec90d9680140d3b0e6ce8d0e8d8504a66278",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 748,
+      "column": 12,
+      "endLine": 748,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4e10fd12a53c3a4bde4961452c6c445d92da9603655538b9c6ff01c4922ff2f7"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 748,
+      "column": 32,
+      "endLine": 748,
+      "endColumn": 48,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1a8f70f0024619491ea76d8fd65ab66d059f65f8da1a75768c0d5ef2d6d7afee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 748,
+      "column": 43,
+      "endLine": 748,
+      "endColumn": 46,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e1e888f0f20e8ff1091972e11416ef6cae49bc38ca08de5b6dabb0c2652c290f"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 749,
+      "column": 3,
+      "endLine": 749,
+      "endColumn": 74,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bf82e7c8fb93ca267ab934a0b96a5afc30c36780791262e5a4e33777a36812ab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 749,
+      "column": 12,
+      "endLine": 749,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "865ecf23c385c9ec01dac40886bac03379bbfeb87e21e6c1dcd05b45fded0079"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 749,
+      "column": 32,
+      "endLine": 749,
+      "endColumn": 72,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "16384efa74b56bd65f1c6be10906b0ec04bd01302eefe5c57d6270e6ecea2c9f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 749,
+      "column": 49,
+      "endLine": 749,
+      "endColumn": 52,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1fe4f847381fcd5b313633b6af17d6e71d292d9433a7cc73e107af063d7a5dcc"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 750,
+      "column": 8,
+      "endLine": 750,
+      "endColumn": 73,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "aed1c007a359fb87215aba0141c413477d09f7ea4293e7d1ecb3cc725ee90d34",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 750,
+      "column": 50,
+      "endLine": 750,
+      "endColumn": 72,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7d14e2d08e3aea930434a7a2d687f8a678bfcc9bf0faaf804bd13461123ace7a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 752,
+      "column": 24,
+      "endLine": 752,
+      "endColumn": 33,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "6a8e5c58f5a39f847eb8b1d3f4ae3d793f5ecf8e9136217cd463cd8ce8147e8a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 752,
+      "column": 42,
+      "endLine": 752,
+      "endColumn": 53,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "whole + 200",
+      "status": "generated",
+      "id": "cdc08576c42ef44364dc8119fc489af06889602b7fca2d7c7ea3d9338ee6aee2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders a cut of every part of the probe evidence as the golden holds it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 753,
+      "column": 8,
+      "endLine": 753,
+      "endColumn": 14,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "214987d22271a01ea243a224dde545b535f549fe319a6749045d48394f52d248"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 179,
+      "column": 48,
+      "endLine": 182,
+      "endColumn": 7,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0799b48e02c79eace67d2cba5adc34ab6ccf235446b33563337c86b0601c952b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 180,
+      "column": 28,
+      "endLine": 180,
+      "endColumn": 42,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "469e72002ddc26a5b0101e284dcb8feb241a0f7942bca9c706dd9e57a7064f84",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 14,
+      "endLine": 181,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "216635c60a4cab0a3467eed9a350a991764bba481ac82d86d3f4bbb204f4de67",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 14,
+      "endLine": 181,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9a28a9c92e2901866f76cb1695558095ae2921efd5b867dcb06ba492985e8a41",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the count of probing claims, 1 probing claim, when a merged candidate's evidence cannot fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 14,
+      "endLine": 181,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe !== undefined",
+      "status": "generated",
+      "id": "502ee7ab58d7fcd0a9aa44c911e5c3da8ca00caae7a6c6e47083a2d0c5dfe1ae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 36,
+      "endLine": 181,
+      "endColumn": 38,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "f87b2237f924dc512bad5d9e851c6e49d57efa2e0287d1e305a2d4c2f4b0bc19",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the count of probing claims, 1 probing claim, when a merged candidate's evidence cannot fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 41,
+      "endLine": 181,
+      "endColumn": 62,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "31c7432697346f323f9fb3a407252e82ac6f6e05daa61eb067568f67b53e3870",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 181,
+      "column": 42,
+      "endLine": 181,
+      "endColumn": 61,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "29f2465aa30c6bb14bb1b8b72887821e6c649fab88dd4819e3dc64ecddb85e31",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 186,
+      "column": 9,
+      "endLine": 186,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f452cd366fd62e34d17cffaf60d7a4b28cf0045fbee26d50d43da0e55f73b580",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 186,
+      "column": 9,
+      "endLine": 186,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "595f6142c3a99dcfd52900eda786cfc1bd12f88640d8d34ad43a02c225e63e45",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 186,
+      "column": 9,
+      "endLine": 186,
+      "endColumn": 35,
+      "mutatorName": "EqualityOperator",
+      "replacement": "instructions !== undefined",
+      "status": "generated",
+      "id": "2dd020040b55e2e75cb2bd34c6027c46281b2ae33cc099a7b105b1a2181f6997",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 187,
+      "column": 47,
+      "endLine": 187,
+      "endColumn": 102,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e33d6a5d331f8cf4a42f438a6a2d0e8e4df49fc83c8d95a079e640f6072542c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 187,
+      "column": 60,
+      "endLine": 187,
+      "endColumn": 100,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f0c15bb4fe4f13779b64ebe24c7013fdc6711cf6686a8325000cbc596c1171c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-waves.test.ts",
+          "path": [
+            "verification as each lens ends",
+            "verifies a fast lens's claim before a slow lens finishes, and only once while its defect is unchanged"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 187,
+      "column": 68,
+      "endLine": 187,
+      "endColumn": 74,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2bc7f215b09945127634cf95b23c78fe535b86468a4c2cdab778901feff3d3be"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2a75cdabd773aba9b5f0260edadf02fb7a8e8d0e03c389c67c64d9d1b2c1f809",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1b990762aa004f18eb596322f70cf32cc3af6c8b5723d3c345c3dc9b398e3513",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "id !== undefined",
+      "status": "generated",
+      "id": "d7d0a299b9405ef7c463214939c6bdcd3cb4d3c03088869266a6a3dd18fff885",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 222,
+      "column": 33,
+      "endLine": 222,
+      "endColumn": 85,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bf3e5f841b3ae48d895b7c4e3f23ab346c7160e1fb17ba4672e959a7c0d2dad3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 222,
+      "column": 43,
+      "endLine": 222,
+      "endColumn": 55,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "18f77fc9d0f02ee63220cb794e1ce4fe8b4dbd13590665b51bf270b82a98d9cd"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 465,
+      "column": 5,
+      "endLine": 465,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "14dd41a1451e7e310a07d8fff0508892048392b61199cba6c939cb0a4cfc1ce5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest",
+            "keys the tools and the prompt the verifier is given"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 465,
+      "column": 5,
+      "endLine": 465,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "478b5f3f3e3db9735ad4a747d873778a97eacd030fca4c44233d756c14de314e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 465,
+      "column": 5,
+      "endLine": 465,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "bound !== undefined",
+      "status": "generated",
+      "id": "958248342a39b7b2c4b8867c0f3560d9e59d4571668771fc288a9122e5d5d5ca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest",
+            "keys the tools and the prompt the verifier is given"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 59,
+      "endLine": 488,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2c2044f6f242fb85e32d4730738a0504ddb8fde950a002a0a7699cb5def138ae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 484,
+      "column": 17,
+      "endLine": 486,
+      "endColumn": 2,
+      "mutatorName": "MethodExpression",
+      "replacement": "candidate.state.claims",
+      "status": "generated",
+      "id": "3643461760a10958258bcbde7c3f605ee320e59843ab98b503891a1cc492f59c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the count of probing claims, 1 probing claim, when a merged candidate's evidence cannot fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 485,
+      "column": 2,
+      "endLine": 485,
+      "endColumn": 67,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1e13379f16c6e7a83d771ed407e74a3bdcd9f7d91b6631c6e61aed4e3bc845c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 485,
+      "column": 13,
+      "endLine": 485,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "937a9355b4d6d979ccc44ffb020593c39f801324b5c0f88d8863bfe0221eebe1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the count of probing claims, 1 probing claim, when a merged candidate's evidence cannot fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 485,
+      "column": 13,
+      "endLine": 485,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "02a9a737f54dbda7d09645a2ef404f47c692b0063cba021bb788775ca36fe62e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 485,
+      "column": 13,
+      "endLine": 485,
+      "endColumn": 67,
+      "mutatorName": "EqualityOperator",
+      "replacement": "candidate.probes?.[probeClaimKey(claim)] === undefined",
+      "status": "generated",
+      "id": "dfedfda2dae299f53c5db70cc40ac4598751c7070c98938d19192a492322d923",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 485,
+      "column": 13,
+      "endLine": 485,
+      "endColumn": 53,
+      "mutatorName": "OptionalChaining",
+      "replacement": "candidate.probes[probeClaimKey(claim)]",
+      "status": "generated",
+      "id": "bbf3cbc558521f739015d7844c04833bbe7dd81a7dcda7e24820b64ad957a8b8",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "unshown runs only when verifierPrompt returned undefined, which needs non-empty evidence, and evidence is non-empty only when probed() found a probe in candidate.probes, so probes is always present here"
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 8,
+      "endLine": 487,
+      "endColumn": 283,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "850636abb4bd6e682171ddd0d8d1ffc486fc64f075a3d6e8e4fae18e80b14bfe"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 106,
+      "endLine": 487,
+      "endColumn": 119,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0453666ee479412415d85ebad46b65822972ef3b7237ede87a49b3f3914f9c39",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the count of probing claims, 2 probing claims, when a merged candidate's evidence cannot fit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 106,
+      "endLine": 487,
+      "endColumn": 119,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e138cfac0d8ed8ed55ce2d24eba192595b2fdd02cc291441df735182fe6f6d55",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 106,
+      "endLine": 487,
+      "endColumn": 119,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probing !== 1",
+      "status": "generated",
+      "id": "cdce3497d6fd9b46c0a7aa365790cd0d85b54ea5fcbc78cd0ce513a521629f11",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 122,
+      "endLine": 487,
+      "endColumn": 124,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c76fc6bfeaaa1371f39ddb67889cd0f561c8638958058e77a603d881a826a104"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 487,
+      "column": 127,
+      "endLine": 487,
+      "endColumn": 130,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5d086c5ea95f394a3cea511f87f80e21534fbdd09d06c82fd19dbb97765670da"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 583,
+      "column": 17,
+      "endLine": 585,
+      "endColumn": 2,
+      "mutatorName": "MethodExpression",
+      "replacement": "candidates.every(({\n  state,\n  probes\n}) => state.claims.some(claim => probes?.[probeClaimKey(claim)] !== undefined))",
+      "status": "generated",
+      "id": "a3e903e5a6a229a344b361f91b7a681d12176847c98f6af12d04b118e739bba9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the cut when any one candidate's claim carries probe evidence, beside candidates and claims that carry none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 583,
+      "column": 33,
+      "endLine": 584,
+      "endColumn": 76,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "30233269702ea935cdbed650fcbda14b0ca06af57018f8e37fadbc9ff9f28dba",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 2,
+      "endLine": 584,
+      "endColumn": 76,
+      "mutatorName": "MethodExpression",
+      "replacement": "state.claims.every(claim => probes?.[probeClaimKey(claim)] !== undefined)",
+      "status": "generated",
+      "id": "eb0b9fbad30e369f3396b75e0fb6b3501d51138e6f4838a87d129ee82c6f190b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the cut when any one candidate's claim carries probe evidence, beside candidates and claims that carry none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 20,
+      "endLine": 584,
+      "endColumn": 75,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "dc02412de8211f701bc79ee8894860b535f0997bd37548b41f08b32da35d928f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 31,
+      "endLine": 584,
+      "endColumn": 75,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b6f9d96b387acf7ce59effb2212e6cc992664b53c949147d94eed0fb64f758d2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 31,
+      "endLine": 584,
+      "endColumn": 75,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5be154543e4d4b57606088741c4b167c8e848d9fc2aacf41eb9253a7c291c34e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 31,
+      "endLine": 584,
+      "endColumn": 75,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probes?.[probeClaimKey(claim)] === undefined",
+      "status": "generated",
+      "id": "9e9d0d0fd3dc365a725f238599bbd295a5c4c5de8bc10ecac5af960e550f121f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 584,
+      "column": 31,
+      "endLine": 584,
+      "endColumn": 61,
+      "mutatorName": "OptionalChaining",
+      "replacement": "probes[probeClaimKey(claim)]",
+      "status": "generated",
+      "id": "92f7b5407043df0b5102cac1ad0b391afc6ad7263f4b244900f7b8aae333c6df",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest",
+            "keys every input but the root, the checkout, the nonce, the reused outcomes, the shown dismissals, the verdicts and the speaker's body"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 595,
+      "column": 6,
+      "endLine": 601,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fd6612db87e2a2f16bfa90b0a9bc55b2336132504a9c836a89c769f9e822e9ad",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 596,
+      "column": 16,
+      "endLine": 600,
+      "endColumn": 7,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a33d882e9bae2c63866508ab7ba4b8a7b2f46174bfc79d99eaf365d65c1b5c32",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 212,
+  "omitted": 0,
+  "unmutated": []
+}
