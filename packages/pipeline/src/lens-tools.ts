@@ -296,10 +296,9 @@ function text(content: string | readonly string[], render: (body: string, count:
 	const note = cut
 		? `\n[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]`
 		: "";
-	const details: LensToolDetails | undefined = lineCut ? { lineCut: true } : undefined;
 	return {
 		content: [{ type: "text" as const, text: `${render(body, count)}${note}` }],
-		...(details === undefined ? {} : { details }),
+		...(lineCut ? { details: { lineCut: true } satisfies LensToolDetails } : {}),
 	};
 }
 
