@@ -174,6 +174,8 @@ describe("boundProbeEvidence", () => {
 				const row = evidence[index]!.probe.plan[11]!;
 				const shown = Object.fromEntries(Object.entries(row).map(([key, value]) => [key, visibleText(value)]));
 				expect(block).toContain(fill(probingWording.planRow, { number: 12, ...shown }));
+				expect(block).toContain(`${fill(probeEvidenceCutWording.before, { number: 12 })}, cut by `);
+				expect(block).toContain(`${fill(probeEvidenceCutWording.after, { number: 12 })}, cut by `);
 			});
 			expect(bytes(shown!)).toBeLessThanOrEqual(probeEvidenceBudget);
 		}
