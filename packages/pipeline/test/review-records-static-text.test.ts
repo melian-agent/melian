@@ -166,6 +166,17 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		expect(bytes(records.check("e".repeat(64), ran("static.madeup", 1, "1"), madeUp))).not.toContain(token);
 	});
 
+	it("as a Biome or tsc finding a build from before issue #281 stored with its tool's text", async () => {
+		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
+		for (const check of ["static.biome", "static.tsc"]) {
+			const old: StoredFinding[] = stored.map((finding) => ({
+				...finding,
+				properties: { ...finding.properties, source: { check, version: "1" } },
+			}));
+			expect(bytes(records.check("e".repeat(64), ran(check, 1, "1"), old))).not.toContain(token);
+		}
+	});
+
 	it("as the dismissed sighting of a static finding", async () => {
 		const { stored, records, revision } = await enola([
 			{ ruleId: "god-class", level: "warning", message: { text: `widget holds ${token}` }, locations: at(path) },
