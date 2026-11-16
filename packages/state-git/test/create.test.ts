@@ -82,4 +82,15 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 			new RegExp(`^${path}\\.${owner}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		);
 	});
+
+	it("names the repository it builds by a UUID alone, which no sweep removes, when the table does not list this process", async () => {
+		const path = join(remote.host(), "records.git");
+		expect((await RecordRepository.open(path, Deadline.after(systemClock, 30_000), { list: () => [] })).path).toBe(
+			path,
+		);
+		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
+		expect(init?.[1][3]).toMatch(
+			new RegExp(`^${path}\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		);
+	});
 });
