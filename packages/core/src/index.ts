@@ -298,6 +298,7 @@ export {
 	type TierStatus,
 	type UnknownModel,
 } from "./plan.ts";
+export { type LensProbingWording, lensProbingWording } from "./probing-wording.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
@@ -488,6 +489,15 @@ export {
 	survivorClasses,
 } from "./mutation-inventory.ts";
 export {
+	type ProcessControl,
+	type ProcessEntry,
+	ProcessTable,
+	parseProcesses,
+	type RecordedProcess,
+	stopTree,
+	terminateRecorded,
+} from "./process-tree.ts";
+export {
 	type MembershipCandidate,
 	MembershipError,
 	PullRequestMembership,
@@ -568,6 +578,7 @@ export {
 	loweringSchema,
 	type StoredLowering,
 	type StoredVerificationState,
+	trustFloorChecks,
 	type Verification,
 	VerificationRecord,
 	VerificationState,

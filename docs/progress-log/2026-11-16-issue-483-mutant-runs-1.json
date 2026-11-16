@@ -1,0 +1,2510 @@
+{
+ "range": {
+  "base": "512c8ae29c582f376691365fb9dff1f064c602ea",
+  "head": "1482bec53025d70fdb7fe6d8b2e20468bf53e1aa"
+ },
+ "note": "Each run applied one mutant and ran its named test alone, by an anchored ancestorTitles > title pattern; it counts only when exactly one test was collected and that test passed unmutated first, at the same head.",
+ "runs": [
+  {
+   "id": "de93e07cf46e1992097da9d727c366ad0bcc12aa93bfec2a8bf5c22e63597c30",
+   "at": "packages/core/src/lens.ts:413:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2ab0387fde11784d4fff36fbb47ea3f215a08085a8acf9ee758f672f7149f470",
+   "at": "packages/core/src/lens.ts:413:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "aade26883cacfd77d4fe97e68b17853358bf8ea687a604409c97d01f537f8915",
+   "at": "packages/core/src/lens.ts:413:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probe !== undefined || !lensProbingWording.has(name)",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "62b4166ed8d007d100a98d76c563759d5715942c4cec356e60adc5a2157ce8ec",
+   "at": "packages/core/src/lens.ts:413:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "41a961b15d22e72492fe2878cf30c4c2389920f8f2086019f7cf7f21ffcbc3e5",
+   "at": "packages/core/src/lens.ts:413:6",
+   "mutator": "EqualityOperator",
+   "replacement": "probe === undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7db2ebcfee5c75b468ea4e352d0570e07b6df3c1dd197715710fc5530f9f3a29",
+   "at": "packages/core/src/lens.ts:413:29",
+   "mutator": "BooleanLiteral",
+   "replacement": "lensProbingWording.has(name)",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "b4d986914f93be38ed2bb767c6279d81ef3866f24ca8a98abc2e148a86166451",
+   "at": "packages/core/src/lens.ts:413:60",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "66d8d1a811fdfe2ee57515bfa6129801ec4e8c8e3960044046616ad6a3400652",
+   "at": "packages/core/src/lens.ts:414:18",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0ca67bc6640219d0379ae2db51280f9620287fbab4b75efa29e179713afc3cb3",
+   "at": "packages/core/src/lens.ts:418:108",
+   "mutator": "MethodExpression",
+   "replacement": "worded",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "8194dd5485e1a4af68a47794d721c969b15ca3b97d15e1e78dd8572923a60ea9",
+   "at": "packages/core/src/lens.ts:418:124",
+   "mutator": "UnaryOperator",
+   "replacement": "+1",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "55b5170206a79d65f1aba6a5bb035a0bb70c5fb8701265f059950ec6630d0235",
+   "at": "packages/core/src/lens.ts:418:156",
+   "mutator": "UnaryOperator",
+   "replacement": "+1",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c14a27d0c44607dcc3b9b8e7aa6a5e1c5b3e833ab19b874fe2286096efe1dec9",
+   "at": "packages/core/src/lens.ts:419:4",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "bd22ce280edbd22a7ba2dca07f77f811583caf4be68cd9cf7ca84c116a627e68",
+   "at": "packages/core/src/probing-wording.ts:20:56",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/probing-wording.test.ts",
+    "path": [
+     "each lens's probing wording",
+     "gives each lens that may probe all six strings, none blank and none another lens's"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7bcc23418f2a32359903387adfd6a154d7adaab2101e936f8bd1016319724cac",
+   "at": "packages/core/src/probing-wording.ts:33:48",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/probing-wording.test.ts",
+    "path": [
+     "each lens's probing wording",
+     "gives each lens that may probe all six strings, none blank and none another lens's"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "5ab19e13402f8f892a3094d9e1eb0829237e816e80b2273f0ff6a0f6e2e5d18e",
+   "at": "packages/core/src/probing-wording.ts:46:54",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/probing-wording.test.ts",
+    "path": [
+     "each lens's probing wording",
+     "gives each lens that may probe all six strings, none blank and none another lens's"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "720ca0f2cccd01639f0b89864c5a2eef937666281b03d06a37d9f0585487919f",
+   "at": "packages/core/src/probing-wording.ts:63:83",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e4088a98debbd51dbaae42fdccde9664e5e257b903ff0928c10d7ac62427b243",
+   "at": "packages/core/src/probing-wording.ts:64:1",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "58c7933c0c00ce281de4e210c39373c80aad32beaf55de97f2fe43f6ee152266",
+   "at": "packages/core/src/probing-wording.ts:65:1",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "bb104f5cddaa28cbfa64d689bc4ce426e5e74fd63472cc92ade1bb73835bcfe9",
+   "at": "packages/core/src/probing-wording.ts:66:1",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "eab265c572f7764e170ad54bd217e5742285f1d6fb366170c2fc66238adb0ce2",
+   "at": "packages/pipeline/src/lens-request.ts:122:6",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "32d0494060547c0f08d095390b4ceea952d0a1fdd86ab5461af49a14caa84da1",
+   "at": "packages/pipeline/src/lens-request.ts:123:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1c3c7006d5eb65d172d7943372a765906ef3b2ee1804f3696989de34c3818302",
+   "at": "packages/pipeline/src/lens-request.ts:123:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "ecb2b574a3a097fa62542499af0ec40fc336d8fe87a3e3645f7b0bf6a3b61787",
+   "at": "packages/pipeline/src/lens-request.ts:123:6",
+   "mutator": "LogicalOperator",
+   "replacement": "input.escalation !== undefined || \"next\" in input.escalation",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "028cc591fb065854fa139e0e67f47862bc3f521f644fcad4f68bc8aa905545cb",
+   "at": "packages/pipeline/src/lens-request.ts:123:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1644cddcb4cbc624bc9e521eb86aaa129e6ddfd3d17fdc622c4cff1ac62b8d6b",
+   "at": "packages/pipeline/src/lens-request.ts:123:6",
+   "mutator": "EqualityOperator",
+   "replacement": "input.escalation === undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "84a6099ebaf4428c2049fe46ddcbe5b7e070f064ec685603ea35e80502296c78",
+   "at": "packages/pipeline/src/lens-request.ts:124:7",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7340879bbeb41898b708255f1263bdb87160601a8f179ca12250c258d932577b",
+   "at": "packages/pipeline/src/lens-tools.ts:1336:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "ab9a787ae953ae9e686c894acc8df83bfea6caa4d70d24254f11063d6f89e92e",
+   "at": "packages/pipeline/src/lens-tools.ts:1336:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "refuses each report a role may not make, and an attack or files the plan and the limits do not allow"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e66eecbb9119d3e66e0ceb0040cae8529d582ffd09bce7d9f392dafe0860147f",
+   "at": "packages/pipeline/src/lens-tools.ts:1336:5",
+   "mutator": "EqualityOperator",
+   "replacement": "result.exitCode !== 0",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "refuses each report a role may not make, and an attack or files the plan and the limits do not allow"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "21b6c21b2ec818382d808f7dae0c04ab424a118c1472d0d2df19413dc47a617d",
+   "at": "packages/pipeline/src/probing.ts:104:54",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verifier-version-load.test.ts",
+    "path": [
+     "the verifier's version, as its module loads",
+     "is the version main gave it, from the trust-boundary lens's own evidence wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "4294db9d3850bd7feddbe787d115077693b2398c261480c867be1abfef78dded",
+   "at": "packages/pipeline/src/probing.ts:108:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verifier-version-load.test.ts",
+    "path": [
+     "the verifier's version, as its module loads",
+     "is the version main gave it, from the trust-boundary lens's own evidence wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e538cee37effcdd28842a5c0992a7a8847422d40379bddda19410c61fea87b1b",
+   "at": "packages/pipeline/src/probing.ts:108:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "refuses to key a run that probes in a lens with no probing wording of its own"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "b3d21b9638b7eb92d078c0e4499b50f24a27caf99205996490594518c6617131",
+   "at": "packages/pipeline/src/probing.ts:108:5",
+   "mutator": "EqualityOperator",
+   "replacement": "own !== undefined",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verifier-version-load.test.ts",
+    "path": [
+     "the verifier's version, as its module loads",
+     "is the version main gave it, from the trust-boundary lens's own evidence wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "ada4e8d3dfa386cc6828d3873b4050e429e0a28429c926a1b7bf73b2289cfe76",
+   "at": "packages/pipeline/src/probing.ts:108:24",
+   "mutator": "CallExpression",
+   "replacement": ";",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "refuses to key a run that probes in a lens with no probing wording of its own"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "aa5e75d3a7318da7fc909ad69a4abe65ced43fd29df8c8cae08a0d6c5ed02cdf",
+   "at": "packages/pipeline/src/probing.ts:113:63",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys the trust-boundary lens's probing wording as the table main keyed"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f66947d72446b6583ba71eb84ca4d880d06abae140b1d09913085d5e7a50a482",
+   "at": "packages/pipeline/src/probing.ts:115:22",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys the trust-boundary lens's probing wording as the table main keyed"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9e854fc99a5f56834043650a485a8a566a125b6998c0ddf9a61374f9f56a69c0",
+   "at": "packages/pipeline/src/probing.ts:122:65",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verifier-version-load.test.ts",
+    "path": [
+     "the verifier's version, as its module loads",
+     "is the version main gave it, from the trust-boundary lens's own evidence wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f9593997cf6c0e163116b7832b842908c0440425fe1c1d40d2570099efd039b6",
+   "at": "packages/pipeline/src/probing.ts:123:22",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verifier-version-load.test.ts",
+    "path": [
+     "the verifier's version, as its module loads",
+     "is the version main gave it, from the trust-boundary lens's own evidence wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "991cf0e558ea986f0ddac6ae80930245fd242ac8d41df0f815c6334aea02b211",
+   "at": "packages/pipeline/src/probing.ts:397:55",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f2410727bf5af441590c2522fb0f0638244077ff70e83a32b51c7dced6c45f3d",
+   "at": "packages/pipeline/src/probing.ts:415:8",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "057aa4ad441ef6a7cd90a20845a0cdfe1245791a5976cf7cfadb680d77c630b5",
+   "at": "packages/pipeline/src/probing.ts:428:27",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c424b19b8f7b3ce5d4671a8d8033fb9e2a81c926d163a3b94b8516b76481ebce",
+   "at": "packages/pipeline/src/probing.ts:432:9",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the prober's instructions",
+     "give the time limit in seconds and the output limit in KiB, with the policy last"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "8018e6ff64b9541d059791ec7885909e211814da8fb65a5ded3a63aa045a04a6",
+   "at": "packages/pipeline/src/probing.ts:432:9",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the prober's instructions",
+     "give the time limit in seconds and the output limit in KiB, with the policy last"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f46f10099e5fe64f1ba40c2ffd2125b77a9471a628bd551545c663b2b05a07c1",
+   "at": "packages/pipeline/src/probing.ts:432:9",
+   "mutator": "EqualityOperator",
+   "replacement": "seconds !== 1",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the prober's instructions",
+     "give the time limit in seconds and the output limit in KiB, with the policy last"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2c690aade0b1e919cca4564dcff1889945f2c57b19cd4984762260b89ddcfce2",
+   "at": "packages/pipeline/src/probing.ts:494:45",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the findings earlier reviews reported",
+     "lists forty findings, and counts those past forty"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0b662c9ce61f8464e060e4498972495df70c91bb99d0eca34389a0ee7c2cfa5d",
+   "at": "packages/pipeline/src/probing.ts:494:45",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the findings earlier reviews reported",
+     "lists forty findings, and counts those past forty"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "d2e349d1ff2ee1361de076695da421aaec6ac0288e975ea907d50699666e4237",
+   "at": "packages/pipeline/src/probing.ts:494:45",
+   "mutator": "EqualityOperator",
+   "replacement": "left !== 0",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the findings earlier reviews reported",
+     "lists forty findings, and counts those past forty"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "63427384784ecf9a709b75f00932756976db8fd24cdbc833b5b7dd8ad404d0cc",
+   "at": "packages/pipeline/src/probing.ts:494:96",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing.test.ts",
+    "path": [
+     "the findings earlier reviews reported",
+     "lists forty findings, and counts those past forty"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0a8462c6b95b1ac05520919fecdf15821f35ea757e0889de42f7005f48bdc0ac",
+   "at": "packages/pipeline/src/probing.ts:518:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "340e8e8a15ba165d4d77ffa57b6cb119ee96debaee2c647666ca6b29a934f65b",
+   "at": "packages/pipeline/src/probing.ts:518:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "42d4a057324c10a3720b843203b3fe344ad2b1815248e0cf7a14bb5833094eef",
+   "at": "packages/pipeline/src/probing.ts:519:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2a8166966afac02a9828a8d4bc5d56f4b2f42a5a53f63e493cc5aadee40861f9",
+   "at": "packages/pipeline/src/probing.ts:519:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "8ae09aa4724698b9e6b9aa435482b7c3e4e182bc4d0b7801301e3ffc356810c2",
+   "at": "packages/pipeline/src/probing.ts:520:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9cbc6c08dd751842908641447efe910f5da3159efcc8ed60aa07672cd52a960d",
+   "at": "packages/pipeline/src/probing.ts:520:5",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c4b776839764067193e99f0c08312cb4e43022cb507d736c142e2f22eaaaf97b",
+   "at": "packages/pipeline/src/probing.ts:520:5",
+   "mutator": "EqualityOperator",
+   "replacement": "result.exitCode !== null",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1e82f71de0b0dcccbe5710bc8d691545ce4aea7b416185e17254e8ba774a2fc1",
+   "at": "packages/pipeline/src/probing.ts:520:76",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "00cc3a8f03d311bc3725947b026703622022506c7430cccdf8288b02ac06ee15",
+   "at": "packages/pipeline/src/probing.ts:523:39",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2331d415b9e93204124bfda4c7b44bf5f83c8681d84064d5677ef0e49b459a4b",
+   "at": "packages/pipeline/src/probing.ts:527:8",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e50dceb1671afe97c36fd35e831f77ff6a22ef3d6d0a75f7c45796bcd511d7f3",
+   "at": "packages/pipeline/src/probing.ts:527:8",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "d846d16d1d8b864dafef403211b79842fcac58203ed987d83c457914f4a6bc6d",
+   "at": "packages/pipeline/src/probing.ts:527:8",
+   "mutator": "EqualityOperator",
+   "replacement": "output !== \"\"",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "cb36c52d6e60563ef9af445acb105a071417c9260dabc2a73862985748744745",
+   "at": "packages/pipeline/src/probing.ts:548:29",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "609b212323882728106b17923ea5b40f84e79a00af28832b154d1baa6ed0db75",
+   "at": "packages/pipeline/src/probing.ts:550:23",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "33c4c99997397ea947885c1a003d135f5f4960cc4cbed5279ce1421b5f09294c",
+   "at": "packages/pipeline/src/probing.ts:551:21",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e22c78bd32e3b64d1995586e9514280cf8cdfc118e367e3731a10ba0845f7997",
+   "at": "packages/pipeline/src/probing.ts:551:50",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a2467a3c969c506ea5c375876c91aebc9d309d2f0126c372ce27bf4bf4815e83",
+   "at": "packages/pipeline/src/probing.ts:552:26",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "3d4c272f0fe1be4d834e4bfdd7c233d54ab1392d5c1b30cba24457dadd8d1f5f",
+   "at": "packages/pipeline/src/probing.ts:555:5",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1a0356ac309c0854b5dd926e8803768da852360e122efd7965cc5d2e939d5405",
+   "at": "packages/pipeline/src/probing.ts:555:28",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "58507eb928047ef036d7ebaba2d324b27fa9853bc1b82d507064388ce88800b1",
+   "at": "packages/pipeline/src/probing.ts:558:5",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "bf9e5ea82af8da92b2ae0693266c8bf4fd97c7a5b2178fb9785d470670457821",
+   "at": "packages/pipeline/src/probing.ts:558:30",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9082b27ff3dc87b74d289ece8476b7d1584be707e21f4d18a1934c80cd138026",
+   "at": "packages/pipeline/src/probing.ts:562:24",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9d9be13d1dc445861d913a60720c77d4049a9761e316b53e900db7df37dc09fa",
+   "at": "packages/pipeline/src/probing.ts:658:65",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7d02c1ac5c259289de56db7fe49a7f03676c979349588e075d7276b9b856fa85",
+   "at": "packages/pipeline/src/probing.ts:659:68",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "35b795e4aab2f69251fc0379d3949c97d2470f4e13f29653c44f03d00014ef68",
+   "at": "packages/pipeline/src/probing.ts:660:71",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "81c2f81a7d51ca3c38482c2b4c3a80810e76a322b4cc5f1536b028b6228e3ed5",
+   "at": "packages/pipeline/src/probing.ts:660:83",
+   "mutator": "BooleanLiteral",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "84bc9afdccc224ae55600e70f8b648cd642214bfe87c21d1daba657dac85f518",
+   "at": "packages/pipeline/src/probing.ts:661:65",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f98da0fcc1aeeae591d92ae11fb3ba83eb709c8562f8b50a91fb6749c9839a22",
+   "at": "packages/pipeline/src/probing.ts:661:78",
+   "mutator": "BooleanLiteral",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "d4315278ba746adb30436e7a91dcb5583903bf4397b8346d2d8113715572f614",
+   "at": "packages/pipeline/src/probing.ts:666:7",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+    "path": [
+     "gives the verifier's version the evidence renderings the golden holds"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1b1f4e3482b38f549b10fcd2adee4faa668bc53e3b329c64bf3e2f1d5f089ad3",
+   "at": "packages/pipeline/src/review.ts:2649:13",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "731b4996c9795a10c92a19fb34c55d5c0916cebcf14a71b9a7714d46353c9261",
+   "at": "packages/pipeline/src/review.ts:2664:4",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f00e9a160e080b6b35ea04a1d9f1f31d8c013cc7641f9bbd69cf1be6fa9c3501",
+   "at": "packages/pipeline/src/review.ts:2664:4",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "5d2a21c35e8e615986558ff8cf951f08f6001c645e48273036f0329e0dbb111f",
+   "at": "packages/pipeline/src/review.ts:2664:4",
+   "mutator": "EqualityOperator",
+   "replacement": "probing !== undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c141f8b3374a4c6c3bf59aa59d629bad409538da2281a15242bf3b47dc2fe4c0",
+   "at": "packages/pipeline/src/verification.ts:183:15",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-wording.test.ts",
+    "path": [
+     "the tests lens at a level that probes",
+     "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "3d858a10ad41f14888a23ef4e9c7767bc9fa24325b7a923ae80f059060aa8114",
+   "at": "packages/pipeline/src/verification.ts:183:15",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verification-waves.test.ts",
+    "path": [
+     "verification as each lens ends",
+     "reads no wave for a candidate no wave verified, in SQLite storage"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "dea19b3fe64382f2f050b6e9d214b0193feaa9b07287753d793c257ec2f3d8fc",
+   "at": "packages/pipeline/src/verification.ts:183:15",
+   "mutator": "EqualityOperator",
+   "replacement": "probe !== undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-wording.test.ts",
+    "path": [
+     "the tests lens at a level that probes",
+     "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "4965266fbe09b1ade7fb3ee063ee02e8dafb7adc11a5530f3112938a188edebf",
+   "at": "packages/pipeline/src/verification.ts:184:11",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "head": "98248e3f",
+   "test": {
+    "file": "packages/pipeline/test/verification-waves.test.ts",
+    "path": [
+     "verification as each lens ends",
+     "reads no wave for a candidate no wave verified, in SQLite storage"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "889bfb274f10f0994f11401e6d9eb10b1bc7dd7fa350044572c0accee20a365a",
+   "at": "packages/pipeline/src/verification.ts:185:11",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-wording.test.ts",
+    "path": [
+     "the tests lens at a level that probes",
+     "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a1e6d2d4cfc396c13b330ad3b73131b0644f464d1b8bf0185047a6c7c3eb5597",
+   "at": "packages/pipeline/src/verification.ts:185:12",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/probing-wording.test.ts",
+    "path": [
+     "the tests lens at a level that probes",
+     "plans, probes and is judged in wording of its own, its finding resting on a probe run again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "49e9429e1aab8b79d1e53572a61aaf09f019163f3bc294bd3d055c48652a2b96",
+   "at": "packages/pipeline/src/verification.ts:477:18",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f68ce89e165e06605ff1d973b55e4b91a8e40b4639a7593481d3fe6dbc879674",
+   "at": "packages/pipeline/src/verification.ts:512:60",
+   "mutator": "BlockStatement",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "cb49c630f5bc06ae83b624a5e32b2d70899a05bdc8230dc338f05fd7a4034336",
+   "at": "packages/pipeline/src/verification.ts:513:8",
+   "mutator": "MethodExpression",
+   "replacement": "source.check.endsWith(\"lens.\")",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7a17beabf9a350afcde1d1b07cd405dce8492c58135134e81aad236950cbcbf8",
+   "at": "packages/pipeline/src/verification.ts:513:43",
+   "mutator": "MethodExpression",
+   "replacement": "source.check",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a297206947e4b3b0b4629d7aa090079e1e608575942e29dd9ab90f9f7d005052",
+   "at": "packages/pipeline/src/verification.ts:537:4",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "25e7302ee9fc4542be5cfab840dbd538191473420feeafeaf56ee8a9eaf9a9c6",
+   "at": "packages/pipeline/src/verification.ts:538:4",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1be30a1e8027382884be1748df50fa0a1aff69552f4b79dfe228464aaa8cc934",
+   "at": "packages/pipeline/src/verification.ts:538:63",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "951d2559114ca4831d4d721b90ad328fc6f4e2eb525cf78cd0fcd174f9ddaf6a",
+   "at": "packages/pipeline/src/verification.ts:539:4",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "db91f59c3dd252608b5a5c37b7c223006474201ca54457aae4e9f3813138422d",
+   "at": "packages/pipeline/src/verification.ts:543:12",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "905f35abc18007e6d1dbba1e445e67d6112daf79255a0776c73274397644914c",
+   "at": "packages/pipeline/src/verification.ts:587:35",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "5ddb2a488b18e6876891809818b52940097afdd7b9b58494df51216bc8c44c51",
+   "at": "packages/pipeline/src/verification.ts:588:2",
+   "mutator": "MethodExpression",
+   "replacement": "candidate.state.claims",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "ddf981b1396e63e010065a3867b53da179981f1e14283490d152a67da54d0cf2",
+   "at": "packages/pipeline/src/verification.ts:589:11",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "53842579c89a16cb4a6d99bc15857dbfeb1b8c32b7e51a9608d2b70132009703",
+   "at": "packages/pipeline/src/verification.ts:589:22",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "48048d2c3f1b298a98b5472076e48311adda24c8fc4c4aeb98f088fef26017d8",
+   "at": "packages/pipeline/src/verification.ts:589:22",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "51996bc2a6fa1159069a796ae091fbc8d80b872bd65a54e1a260e416335e706d",
+   "at": "packages/pipeline/src/verification.ts:589:22",
+   "mutator": "EqualityOperator",
+   "replacement": "candidate.probes?.[probeClaimKey(claim)] === undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "6e3d7721ca79188e5a4faef3a6165822c0b663b6a90e461ec1f81b75460579b6",
+   "at": "packages/pipeline/src/verification.ts:589:22",
+   "mutator": "OptionalChaining",
+   "replacement": "candidate.probes[probeClaimKey(claim)]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a9a8df1b17a650cbc946df0fe0a60f9c44638222904361d2cb80ef9cc6c87652",
+   "at": "packages/pipeline/src/verification.ts:590:8",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9cdc8a95a9ba060d160f62e7c8a3f4f1ca9345a9812ac6609b14a746de7e7cb9",
+   "at": "packages/pipeline/src/verification.ts:599:7",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c90b3a91780276b1dc319ac5ae45744c075f6801347b43eaca6223d1a3a3a359",
+   "at": "packages/pipeline/src/verification.ts:599:7",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification no probe evidence reaches",
+     "keeps the key and the verifier's version main gave it"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2e40501b04a984ce718450a3511dbbfbc42e6f325ec4669afc207251e6f127dd",
+   "at": "packages/pipeline/src/verification.ts:599:7",
+   "mutator": "EqualityOperator",
+   "replacement": "judged.length !== 0",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "ed36062a841e007ac53d85b1a836822d7b095e55665bed98a8e5220ed741b562",
+   "at": "packages/pipeline/src/verification.ts:601:6",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7356a3cc7835d60dc809021220fd5291119955c003a25e8b4aa42520814d0fb2",
+   "at": "packages/pipeline/src/verification.ts:601:46",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f8a11dcbf95a9d828ad34d0876deadcc4ba15f830faeb2372eb4e2bbe9cbe4bb",
+   "at": "packages/pipeline/src/verification.ts:601:56",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "8ee372fe",
+   "test": {
+    "file": "packages/pipeline/test/verification-request.test.ts",
+    "path": [
+     "a verification of claims that rest on probes",
+     "keys the judgement of each probed claim's lens, and of no lens whose claims carry no probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  }
+ ]
+}
