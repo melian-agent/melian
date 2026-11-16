@@ -484,14 +484,20 @@ function candidateEvidence(candidate: VerificationCandidate, reruns: Record<stri
 	});
 }
 
-// What a cut candidate's verifier is shown, under the key's fixed nonce, or why it is asked nothing; nothing for
-// evidence that fits, which its probes and the reruns already key.
-function cutEvidence(candidate: VerificationCandidate, reruns: Record<string, ProbeRun>): string | undefined {
+// What a cut candidate's verifier is shown, or why it is asked nothing; nothing for evidence that fits, which its probes
+// and the reruns already key. It cuts under the review's nonce, as the prompt does, since quoting replaces the nonce in
+// the head's text and so changes its size, and then names the boundary by the key's fixed nonce.
+function cutEvidence(
+	candidate: VerificationCandidate,
+	reruns: Record<string, ProbeRun>,
+	nonce: string,
+): string | undefined {
 	const evidence = candidateEvidence(candidate, reruns);
-	const shown = boundProbeEvidence(evidence, identityNonce);
+	const shown = boundProbeEvidence(evidence, nonce);
 	if (shown === undefined) return unshown(candidate);
-	const whole = evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, identityNonce));
-	return shown.join("\n\n") === whole.join("\n\n") ? undefined : shown.join("\n\n");
+	const whole = evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, nonce));
+	if (shown.join("\n\n") === whole.join("\n\n")) return undefined;
+	return shown.join("\n\n").replaceAll(`untrusted-${nonce}`, `untrusted-${identityNonce}`);
 }
 
 function unshown(candidate: VerificationCandidate): string {
@@ -596,7 +602,7 @@ export function verificationRequest(
 ): KeyedRequest<RecordJson> {
 	const cuts = Object.fromEntries(
 		candidates.flatMap((candidate) => {
-			const cut = cutEvidence(candidate, reruns);
+			const cut = cutEvidence(candidate, reruns, nonce);
 			return cut === undefined ? [] : [[candidate.key, cut]];
 		}),
 	);

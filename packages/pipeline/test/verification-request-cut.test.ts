@@ -61,6 +61,20 @@ describe("verificationRequest's cut of probe evidence", () => {
 		expect(after.slice(2)).toEqual(before.slice(2));
 	});
 
+	// Codex's third review on this pull request: evidence holding the key's fixed nonce, here a script of zeroes, renders
+	// shorter under it than under the review's own nonce, so the key saw no cut where the verifier was shown one.
+	it("keys the cut the verifier is shown under the review's nonce, whatever the head's text holds", () => {
+		const zeroes = cutCandidate("lens.trust-boundary@1@deep", "3123456789abcdef", "0".repeat(probeEvidenceBudget - 100));
+		const under = (nonce: string) => {
+			const request = cutRequest([zeroes]);
+			return verificationRequest({ ...request, revision: { ...request.revision, nonce } }, cutReruns([zeroes]));
+		};
+		const { cuts } = under("n".repeat(24)).request as { cuts?: Record<string, string> };
+		expect(cuts?.[zeroes.key]).toMatch(/\n\[Melian cut \d+ bytes here\]\n/);
+		expect(cuts?.[zeroes.key]).not.toContain("n".repeat(24));
+		expect(under("m".repeat(24)).key).toBe(under("n".repeat(24)).key);
+	});
+
 	it("keys a candidate no cut fits by why it is asked nothing, the same under every cut that refuses it", () => {
 		const shown = keyOf(cut).key;
 		change.budget = 1;
