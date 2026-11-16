@@ -61,6 +61,7 @@ describe("runStands", () => {
 
 	it.each([
 		["the sandbox refused, which left no result", { attempts: ["p1", "p2"], probes: { p1: { result: result() } } }],
+		["the sandbox refused, as it refused every probe", { attempts: ["p1"] }],
 		["timed out", { attempts: ["p1"], probes: { p1: { result: result({ exitCode: null, timedOut: true }) } } }],
 		["was cut", { attempts: ["p1"], probes: { p1: { result: result({ truncated: true }) } } }],
 		[

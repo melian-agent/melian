@@ -2917,6 +2917,70 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("unlocks every provider once on each repeat while the sandbox keeps refusing a probing run's probes", async () => {
+		const fake = createFakeModels();
+		const unlocked: string[][] = [];
+		const refusing = unconfinedSandbox();
+		const options = {
+			fake,
+			sandbox: {
+				...refusing,
+				wrap: async (command: string, policy: Parameters<typeof refusing.wrap>[1]) => {
+					if (inHeadTree(command)) throw new Error("the sandbox refused the probe");
+					return refusing.wrap(command, policy);
+				},
+			},
+			unlockModels: async (providers: readonly string[]) => {
+				unlocked.push([...providers]);
+			},
+		};
+		const skipped = [
+			call("run_probe", { attack: 1, script: failing }),
+			call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+			fauxAssistantMessage("Reported 0 findings."),
+		];
+		await (await review({ planner: plan, prober: skipped }, options)).run;
+		const first = unlocked.splice(0);
+		const again = await review({ planner: plan, prober: skipped }, options);
+		await again.run;
+		// The repeat probes again, and unlocks what the first review did, once.
+		expect(again.requests[planner]).toHaveLength(2);
+		expect(unlocked).toEqual(first);
+	});
+
+	it("attaches a repeat review to a quick run that did not escalate to the level that probes", async () => {
+		const fake = createFakeModels();
+		const options = {
+			fake,
+			decider: new RecordedDecider(
+				{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+				{ name: "recorded" },
+			),
+			lens: (lens: Lens) =>
+				Lens.from({
+					...lens.toJSON(),
+					levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } },
+				}),
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: {
+					heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					medium: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+				},
+			},
+		};
+		const scripts = {
+			planner: [],
+			prober: [],
+			others: [{ match: reviewer, replies: [fauxAssistantMessage("Reported 0 findings.")] }],
+		};
+		const first = await review(scripts, options);
+		expect(record((await first.run).verdict)).toMatchObject({ status: "ran", level: "quick" });
+		const again = await review(scripts, options);
+		expect(record((await again.run).verdict)).toMatchObject({ status: "ran", level: "quick" });
+		expect(again.requests[reviewer]).toHaveLength(0);
+	});
+
 	it("runs a probing run a quick one escalates to again when its probing environment changes, as a first run does", async () => {
 		const fake = createFakeModels();
 		const { probe: _, ...plain } = finding("p0");
