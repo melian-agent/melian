@@ -25,9 +25,16 @@
 			"status": "generated",
 			"id": "f90cdc83b6301164f76344b8b34985692f111fea51828d54e41e60d5a0938441",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -40,9 +47,16 @@
 			"status": "generated",
 			"id": "ef6445ede306863d87b822aa6fdac5114389eafdd765798e247b42d0267dedc8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -55,9 +69,16 @@
 			"status": "generated",
 			"id": "99af443d9d5c7b8e02c42c7e3905a35b32ec2bf3cff49ac115b2d78082fae000",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -70,9 +91,16 @@
 			"status": "generated",
 			"id": "0dfda3eab9ffbd89e3fa0976c863f267f78e4a0a6e9c014aef6aef4fbf396e50",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check's version, which the installed tool's manifest names",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check's version, which the installed tool's manifest names"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -85,9 +113,16 @@
 			"status": "generated",
 			"id": "4dab71c9831b86c00bfa495e715fd575ddabe33547523523326d6b397d2d97ac",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the version 2.3.4 a check ran with",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the version 2.3.4 a check ran with"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -100,9 +135,16 @@
 			"status": "generated",
 			"id": "ee1776b19d1d6281fc79bf013ed2595188b9d24ecd32047d95e24cc92aa92581",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the version 2.3.4 a check ran with",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the version 2.3.4 a check ran with"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -115,9 +157,16 @@
 			"status": "generated",
 			"id": "f6b853892931b557d2c4feaaa6e23f90ce84f231551aeab77429ce0e6473cfb9",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the version unavailable a check ran with",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the version unavailable a check ran with"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -130,9 +179,16 @@
 			"status": "generated",
 			"id": "656b59b96c807b07615906a7b8aa7344f07f7647b619acadb9b424891cc17975",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check's version, which the installed tool's manifest names",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check's version, which the installed tool's manifest names"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -158,9 +214,16 @@
 			"status": "generated",
 			"id": "b15b814b240256fc5808d0d37089a61908242052ade3623cb9e1666d3061c99b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the version 2.3.4 a check ran with",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the version 2.3.4 a check ran with"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -173,9 +236,16 @@
 			"status": "generated",
 			"id": "847817d5f8fe9dcd150dc1673570e38cd932b8d4df208b57230b70b7d42545c2",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check's version, which the installed tool's manifest names",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check's version, which the installed tool's manifest names"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -188,11 +258,18 @@
 			"status": "generated",
 			"id": "422ae9f3cdebe1cbb00127111c269626607fb169809fd5066383bdbe57e5f111",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps a version of 64 characters and withholds one of 65",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps a version of 64 characters and withholds one of 65"
+					]
+				}
+			},
 			"survivorClasses": [
 				"numeric-bound"
-			],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			]
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -205,11 +282,18 @@
 			"status": "generated",
 			"id": "47bc82e822113d770a6cb3c97f0c265ae17f8811f80186afb0d65f5b41495597",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps a version of 64 characters and withholds one of 65",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps a version of 64 characters and withholds one of 65"
+					]
+				}
+			},
 			"survivorClasses": [
 				"numeric-bound"
-			],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			]
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -222,9 +306,16 @@
 			"status": "generated",
 			"id": "d0d30a70b67ddd032560585fc6e20c60e90c2d53878accd53e22021aaca9d3ec",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the version 2.3.4 a check ran with",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the version 2.3.4 a check ran with"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -237,9 +328,16 @@
 			"status": "generated",
 			"id": "6b203c67221b18f783b277076f9166a98d40bf63917b1f5a6e5061b4847135c8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check's version, which the installed tool's manifest names",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check's version, which the installed tool's manifest names"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -252,9 +350,16 @@
 			"status": "generated",
 			"id": "d2c4979f989c46bf8b3d583de81d7e61a5aec5c135554fa4039bb9b8bde49fe0",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a ran check's version, which the installed tool's manifest names",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a ran check's version, which the installed tool's manifest names"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -267,9 +372,16 @@
 			"status": "generated",
 			"id": "45f183a1f66bea3650b27f37d64d1ccb6535c6ebfb378cb38b8ed911cf86a2b8",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -282,9 +394,16 @@
 			"status": "generated",
 			"id": "575c72cdb55ac4b28d8f418b7ff95c0e7423c72e9847a33dfa04ae863eb6977a",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps a lens's own version where a finding's source names it",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps a lens's own version where a finding's source names it"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -310,9 +429,16 @@
 			"status": "generated",
 			"id": "038494f3d72232eb90bccd13522c51a9d0a3677d1e04d5666e71891c1ed79067",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -325,9 +451,16 @@
 			"status": "generated",
 			"id": "18a0fa862a23d55f3cd1f1c85b8a3de2729c00c48d95b3d7f29404efd299a511",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -340,9 +473,16 @@
 			"status": "generated",
 			"id": "c4baa9b2d1b9bbcddc128fe867ace8f9f62c63f90dcaa7f4b656086f5edf55a0",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -355,11 +495,18 @@
 			"status": "generated",
 			"id": "09889de7fa007106b15622f3f00ae0a518c9b8b8ba2a812d2cdd94dfdbf09d14",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > exports a sighting of a check that names no version as it was found",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"exports a sighting of a check that names no version as it was found"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
-			],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			]
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -372,9 +519,16 @@
 			"status": "generated",
 			"id": "6ccac21898d980f8479e60d9aa60ec777033cc83c9e5e6dfbe100e2882602840",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -387,9 +541,16 @@
 			"status": "generated",
 			"id": "4ad02709e820762ab7f5de06c3e8f86b89de31bac6101afc4de704e1be4933b8",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -402,9 +563,16 @@
 			"status": "generated",
 			"id": "bbeb3020f1de1353e442f9fcf6e3985373990686dffc0da78ea651b5c0280822",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -417,9 +585,16 @@
 			"status": "generated",
 			"id": "a4d3f6f4d2cda215f510c915d7ac0bcfc8c0f56d90f487ce48bd8eea4df50a50",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review-records.ts",
@@ -432,9 +607,16 @@
 			"status": "generated",
 			"id": "d333ce7e4af8981c9eb2f1bd789318f478b613b192fb69affa7c9d9c7682e4d2",
 			"claim": "new-test",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a tool version that names a finding's source, wherever the finding goes",
-			"survivorClasses": [],
-			"result": "killed: the named test failed alone with the mutant applied and passed alone without it"
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
 		}
 	],
 	"total": 28,
