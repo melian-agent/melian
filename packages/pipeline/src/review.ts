@@ -66,14 +66,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
-import {
-	type CheckRun,
-	type CheckRunRecord,
-	checksExtensionFor,
-	type RunIdentity,
-	runChecks,
-	type WriterTrust,
-} from "./checks.ts";
+import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
