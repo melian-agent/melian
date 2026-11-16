@@ -2,7 +2,7 @@
 
 [Issue #529](https://github.com/melian-agent/melian/issues/529): a head could switch off an Enola check by adding `enola/recipes/<name>.yaml` under the name of a recipe Enola ships. Enola reads that file in place of its own recipe, and neither Melian's policy pattern nor the runner's removals named `enola/recipes/`. So a base that binds the shipped `layered` recipe lost `lay/infrastructure-does-not-drive-the-domain` to a head's copy without that rule, and no policy notice was raised.
 
-Core now lists every path Enola reads policy from, in `enolaPolicyFiles` and `enolaPolicyDirectories`. The policy pattern is built from that list, and so is the runner's removal of the head's copies. [The decision](../decisions/2026-11-16-enola-policy-paths-come-from-enola.md) says how the list was established, by asking the pinned Enola 0.4.40, and why Markdown stays out.
+Core now lists the paths whose base copies replace the head's before Enola runs, in `enolaPolicyFiles` and `enolaPolicyDirectories`. The policy pattern is built from that list, and so is the runner's removal of the head's copies. [The decision](../decisions/2026-11-16-enola-policy-paths-come-from-enola.md) says how the list was established, by asking the pinned Enola 0.4.40, and why Markdown stays out.
 
 Failing tests first, at e5648b2e with the tests alone: four failed for the reported reason. `isPolicyFile` refused `enola/recipes/layered.yaml`; `EnolaPolicy.load` left the recipe out; `differs` missed a head that added one; and the fake Enola exited 9 because the head's recipes reached it. All passed after the fix.
 
