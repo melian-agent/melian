@@ -555,7 +555,7 @@ describe("review payload checks", () => {
 			"keeps the findings of lens.security out of order, or one twice",
 			{ producers: [{ check: "lens.security", version: "abc@quick", ids: [dismissed, dismissed] }] },
 		],
-	])("refuses an account that %s", (reason, fields) => {
+	])("refuses an account that %s, case %#", (reason, fields) => {
 		expect(check("account", { ...account, ...fields } as RecordJson)).toBe(reason);
 	});
 
