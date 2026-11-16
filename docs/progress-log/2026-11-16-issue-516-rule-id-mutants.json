@@ -1,0 +1,996 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "b34106bb1469eec2b69849100f4ac39f40c3ace8",
+		"head": "8f99c01edd25eed633b9765e88cddf0719401f7b"
+	},
+	"claimsIn": [
+		"packages/core/src/enola.ts",
+		"packages/pipeline/src/enola-static.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 66,
+			"column": 32,
+			"endLine": 69,
+			"endColumn": 8,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "40bc8eda8ddefa782c9ea6d694ba33fb51b24b65cf0946d41d51426657c4afbc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 3,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "aa3419f57a0b64f620f9e92f1c6af800ebfc5a8138ee36338295e8bdbd7f6b4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 3,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6f53205a9d0560de4fa619790e10c772251c5f4ae6297e4cf76bee7c0d7831f0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 3,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "LogicalOperator",
+			"replacement": "file.path.startsWith(\"enola/constraints/\") && file.path === \"enola-intent.yaml\"",
+			"status": "generated",
+			"id": "9929608a4f016ae1f7f6ca243d02031e0457e978faf9a1ff052a5fb1befb5462",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 3,
+			"endLine": 67,
+			"endColumn": 45,
+			"mutatorName": "MethodExpression",
+			"replacement": "file.path.endsWith(\"enola/constraints/\")",
+			"status": "generated",
+			"id": "6cc9e4f1241866b590df006bc5b871e6b430c08ef83946daded19eece93c7b32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 24,
+			"endLine": 67,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "67fde7472d81ddefedffa7278f8b62993841f2499388aa8ac5ab0d583d3ecd1c"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 49,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3e95545064e6240b07845089d02eb71b49472899d6f418ed3fe8f5e584f85c8d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 49,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "EqualityOperator",
+			"replacement": "file.path !== \"enola-intent.yaml\"",
+			"status": "generated",
+			"id": "9ea7804ad59918c10711fc493d3dbdeaa6f3459f8392c3d92e8f2bd52eb3e481",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 67,
+			"column": 63,
+			"endLine": 67,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0fdc58bc98d6a535471977a68c996d59934b5fb6cbeb25ae4ae997922375b8e3"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 69,
+			"column": 6,
+			"endLine": 69,
+			"endColumn": 8,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "0e326fc0f3698c6c322591653881eae69038a8eb5ab8004d666a80138acbd4b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 82,
+			"column": 25,
+			"endLine": 88,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6e29fcdadf6e14e99e4982e5351931d4c5a0701f06000b60ca31a88b87a56acf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"orders policy inputs before hashing and leaves configuration-only policy out of the gate"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 87,
+			"column": 10,
+			"endLine": 87,
+			"endColumn": 36,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(rules)]",
+			"status": "generated",
+			"id": "18678b6588b89b94cc5c595e9dc975883172c161367ae52259e1452703a633e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 87,
+			"column": 10,
+			"endLine": 87,
+			"endColumn": 29,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d4282de8c55b63158ea8b2c32da37d79e14d1d4add44c320a64004b0592ab683",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 119,
+			"column": 47,
+			"endLine": 132,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "77fe9fbecb3e27b4b5b0389a61ddb5e635203e287fb3d194221f73c05dab623e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 121,
+			"column": 5,
+			"endLine": 123,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e846f0dc33604dba9b4ae4b19caaa45e1ab4c828c477a659700b47edd089efc1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 123,
+			"column": 9,
+			"endLine": 125,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "07a2474c1c516da3995627cc4ead7e39541eae9a8bd1b5d8d465fb72a0c16ef4",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Emptying the catch in declaredRules leaves value unset, so the next line reads undefined?.rules and returns [], as the catch does."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 124,
+			"column": 9,
+			"endLine": 124,
+			"endColumn": 11,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "8d01ea62b80a10fa5356246ba288098bada1975d5a03871346603ab15a05fcaa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 126,
+			"column": 15,
+			"endLine": 126,
+			"endColumn": 59,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(value as {\n  rules?: unknown;\n} | null).rules",
+			"status": "generated",
+			"id": "289cbd47c925ed65d0da1cb4144ff2f2805e65eac300cfb8ae4244b56d5ec579",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 26,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "Array.isArray(rules)",
+			"status": "generated",
+			"id": "dc57d2f8403b16704047a1e3571fe862ac230f43871be93a565d4bebf7e4263c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"turns on the constraint gate for a top-level rules or recipes key in the intent file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "83eb4916738dd0379d5382f438a5720c5d1aabafeba45726d435855e1c3e4e08",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e8eb486d515aa1ba6be716945925ef9e2c1eeaf82b410b75fd759c0a5f7cf575",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"turns on the constraint gate for a top-level rules or recipes key in the intent file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 127,
+			"column": 35,
+			"endLine": 127,
+			"endColumn": 37,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "28132330f5b23545c491a6a5ae0dff116e0bfcf661b86ff11d9dc15437aa84df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 128,
+			"column": 41,
+			"endLine": 131,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f853899dc96eaa27384857a7f939142fd611cff9928362389305850d0661fca7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 129,
+			"column": 13,
+			"endLine": 129,
+			"endColumn": 50,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(rule as {\n  id?: unknown;\n} | null).id",
+			"status": "generated",
+			"id": "3484fd53d41dc78dbff54aa0d8947be3a56db574d6010784b046892fc69807d2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 9,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0d7e33e9f2d59aad187f378a89be5054767f0f981d09eae212ac41e9564072b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 9,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e73fc1ba951b079cae553e1c697d1eeffcfa84d40ade5d0ccf89b8f60d532810",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 9,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "typeof id === \"string\" || id !== \"\"",
+			"status": "generated",
+			"id": "ab3b6902fd5d12d26fbafa6f23c3ea6c2143459a1670249c2075ee48b38f607a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 9,
+			"endLine": 130,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "633066be32de61db55650f4c36bf27b7abdb0ff1a179776c6a6c74140907286b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 9,
+			"endLine": 130,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof id !== \"string\"",
+			"status": "generated",
+			"id": "175fbe20bd831c72d5bb8f85d1f55b15422c1fe3d824f79351f3ad2f7610005c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 23,
+			"endLine": 130,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fab7ea1846f031fb707a2f729221ec41b5dff2e7397fa624ee0d42c338b02d0"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 35,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "38063c8d6085258f28d7c78a7578f78f7f511e68ebaf7eb5e79c6c503ea42c9a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 35,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "id === \"\"",
+			"status": "generated",
+			"id": "c5c85a694fbfbf3a30090353661ec4e6a28c71a8729d7b1f9a7e9b68cc37146b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 42,
+			"endLine": 130,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "156e447e850cb213e477d841576148ea871854761bf3d8e9f62500f6133f232b"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 47,
+			"endLine": 130,
+			"endColumn": 51,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5b5c33a81244fa1fa45b6532a4edcd9d1ba00e160382216dd8a7ce81f97f34a5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 130,
+			"column": 54,
+			"endLine": 130,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "dfb2b4bc11a64157e37882b65b8cf90c25ce0fb1a8e732b8a0715fb1959052a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"reads the rule IDs the policy's constraint and intent files declare, and no other file's"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 164,
+			"column": 8,
+			"endLine": 170,
+			"endColumn": 8,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e39e8ff4cbf218b5ffac9af73c89b18abffc59a46ffe30bf38df2f2c2778661b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 165,
+			"column": 16,
+			"endLine": 165,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2839e5e3daa2788a74a36eee8ae938e722b7427d536ecb6d32037332848901fa"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 165,
+			"column": 24,
+			"endLine": 165,
+			"endColumn": 93,
+			"mutatorName": "MethodExpression",
+			"replacement": "createHash(\"sha256\").update(result.ruleId).digest(\"hex\")",
+			"status": "generated",
+			"id": "8bfea92af79a9edaa2e656f2dc4082ed40b2fec2bb88f2a3a6783af0b5a55b9a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 165,
+			"column": 35,
+			"endLine": 165,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0b0ba7cd3a1c12a2ed942646fc2f4c8a22fe4b9817e95d97bccc9f06c8c9c066"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 165,
+			"column": 74,
+			"endLine": 165,
+			"endColumn": 79,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "11a008ae56d94012ab070cef725965700bf1f750f2f9b9c46ade4157923113aa"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 166,
+			"column": 17,
+			"endLine": 169,
+			"endColumn": 9,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a612cfdf5f7e5a2b346fdaa9e1627a86fc47d3c565ae68aef00aa7267b4e1545",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 168,
+			"column": 15,
+			"endLine": 168,
+			"endColumn": 140,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e0da370fc61a79a2f938ad6444d08515d7218f51e4225e4b0237df5455239859"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 168,
+			"column": 118,
+			"endLine": 168,
+			"endColumn": 137,
+			"mutatorName": "LogicalOperator",
+			"replacement": "message?.text && \"\"",
+			"status": "generated",
+			"id": "0198a456da0a5c4c75a125b71fcaf5e6df043a416e34ab7949d52ed6f3921ecf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 168,
+			"column": 118,
+			"endLine": 168,
+			"endColumn": 131,
+			"mutatorName": "OptionalChaining",
+			"replacement": "message.text",
+			"status": "generated",
+			"id": "c7e9dfa98de736a6869dafd5ef12b19a250cbc470c33a63f82fba04a0d661171",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 168,
+			"column": 135,
+			"endLine": 168,
+			"endColumn": 137,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d407748e050181f8d198d79ace93763b854635141d861e44d048a9df8b6eb40b"
+		},
+		{
+			"file": "packages/pipeline/src/enola-static.ts",
+			"line": 213,
+			"column": 40,
+			"endLine": 213,
+			"endColumn": 72,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "561ef7178ff9deebd7bc855bc8e5dd2363e116b57508d07255a478e23ed7422e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/enola-static.test.ts",
+					"path": [
+						"static.enola",
+						"retains a caller query rejection: Error: query refused"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 46,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -1,0 +1,9 @@
+# Issue #496: a check record's request comes from the run it exports
+
+Melian's design lens, in a round on [pull request #524](https://github.com/melian-agent/melian/pull/524), found that `reviewChangeset` took the request that keys each check's shared record as `checkRequest`, an option beside `checkRun`, and nothing bound the two. A caller could pass one run's identity and records with another run's request, and the records were then keyed by a request that did not produce them. Of the identity guideline's four failures, this was "a label stands in for identity": the key came from a field beside the value, not from the value.
+
+`ReviewOptions` now takes the run whole, `checkRun: CheckRun`, which holds its identity, its request and its records, as `runChecks` returns them. It has no `checkRequest`, and a review given a run cannot also be given bare records, so no caller can pair one run with another's request or another's records. The CLI passes the run it ran. A review given bare records, with no run, still keys them on `request: null`, which answers no lookup.
+
+The failing test came first. `packages/pipeline/test/review-records-export.test.ts`'s "takes its request from the run it exports" reviews a run whose request differs from the default past the identity's prefix, and asserts each record's key is that run's request. It also asserts with `expectTypeOf` that `ReviewOptions` has no `checkRequest`. At cd6f1fb8 the run failed for the reported reason, every record keyed on no request, and `tsc` failed on the type assertion. After the fix both pass.
+
+The [mutant inventory](2026-11-16-issue-496-run-request-mutants.json) lists the 30 mutants of commit 59193e7e. Each was run by hand against its named test alone, after that test passed unmutated, and all 30 were killed. The `LogicalOperator` mutant at `review.ts:2390` was applied with parentheses, since the unparenthesised form does not parse.
