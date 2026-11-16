@@ -34,3 +34,7 @@ One level above the route's suits Claude because Claude's `medium` still calls t
 - Stored lens, verification, triage and walkthrough requests do not match the new routes, so the first review of each head after the change asks every lens on a changed route again once. A new head runs every lens anyway.
 - A failover run on Claude costs more per run, since a run that calls its tools reads more and writes more. Sonnet 5.5 is $2 a million input tokens and $10 a million output; Opus 5.5 is $4 and $20. A run at `low` that read nothing cost little because it reviewed nothing. The live check in [issue #489](https://github.com/melian-agent/melian/issues/489) measures the difference on one golden.
 - The lens task, the verification task and the verdict document take their next versions, since their stored routes may now hold a level per model and lineage the level that answered. Each version gets a reopen test from a fixture its previous version's code recorded.
+
+## Limits
+
+- Lineage exists only for a check that left the committed route, so the answering level is recorded only there. A committed fallback inside `accept` leaves no lineage, and its level is not on the check record. That level is still in the review's telemetry, which names the model and level each conversation ran at. Recording it on every record would change every existing verdict's fingerprint and the list of checks that left the routes.
