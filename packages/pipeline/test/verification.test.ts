@@ -2798,6 +2798,22 @@ describe("verification ownership and budgets", () => {
 		expect(next).not.toBe(first);
 		await harness.waitForTask(next, context);
 	});
+	it("unlocks the candidates' routes for a revision's first verification", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+		}, context);
+		scripts();
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const task = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(unlock.mock.calls).toEqual([[["faux"]]]);
+		await harness.waitForTask(task, context);
+	});
 	it("keeps credentials locked for a verification task it attaches to while the task still runs", async () => {
 		const stored = await input();
 		stored.version = "v1";
@@ -2826,6 +2842,156 @@ describe("verification ownership and budgets", () => {
 		} finally {
 			release.resolve();
 			await harness.waitForTask(first, context);
+		}
+	});
+	it("unlocks the candidates' routes when it read a task to attach to and another verification meanwhile replaced it", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		scripts();
+		scripts();
+		const getTask = harness.getTask.bind(harness);
+		let racer: TaskId | undefined;
+		// Once this call has read the finished task it means to attach to, a verification of another version replaces it,
+		// so this call's commit finds an index entry its read never saw and creates a task of its own.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (racer === undefined && args[0] === first)
+				racer = (await startVerification(harness, { ...stored, version: "v2" }, selection, false, context))!;
+			return read;
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(next).not.toBe(first);
+		expect(next).not.toBe(racer);
+		expect(unlock.mock.calls).toEqual([[["faux"]]]);
+		await harness.waitForTask(racer!, context).catch(() => undefined);
+		await harness.waitForTask(next, context);
+	});
+	it("unlocks the candidates' routes when it read a failed task to attach to and a rerun meanwhile replaced it with a live one", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		// Every verifier model is refused, so the finished task's results read as failed.
+		const refused = () => true;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context, refused))!;
+		await harness.waitForTask(first, context);
+		const held = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						await held.promise;
+						return scriptVerifier(messages);
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const getTask = harness.getTask.bind(harness);
+		let racer: TaskId | undefined;
+		// Once this call has read the failed task it means to attach to, a rerun replaces it with a live task of the same
+		// request, which this call's commit would attach to with no credential unlocked.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (racer === undefined && args[0] === first)
+				racer = (await startVerification(harness, stored, selection, true, context, refused))!;
+			return read;
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		try {
+			const next = await startVerification(harness, stored, selection, false, context, refused, unlock);
+			expect(racer).not.toBe(first);
+			expect(next).toBe(racer);
+			expect(unlock.mock.calls).toEqual([[["faux"]]]);
+		} finally {
+			held.resolve();
+			await harness.waitForTask(racer!, context).catch(() => undefined);
+		}
+	});
+	it("unlocks the candidates' routes when it read a task to attach to and the index meanwhile lost its verification", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		scripts();
+		const root = await harness.root(context);
+		const getTask = harness.getTask.bind(harness);
+		let raced = false;
+		// Once this call has read the finished task it means to attach to, another review's triage drops the revision's
+		// verification, so this call's commit finds none.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (!raced && args[0] === first) {
+				raced = true;
+				await root.commit(async (tx) => {
+					delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+				}, context);
+			}
+			return read;
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(next).not.toBe(first);
+		expect(unlock.mock.calls).toEqual([[["faux"]]]);
+		await harness.waitForTask(next, context);
+	});
+	it("unlocks the candidates' routes when it read a live task to attach to and that task meanwhile ended aborted", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		const held = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						await held.promise;
+						return scriptVerifier(messages);
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		const getTask = harness.getTask.bind(harness);
+		let raced = false;
+		// Once this call has read the live task it means to attach to, that task is aborted, so this call's commit finds
+		// nothing to attach to and creates a task its read never planned.
+		vi.spyOn(harness, "getTask").mockImplementation(async (...args) => {
+			const read = await getTask(...args);
+			if (!raced && args[0] === first) {
+				raced = true;
+				await harness.abortTask(first, context);
+				held.resolve();
+				await harness.waitForTask(first, context).catch(() => undefined);
+				scripts();
+			}
+			return read;
+		});
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		try {
+			const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+			expect(next).not.toBe(first);
+			expect(unlock.mock.calls).toEqual([[["faux"]]]);
+			await harness.waitForTask(next, context);
+		} finally {
+			held.resolve();
 		}
 	});
 	it("starts a final verification for a revision the index holds no entry for", async () => {
