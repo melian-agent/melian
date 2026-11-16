@@ -38,6 +38,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { blindCallers } from "../src/caveats.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
+import { MutationEnumerationError, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -560,5 +561,54 @@ describe("a repeat review copies a lens run only from a task shown the same call
 			Object.entries(again.callers?.notes ?? {}).map(([key, notes]) => [key.split("@")[0], notes]),
 		);
 		expect(notes).toEqual({ contracts: [], correctness: [failed] });
+	});
+});
+
+describe("a repeat review keys the instrumenter that answers list_mutants", () => {
+	const listing: LensToolName[] = ["read_file", "search", "list_mutants"];
+	const instrumenter = (toolVersion: string, source: "checkout" | "melian") =>
+		vi
+			.spyOn(TypeScriptMutationAdapter, "open")
+			.mockResolvedValue({ identity: { toolVersion }, source } as unknown as TypeScriptMutationAdapter);
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("asks only the lens offered list_mutants again when the instrumenter's version or its source changes", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		instrumenter("10.0.0", "checkout");
+		await review(offered);
+		expect((await review(offered)).asked).toEqual([]);
+		instrumenter("10.1.0", "checkout");
+		expect((await review(offered)).asked).toEqual(["contracts"]);
+		instrumenter("10.1.0", "melian");
+		expect((await review(offered)).asked).toEqual(["contracts"]);
+	});
+
+	it("keys an instrumenter that cannot be found as unavailable, apart from one that can", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockRejectedValue(
+			new MutationEnumerationError("instrumenter", "Stryker's instrumenter is unavailable"),
+		);
+		expect((await review(offered)).asked).toEqual(["contracts", "correctness"]);
+		instrumenter("10.0.0", "checkout");
+		expect((await review(offered)).asked).toEqual(["contracts"]);
+	});
+
+	it("fails the review on any other failure to resolve the instrumenter", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		const refusal = new MutationEnumerationError("policy", "the base's policy cannot be read");
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockRejectedValue(refusal);
+		await expect(review(offered)).rejects.toBe(refusal);
+	});
+
+	it("resolves the instrumenter once a review, and not at all when no lens is offered list_mutants", async () => {
+		const open = instrumenter("10.0.0", "checkout");
+		await review(lenses.map((lens) => Lens.from({ ...lens.toJSON(), tools: listing })));
+		expect(open).toHaveBeenCalledTimes(1);
+		open.mockClear();
+		await review(lenses);
+		expect(open).not.toHaveBeenCalled();
 	});
 });
