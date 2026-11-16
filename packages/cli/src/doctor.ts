@@ -390,21 +390,9 @@ async function trustCheck(
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined)
 		return { name, state: "warn", detail: "not inside a git repository; root policy is unknown" };
-	let base: { ref: string; commit: string } | undefined;
-	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
-		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
-		if (commit !== undefined) {
-			base = { ref, commit };
-			break;
-		}
-	}
-	if (base === undefined) return { name, state: "warn", detail: "no committed root policy is available" };
-	let writers: boolean;
-	try {
-		writers = (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers;
-	} catch (error) {
-		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
-	}
+	const policy = await committedTrust(root);
+	if ("unknown" in policy) return { name, state: "warn", detail: policy.unknown };
+	const { base, writers } = policy;
 	let state: Check["state"] = writers && base.ref !== "HEAD" && base.ref !== "main" ? "ok" : "warn";
 	const details = [`writers trusted: ${writers ? "yes" : "no"}; policy ${base.ref} (${base.commit.slice(0, 7)})`];
 	if (!writers) details.push("a trusted host must set the status");
@@ -466,6 +454,47 @@ async function trustCheck(
 	}
 }
 
+// The committed root policy's `trust.writers`, from the first base ref that resolves. Doctor never fetches the refs.
+async function committedTrust(
+	root: string,
+): Promise<{ base: { ref: string; commit: string }; writers: boolean } | { unknown: string }> {
+	let base: { ref: string; commit: string } | undefined;
+	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
+		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
+		if (commit !== undefined) {
+			base = { ref, commit };
+			break;
+		}
+	}
+	if (base === undefined) return { unknown: "no committed root policy is available" };
+	try {
+		return {
+			base,
+			writers: (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers,
+		};
+	} catch (error) {
+		return { unknown: visibleText(error instanceof Error ? error.message : String(error)) };
+	}
+}
+
+// Whoever can push to the record branch can add, rewind or remove what a review and the merge gate read, so the line
+// says whom the committed policy trusts to write it. Doctor cannot read who may push, so trust off is a warning.
+async function recordTrust(root: string): Promise<{ state: Check["state"]; detail: string }> {
+	const policy = await committedTrust(root);
+	if ("unknown" in policy)
+		return {
+			state: "warn",
+			detail: `who may write it is unknown, since the trust policy cannot be read: ${policy.unknown}`,
+		};
+	const source = `trust.writers in ${policy.base.ref} (${policy.base.commit.slice(0, 7)})`;
+	return policy.writers
+		? { state: "ok", detail: `its writers are trusted as the repository's writers, by ${source}` }
+		: {
+				state: "warn",
+				detail: `${source} is off, so only the trusted host may write melian/state; doctor cannot check who may push to it`,
+			};
+}
+
 // A file on the record branch that Melian did not write refuses calls until a writer removes it, so the line names it.
 async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
 	const name = "records";
@@ -473,6 +502,20 @@ async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Ch
 	if (root === undefined) return undefined;
 	const remote = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
 	if (remote === undefined) return undefined;
+	const trust = await recordTrust(root);
+	const branch = await branchContents(root, remote, env);
+	return {
+		name,
+		state: branch.state === "ok" ? trust.state : "warn",
+		detail: `${branch.detail}; ${trust.detail}`,
+	};
+}
+
+async function branchContents(
+	root: string,
+	remote: string,
+	env: NodeJS.ProcessEnv,
+): Promise<{ state: Check["state"]; detail: string }> {
 	let store: GitRecordStore | undefined;
 	try {
 		store = await GitRecordStore.open({
@@ -482,20 +525,15 @@ async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Ch
 		});
 		const strays = await store.strays();
 		if (strays.length === 0)
-			return {
-				name,
-				state: "ok",
-				detail: "melian/state holds only records and cells Melian wrote, or is not there yet",
-			};
+			return { state: "ok", detail: "melian/state holds only records and cells Melian wrote, or is not there yet" };
 		const shown = strays.slice(0, 5).map((path) => visibleText(path));
 		const more = strays.length > shown.length ? `, and ${strays.length - shown.length} more` : "";
 		return {
-			name,
 			state: "warn",
 			detail: `melian/state holds ${strays.length === 1 ? "a file" : `${strays.length} files`} Melian did not write, which a writer must remove: ${shown.join(", ")}${more}`,
 		};
 	} catch (error) {
-		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
+		return { state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
 	} finally {
 		await store?.close();
 	}
