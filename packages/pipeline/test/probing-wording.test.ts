@@ -97,8 +97,9 @@ const probing: ScriptedReply[] = [
 const planner = "Your role at this level: the attack planner";
 const prober = "You are the prober for the tests lens";
 
-// Reviews the change with the tests lens at a level that probes, its planner and prober answering from the scripts.
-async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
+// Reviews the change with the tests lens at a level that probes, its planner and prober answering from the scripts. A
+// `name` other than tests renames the lens, which then probes in the tests lens's words, as one that extends it would.
+async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[], name = "tests") {
 	const changeset = await Changeset.resolve(repo, "main...feature");
 	const policy = { kind: "revision", commit: changeset.revision.base } as const;
 	const paths = changeset.revision.paths();
@@ -106,7 +107,7 @@ async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
 	const ref = fake.ref();
 	const requests = scriptConversations(fake, [
 		{ match: planner, replies: planned },
-		{ match: prober, replies: probed },
+		{ match: `You are the prober for the ${name} lens`, replies: probed },
 	]);
 	harness = await openReviewHarness(createMemoryStorage(), fake.review, {
 		retry: false,
@@ -114,7 +115,12 @@ async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
 	});
 	const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
 		lens.name === "tests"
-			? Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } })
+			? Lens.from({
+					...lens.toJSON(),
+					name,
+					...(name === "tests" ? {} : { probesAs: "tests" }),
+					levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } },
+				})
 			: lens,
 	);
 	const { verdict } = await reviewChangeset({
@@ -122,8 +128,8 @@ async function reviewTests(planned: ScriptedReply[], probed: ScriptedReply[]) {
 		changeset,
 		config: {
 			...defaultConfig,
-			tiers: { full: ["lens.tests"] },
-			lenses: { tests: { level: { floor: "deep" } } },
+			tiers: { full: [`lens.${name}`] },
+			lenses: { [name]: { level: { floor: "deep" } } },
 			models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
 		},
 		lenses,
@@ -234,6 +240,19 @@ describe("the tests lens at a level that probes", () => {
 		const { requests } = await reviewTests([fauxAssistantMessage("Nothing."), ...planning], probing);
 		const reminder = textOf(requests[planner]![1]!.at(-1)!);
 		expect(reminder).toBe(lensProbingWording.get("tests")!.recordPlan);
+	});
+
+	it("judges the probed claim of a lens of another name in the words of the lens it probes as", async () => {
+		const { verdict, requests } = await reviewTests(planning, probing, "tests-probes");
+
+		expect(
+			verdict
+				.counted()
+				.map((each) => [each.ruleId, each.properties.source.check, each.properties.verification?.verdict]),
+		).toEqual([["untested-behaviour", "lens.tests-probes", "confirmed"]]);
+		const judged = systemPromptOf(requests["Melian adversarial verifier"]![0]!);
+		expect(judged).toContain(lensProbingWording.get("tests")!.judge);
+		expect(judged).not.toContain(lensProbingWording.get("trust-boundary")!.judge);
 	});
 
 	it("has a probe whose test fails unchanged exit 125, which reports no finding and refutes none", async () => {
