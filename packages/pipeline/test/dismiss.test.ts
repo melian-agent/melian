@@ -1285,7 +1285,7 @@ describe("recording a dismissal", () => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const known = index.reviews[key]!.adjudication!;
 			const { resolutionPolicy, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(older);
 		}, context);
 
@@ -1328,6 +1328,68 @@ describe("recording a dismissal", () => {
 		});
 	});
 
+	describe("a review stored with a fingerprint of an older computation", () => {
+		async function dismissStoredWith(fingerprint: string, source: "revision" | "worktree") {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const policy =
+				source === "revision" ? { kind: "revision" as const, commit: changeset.revision.base } : { kind: "worktree" as const };
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy,
+			});
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
+				const input = JSON.parse(known.input) as AdjudicationTaskInput;
+				expect(input.resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
+				known.input = JSON.stringify({ ...input, resolutionPolicy: fingerprint });
+			}, context);
+			const id = findings[0]!.properties.id;
+			return { id, recorded: dismiss(harness, id) };
+		}
+
+		it("decides the dismissal again under the current computation when the policy came from a commit", async () => {
+			const { id, recorded } = await dismissStoredWith("2:0000000000000000", "revision");
+
+			expect((await recorded).verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
+		it("refuses when the policy is the working tree, which may have changed since", async () => {
+			const { recorded } = await dismissStoredWith("2:0000000000000000", "worktree");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a fingerprint of the retired recipe, which names no version, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a fingerprint of the current computation that differs, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("3:0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+	});
+
 	it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
@@ -1346,7 +1408,7 @@ describe("recording a dismissal", () => {
 		await root.commit(async (tx) => {
 			const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
 			const { policy: _, ...input } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(input.resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(input.resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(input);
 		}, context);
 		writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });

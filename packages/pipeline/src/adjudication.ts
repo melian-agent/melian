@@ -22,7 +22,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
-import { configsFor } from "./configurations.ts";
+import { configsFor, fingerprintVersion } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
@@ -261,9 +261,19 @@ export const AdjudicationTask = defineTask<
 			try {
 				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
 				// The input names the policy the review read. A working tree can change before this phase runs, as after a
-				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
+				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input. A
+				// commit's policy cannot change, so a fingerprint an older computation made decides again under this one, by
+				// the maintainer's ruling of 2026-11-17 on issue #502. A fingerprint with no version stays refused, by the
+				// ruling of 2026-10-24 that retired it.
 				const { resolutionPolicy } = task.input;
-				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
+				const version = resolutionPolicy?.match(/^\d+:/)?.[0];
+				const olderComputation = policy?.kind === "revision" && version !== undefined && version !== fingerprintVersion;
+				if (
+					policies !== undefined &&
+					resolutionPolicy !== undefined &&
+					!olderComputation &&
+					policies.fingerprint !== resolutionPolicy
+				) {
 					throw new ConfigError(
 						"invalidValue",
 						repoRoot,

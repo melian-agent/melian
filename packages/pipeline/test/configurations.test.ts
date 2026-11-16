@@ -343,7 +343,7 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		it("is a fixed value for a repository with no findings", async () => {
 			const sha = commit(repo, { "melian.yaml": lines("resolution:", "  P2: acknowledge") });
 			const none = await fingerprintOf(sha, []);
-			expect(none).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(none).toMatch(/^3:[0-9a-f]{16}$/);
 			expect(await fingerprintOf(sha, [])).toBe(none);
 		});
 	});
@@ -376,7 +376,7 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		const findings = [finding(), finding({ file: "docs/guide.md" })];
 		const read = async (order = findings) => (await configsFor(repo, policy, order)).fingerprint;
 		const first = await read();
-		expect(first).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(first).toMatch(/^3:[0-9a-f]{16}$/);
 		expect(await read()).toBe(first);
 		expect(await read([...findings].reverse())).toBe(first);
 		// Only a check entry changes: the merged table, which holds no checks, reads the same.

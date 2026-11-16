@@ -393,7 +393,7 @@ describe("a round decided under another policy", () => {
 
 	it("decides as the review did when the reader holds the policy the review decided under", async () => {
 		const reviewed = await review(exported(), { policy: worktree });
-		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 		expect(reviewed.verdict.status).toBe("findings");
 		expect((await readUnder(reviewed, worktree)).toJSON()).toEqual(reviewed.verdict.toJSON());
 	});
@@ -404,7 +404,7 @@ describe("a round decided under another policy", () => {
 		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
 		const verdict = await readUnder(reviewed, worktree);
 		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
-		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(readsUnder).toMatch(/^3:[0-9a-f]{16}$/);
 		expect(readsUnder).not.toBe(decidedUnder);
 		refusedWith(
 			verdict,
