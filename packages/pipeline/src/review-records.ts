@@ -393,14 +393,11 @@ function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
 	return [...sightings].map(sighting).sort(byId) as unknown as RecordJson[];
 }
 
-// core's staticFindings already gives a Biome or tsc finding a fixed sentence (issue #281). Every other static check,
-// one Melian adds later included, writes a tool's message and advice, which can quote what the head led it to read.
-const fixedStaticText: ReadonlySet<string> = new Set(["static.biome", "static.tsc"]);
-
-// A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text.
+// A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome
+// and tsc are rewritten too: a build from before issue #281 stored their text, and the label cannot say which build wrote it.
 function sighting(finding: StoredFinding): StoredFinding {
 	const { check } = finding.properties.source;
-	if (!check.startsWith("static.") || fixedStaticText.has(check)) return finding;
+	if (!check.startsWith("static.")) return finding;
 	const what = `${check} reports ${finding.ruleId} here. ${withheld}.`;
 	return {
 		...finding,

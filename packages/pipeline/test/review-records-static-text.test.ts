@@ -261,18 +261,8 @@ describe("an exported record keeps what a static finding shares", () => {
 		]);
 	});
 
-	it("keeps a Biome or tsc finding, and a lens's, as they are", async () => {
+	it("keeps a lens's finding as it is", async () => {
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
-		for (const check of ["static.biome", "static.tsc"]) {
-			const kept: StoredFinding[] = stored.map((finding) => ({
-				...finding,
-				properties: { ...finding.properties, source: { check, version: "1" } },
-			}));
-			const payload = records.check("e".repeat(64), ran(check, 1, "1"), kept).toJSON().payload as {
-				sightings: StoredFinding[];
-			};
-			expect(payload.sightings).toEqual(kept);
-		}
 		const lens: StoredFinding[] = stored.map((finding) => ({
 			...finding,
 			properties: { ...finding.properties, source: { check: "lens.correctness", version: "1@careful" } },
