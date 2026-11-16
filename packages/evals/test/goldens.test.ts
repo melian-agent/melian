@@ -1547,6 +1547,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 				"lens.removed-behaviour": "heavy",
 				"lens.tests": "light",
 				"lens.trust-boundary": "heavy",
+				"lens.trust-boundary-probes": "heavy",
 			});
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
