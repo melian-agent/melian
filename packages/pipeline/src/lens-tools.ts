@@ -894,8 +894,8 @@ function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	});
 }
 
-function changedRanges(review: ReviewState, path: string): string {
-	const ranges = (review.files.find((file) => file.path === path)?.hunks ?? [])
+function changedRanges(file: ReviewState["files"][number]): string {
+	const ranges = file.hunks
 		.filter((hunk) => hunk.newLines > 0)
 		.map((hunk) =>
 			hunk.newLines === 1 ? `${hunk.newStart}` : `${hunk.newStart}-${hunk.newStart + hunk.newLines - 1}`,
@@ -958,7 +958,7 @@ const listMutants = defineLensTool({
 				return {
 					...text(
 						[
-							`No mutants ${lines} of the file asked about. The change adds or alters these lines of it: ${changedRanges(review, args.path)}.`,
+							`No mutants ${lines} of the file asked about. The change adds or alters these lines of it: ${changedRanges(changed)}.`,
 							...notes,
 						].join("\n"),
 					),
