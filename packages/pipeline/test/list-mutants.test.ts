@@ -62,7 +62,7 @@ async function call(head: string, args: { path: string; startLine?: number; endL
 	} as unknown as ToolExecutionApi;
 	const result = (await tool.execute(args, api, context)) as {
 		content?: { text: string }[];
-		details?: { mutants: unknown[]; excluded: number; more?: unknown };
+		details?: { mutants: string[]; excluded: number; more?: unknown };
 		diagnostics?: { message: string }[];
 		isError?: boolean;
 	};
@@ -88,6 +88,8 @@ async function cliRows(head: string, file: string) {
 	return inventory.mutants.filter((row) => row.file === file);
 }
 
+const ids = (rows: { id: string }[]) => rows.map((row) => row.id);
+
 const flags = (count: number) =>
 	Array.from({ length: count }, (_, index) => `export const flag${index} = true;\n`).join("");
 
@@ -111,10 +113,24 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(rows.filter((row) => row.ignoredBy === "config").map((row) => row.mutatorName)).toEqual(["StringLiteral"]);
 		expect(shown.some((row) => row.ignoredBy === "comment" && row.line === 4)).toBe(true);
 		const result = await call(head, { path: "src/value.ts" });
-		expect(result.details).toEqual({ mutants: shown, excluded: 1 });
+		expect(result.details).toEqual({ mutants: ids(shown), excluded: 1 });
 		expect(result.text).toContain("[ignored by a comment in the head]");
 		expect(result.text).toContain("[1 more the base's mutation configuration excludes are left out]");
 		expect(result.text).toContain(`<untrusted-${nonce} label="mutants">`);
+	});
+
+	it("keeps what it stores within its output limit, however long a head's disable comments are", async () => {
+		const reason = "x".repeat(2_000);
+		const head = commit(repo, {
+			"src/flags.ts": Array.from(
+				{ length: maxListedMutants },
+				(_, index) => `// Stryker disable next-line all: ${reason}\nexport const flag${index} = true;\n`,
+			).join(""),
+		});
+		const rows = await cliRows(head, "src/flags.ts");
+		expect(rows.filter((row) => row.ignoredBy === "comment")).toHaveLength(maxListedMutants);
+		const result = await call(head, { path: "src/flags.ts" });
+		expect(JSON.stringify(result.details).length).toBeLessThanOrEqual(tool.outputLimits!.maxBytes!);
 	});
 
 	it.each([
@@ -126,7 +142,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(rows).toHaveLength(count);
 		const first = await call(head, { path: "src/flags.ts" });
 		expect(first.details).toEqual({
-			mutants: rows.slice(0, maxListedMutants),
+			mutants: ids(rows.slice(0, maxListedMutants)),
 			excluded: 0,
 			...(more === undefined ? {} : { more }),
 		});
@@ -136,7 +152,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		}
 		expect(first.text).toContain(`[1 more mutants not shown; call again with startLine ${maxListedMutants + 1}]`);
 		expect((await call(head, { path: "src/flags.ts", startLine: more.startLine })).details).toEqual({
-			mutants: rows.slice(maxListedMutants),
+			mutants: ids(rows.slice(maxListedMutants)),
 			excluded: 0,
 		});
 	});
@@ -151,7 +167,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		expect(rows.filter((row) => row.line === 1).length).toBeGreaterThan(maxListedMutants);
 		const result = await call(head, { path: "src/flags.ts" });
 		expect(result.details).toEqual({
-			mutants: rows.slice(0, maxListedMutants),
+			mutants: ids(rows.slice(0, maxListedMutants)),
 			excluded: 0,
 			more: { count: rows.length - maxListedMutants, startLine: 2, cutLine: 1 },
 		});
@@ -208,7 +224,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const rows = await cliRows(head, "src/flags.ts");
 		expect(rows.filter((row) => row.line === maxListedMutants).length).toBeGreaterThan(1);
 		expect((await call(head, { path: "src/flags.ts" })).details).toEqual({
-			mutants: rows.slice(0, maxListedMutants - 1),
+			mutants: ids(rows.slice(0, maxListedMutants - 1)),
 			excluded: 0,
 			more: { count: rows.length - maxListedMutants + 1, startLine: maxListedMutants },
 		});
@@ -220,7 +236,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const header = (lines: string) =>
 			`${rows.length} mutants ${lines} of src/value.ts, each as line:column-endLine:endColumn mutator -> replacement:`;
 		const one = await call(head, { path: "src/value.ts", startLine: 1, endLine: 1 });
-		expect(one.details).toEqual({ mutants: rows, excluded: 0 });
+		expect(one.details).toEqual({ mutants: ids(rows), excluded: 0 });
 		expect(one.text.split("\n")[0]).toBe(header("on lines 1 to 1"));
 		expect((await call(head, { path: "src/value.ts" })).text.split("\n")[0]).toBe(header("from line 1"));
 	});
@@ -271,7 +287,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		await call(first, { path: "src/value.ts" });
 		const second = commit(repo, { "src/value.ts": "export const value = true;\n" });
 		expect((await call(second, { path: "src/value.ts" })).details).toEqual({
-			mutants: await cliRows(second, "src/value.ts"),
+			mutants: ids(await cliRows(second, "src/value.ts")),
 			excluded: 0,
 		});
 	});

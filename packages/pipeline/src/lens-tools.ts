@@ -948,8 +948,9 @@ const listMutants = defineLensTool({
 					? `[${window.more.count} more mutants not shown; call again with startLine ${window.more.startLine}]`
 					: undefined,
 			].filter((note) => note !== undefined);
+			// Pi stores details whole, beyond outputLimits, so they name each row by its id, not its head-written text.
 			const details = {
-				mutants: window.mutants,
+				mutants: window.mutants.map((row) => row.id),
 				excluded: window.excluded,
 				...(window.more ? { more: window.more } : {}),
 			};
