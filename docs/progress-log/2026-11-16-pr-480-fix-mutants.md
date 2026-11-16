@@ -4,4 +4,4 @@ On [issue #480](https://github.com/melian-agent/melian/issues/480)'s branch, [pu
 - The `git.ts` mutants change no pid or signal operand, and `git.ts` signals only through a bare `ChildProcess.kill()`, as the learning on such files allows. Their named tests' real signals went, through unmutated code, to children the test spawned. After every run the runner checked by recorded pid that none of them still ran.
 - Two mutants needed sharper tests, in `4094d0ae`. `endsWith("Z")` passed while the zombie root's state read `Z`; real `ps` adds flags, so the test now reads `Z+`. Marking a cut result timed out passed while no test checked `timedOut`; the `maxBytes` test now does.
 
-[The hand inventory](2026-11-16-pr-480-hand-mutants.json) now holds every mutant this pull request ran, 222 in all, with the head each ran at: 214 killed and 8 equivalent, each equivalent with its reason.
+[The hand inventory](2026-11-16-pr-480-hand-mutants.json) holds every mutant this pull request ran, with the head each ran at, and each equivalent with its reason.
