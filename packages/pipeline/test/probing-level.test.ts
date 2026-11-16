@@ -1142,6 +1142,17 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("names the files the planner's prompt showed, and none for the prober, which reads the plan alone", async () => {
+		const { run, changeset } = await review({ planner: plan, prober: probing(failing) });
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const [planner, prober] = telemetry.stages.filter((stage) => stage.name === "melian.lens");
+		expect(planner!.shown).toEqual(changeset.revision.files.map((file) => file.path));
+		expect(planner!.shown).not.toEqual([]);
+		expect(prober).toMatchObject({ role: "prober" });
+		expect(prober).not.toHaveProperty("shown");
+	});
+
 	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
 		const { run, changeset } = await review({
 			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
