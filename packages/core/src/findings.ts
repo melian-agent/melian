@@ -26,7 +26,13 @@ import {
 	visibleText,
 } from "./render.ts";
 import { lesser, type ResolutionClaim, type ResolutionSource, ResolutionWalk } from "./resolution.ts";
-import { injectionAttemptRuleId, type Verification, VerificationState, verificationSchema } from "./verification.ts";
+import {
+	injectionAttemptRuleId,
+	trustFloorChecks,
+	type Verification,
+	VerificationState,
+	verificationSchema,
+} from "./verification.ts";
 
 export { evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
@@ -1654,8 +1660,7 @@ export class Finding {
 			const { source: producer, ruleId, verification } = claim;
 			if (
 				!(
-					producer.check === "lens.trust-boundary" ||
-					producer.check === "lens.tests" ||
+					trustFloorChecks.has(producer.check) ||
 					ruleId === "untested-behaviour" ||
 					ruleId === injectionAttemptRuleId
 				)
