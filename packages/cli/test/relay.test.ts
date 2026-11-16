@@ -142,7 +142,7 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 		expect(await relay(await artefact(check, round))).toBe(1);
 		expect(onState()).toBeUndefined();
 		expect(err()).toBe(
-			`melian: melian records relay refused the batch: ${round.path} is a kind of record the head's job may not hand over\n`,
+			`melian: melian records relay refused the batch: ${round.id}.json is a kind of record the head's job may not hand over\n`,
 		);
 	});
 
@@ -169,8 +169,8 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 
 	it("names only the store's code when the push fails, never git's words", async () => {
 		const missing = join(scratch(), "missing.git");
-		const { check, relay, err } = await pullRequest({ origin: missing });
-		expect(await relay(await artefact(check))).toBe(1);
+		const { check, round, relay, err } = await pullRequest({ origin: missing });
+		expect(await relay(await artefact(check, round))).toBe(1);
 		expect(err()).toBe(
 			"melian: melian/state refused or failed the relay (unreachable); repeat the relay, which completes a batch that landed in part\n",
 		);

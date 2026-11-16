@@ -1,10 +1,13 @@
 import type { Dirent } from "node:fs";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { RecordError, type RecordStore, reviewPayloads, SharedRecord } from "@melian-agent/core";
+import { RecordError, type RecordStore, type RoundManifest, reviewPayloads, SharedRecord } from "@melian-agent/core";
 
-/** The most a relay reads from the head's job: files, bytes in one file, and bytes in all. */
-export const relayLimits = { files: 4096, fileBytes: 4 * 1024 * 1024, bytes: 64 * 1024 * 1024 } as const;
+/**
+ * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
+ * beside the round. Each is a small part of the store's own bounds on the branch, so a few rounds cannot fill it.
+ */
+export const relayLimits = { files: 512, fileBytes: 1024 * 1024, bytes: 4 * 1024 * 1024, extras: 64 } as const;
 
 /** Why a relay refused its whole batch. */
 export type RelayRefusalCode =
@@ -19,7 +22,11 @@ export type RelayRefusalCode =
 	| "refusedKind"
 	| "otherRevision"
 	| "signed"
-	| "unresolvedRead";
+	| "unresolvedRead"
+	| "roundCount"
+	| "roundShape"
+	| "unnamedRecord"
+	| "tooManyExtras";
 
 const says: Record<RelayRefusalCode, string> = {
 	strayEntry: "is no record file a review's directory store writes",
@@ -33,12 +40,25 @@ const says: Record<RelayRefusalCode, string> = {
 	refusedKind: "is a kind of record the head's job may not hand over",
 	otherRevision: "names another revision than the run's",
 	signed: "carries a signature, and no repository key exists to check one",
-	unresolvedRead: "is a round that reads a record in neither the batch nor the store",
+	unresolvedRead: "is a round that reads a record the batch does not hold",
+	roundCount: "leaves a writer's batch with no round, or more than one",
+	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
+	unnamedRecord: "is a record the batch's round does not name, and no triage or telemetry of it",
+	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage and telemetry records`,
 };
 
+const hex64 = /^[0-9a-f]{64}$/;
+const recordFile = /^([0-9a-f]{64})\.json$/;
+
+// The head's code names the artefact's files, so a refusal names one only by a record ID, which holds nothing it chose.
+function printable(path: string): string {
+	const name = path.slice(path.lastIndexOf("/") + 1);
+	return recordFile.test(name) ? name : "an entry not named for a record ID";
+}
+
 /**
- * The relay refused the whole batch, and added nothing. `file` is the artefact path the refusal is about, and the
- * message names it and the code, never anything a record holds, since the head's code may have written it.
+ * The relay refused the whole batch, and added nothing. `file` names the entry the refusal is about by its record ID,
+ * or says it has none; neither it nor the message carries anything a record or a file name holds.
  */
 export class RelayRefusal extends Error {
 	readonly code: RelayRefusalCode;
@@ -46,19 +66,17 @@ export class RelayRefusal extends Error {
 	readonly recordCode?: string;
 
 	constructor(code: RelayRefusalCode, file: string, recordCode?: string) {
-		super(`melian records relay refused the batch: ${file} ${says[code]}${recordCode ? ` (${recordCode})` : ""}`);
+		const named = printable(file);
+		super(`melian records relay refused the batch: ${named} ${says[code]}${recordCode ? ` (${recordCode})` : ""}`);
 		this.name = "RelayRefusal";
 		this.code = code;
-		this.file = file;
+		this.file = named;
 		if (recordCode !== undefined) this.recordCode = recordCode;
 	}
 }
 
 /** The run a batch came from, as Melian's own code worked it out from the pull request, never from the batch. */
 export type RelayRun = { readonly changeset: string; readonly revision: string; readonly fork: boolean };
-
-const hex64 = /^[0-9a-f]{64}$/;
-const recordFile = /^([0-9a-f]{64})\.json$/;
 
 // Lists a directory without following a link. A link, even to a directory, is no entry a directory store writes.
 async function entries(root: string, path: string): Promise<Dirent[]> {
@@ -102,7 +120,34 @@ export class RelayBatch {
 		}
 		const records: SharedRecord[] = [];
 		for (const file of files) records.push(await RelayBatch.#record(root, file, run));
+		if (!run.fork) RelayBatch.#rests(records);
 		return new RelayBatch(run, records);
+	}
+
+	// A writer's batch is one round and what it rests on: every record the round reads, held here at the run's revision,
+	// and a bounded number of triage records and the round's telemetry. The round sets no other round aside.
+	static #rests(records: readonly SharedRecord[]): void {
+		const rounds = records.filter((record) => record.kind === "round");
+		const round = rounds[0];
+		if (round === undefined || rounds.length > 1)
+			throw new RelayRefusal("roundCount", (rounds[1] ?? records[0])?.path ?? "");
+		const manifest = round.manifest() as RoundManifest;
+		if (manifest.walkthrough !== null || manifest.replaces.length > 0 || manifest.before.length > 0)
+			throw new RelayRefusal("roundShape", round.path);
+		const held = new Map(records.map((record) => [record.id, record]));
+		for (const named of manifest.read) {
+			const record = held.get(named.id);
+			if (record === undefined || record.kind !== named.kind || record.key !== named.key)
+				throw new RelayRefusal("unresolvedRead", round.path);
+		}
+		const read = new Set(manifest.read.map((named) => named.id));
+		let extras = 0;
+		for (const record of records) {
+			if (record === round || read.has(record.id)) continue;
+			if (record.kind !== "triage" && !(record.kind === "telemetry" && record.key === round.id))
+				throw new RelayRefusal("unnamedRecord", record.path);
+			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
+		}
 	}
 
 	// Every record file under the run's changeset, by path relative to `root`, refusing anything else the tree holds.
@@ -162,23 +207,10 @@ export class RelayBatch {
 	}
 
 	/**
-	 * Adds the batch to `store` in one call, after checking that every record a round reads is in the batch or the
-	 * store. A refusal adds nothing; a failure of `add` lands nothing, or a part a repeat completes, by the port's
+	 * Adds the batch to `store` in one call. A failure of `add` lands nothing, or a part a repeat completes, by the port's
 	 * contract.
 	 */
 	async into(store: RecordStore): Promise<void> {
-		const held = new Set(this.records.map((record) => record.id));
-		const stored = new Set((await store.list(this.run.changeset)).map((each) => SharedRecord.parseEnvelope(each).id));
-		for (const record of this.records) {
-			const manifest = record.manifest();
-			if (manifest === undefined) continue;
-			const named = [
-				...manifest.read.map((each) => each.id),
-				...(manifest.walkthrough ? [manifest.walkthrough.id] : []),
-			];
-			if (named.some((id) => !held.has(id) && !stored.has(id)))
-				throw new RelayRefusal("unresolvedRead", record.path);
-		}
 		await store.add(this.records.map((record) => record.toJSON()));
 	}
 }

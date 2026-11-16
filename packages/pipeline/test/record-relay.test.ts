@@ -129,7 +129,7 @@ describe("RelayBatch", () => {
 		await plant(directory, path, '{"secret":"ghp_token"}');
 		const found = await refusal(RelayBatch.read(directory, writer));
 		expect(found.code).toBe("invalidRecord");
-		expect(found.file).toBe(path);
+		expect(found.file).toBe(`${"1".repeat(64)}.json`);
 		expect(found.message).not.toContain("ghp_token");
 		expect(found.message).not.toContain("secret");
 	});
@@ -157,23 +157,86 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(loose, writer))).code).toBe("strayEntry");
 	});
 
-	it("refuses a round that reads a record in neither the batch nor the store", async () => {
+	it("refuses a round that reads a record the batch does not hold, even one the store holds", async () => {
 		const biome = check();
 		const round = records().round([biome], undefined, [], []);
-		const batch = await RelayBatch.read(await artefact(round), writer);
-		const store = new MemoryRecordStore({ payloads: reviewPayloads });
-		const found = await refusal(batch.into(store));
-		expect(found.code).toBe("unresolvedRead");
-		expect(await store.list(changeset)).toEqual([]);
+		expect((await refusal(RelayBatch.read(await artefact(round), writer))).code).toBe("unresolvedRead");
 	});
 
-	it("takes a round that reads a record the store already holds", async () => {
+	it.each([
+		["kind", { kind: "lens" }],
+		["key", { key: "0".repeat(64) }],
+	])("refuses a round that names a held record's ID under another %s", async (_, wrong) => {
 		const biome = check();
-		const store = new MemoryRecordStore({ payloads: reviewPayloads });
-		await store.add([biome.toJSON()]);
+		const round = records().round([biome], undefined, [], []).toJSON();
+		const named = { kind: biome.kind, key: biome.key, id: biome.id, ...wrong };
+		const forged = SharedRecord.parseEnvelope({
+			...round,
+			payload: { ...(round.payload as object), read: [named] },
+		} as never);
+		const directory = await artefact(biome);
+		await plant(directory, forged.path, forged.bytes);
+		expect((await refusal(RelayBatch.read(directory, writer))).code).toBe("unresolvedRead");
+	});
+
+	it("refuses a writer's batch with no round, or with two", async () => {
+		expect((await refusal(RelayBatch.read(await artefact(check()), writer))).code).toBe("roundCount");
+		const biome = check();
+		const tsc = check("static.tsc");
+		const both = await artefact(
+			biome,
+			tsc,
+			records().round([biome], undefined, [], []),
+			records().round([biome, tsc], undefined, [], []),
+		);
+		expect((await refusal(RelayBatch.read(both, writer))).code).toBe("roundCount");
+	});
+
+	it.each([
+		["a walkthrough", (biome: SharedRecord) => records().round([biome], biome, [], [])],
+		["a round it replaces", (biome: SharedRecord) => records().round([biome], undefined, ["e".repeat(64)], [])],
+		["a round it follows", (biome: SharedRecord) => records().round([biome], undefined, [], ["e".repeat(64)])],
+	])("refuses a round that names %s", async (_, made) => {
+		const biome = check();
+		expect((await refusal(RelayBatch.read(await artefact(biome, made(biome)), writer))).code).toBe("roundShape");
+	});
+
+	it("refuses a record the round does not name, and takes its triage and telemetry", async () => {
+		const biome = check();
 		const round = records().round([biome], undefined, [], []);
-		await (await RelayBatch.read(await artefact(round), writer)).into(store);
-		expect(await store.list(changeset)).toHaveLength(2);
+		const telemetry = records().telemetry(round, { durationMs: 5, stages: [] });
+		const triage = records().triage(request, { inputCut: false });
+		const batch = await RelayBatch.read(await artefact(biome, round, telemetry, triage), writer);
+		expect(batch.records).toHaveLength(4);
+		expect((await refusal(RelayBatch.read(await artefact(biome, round, check("static.tsc")), writer))).code).toBe(
+			"unnamedRecord",
+		);
+		const otherRound = records().round([biome, check("static.tsc")], undefined, [], []);
+		const stray = records().telemetry(otherRound, { durationMs: 5, stages: [] });
+		expect((await refusal(RelayBatch.read(await artefact(biome, round, stray), writer))).code).toBe("unnamedRecord");
+	});
+
+	it("takes the most triage and telemetry records it allows, and refuses one more", async () => {
+		const biome = check();
+		const round = records().round([biome], undefined, [], []);
+		const triage = (index: number) => records().triage(index.toString(16).padStart(64, "0"), { inputCut: false });
+		const at = Array.from({ length: relayLimits.extras }, (_, index) => triage(index));
+		expect((await RelayBatch.read(await artefact(biome, round, ...at), writer)).records).toHaveLength(at.length + 2);
+		const past = [...at, triage(relayLimits.extras)];
+		expect((await refusal(RelayBatch.read(await artefact(biome, round, ...past), writer))).code).toBe(
+			"tooManyExtras",
+		);
+	});
+
+	it("names a stray entry without its name, which the head's code chose", async () => {
+		const directory = await artefact(check());
+		await plant(directory, "ghp_token.txt", "x");
+		const found = await refusal(RelayBatch.read(directory, writer));
+		expect(found.code).toBe("strayEntry");
+		expect(found.file).toBe("an entry not named for a record ID");
+		expect(found.message).toBe(
+			"melian records relay refused the batch: an entry not named for a record ID is no record file a review's directory store writes",
+		);
 	});
 
 	it("takes the most files it allows, and refuses one more", async () => {
