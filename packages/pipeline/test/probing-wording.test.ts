@@ -177,6 +177,76 @@ describe("the tests lens at a level that probes", () => {
 		expect(sent.filter((text) => boundaryWords.test(text)).map((text) => text.match(boundaryWords)![0])).toEqual([]);
 	});
 
+	it("has a probe whose test fails unchanged exit 125, which reports no finding and refutes none", async () => {
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const policy = { kind: "revision", commit: changeset.revision.base } as const;
+		const paths = changeset.revision.paths();
+		const fake = createFakeModels();
+		const ref = fake.ref();
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.tests"] },
+			lenses: { tests: { level: { floor: "deep" } } },
+			models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
+		};
+		const planner = "Your role at this level: the attack planner";
+		const prober = "You are the prober for the tests lens";
+		const baseline =
+			'console.log("unchanged: test/total.test.ts failed: Cannot find module vitest");\nprocess.exit(125);\n';
+		const requests = scriptConversations(fake, [
+			{ match: planner, replies: planning },
+			{
+				match: prober,
+				replies: [
+					call("run_probe", { attack: 1, script: baseline }),
+					(messages) =>
+						call("report_finding", {
+							file: "src/total.ts",
+							line: 2,
+							rule: "untested-behaviour",
+							severity: "P2",
+							explanation: { what: "a refutation", why: "the probe ended", fix: "none" },
+							failureScenario: "the unchanged test fails, so the probe shows nothing about line 2",
+							evidence: [{ file: "src/total.ts", line: 2, role: "cause" }],
+							probe: /probe (p[0-9]+)/.exec(messages.map(textOf).join("\n"))?.[1] ?? "p0",
+							refuted: "0123456789abcdef",
+						}),
+					fauxAssistantMessage("The unchanged test fails, so I report nothing."),
+				],
+			},
+		]);
+		harness = await openReviewHarness(createMemoryStorage(), fake.review, {
+			retry: false,
+			probeSandbox: unconfinedSandbox(),
+		});
+		const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
+			lens.name === "tests"
+				? Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } })
+				: lens,
+		);
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: await Standards.load(repo, policy, paths),
+			models: fake.review,
+			writer: { trusted: true, by: "reviewer" },
+		});
+
+		const proberPrompt = systemPromptOf(requests[prober]![0]!);
+		expect(proberPrompt).toContain(
+			"When the test already fails on the unchanged copy, the probe cannot show whether the test covers the behaviour: print what it printed, exit 125, and report no finding.",
+		);
+		expect(proberPrompt).toContain("exit 0 when it fails, its passing outcome.");
+		const answered = requests[prober]!.at(-1)!.map(textOf).join("\n");
+		expect(answered).toContain(
+			"did not pass, so it shows no finding wrong: refute a finding only with a probe that exited 0",
+		);
+		expect(verdict.counted()).toEqual([]);
+		expect(JSON.stringify(verdict)).not.toContain("0123456789abcdef");
+	});
+
 	it("offers a planner and a prober tools whose descriptions name no boundary", () => {
 		for (const tool of [recordPlan, runProbe, skipAttack, reportFinding])
 			expect(JSON.stringify({ description: tool.description, parameters: tool.parameters })).not.toMatch(
