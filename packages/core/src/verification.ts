@@ -76,6 +76,16 @@ export interface LoweringFields {
 /** The rule every lens reports an instruction found in reviewed content under. */
 export const injectionAttemptRuleId = "melian/injection-attempt";
 
+/**
+ * The checks whose every claim the trust floor protects: a verifier that lowers or refutes one leaves it held at
+ * acknowledgement. `lens.trust-boundary-probes` is Melian's own probing lens, until a level that probes also reads.
+ */
+export const trustFloorChecks: ReadonlySet<string> = new Set([
+	"lens.trust-boundary",
+	"lens.trust-boundary-probes",
+	"lens.tests",
+]);
+
 /** A verifier's proposal to lower one claim's severity, held against the fence. */
 export class Lowering {
 	readonly fields: LoweringFields;

@@ -25,10 +25,16 @@ export function shownOutput(rendered: string, env: NodeJS.ProcessEnv): string[] 
 
 // A run that throws, as a review does when every model of a tier fails, prints its error on the golden's line and the
 // corpus goes on; uncaught, it ended the process with a stack trace and no score.
-async function attempt<Run>(name: string, run: () => Promise<Run>, print: Print): Promise<Run | undefined> {
+export async function attempt<Run>(
+	name: string,
+	run: () => Promise<Run>,
+	print: Print,
+	failed?: (error: unknown) => void,
+): Promise<Run | undefined> {
 	try {
 		return await run();
 	} catch (error) {
+		failed?.(error);
 		print(
 			visibleText(
 				`${name}: no score (${error instanceof Error ? error.message : String(error)})${error instanceof GoldenRunError ? `, ${error.telemetry.spend()}` : ""}`,

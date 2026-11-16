@@ -331,6 +331,7 @@ describe("recording restatement links", () => {
 
 	it.each([
 		{ name: "a trust-boundary claim", check: "lens.trust-boundary", rule: "fail-open" },
+		{ name: "a probing trust-boundary claim", check: "lens.trust-boundary-probes", rule: "fail-open" },
 		{ name: "a tests claim", check: "lens.tests", rule: "fail-open" },
 		{ name: "an untested-behaviour claim", check: "lens.correctness", rule: "untested-behaviour" },
 	])("proposes, never inherits, for $name", async ({ check, rule }) => {

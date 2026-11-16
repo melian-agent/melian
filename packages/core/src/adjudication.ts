@@ -608,7 +608,7 @@ export class Verdict {
 		});
 	}
 
-	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
+	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones, then the refuted ones. */
 	all(): ResolvedFinding[] {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}
