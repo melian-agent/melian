@@ -15,6 +15,7 @@ import {
 	type StoredFinding,
 	snippetHash,
 	stricter,
+	trustFloorChecks,
 	type Verification,
 	VerificationRecord,
 } from "@melian-agent/core";
@@ -1018,11 +1019,7 @@ export type Restating = {
 
 // Claims the trust floor protects: the verifier alone must not silence them, so a match only proposes.
 function floored(claim: Restating["claims"][number]): boolean {
-	return (
-		claim.source.check === "lens.trust-boundary" ||
-		claim.source.check === "lens.tests" ||
-		claim.ruleId === "untested-behaviour"
-	);
+	return trustFloorChecks.has(claim.source.check) || claim.ruleId === "untested-behaviour";
 }
 
 /**
