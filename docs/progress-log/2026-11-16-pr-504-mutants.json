@@ -2,48 +2,48 @@
   "mutants": [
     {
       "file": "packages/evals/src/probing.ts",
-      "line": 317,
+      "line": 322,
       "column": 6,
-      "endLine": 317,
+      "endLine": 322,
       "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "claim": "killed",
       "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/evals/src/probing.ts",
-      "line": 317,
+      "line": 322,
       "column": 6,
-      "endLine": 317,
+      "endLine": 322,
       "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "claim": "killed",
       "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/evals/src/probing.ts",
-      "line": 317,
+      "line": 322,
       "column": 6,
-      "endLine": 317,
+      "endLine": 322,
       "endColumn": 25,
       "mutatorName": "EqualityOperator",
       "replacement": "scoped.length !== 0",
       "claim": "killed",
       "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/evals/src/probing.ts",
-      "line": 317,
+      "line": 322,
       "column": 34,
-      "endLine": 317,
+      "endLine": 322,
       "endColumn": 115,
       "mutatorName": "StringLiteral",
       "replacement": "``",
@@ -52,840 +52,49 @@
     },
     {
       "file": "packages/evals/src/probing.ts",
-      "line": 321,
-      "column": 3,
-      "endLine": 327,
-      "endColumn": 5,
+      "line": 323,
+      "column": 17,
+      "endLine": 323,
+      "endColumn": 48,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 321,
-      "column": 3,
-      "endLine": 327,
-      "endColumn": 5,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 321,
-      "column": 3,
-      "endLine": 327,
-      "endColumn": 5,
-      "mutatorName": "LogicalOperator",
-      "replacement": "lines === undefined && revision.files.filter(file => file.path === this.file).flatMap(file => file.hunks).some(({\n  newStart,\n  newLines\n}) => newLines > 0 && newStart <= lines[1] && newStart + newLines - 1 >= lines[0])",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 321,
-      "column": 3,
-      "endLine": 321,
-      "endColumn": 22,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
       "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 321,
-      "column": 3,
-      "endLine": 321,
-      "endColumn": 22,
-      "mutatorName": "EqualityOperator",
-      "replacement": "lines !== undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 322,
-      "column": 3,
-      "endLine": 327,
-      "endColumn": 5,
-      "mutatorName": "MethodExpression",
-      "replacement": "revision.files.filter(file => file.path === this.file).flatMap(file => file.hunks).every(({\n  newStart,\n  newLines\n}) => newLines > 0 && newStart <= lines[1] && newStart + newLines - 1 >= lines[0])",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 322,
-      "column": 3,
-      "endLine": 323,
-      "endColumn": 46,
-      "mutatorName": "MethodExpression",
-      "replacement": "revision.files",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/evals/src/probing.ts",
       "line": 323,
-      "column": 12,
+      "column": 17,
       "endLine": 323,
-      "endColumn": 45,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "equivalent",
+      "evidence": "A miss located by file and rule has no ranges field, so location.ranges is undefined either way; the test only narrows the type.",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/evals/src/probing.ts",
       "line": 323,
-      "column": 22,
+      "column": 17,
       "endLine": 323,
-      "endColumn": 45,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
+      "endColumn": 48,
+      "mutatorName": "EqualityOperator",
+      "replacement": "location.by !== \"file and rule\"",
       "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/evals/src/probing.ts",
       "line": 323,
-      "column": 22,
+      "column": 33,
       "endLine": 323,
-      "endColumn": 45,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 323,
-      "column": 22,
-      "endLine": 323,
-      "endColumn": 45,
-      "mutatorName": "EqualityOperator",
-      "replacement": "file.path !== this.file",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 324,
-      "column": 13,
-      "endLine": 324,
-      "endColumn": 33,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 5,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "LogicalOperator",
-      "replacement": "newLines > 0 && newStart <= lines[1] || newStart + newLines - 1 >= lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 69,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 69,
-      "mutatorName": "LogicalOperator",
-      "replacement": "newLines > 0 || newStart <= lines[1]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 45,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 45,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newLines >= 0",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 33,
-      "endLine": 326,
-      "endColumn": 45,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newLines <= 0",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 49,
-      "endLine": 326,
-      "endColumn": 69,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 49,
-      "endLine": 326,
-      "endColumn": 69,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newStart < lines[1]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 49,
-      "endLine": 326,
-      "endColumn": 69,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newStart > lines[1]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 73,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 73,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newStart + newLines - 1 > lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 73,
-      "endLine": 326,
-      "endColumn": 108,
-      "mutatorName": "EqualityOperator",
-      "replacement": "newStart + newLines - 1 < lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 73,
-      "endLine": 326,
-      "endColumn": 96,
-      "mutatorName": "ArithmeticOperator",
-      "replacement": "newStart + newLines + 1",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 326,
-      "column": 73,
-      "endLine": 326,
-      "endColumn": 92,
-      "mutatorName": "ArithmeticOperator",
-      "replacement": "newStart - newLines",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 328,
-      "column": 15,
-      "endLine": 336,
-      "endColumn": 3,
-      "mutatorName": "MethodExpression",
-      "replacement": "scoped.every(stage => diffShows && stage.shown?.includes(this.file) || stage.read?.some(read => read.path === this.file && (lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0]))))",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 329,
-      "column": 3,
-      "endLine": 335,
-      "endColumn": 5,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 4,
-      "endLine": 335,
-      "endColumn": 5,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 4,
-      "endLine": 335,
-      "endColumn": 5,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 4,
-      "endLine": 335,
-      "endColumn": 5,
-      "mutatorName": "LogicalOperator",
-      "replacement": "diffShows && stage.shown?.includes(this.file) && stage.read?.some(read => read.path === this.file && (lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])))",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 5,
-      "endLine": 330,
-      "endColumn": 50,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 5,
-      "endLine": 330,
-      "endColumn": 50,
-      "mutatorName": "LogicalOperator",
-      "replacement": "diffShows || stage.shown?.includes(this.file)",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 330,
-      "column": 18,
-      "endLine": 330,
-      "endColumn": 39,
-      "mutatorName": "OptionalChaining",
-      "replacement": "stage.shown.includes",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 331,
-      "column": 4,
-      "endLine": 335,
-      "endColumn": 5,
-      "mutatorName": "MethodExpression",
-      "replacement": "stage.read?.every(read => read.path === this.file && (lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])))",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 331,
-      "column": 4,
-      "endLine": 331,
-      "endColumn": 20,
-      "mutatorName": "OptionalChaining",
-      "replacement": "stage.read.some",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 332,
-      "column": 5,
-      "endLine": 334,
-      "endColumn": 105,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 333,
-      "column": 6,
-      "endLine": 334,
-      "endColumn": 105,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 333,
-      "column": 6,
-      "endLine": 334,
-      "endColumn": 105,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 333,
-      "column": 6,
-      "endLine": 334,
-      "endColumn": 105,
-      "mutatorName": "LogicalOperator",
-      "replacement": "read.path === this.file || lines === undefined || read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 333,
-      "column": 6,
-      "endLine": 333,
-      "endColumn": 29,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 333,
-      "column": 6,
-      "endLine": 333,
-      "endColumn": 29,
-      "mutatorName": "EqualityOperator",
-      "replacement": "read.path !== this.file",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 7,
-      "endLine": 334,
-      "endColumn": 104,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 7,
-      "endLine": 334,
-      "endColumn": 104,
-      "mutatorName": "LogicalOperator",
-      "replacement": "lines === undefined && read.ranges.some(([first, last]) => first <= lines[1] && last >= lines[0])",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 7,
-      "endLine": 334,
-      "endColumn": 26,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 7,
-      "endLine": 334,
-      "endColumn": 26,
-      "mutatorName": "EqualityOperator",
-      "replacement": "lines !== undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 30,
-      "endLine": 334,
-      "endColumn": 104,
-      "mutatorName": "MethodExpression",
-      "replacement": "read.ranges.every(([first, last]) => first <= lines[1] && last >= lines[0])",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 47,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "ArrowFunction",
-      "replacement": "() => undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "LogicalOperator",
-      "replacement": "first <= lines[1] || last >= lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 83,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 83,
-      "mutatorName": "EqualityOperator",
-      "replacement": "first < lines[1]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 66,
-      "endLine": 334,
-      "endColumn": 83,
-      "mutatorName": "EqualityOperator",
-      "replacement": "first > lines[1]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 87,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 87,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "EqualityOperator",
-      "replacement": "last > lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 334,
-      "column": 87,
-      "endLine": 334,
-      "endColumn": 103,
-      "mutatorName": "EqualityOperator",
-      "replacement": "last < lines[0]",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 339,
-      "column": 5,
-      "endLine": 339,
-      "endColumn": 166,
-      "mutatorName": "StringLiteral",
-      "replacement": "``",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 339,
-      "column": 88,
-      "endLine": 339,
-      "endColumn": 107,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 339,
-      "column": 88,
-      "endLine": 339,
-      "endColumn": 107,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 339,
-      "column": 88,
-      "endLine": 339,
-      "endColumn": 107,
-      "mutatorName": "EqualityOperator",
-      "replacement": "lines !== undefined",
-      "claim": "killed",
-      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
-      "survivorClasses": [],
-      "run": "killed at 79363db6"
-    },
-    {
-      "file": "packages/evals/src/probing.ts",
-      "line": 339,
-      "column": 110,
-      "endLine": 339,
-      "endColumn": 119,
+      "endColumn": 48,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
@@ -893,12 +102,955 @@
     },
     {
       "file": "packages/evals/src/probing.ts",
+      "line": 326,
+      "column": 3,
+      "endLine": 333,
+      "endColumn": 5,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 326,
+      "column": 3,
+      "endLine": 333,
+      "endColumn": 5,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 326,
+      "column": 3,
+      "endLine": 333,
+      "endColumn": 5,
+      "mutatorName": "LogicalOperator",
+      "replacement": "ranges === undefined && revision.files.filter(file => file.path === this.file).flatMap(file => file.hunks).some(({\n  newStart,\n  newLines\n}) => newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 326,
+      "column": 3,
+      "endLine": 326,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 326,
+      "column": 3,
+      "endLine": 326,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "ranges !== undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 327,
+      "column": 3,
+      "endLine": 333,
+      "endColumn": 5,
+      "mutatorName": "MethodExpression",
+      "replacement": "revision.files.filter(file => file.path === this.file).flatMap(file => file.hunks).every(({\n  newStart,\n  newLines\n}) => newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 327,
+      "column": 3,
+      "endLine": 328,
+      "endColumn": 46,
+      "mutatorName": "MethodExpression",
+      "replacement": "revision.files",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 328,
+      "column": 12,
+      "endLine": 328,
+      "endColumn": 45,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 328,
+      "column": 22,
+      "endLine": 328,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 328,
+      "column": 22,
+      "endLine": 328,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 328,
+      "column": 22,
+      "endLine": 328,
+      "endColumn": 45,
+      "mutatorName": "EqualityOperator",
+      "replacement": "file.path !== this.file",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 329,
+      "column": 13,
+      "endLine": 329,
+      "endColumn": 33,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 331,
+      "column": 5,
+      "endLine": 332,
+      "endColumn": 106,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 106,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 106,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 106,
+      "mutatorName": "LogicalOperator",
+      "replacement": "newLines > 0 || ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first)",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newLines >= 0",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 6,
+      "endLine": 332,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newLines <= 0",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 22,
+      "endLine": 332,
+      "endColumn": 106,
+      "mutatorName": "MethodExpression",
+      "replacement": "ranges.every(([first, last]) => newStart <= last && newStart + newLines - 1 >= first)",
+      "claim": "new-test",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a fix-located miss as seen only where the lens was shown or read a line its fix changes",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "run": "survived at 2f155bb1; killed at 9afefc52 by the case shown on one of the fix's hunks"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 34,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "LogicalOperator",
+      "replacement": "newStart <= last || newStart + newLines - 1 >= first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 69,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 69,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newStart < last",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 53,
+      "endLine": 332,
+      "endColumn": 69,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newStart > last",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 73,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 73,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newStart + newLines - 1 > first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 73,
+      "endLine": 332,
+      "endColumn": 105,
+      "mutatorName": "EqualityOperator",
+      "replacement": "newStart + newLines - 1 < first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 73,
+      "endLine": 332,
+      "endColumn": 96,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "newStart + newLines + 1",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 332,
+      "column": 73,
+      "endLine": 332,
+      "endColumn": 92,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "newStart - newLines",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 334,
+      "column": 15,
+      "endLine": 343,
+      "endColumn": 3,
+      "mutatorName": "MethodExpression",
+      "replacement": "scoped.every(stage => diffShows && stage.shown?.includes(this.file) || stage.read?.some(read => read.path === this.file && (ranges === undefined || read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first)))))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 335,
+      "column": 3,
+      "endLine": 342,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 4,
+      "endLine": 342,
+      "endColumn": 5,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 4,
+      "endLine": 342,
+      "endColumn": 5,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 4,
+      "endLine": 342,
+      "endColumn": 5,
+      "mutatorName": "LogicalOperator",
+      "replacement": "diffShows && stage.shown?.includes(this.file) && stage.read?.some(read => read.path === this.file && (ranges === undefined || read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 5,
+      "endLine": 336,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only when its review shows a completed trust-boundary run whose scope holds its file",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 5,
+      "endLine": 336,
+      "endColumn": 50,
+      "mutatorName": "LogicalOperator",
+      "replacement": "diffShows || stage.shown?.includes(this.file)",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 336,
+      "column": 18,
+      "endLine": 336,
+      "endColumn": 39,
+      "mutatorName": "OptionalChaining",
+      "replacement": "stage.shown.includes",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 337,
+      "column": 4,
+      "endLine": 342,
+      "endColumn": 5,
+      "mutatorName": "MethodExpression",
+      "replacement": "stage.read?.every(read => read.path === this.file && (ranges === undefined || read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 337,
+      "column": 4,
+      "endLine": 337,
+      "endColumn": 20,
+      "mutatorName": "OptionalChaining",
+      "replacement": "stage.read.some",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 338,
+      "column": 5,
+      "endLine": 341,
+      "endColumn": 105,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
       "line": 339,
-      "column": 122,
+      "column": 6,
+      "endLine": 341,
+      "endColumn": 105,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 339,
+      "column": 6,
+      "endLine": 341,
+      "endColumn": 105,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 339,
+      "column": 6,
+      "endLine": 341,
+      "endColumn": 105,
+      "mutatorName": "LogicalOperator",
+      "replacement": "read.path === this.file || ranges === undefined || read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 339,
+      "column": 6,
       "endLine": 339,
-      "endColumn": 164,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 339,
+      "column": 6,
+      "endLine": 339,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "read.path !== this.file",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 340,
+      "column": 7,
+      "endLine": 341,
+      "endColumn": 104,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 340,
+      "column": 7,
+      "endLine": 341,
+      "endColumn": 104,
+      "mutatorName": "LogicalOperator",
+      "replacement": "ranges === undefined && read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 340,
+      "column": 7,
+      "endLine": 340,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 340,
+      "column": 7,
+      "endLine": 340,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "ranges !== undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 7,
+      "endLine": 341,
+      "endColumn": 104,
+      "mutatorName": "MethodExpression",
+      "replacement": "read.ranges.every(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 24,
+      "endLine": 341,
+      "endColumn": 103,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 42,
+      "endLine": 341,
+      "endColumn": 103,
+      "mutatorName": "MethodExpression",
+      "replacement": "ranges.every(([first, last]) => start <= last && end >= first)",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > counts a fix-located miss as seen only where the lens was shown or read a line its fix changes",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 54,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "LogicalOperator",
+      "replacement": "start <= last || end >= first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 86,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 86,
+      "mutatorName": "EqualityOperator",
+      "replacement": "start < last",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 73,
+      "endLine": 341,
+      "endColumn": 86,
+      "mutatorName": "EqualityOperator",
+      "replacement": "start > last",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 90,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 90,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "EqualityOperator",
+      "replacement": "end > first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 341,
+      "column": 90,
+      "endLine": 341,
+      "endColumn": 102,
+      "mutatorName": "EqualityOperator",
+      "replacement": "end < first",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 5,
+      "endLine": 346,
+      "endColumn": 207,
       "mutatorName": "StringLiteral",
       "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 88,
+      "endLine": 346,
+      "endColumn": 108,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 88,
+      "endLine": 346,
+      "endColumn": 108,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 88,
+      "endLine": 346,
+      "endColumn": 108,
+      "mutatorName": "EqualityOperator",
+      "replacement": "ranges !== undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 111,
+      "endLine": 346,
+      "endColumn": 120,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 123,
+      "endLine": 346,
+      "endColumn": 205,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 148,
+      "endLine": 346,
+      "endColumn": 185,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/evals/test/probing.test.ts > measureProbing > scores a miss only where a trust-boundary run was shown its file or read its lines",
+      "survivorClasses": [],
+      "run": "killed at 2f155bb1"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 167,
+      "endLine": 346,
+      "endColumn": 185,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "status": "Ignored"
+    },
+    {
+      "file": "packages/evals/src/probing.ts",
+      "line": 346,
+      "column": 192,
+      "endLine": 346,
+      "endColumn": 196,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
       "status": "Ignored"
     },
@@ -913,7 +1065,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > keeps 5000 graph rows within both limits with the warning and closing boundary",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -926,7 +1078,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > bounds file bodies at 49153 bytes",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -939,7 +1091,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > keeps 5000 graph rows within both limits with the warning and closing boundary",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -952,7 +1104,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > keeps 5000 graph rows within both limits with the warning and closing boundary",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -965,7 +1117,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > bounds file bodies at 49153 bytes",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -978,7 +1130,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > returns the same graph-tool output after reversing 2001 facts and relations",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1002,7 +1154,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > keeps 5000 graph rows within both limits with the warning and closing boundary",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1015,7 +1167,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1039,7 +1191,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > bounds graph bodies at 2000 lines",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1052,7 +1204,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1065,7 +1217,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1078,7 +1230,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1091,7 +1243,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1115,7 +1267,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1128,7 +1280,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/lens-tools.ts",
@@ -1141,7 +1293,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review-coverage.ts",
@@ -1154,7 +1306,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review-coverage.ts",
@@ -1167,7 +1319,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1180,7 +1332,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1193,7 +1345,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > names the files the planner's prompt showed, and none for the prober, which reads the plan alone",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1206,7 +1358,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > names the files the planner's prompt showed, and none for the prober, which reads the plan alone",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1219,7 +1371,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > names the files the planner's prompt showed, and none for the prober, which reads the plan alone",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1232,7 +1384,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1256,7 +1408,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > holds a lens task an older Melian created, whose budget is a number, to that findings budget",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1269,7 +1421,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1282,7 +1434,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1295,7 +1447,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > names every file whose diff block the prompt carried whole",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1308,7 +1460,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1321,7 +1473,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > names every file whose diff block the prompt carried whole",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1334,7 +1486,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1358,7 +1510,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > the head's functions in a lens's prompt > carries the function around each hunk at a level that reads functions",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1371,7 +1523,7 @@
       "claim": "equivalent",
       "evidence": "Rendering with functions: undefined renders the same prompt: ChangePrompt checks options.functions !== undefined.",
       "survivorClasses": [],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1384,7 +1536,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > the head's functions in a lens's prompt > carries the function around each hunk at a level that reads functions",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/review.ts",
@@ -1397,7 +1549,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/review.test.ts > reviewChangeset > the head's functions in a lens's prompt > carries the function around each hunk at a level that reads functions",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1410,7 +1562,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1423,7 +1575,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1436,7 +1588,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1449,7 +1601,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1462,7 +1614,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1475,7 +1627,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1488,7 +1640,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1501,7 +1653,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1514,7 +1666,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1538,7 +1690,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1551,7 +1703,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1575,7 +1727,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts a line read_file showed whole at its byte limit, and leaves out one a byte past that it cut",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1588,7 +1740,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1601,7 +1753,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1614,7 +1766,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1627,7 +1779,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1640,7 +1792,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1653,7 +1805,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1666,7 +1818,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1679,7 +1831,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1692,7 +1844,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1705,7 +1857,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1718,7 +1870,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1731,7 +1883,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1744,7 +1896,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1757,7 +1909,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1770,7 +1922,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1783,7 +1935,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1796,7 +1948,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1809,7 +1961,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1822,7 +1974,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > counts head lines read_file delivered for a changed file, as runs of lines, and never a search or the base",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1835,7 +1987,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1848,7 +2000,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1863,7 +2015,7 @@
       "survivorClasses": [
         "seeded-default"
       ],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1876,7 +2028,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1889,7 +2041,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1902,7 +2054,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/telemetry.test.ts > follows conversation cursors with the selected owner's query",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1915,7 +2067,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/telemetry.test.ts > reads verification claim IDs and lens subjects at level quick",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1928,7 +2080,7 @@
       "claim": "equivalent",
       "evidence": "read is spread only onto lens stages, and for any other stage policy?.lens?.revision is undefined, so the guard still yields [].",
       "survivorClasses": [],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1941,7 +2093,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1965,7 +2117,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/telemetry.test.ts > reads verification claim IDs and lens subjects at level quick",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1978,7 +2130,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -1993,7 +2145,7 @@
       "survivorClasses": [
         "optional-chain"
       ],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2008,7 +2160,7 @@
       "survivorClasses": [
         "optional-chain"
       ],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2021,7 +2173,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/telemetry.test.ts > reads verification claim IDs and lens subjects at level quick",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2034,7 +2186,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2047,7 +2199,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/telemetry.test.ts > reads verification claim IDs and lens subjects at level quick",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2060,7 +2212,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2075,7 +2227,7 @@
       "survivorClasses": [
         "optional-chain"
       ],
-      "run": "survived at 79363db6; equivalent"
+      "run": "survived at 2f155bb1, every candidate test file"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2088,7 +2240,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2101,7 +2253,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > names every file whose diff block the prompt carried whole",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2114,7 +2266,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2127,7 +2279,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2140,7 +2292,7 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     },
     {
       "file": "packages/pipeline/src/telemetry.ts",
@@ -2153,11 +2305,11 @@
       "claim": "killed",
       "evidence": "packages/pipeline/test/lens-shown.test.ts > what each lens was shown and read > leaves a file the cut prompt omits out of shown, and puts it in read only when the lens reads it",
       "survivorClasses": [],
-      "run": "killed at 79363db6"
+      "run": "killed at 2f155bb1"
     }
   ],
-  "total": 167,
+  "total": 179,
   "omitted": 0,
   "unmutated": [],
-  "head": "79363db6388441f778c7eb9640bf0f2a4820b96c"
+  "head": "2f155bb1135530b3f751502dd8763ceb0918df2f"
 }
