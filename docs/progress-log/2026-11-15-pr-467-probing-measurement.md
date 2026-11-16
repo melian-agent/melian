@@ -89,6 +89,17 @@ The round raised the policy notice on `packages/evals/package.json` again, and t
 
 The builder checked the preflight once more for a number of its own that the review also has, and found none. Its line count follows `linesAt` in `report_finding`, and its check on the order of `lines` matches that tool's. One rule of `report_finding` it does not apply: a blank snippet is refused, "point at the code itself". A miss whose lines are blank would still score. That is a rule, not a bound, and it is left for the coordinator.
 
+## The delta review of record at `963a4899`
+
+Opus reviewed `b88e57d0...963a4899` from the unchanged brief. The gate passed with 9,689 tests, and every promise it probed held: the rename end to end, the read bound with multibyte text, the guideline's numbers and this entry's links. It reran 12 sampled mutants of passes 18 and 19, and each claim held. It raised two P3s, and would block on neither:
+
+- R1: after a rename, the preflight checked a miss's rule against the first `trust-boundary` selection that covers the file, though a rename can put the file in two, the old path's and the new one's, and the review runs both. A rule only the second declares was refused. Pass 18 caused it. `542471e8` accepts the rule when any of them declares it.
+- R2: the preflight read with a reader of its own, which accepts a file holding a NUL byte. The lens's reader refuses that file, so such a miss always scored as missed: a fifth instance of the class. The coordinator ruled that the preflight reads through the lens's own reader, `readRevisionFile`, and keeps no reader or limit of its own. `8a023f1d` does that, so a symlink, a directory, a binary file and the 8 MiB cut are each answered as `report_finding` answers them. A file the reader cuts keeps the lines a lens can read.
+
+The coordinator left the blank-snippet rule out of the preflight: a miss names lines, not a snippet.
+
+The coordinator then stopped the loop. Five reviews had each found a P3 in the previous fix to the preflight, and these two fixes replace its own judgement with the review's. The preflight refuses entries in a misses file the coordinator writes, and guards neither trust nor durability, so these fixes owe no hand mutant proof and get no further delta review. The trust code, which heads may be probed and what a run refuses before any provider, has had its reviews and is unchanged since.
+
 ## Failing tests first
 
 Each fix began with a test that failed at the head before it:
@@ -113,8 +124,9 @@ Each fix began with a test that failed at the head before it:
 - R1 at `b88e57d0`: 1 failed of 48. A miss on `moved/claim.yml`, renamed from a path the base's lens covers, read status 2 with "the base's policy does not let the trust-boundary lens review moved/claim.yml", where 0 was expected.
 
 - The read bound at `350d7998`: 1 failed of 49. A miss on a file one byte past `revisionLimits.fileBytes` read status 0 and no errors, where 2 was expected.
+- R1 and R2 at `5f859c7a`: 2 failed of 51. A miss on a binary file read status 0 and no errors, where 2 was expected, and a renamed miss's `nested-only` rule was refused as "not a rule the base's trust-boundary lens declares".
 
-After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, 47 of 47 at `34aad52c`, 48 of 48 at `eddc1917`, and 49 of 49 at `bd3a3d73` and at `a5915b0f`.
+After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, 47 of 47 at `34aad52c`, 48 of 48 at `eddc1917`, 49 of 49 at `bd3a3d73` and at `a5915b0f`, 50 of 50 at `8a023f1d`, and 51 of 51 at `542471e8`.
 
 ## Mutants
 
