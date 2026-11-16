@@ -76,6 +76,15 @@ Opus 5.5 reviewed `dcf75544...31c545c6` with a fresh context. It raised:
 - R2: the description listed `goldens.ts` among pass 6's claimed files, and pass 6 claimed none of it. Mutants below now says which pass claimed which files, and pass 6's claims on `reviewTarget`'s guards were run by hand.
 - R3: the description did not cite the waiver of the final rerun. Rulings above cites it.
 
+## The delta review of record at `b88e57d0`
+
+Opus 5.5 reviewed `31c545c6...b88e57d0` with a fresh context and would not block. Its gate passed, 9,687 tests, and every mutant its samples of passes 6 and 17 selected behaved as claimed. It raised two P3s. The coordinator answered both on approach:
+
+- R1: a miss on a file the head renamed was refused, though the review covers a renamed file through its old path. `eddc1917` reads the file's old path from the changeset, and accepts the miss when `Lens.select`'s files hold either path, as the review does.
+- R2: the scope check reads where the lens's stored policy let it look, not what it was shown. A lens's prompt is cut past 200 KB of diff, the review keeps no record of the cut, and a miss whose file the cut left out still scores as missed. That is a third instance of the class "an entry the review cannot score that still scores". `d512c521` narrows [the evals guideline](../guidelines/evals.md#measuring-the-probing-levels-routes) to say so, and to read such a "missed" as not adjudicated. Recording what each lens was shown and read is a new stored record, so it is [issue #485](https://github.com/melian-agent/melian/issues/485), done before the misses run. The goldens are not affected: the largest golden's whole head is about 41 KB.
+
+Codex's review at `b88e57d0` raised one medium: `Verdict.all()` lists refuted findings, so `recordDismissal` accepts a refuted finding's ID. `main` already lists them there, and this pull request changed only that method's TSDoc, so the finding is `main`'s, and [issue #486](https://github.com/melian-agent/melian/issues/486) asks the maintainer whether a refuted finding's ID may be dismissed.
+
 ## Failing tests first
 
 Each fix began with a test that failed at the head before it:
@@ -97,7 +106,9 @@ Each fix began with a test that failed at the head before it:
 
 - R1 at `31c545c6`: 3 failed of 47. A miss whose only `trust-boundary` stage was cut printed `missed` where `unadjudicated, no score` was expected. The refusal test, with entries on a file the base's `paths` leaves out, under a disabled lens, on an empty file and on a gone file, read status 0 and no errors where 2 was expected. A lens stage carried no `coverage`.
 
-After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, and 47 of 47 at `34aad52c`.
+- R1 at `b88e57d0`: 1 failed of 48. A miss on `moved/claim.yml`, renamed from a path the base's lens covers, read status 2 with "the base's policy does not let the trust-boundary lens review moved/claim.yml", where 0 was expected.
+
+After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `dcf75544`, 45 of 45 at `055d08de`, 47 of 47 at `34aad52c`, and 48 of 48 at `eddc1917`.
 
 ## Mutants
 
@@ -110,6 +121,7 @@ After each fix, every probing test passed: 40 of 40 at `06106398`, 40 of 40 at `
 | 13 | `probing.ts`, `goldens.ts` |
 | 16 | `probing.ts` |
 | 17 | `probing.ts`, `telemetry.ts` |
+| 18 | `probing.ts` |
 
 Every claim was run by hand: a scratch script applied the mutant and ran its named test alone, and a kill counted only when exactly one test ran and failed.
 
@@ -118,5 +130,6 @@ Every claim was run by hand: a scratch script applied the mutant and ran its nam
 - Pass 13, `8fe10c2b...dcf75544`: 139 killed, 5 equivalent, 2 owed a test. Both sat in the "hits overlap" message. The R2 fix rewrote it, removing the optional chain, and its test kills the rewritten line's mutants in pass 16.
 - Pass 16, `f8c3da9e...055d08de`: 76 killed, covering the round's fix, R3 and R2. R3's three survivors at `87f01fae` are among them: two killed by the test `055d08de` adds, and an optional chain removed.
 - Pass 17, `31c545c6...34aad52c`: 73 killed, 3 equivalent, 1 owed a test. The test `e3de7fa1` adds, a `trust-boundary` stage with no coverage, kills it. `telemetry.ts` is claimed because the score's second check reads the coverage it records.
+- Pass 18, `b88e57d0...eddc1917`: 17 killed, 1 equivalent, 1 owed a test. The survivor accepted any rename, whether or not the base's lens covered its old path. `8567bb73` adds a base that leaves the old path out, with a head that also changes a file the lens covers, so the lens is selected and only the old-path check decides; the mutant fails it, run alone. The same commit renamed the test, so the two kills that named it were rerun under its new name at `8567bb73`, and failed again.
 
 Each equivalence carries its reason in the inventory. Rows outside the claimed files carry a note citing the ruling of 2026-11-14, and ignored rows keep the enumerator's configuration note.

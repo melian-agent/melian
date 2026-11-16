@@ -1,7 +1,7 @@
 {
 	"version": 2,
 	"pullRequest": 467,
-	"head": "e3de7fa1",
+	"head": "8567bb73",
 	"passes": [
 		{
 			"pass": "6",
@@ -14996,6 +14996,283 @@
 					"status": "generated",
 					"claim": "killed",
 					"evidence": "packages/evals/test/probing.test.ts > runRange > plans on the combination's planner, and records what tier each lens ran on",
+					"survivorClasses": []
+				}
+			]
+		},
+		{
+			"pass": "18",
+			"range": {
+				"base": "b88e57d060fa1b6e377cb547a12126b4cf101044",
+				"head": "eddc1917"
+			},
+			"claimsIn": [
+				"packages/evals/src/probing.ts"
+			],
+			"rows": [
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 262,
+					"column": 38,
+					"endLine": 262,
+					"endColumn": 71,
+					"mutatorName": "ArrowFunction",
+					"replacement": "() => undefined",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 262,
+					"column": 48,
+					"endLine": 262,
+					"endColumn": 71,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > refuses, before any provider, a miss whose file the range leaves alone, whose rule the lens does not declare, or whose lines run past its file",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 262,
+					"column": 48,
+					"endLine": 262,
+					"endColumn": 71,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 262,
+					"column": 48,
+					"endLine": 262,
+					"endColumn": 71,
+					"mutatorName": "EqualityOperator",
+					"replacement": "file.path !== this.file",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 263,
+					"column": 6,
+					"endLine": 263,
+					"endColumn": 27,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 263,
+					"column": 6,
+					"endLine": 263,
+					"endColumn": 27,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > refuses, before any provider, a miss whose file the range leaves alone, whose rule the lens does not declare, or whose lines run past its file",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 263,
+					"column": 6,
+					"endLine": 263,
+					"endColumn": 27,
+					"mutatorName": "EqualityOperator",
+					"replacement": "changed !== undefined",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 263,
+					"column": 36,
+					"endLine": 263,
+					"endColumn": 111,
+					"mutatorName": "StringLiteral",
+					"replacement": "``",
+					"status": "Ignored",
+					"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+					"note": "ignored by the enumerator's configuration"
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 271,
+					"column": 3,
+					"endLine": 273,
+					"endColumn": 101,
+					"mutatorName": "ArrowFunction",
+					"replacement": "() => undefined",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 272,
+					"column": 4,
+					"endLine": 273,
+					"endColumn": 101,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 272,
+					"column": 4,
+					"endLine": 273,
+					"endColumn": 101,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 272,
+					"column": 4,
+					"endLine": 273,
+					"endColumn": 101,
+					"mutatorName": "LogicalOperator",
+					"replacement": "lens.name === probingLens || files.includes(this.file) || changed.oldPath !== undefined && files.includes(changed.oldPath)",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 272,
+					"column": 4,
+					"endLine": 272,
+					"endColumn": 29,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 272,
+					"column": 4,
+					"endLine": 272,
+					"endColumn": 29,
+					"mutatorName": "EqualityOperator",
+					"replacement": "lens.name !== probingLens",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 5,
+					"endLine": 273,
+					"endColumn": 100,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > refuses, before any provider, a miss on a file the base's policy keeps from trust-boundary, and one empty or gone at the head",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 5,
+					"endLine": 273,
+					"endColumn": 100,
+					"mutatorName": "LogicalOperator",
+					"replacement": "files.includes(this.file) && changed.oldPath !== undefined && files.includes(changed.oldPath)",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 35,
+					"endLine": 273,
+					"endColumn": 99,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "false",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does; rerun at 8567bb73 against that test alone",
+					"survivorClasses": []
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 35,
+					"endLine": 273,
+					"endColumn": 99,
+					"mutatorName": "LogicalOperator",
+					"replacement": "changed.oldPath !== undefined || files.includes(changed.oldPath)",
+					"status": "generated",
+					"claim": "new-test",
+					"evidence": "8567bb73 adds a base that leaves the old path out, with a head that also changes a file the lens covers: packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does, which fails with the mutant and passes without it, run alone",
+					"survivorClasses": [
+						"compound-condition"
+					],
+					"run": "survived"
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 35,
+					"endLine": 273,
+					"endColumn": 64,
+					"mutatorName": "ConditionalExpression",
+					"replacement": "true",
+					"status": "generated",
+					"claim": "equivalent",
+					"evidence": "files is Lens.select's string[], so for a file the range does not rename files.includes(undefined) is false, as changed.oldPath !== undefined is; for a rename both operands read the same",
+					"survivorClasses": [
+						"compound-condition"
+					],
+					"run": "survived"
+				},
+				{
+					"file": "packages/evals/src/probing.ts",
+					"line": 273,
+					"column": 35,
+					"endLine": 273,
+					"endColumn": 64,
+					"mutatorName": "EqualityOperator",
+					"replacement": "changed.oldPath === undefined",
+					"status": "generated",
+					"claim": "killed",
+					"evidence": "packages/evals/test/probing.test.ts > measureProbing > accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does; rerun at 8567bb73 against that test alone",
 					"survivorClasses": []
 				}
 			]
