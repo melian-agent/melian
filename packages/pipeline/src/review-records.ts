@@ -27,6 +27,7 @@ import {
 	type WalkthroughPayload,
 } from "@melian-agent/core";
 import type { CheckRunRecord } from "./checks.ts";
+import type { FindingsState } from "./findings.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
@@ -284,6 +285,31 @@ export class ReviewRecords {
 		};
 		const key = KeyedRequest.of("round", { revision: this.revision, read: named.map((each) => each.id) }).key;
 		return this.#record("round", key, manifest);
+	}
+
+	/**
+	 * The record of finding `id`'s dismissal as `melian dismiss` stored it in `state`, so every round builds the same
+	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
+	 * version 11 lacks and every reopen drops.
+	 */
+	dismissalOf(state: FindingsState, id: string): SharedRecord | undefined {
+		const lifecycle = state.items[id]?.lifecycle;
+		const sighting = lifecycle?.dismissedSighting;
+		if (lifecycle === undefined || sighting === undefined) return undefined;
+		return this.dismissal({
+			finding: id,
+			by: lifecycle.dismissedBy!,
+			reason: lifecycle.dismissedReason!,
+			at: lifecycle.dismissedAt!,
+			severity: lifecycle.dismissedSeverity!,
+			// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+			sighting: {
+				revision: sighting.revision,
+				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+			},
+			rounds: [],
+			trigger: lifecycle.dismissedTrigger!,
+		});
 	}
 
 	/**

@@ -2919,7 +2919,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(restatement === undefined
 					? {}
 					: {
-							dismissed: restatement.dismissed,
+							dismissed: restatement.dismissed.map((each) => ({
+								...each,
+								record: predecessors.recordOf(changeset.id, each.id),
+							})),
 							dismissals: Object.fromEntries(
 								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
 							),
@@ -3104,43 +3107,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
-		// Each dismissal as `melian dismiss` stored it, so a later round adds the same bytes. One with no frozen sighting
-		// was stored before findings document version 11, and gets no record, and every reopen drops the sighting.
 		const dismissals =
 			state === undefined
 				? []
 				: Object.keys(state.items)
 						.sort()
-						.flatMap((id) => {
-							const {
-								dismissedBy,
-								dismissedReason,
-								dismissedAt,
-								dismissedSeverity,
-								dismissedSighting,
-								dismissedTrigger,
-							} = state.items[id]!.lifecycle;
-							if (dismissedSighting === undefined) return [];
-							return [
-								records.dismissal({
-									finding: id,
-									by: dismissedBy!,
-									reason: dismissedReason!,
-									at: dismissedAt!,
-									severity: dismissedSeverity!,
-									// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
-									sighting: {
-										revision: dismissedSighting.revision,
-										finding: {
-											...dismissedSighting.sighting,
-											properties: { ...dismissedSighting.sighting.properties, status: "new" },
-										},
-									},
-									rounds: [],
-									trigger: dismissedTrigger!,
-								}),
-							];
-						});
+						.flatMap((id) => records.dismissalOf(state, id) ?? []);
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
@@ -3377,7 +3349,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	let verificationCheck: CheckRecord | undefined;
 	// The verification task's request key and the outcomes it reached, which its record carries.
-	let verified: { key: string; result: VerificationResult } | undefined;
+	let verified:
+		| { key: string; result: VerificationResult; dismissals: { finding: string; record: string }[] }
+		| undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
@@ -3489,7 +3463,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
 				// The index names the request key the task attached under, which its record is keyed by.
 				const attachedAs = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
-				if (attachedAs?.task === verifying) verified = { key: attachedAs.input, result: results };
+				if (attachedAs?.task === verifying) {
+					// The dismissals the task's verifier was shown, each once; a task version 4 stored names no record.
+					const shown = new Map(
+						(
+							(await harness.getTask(verifying, context))?.input as VerificationInput | undefined
+						)?.candidates.flatMap((candidate) =>
+							(candidate.dismissed ?? []).flatMap(({ id, record }) =>
+								record === undefined ? [] : [[id, record] as const],
+							),
+						),
+					);
+					verified = {
+						key: attachedAs.input,
+						result: results,
+						dismissals: [...shown].map(([finding, record]) => ({ finding, record })),
+					};
+				}
 				const ended = Object.values(results).find((result) => result.status === "ended");
 				const failed = candidates
 					.map((candidate) => results[candidate.key])
@@ -3654,13 +3644,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
 	if (request.records !== undefined && owned) {
 		const findings = findingsDecided;
-		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
+		const shown = new Set(verified?.dismissals.map(({ finding }) => finding));
+		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers, shown);
 		const verification =
 			verified === undefined || verificationCheck === undefined
 				? undefined
 				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
 						claims,
-						dismissals: [],
+						dismissals: verified.dismissals,
 						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
 							candidate,
 							outcome: verificationOutcome(outcome),

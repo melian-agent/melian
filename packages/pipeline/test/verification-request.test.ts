@@ -50,7 +50,9 @@ const candidate: VerificationCandidate = {
 	designAtBase: { sections: "sections", files: "files" },
 	fence: { coReported: false, silent: ["nit"] },
 	reportedAt: { "0123456789abcdef lens.correctness@1@careful": "P1" },
-	dismissed: [{ id: "fedcba9876543210", failureScenario: "an old scenario", evidence: [location] }],
+	dismissed: [
+		{ id: "fedcba9876543210", record: "1".repeat(64), failureScenario: "an old scenario", evidence: [location] },
+	],
 	dismissals: { fedcba9876543210: "identity" },
 };
 
@@ -77,6 +79,17 @@ describe("verificationRequest", () => {
 			"candidates.0.state.speaker.message",
 		];
 		expect(keyCoverage(verificationRequest, sample, { vary, excluded })).toEqual([]);
+	});
+
+	// Another host's dismissal of the same root is another record, so a verifier shown it judged under another ruling.
+	it("keys each shown dismissal's record, so a request that differs only by one has another key", () => {
+		const shownAs = (record: string): VerificationInput => ({
+			...sample,
+			candidates: [{ ...candidate, dismissed: [{ ...candidate.dismissed![0]!, record }] }],
+		});
+		expect(verificationRequest(shownAs("1".repeat(64))).key).toBe(verificationRequest(sample).key);
+		expect(verificationRequest(shownAs("2".repeat(64))).key).not.toBe(verificationRequest(sample).key);
+		expect(candidateKey(shownAs("2".repeat(64)).candidates[0]!)).not.toBe(candidateKey(candidate));
 	});
 
 	it("attaches a review with a fresh nonce to the same task", () => {

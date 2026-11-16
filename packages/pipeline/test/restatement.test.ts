@@ -5,8 +5,11 @@ import {
 	injectionAttemptRuleId,
 	Lens,
 	type MelianConfig,
+	MemoryRecordStore,
 	Rendering,
 	Revision,
+	reviewPayloads,
+	SharedRecord,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -365,6 +368,7 @@ describe("a dismissal carrying to a restatement", () => {
 		const replaced = { ...dismissal, reason: "Only staff reach this path." };
 		let pending = true;
 		const verify = async (messages: Messages) => {
+			console.log("VERIFY", pending, systemPromptOf(messages).match(/Dismissed d1 finding [0-9a-f]+/)?.[0]);
 			if (pending)
 				await recordDismissal({ harness, revision: first, id: root, dismissal: replaced, repoRoot: repo });
 			pending = false;
@@ -953,6 +957,39 @@ describe("a dismissal carrying to a restatement", () => {
 		script([restatement]);
 		await review();
 		expect((await verification()).dismissed?.map(({ id }) => id)).toEqual([root]);
+	});
+
+	it("names each root by the ID of the dismissal record a round exports for it", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			records: store,
+		});
+		const exported = (await store.list(changeset.id)).filter(({ kind }) => kind === "dismissal");
+		expect(exported.map(({ key }) => key)).toEqual([root]);
+		const owner = (await harness.root(context)).id;
+		const entry = (await harness.snapshot(ReviewIndex, owner, context))!.reviews[Revision.key(changeset.revision)]!
+			.verification!;
+		const input = (await harness.getTask(entry.task as unknown as TaskId<string>, context))!
+			.input as unknown as VerificationInput;
+		const record = SharedRecord.parseEnvelope(exported[0]!).id;
+		expect(input.candidates[0]!.dismissed?.map(({ id, record }) => [id, record])).toEqual([[root, record]]);
+		const verification = (await store.list(changeset.id)).find(({ kind }) => kind === "verification")!.payload as {
+			claims: { verification: { matches?: Record<string, string> } }[];
+			dismissals: unknown[];
+		};
+		expect(verification.claims.map(({ verification }) => verification.matches)).toEqual([{ [root]: "same" }]);
+		expect(verification.dismissals).toEqual([{ finding: root, record }]);
 	});
 
 	it("links nothing when the verifier did not finish, though one candidate was judged the same", async () => {

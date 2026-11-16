@@ -740,13 +740,14 @@ export async function readFindings(
 export type VerificationClaim = { id: string; source: FindingSource; verification: Verification };
 
 /**
- * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, with the
- * dismissals the verifier matched left out: a shared record carries no dismissal it does not name.
+ * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, keeping only
+ * the matches against a dismissal in `shown`: a shared record carries no dismissal it does not name.
  */
 export function verificationClaims(
 	state: FindingsState,
 	revision: string,
 	producers: readonly Producer[],
+	shown: ReadonlySet<string>,
 ): VerificationClaim[] {
 	const counts = selected(producers);
 	return Object.keys(state.items)
@@ -759,8 +760,16 @@ export function verificationClaims(
 				.flatMap(([key, sighting]) => {
 					const latest = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
 					if (latest === undefined) return [];
-					const { matches: _, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
-					return [{ id, source: { ...sighting.properties.source }, verification }];
+					const { matches, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
+					const named = Object.entries(matches ?? {}).filter(([root]) => shown.has(root));
+					return [
+						{
+							id,
+							source: { ...sighting.properties.source },
+							verification:
+								named.length === 0 ? verification : { ...verification, matches: Object.fromEntries(named) },
+						},
+					];
 				});
 		});
 }
