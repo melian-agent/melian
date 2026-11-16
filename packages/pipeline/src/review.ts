@@ -1337,8 +1337,8 @@ interface ReviewSettings {
 	/**
 	 * Called once the review has recorded its lens run, and aborted any run it replaced, before it waits for that run.
 	 * A host starts work there that needs the change but not the verdict, such as the walkthrough; anything that resumes
-	 * the harness then cannot restart a replaced run. A review that runs no lens, or fails earlier, never calls it. What
-	 * it returns stands for the walkthrough: a review that names {@link ReviewOptions.records} waits for it, within
+	 * the harness then cannot restart a replaced run. A review that runs no lens calls it before adjudication, and one
+	 * that fails earlier never calls it. What it returns stands for the walkthrough: a review that names {@link ReviewOptions.records} waits for it, within
 	 * {@link ReviewOptions.walkthroughWait}, before it exports its round.
 	 */
 	readonly lensesStarted?: () => unknown;
@@ -3164,6 +3164,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	// What the host's `lensesStarted` returned, which settles once its walkthrough has, and when the host was called.
 	let walkthrough: { at: number; done: Promise<unknown> } | undefined;
+	const startWalkthrough =
+		request.lensesStarted === undefined
+			? undefined
+			: () => {
+					const at = Date.now();
+					const done = Promise.resolve(request.lensesStarted!()).catch(() => undefined);
+					walkthrough = { at, done };
+				};
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	spans.end();
 	const {
@@ -3171,7 +3179,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		ran,
 		task: lensTask,
 	} = lenses.length === 0
-		? { result: {} as LensResult, ran: lensInput, task: undefined }
+		? (startWalkthrough?.(), { result: {} as LensResult, ran: lensInput, task: undefined })
 		: await runLenses(
 				harness,
 				lensInput,
@@ -3186,13 +3194,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				unlockModels,
 				(task, done) =>
 					Promise.all([verifyAsLensesEnd(task, done), exportAsLensesEnd(task, done)]).then(() => undefined),
-				request.lensesStarted === undefined
-					? undefined
-					: () => {
-							const at = Date.now();
-							const done = Promise.resolve(request.lensesStarted!()).catch(() => undefined);
-							walkthrough = { at, done };
-						},
+				startWalkthrough,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	// Every wave this review started settles before the next step starts, so no step of the host's overlaps its

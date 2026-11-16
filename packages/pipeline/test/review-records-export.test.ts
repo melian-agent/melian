@@ -82,7 +82,12 @@ type Walkthrough = {
 	readonly wait?: number;
 };
 
-async function review(store: MemoryRecordStore | undefined, given: typeof checks = checks, walkthrough?: Walkthrough) {
+async function review(
+	store: MemoryRecordStore | undefined,
+	given: typeof checks = checks,
+	walkthrough?: Walkthrough,
+	named: readonly string[] = ["correctness", "contracts"],
+) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
 	const light = fake.ref("light");
@@ -131,7 +136,7 @@ async function review(store: MemoryRecordStore | undefined, given: typeof checks
 		harness,
 		changeset,
 		config,
-		lenses: (await Lens.builtins()).filter(({ name }) => name === "correctness" || name === "contracts"),
+		lenses: (await Lens.builtins()).filter(({ name }) => named.includes(name)),
 		standards: [],
 		models: fake.review,
 		checks: given,
@@ -301,6 +306,18 @@ describe("a review that names a record store and writes a walkthrough", () => {
 			note: null,
 		});
 		expect(roundOf(stored).walkthrough).toEqual({ key: written!.key, id: SharedRecord.parseEnvelope(written!).id });
+	});
+
+	it("exports the walkthrough of a review that runs no lens", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { stored } = await review(store, checks, { started: (summarize) => summarize("pull-request") }, []);
+
+		const walkthroughs = stored.filter(({ kind }) => kind === "walkthrough");
+		expect(walkthroughs).toHaveLength(1);
+		expect(roundOf(stored).walkthrough).toEqual({
+			key: walkthroughs[0]!.key,
+			id: SharedRecord.parseEnvelope(walkthroughs[0]!).id,
+		});
 	});
 
 	it.each([
