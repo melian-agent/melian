@@ -421,8 +421,8 @@ export function plannerInstructions(lens: string, context: readonly string[]): s
  * The prober's instructions at a level that probes: its role, what a probe is and may do, how it ends, and the lens's
  * policy, `policy`, which a finding must meet. The plan arrives as its input.
  */
-export function proberInstructions(lens: string, policy: string, timeout: number): string {
-	const wording = probingWordingOf(lens);
+export function proberInstructions(lens: string, policy: string, timeout: number, worded = lens): string {
+	const wording = probingWordingOf(worded);
 	const seconds = timeout / 1000;
 	return [
 		fill(wording.proberRole, { lens }),
@@ -504,6 +504,8 @@ export type ClaimProbe = {
 	plan: Attack[];
 	probe: ProbeRecord;
 	environment: ProbingEnvironment;
+	// The built-in lens whose wording judges the probe, when it is not the claim's own lens.
+	probesAs?: string;
 };
 
 /** A claim's key among a candidate's probes: its finding ID and its producer. */

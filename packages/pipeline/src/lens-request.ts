@@ -23,7 +23,7 @@ export const continuePrompt =
 export type LensRequestRun = {
 	readonly name: string;
 	readonly tools: readonly LensToolName[];
-	readonly probe?: unknown;
+	readonly probe?: { readonly probesAs?: string; readonly [field: string]: unknown };
 };
 
 /** What a lens run is asked, before it is keyed. */
@@ -119,7 +119,7 @@ export function lensRequest<Run extends LensRequestRun>(
 			// A planner and prober read their lens's wording, the shared lines and its own. The run escalated to, which is
 			// copied only with this run, reads this run's findings in the shared lines, and its own key holds its lens's.
 			...(probes
-				? { wording: probingWordingOf(keyed.name) }
+				? { wording: probingWordingOf(keyed.probe?.probesAs ?? keyed.name) }
 				: input.escalation !== undefined && "next" in input.escalation
 					? { wording: probingWording }
 					: {}),

@@ -182,7 +182,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								const probe = probed({ id, source });
 								return probe === undefined
 									? []
-									: [{ label, wording: evidenceWordingOf(lensOf(source)), ...probe }];
+									: [{ label, wording: evidenceWordingOf(probe.probe.probesAs ?? lensOf(source)), ...probe }];
 							}),
 							task.input.revision.nonce,
 						),
@@ -587,7 +587,7 @@ export function verificationRequest(
 	const judged = candidates.flatMap((candidate) =>
 		candidate.state.claims
 			.filter((claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined)
-			.map((claim) => lensOf(claim.source)),
+			.map((claim) => candidate.probes![probeClaimKey(claim)]!.probesAs ?? lensOf(claim.source)),
 	);
 	return KeyedRequest.of(
 		"verification",

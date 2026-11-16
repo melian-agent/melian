@@ -203,6 +203,11 @@ export interface LensFields {
 	readonly nearer?: readonly string[];
 	/** The emoji shown beside the lens's name, as its `LENS.md` declares it. Display alone, so not part of `version`. */
 	readonly emoji?: string;
+	/**
+	 * The built-in lens whose probing wording a level of this lens probes in, when its `extends` reaches a built-in of
+	 * another name. Absent when the lens probes in its own name's wording, or does not probe.
+	 */
+	readonly probesAs?: string;
 }
 
 /**
@@ -396,7 +401,7 @@ function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
 
 // Each field a level leaves out comes from the top level, then from Melian's default. `careful` always exists, and is
 // resolved first, so a lens with no tier anywhere is refused for its top-level `tier`.
-function resolveLevels(file: string, name: string, declared: Declared, builtin: boolean): LensLevels {
+function resolveLevels(file: string, name: string, declared: Declared, ancestry: Ancestry): LensLevels {
 	const resolved = (level: ScrutinyLevel, own: DeclaredLevel | undefined): LensLevel => {
 		const tier = own?.tier ?? declared.tier;
 		if (tier === undefined && level === defaultScrutinyLevel) required(file, "tier", tier);
@@ -412,30 +417,31 @@ function resolveLevels(file: string, name: string, declared: Declared, builtin: 
 		const tools = own?.budget.tools ?? declared.budget.tools;
 		const ended = own?.budget.ended ?? declared.budget.ended;
 		const probe = own?.probe;
-		if (probe !== undefined && !lensProbingWording.has(name)) {
+		const { origin, builtins } = ancestry;
+		if (probe !== undefined && builtins.has(name) && origin !== name) {
+			throw new LensError(
+				"missingField",
+				file,
+				`${file}: lens ${name}, level ${level}: "probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in ${name} lens's name without extending it; give it and every farther ${name} lens "extends: ${name}"`,
+				{ field: `levels.${level}.probe`, lens: name, level },
+			);
+		}
+		if (probe !== undefined && (origin === undefined || !lensProbingWording.has(origin))) {
 			const worded = [...lensProbingWording.keys()];
 			throw new LensError(
 				"missingField",
 				file,
-				`${file}: lens ${name}, level ${level}: "probe" needs probing wording of the lens's own, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
+				`${file}: lens ${name}, level ${level}: "probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
 		// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
 		// would leave the lens clean.
-		if (probe !== undefined && name === "tests") {
+		if (probe !== undefined && origin === "tests") {
 			throw new LensError(
 				"missingField",
 				file,
-				`${file}: lens tests, level ${level}: "probe" is refused in the tests lens until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
-		if (probe !== undefined && !builtin) {
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" reads the built-in ${name} lens's probing wording, and this lens does not extend the built-in; give it and every farther ${name} lens "extends: ${name}"`,
+				`${file}: lens ${name}, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
@@ -463,7 +469,7 @@ function resolveLevels(file: string, name: string, declared: Declared, builtin: 
 }
 
 // `extends` takes the named lens, as layered so far, and overrides the fields this file sets. Its body is appended.
-function resolve(definition: Definition, base: Layered | undefined): Layered {
+function resolve(definition: Definition, base: Layered | undefined, builtins: ReadonlySet<string>): Layered {
 	const { file, scope, frontMatter: own, body } = definition;
 	const description = required(file, "description", own.description ?? base?.lens.description);
 	const rules = required(file, "rules", own.rules ?? base?.lens.rules);
@@ -481,10 +487,12 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
-	const builtin = definition.builtin || (own.extends === own.name && base?.builtin === true);
+	const origin = definition.builtin ? own.name : base?.origin;
 	const resolution = own.resolution ?? base?.lens.resolution;
 	const emoji = own.emoji ?? base?.lens.emoji;
 	if (own.emoji !== undefined) checkEmoji(file, own.emoji);
+	const levels = resolveLevels(file, own.name, declared, { origin, builtins });
+	const probes = Object.values(levels).some((level) => level.probe !== undefined);
 	const lens = versioned({
 		name: own.name,
 		description,
@@ -493,15 +501,17 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		rules,
 		paths: own.paths?.map((path) => anchor(file, scope, path)) ?? base?.lens.paths ?? [anchor(file, scope, "**")],
 		scope,
-		levels: resolveLevels(file, own.name, declared, builtin),
+		levels,
 		standards: own.standards ?? base?.lens.standards ?? true,
 		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 		resolution,
 		emoji,
+		// Absent for a lens that probes in its own name's words, so its version is the one it had before.
+		...(probes && origin !== own.name ? { probesAs: origin } : {}),
 	});
-	return { lens, declared, builtin };
+	return { lens, declared, origin };
 }
 
 // One emoji, which the findings guideline's table does not already give a meaning.
@@ -532,8 +542,13 @@ function checkEmojiClashes(lenses: readonly LensFields[]): void {
 interface Layered {
 	readonly lens: LensFields;
 	readonly declared: Declared;
-	// The built-in of its name, or a lens that extends it under that name.
-	readonly builtin: boolean;
+	// The built-in lens its `extends` chain reaches, which a level that probes takes its wording from.
+	readonly origin: string | undefined;
+}
+
+interface Ancestry {
+	readonly origin: string | undefined;
+	readonly builtins: ReadonlySet<string>;
 }
 
 function fromSource(file: string) {
@@ -618,6 +633,7 @@ async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>
 
 function layer(definitions: readonly Definition[]): LensFields[] {
 	const lenses = new Map<string, Layered>();
+	const builtins = new Set(definitions.filter(({ builtin }) => builtin).map(({ frontMatter }) => frontMatter.name));
 	for (const definition of definitions) {
 		const { extends: extended, name } = definition.frontMatter;
 		const base = extended == null ? undefined : lenses.get(extended);
@@ -631,7 +647,7 @@ function layer(definitions: readonly Definition[]): LensFields[] {
 				},
 			);
 		}
-		lenses.set(name, resolve(definition, base));
+		lenses.set(name, resolve(definition, base, builtins));
 	}
 	return [...lenses.values()].map(({ lens }) => lens);
 }
@@ -761,6 +777,7 @@ export class Lens {
 	readonly nearer?: readonly string[];
 	readonly resolution?: ResolutionEntry;
 	readonly emoji?: string;
+	readonly probesAs?: string;
 
 	private constructor(fields: LensFields) {
 		this.name = fields.name;
@@ -779,6 +796,7 @@ export class Lens {
 		this.nearer = fields.nearer;
 		this.resolution = fields.resolution;
 		this.emoji = fields.emoji;
+		this.probesAs = fields.probesAs;
 	}
 
 	/** The lens `fields` describe, as given: its version is not computed again. */
@@ -1078,7 +1096,7 @@ export class Lens {
 	/** The lens's fields, in their declared order. */
 	toJSON(): LensFields {
 		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
-		const { instructions, version, file, nearer, resolution, emoji } = this;
+		const { instructions, version, file, nearer, resolution, emoji, probesAs } = this;
 		return {
 			name,
 			description,
@@ -1096,6 +1114,7 @@ export class Lens {
 			...(nearer === undefined ? {} : { nearer }),
 			...(resolution === undefined ? {} : { resolution }),
 			...(emoji === undefined ? {} : { emoji }),
+			...(probesAs === undefined ? {} : { probesAs }),
 		};
 	}
 
