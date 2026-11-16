@@ -571,6 +571,21 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
 	});
 
+	it("reviews under a base that trusts writers without --records, and exports nothing", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const before = readdirSync(repo).sort();
+
+		const review = melian(repo, ["review", "trusting"], env);
+
+		expect({ status: review.status, stdout: review.stdout.split("\n")[0] }).toEqual({
+			status: 0,
+			stdout: "Verdict: passed",
+		});
+		expect(review.stderr).not.toContain("records");
+		expect(readdirSync(repo).sort()).toEqual(before);
+	});
+
 	it("decides a round from the records a review exported, as the review decided it", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		policyBase(repo, "trusting", trustingPolicy);
