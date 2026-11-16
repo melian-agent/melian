@@ -26,7 +26,7 @@ Failure descriptions count both groups apart. An all-dismissed success says “0
 A finding a trust-floor restatement left live names its likely root and the command that accepts it, from `likelyDismissalNotes()`, in its inline comment, its advisory entry and its ledger line. The command names the pull request, `'#N'`, in a code span: prose escaping would put a word joiner after the `#`, and a pasted command would carry it.
 The review body and ledger state the verdict's mapping and name the pull-request dismissal command.
 The ledger’s dismissal section uses `verdict.dismissals()`, including legacy merged members without their own dismissal metadata.
-Every publication lists attested dismissed report IDs, rules, files and reasons in its review body, including carried and merged reports.
+Every publication lists attested dismissed report IDs, rules, files and reasons in its review body, including carried and merged reports, in the verdict's order, by path. A body over GitHub's limit is cut from its end, so a late entry, and an inherited root with it, can go; the ledger's summary repeats the list and is cut the same way. Only `melian publish`'s attestations name every root, and [issue #482](https://github.com/melian-agent/melian/issues/482) holds changing what gets cut.
 It omits git identities. The CLI shows those identities to the publishing maintainer.
 GitHub's status-write permission is the authority; installation tokens need no successful /user read to attest dismissals.
 Writer trust off still gives the existing trusted-host error.
