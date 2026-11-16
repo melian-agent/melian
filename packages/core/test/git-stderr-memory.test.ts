@@ -50,3 +50,12 @@ it("holds about the bytes it keeps when standard error arrives one byte at a tim
 	// One Buffer kept for each chunk holds a hundred bytes or more apiece, so a megabyte of one-byte chunks holds 100 MB.
 	expect(growth).toBeLessThan(4 * bytes);
 }, 60_000);
+
+it("keeps standard error whole when its chunks cross the end of a slab", async () => {
+	const chunks = ["a", "b".repeat(70_000), "cd"];
+	const result = git("/", ["fetch"]);
+	const child = children.at(-1)!;
+	for (const chunk of chunks) child.stderr.emit("data", Buffer.from(chunk));
+	child.emit("close", 0);
+	expect(await result).toEqual({ code: 0, stdout: "", stdoutBytes: Buffer.alloc(0), stderr: chunks.join("") });
+});

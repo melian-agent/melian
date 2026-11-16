@@ -3,3 +3,10 @@
 - The test, `packages/core/test/git-stderr-memory.test.ts`, fakes `spawn` so that git writes 1 MiB of standard error one byte at a time. It measures the heap and array buffers after a forced collection, and asserts they grew by less than 4 MiB. On `329f2a29` it failed with "expected 228537020 to be less than 4194304". With the fix it passes, at about 1.07 MB of growth in each of five runs.
 - The tests at the limit and one byte past it, in `packages/core/test/git.test.ts`, pass unchanged.
 - Standard output, under a caller's `maxBytes`, still keeps a `Buffer` for each chunk. Only callers that read local objects pass `maxBytes`, so no remote writes there, and this pass leaves it alone.
+
+Mutants: Stryker's instrumenter lists 20 on the changed lines of `git.ts`, at `408502a7`. `melian mutants list` leaves the file unmutated, since it sends signals. Its only signalling is a bare `child.kill()`, so [the exception](../decisions/2026-11-16-real-signals-under-mutation-for-a-bare-child-kill.md) lets them run with real signals, in a cloud container. Each ran alone against its named test, which passed unmutated first. No pid the runner recorded still ran after any run.
+
+- 15 failed their named tests.
+- 3 turn the copy loop into one that never ends, and were stopped at the runner's 60-second timeout by their recorded pids: `offset <= chunk.length`, an emptied loop body, and `stderrSize * stderrSlab` for the slab's offset.
+- 1, a slab of `64 / 1024`, makes zero-length slabs, so the loop pushes them until the test's worker aborts at its 1 GiB heap limit, partway through the named test. Run alone by hand, it aborted the same way. It is recorded as killed by the heap limit, as a hang is recorded as killed by its timeout.
+- 1, a new slab for every chunk, needed a new test: "keeps standard error whole when its chunks cross the end of a slab", in the memory test's file. It would allocate a slab per byte under the memory test, so it never ran there.
