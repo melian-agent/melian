@@ -73,6 +73,13 @@ export type CheckRunRecord =
  */
 export type RunIdentity = { base: string; head: string; tier: string; policy: string; task: number };
 
+// The runs runChecks returned in this process. A run built anywhere else names a request it may never have run under.
+const ranHere = new WeakSet<CheckRun>();
+
+export function ranInThisProcess(run: CheckRun): boolean {
+	return ranHere.has(run);
+}
+
 /** One run of a tier: its identity, and one record per check the tier names, in the tier's order. */
 export interface CheckRun {
 	readonly identity: RunIdentity;
@@ -838,8 +845,11 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		}
 	}
 	const { outcome } = settled.state;
-	if (outcome.status === "completed")
-		return { identity: { ...identity, task: taskId }, request, asked, records: outcome.result };
+	if (outcome.status === "completed") {
+		const run: CheckRun = { identity: { ...identity, task: taskId }, request, asked, records: outcome.result };
+		ranHere.add(run);
+		return run;
+	}
 	if (outcome.status === "failed") {
 		const code = (outcome.error.detail as { code?: CheckErrorCode } | undefined)?.code ?? "notCompleted";
 		throw new CheckError(code, tier, outcome.error.message);

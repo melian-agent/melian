@@ -67,7 +67,14 @@ import {
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
 import { writesFixedText } from "./check-request.ts";
-import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
+import {
+	type CheckRun,
+	type CheckRunRecord,
+	checksExtensionFor,
+	ranInThisProcess,
+	runChecks,
+	type WriterTrust,
+} from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -3082,9 +3089,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const sighted = (source: FindingSource) =>
 			state === undefined ? [] : producerSightings(state, reviewed, source);
 		const request = run?.request ?? null;
-		// A static sighting is shared only when the run's own request asks for check code that stores no tool text.
+		// A static sighting is shared only from a run this process made, whose own request asks for check code that
+		// stores no tool text. A run handed in from elsewhere is not tied to the sightings, so it proves nothing.
 		const proven = (check: string) =>
-			run?.asked !== undefined && run.asked.key === run.request && writesFixedText(run.asked, check);
+			run !== undefined &&
+			ranInThisProcess(run) &&
+			run.asked !== undefined &&
+			run.asked.key === run.request &&
+			writesFixedText(run.asked, check);
 		const exported = checks.flatMap((check) => {
 			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];

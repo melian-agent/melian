@@ -1085,6 +1085,26 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toContain("biome/suspicious/noDoubleEquals");
 	});
 
+	it("exports what Biome finds, from the run this review's checks made", { timeout: 120_000 }, async () => {
+		const { repo, env } = staticCheckout("export const b = (x: number) => x == 1;\n");
+		policyBase(repo, "trusting", "trust:\n  writers: true\n");
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(3);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const listed = await records.list(changeset!);
+		await records.close();
+		const biome = listed.find(
+			({ kind, payload }) =>
+				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
+		)!.payload as { result: { status: string }; sightings: { ruleId: string }[] };
+		expect(biome.result.status).toBe("ran");
+		expect(biome.sightings.map(({ ruleId }) => ruleId)).toEqual(["biome/suspicious/noDoubleEquals"]);
+	});
+
 	// Issue #281: Biome and tsc quote files a head's configuration or sources lead them to, outside the checkout too.
 	const token = "ghp_FAKEoutsideTOKEN281";
 	const routes: [string, (repo: string, outside: string) => void, string | undefined][] = [

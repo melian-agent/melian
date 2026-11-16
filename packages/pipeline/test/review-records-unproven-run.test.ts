@@ -151,6 +151,8 @@ describe("a static check's sightings, exported from a run that does not prove th
 		["a run of a build whose Biome check stored its text", { checkRun: runUnder({ ...current, "static.biome": 1 }) }],
 		["a run whose request is not the one it was keyed by", { checkRun: runUnder(current, "d".repeat(64)) }],
 		["a run that carries no request", { checkRun: { ...runUnder(current), asked: undefined } }],
+		// A caller can hand in any run beside the sightings, so a request that names current code proves nothing.
+		["a run handed in whose request names current check code", { checkRun: runUnder(current) }],
 	])("leave no tool text in the record, from %s", async (_, run) => {
 		const reviewed = await review(new MemoryRecordStore({ payloads: reviewPayloads }), run);
 
@@ -170,20 +172,5 @@ describe("a static check's sightings, exported from a run that does not prove th
 		expect(reviewed.verdict.status).toBe("findings");
 		expect(verdict.status).toBe("not-reviewed");
 		expect(verdict.notRun.map(({ name }) => name)).toContain("static.biome");
-	});
-});
-
-describe("a static check's sightings, exported from a run that proves its version of the check writes fixed text", () => {
-	it("are shared with Melian's sentence in place of the tool's, and read back as the host decided", async () => {
-		const reviewed = await review(
-			new MemoryRecordStore({ payloads: reviewPayloads }),
-			{ checkRun: runUnder(current) },
-			undefined,
-		);
-		const record = biomeRecord(reviewed.stored);
-
-		expect(record.result.status).toBe("ran");
-		expect(record.sightings).toHaveLength(1);
-		expect((await readBack(reviewed)).blocking).toBe(true);
 	});
 });
