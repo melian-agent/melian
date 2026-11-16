@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, Revision } from "@melian-agent/core";
+import { Changeset, type LensProbingWording, lensProbingWording, Revision } from "@melian-agent/core";
 import { backgroundContext as context } from "@melian-agent/pipeline";
 import {
 	fauxAssistantMessage,
@@ -11,17 +11,10 @@ import {
 	textOf,
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type * as Probing from "../src/probing.ts";
-import { ProbeReruns, probingWording } from "../src/probing.ts";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ProbeReruns } from "../src/probing.ts";
 import { plannerMatch, proberMatch, probingReview } from "./fixtures/probing-scenario.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
-
-// The module's table is frozen; a copy lets a test change one string, as a release would.
-vi.mock("../src/probing.ts", async (importOriginal) => {
-	const actual = await importOriginal<typeof Probing>();
-	return { ...actual, probingWording: { ...actual.probingWording } };
-});
 
 let dir: string;
 let repo: string;
@@ -161,17 +154,18 @@ describe("a repeat review of a level that probes", { timeout: 60_000 }, () => {
 	});
 
 	it("plans again when a probing wording string changed", async () => {
-		const wording = probingWording as Record<string, string>;
-		const original = wording.planAnswer!;
+		// Each lens's wording is frozen, but the map that holds it is not, so a test can change a string as a release would.
+		const table = lensProbingWording as Map<string, LensProbingWording>;
+		const original = table.get("trust-boundary")!;
 		try {
 			const [, again] = await twice(planNone, undefined, {
 				before: () => {
-					wording.planAnswer = `${original} Answer briefly.`;
+					table.set("trust-boundary", { ...original, earlierSome: `${original.earlierSome} Plan briefly.` });
 				},
 			});
 			expect(again.planner).toBe(2);
 		} finally {
-			wording.planAnswer = original;
+			table.set("trust-boundary", original);
 		}
 	});
 });

@@ -341,10 +341,10 @@ it.each(["quick", undefined])("reads verification claim IDs and lens subjects at
 		expect(query).toEqual({ ownerTaskId: 2 });
 		return { items: [{ id: 4 as ConversationId }] as Awaited<ReturnType<Storage["scanConversations"]>>["items"] };
 	});
-	expect((await fixture.read()).stages.map(({ subject }) => subject)).toEqual([
-		`correctness@v1@${level ?? "legacy"}`,
-		"first,second",
-	]);
+	const { stages } = await fixture.read();
+	expect(stages.map(({ subject }) => subject)).toEqual([`correctness@v1@${level ?? "legacy"}`, "first,second"]);
+	// Its stored policy names no revision, so no line it was delivered can be read against one.
+	expect(stages[0]).not.toHaveProperty("read");
 });
 
 it.each([
