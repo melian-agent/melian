@@ -131,6 +131,28 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 		expect(bytes(records.check("e".repeat(64), ran("static.mutation", 1, "10.0.0"), stored))).not.toContain(token);
 	});
 
+	it("as Enola's rule ID, in a check's sightings and a dismissal's", async () => {
+		const { stored, records, revision } = await enola([
+			{ ruleId: `layer/${token}`, level: "error", message: { text: "core reaches pipeline" } },
+			{ ruleId: `wide/${token}`, level: "warning", message: { text: "widget is wide" }, locations: at(path) },
+		]);
+		expect(stored.map((finding) => finding.ruleId).join()).toContain(token);
+		expect(bytes(records.check("e".repeat(64), ran("static.enola", 2, "0.4.37"), stored))).not.toContain(token);
+		for (const finding of stored) {
+			const record = records.dismissal({
+				finding: finding.properties.id,
+				by: "maintainer",
+				reason: "the layer is meant to reach",
+				at: "2026-11-16T00:00:00.000Z",
+				severity: finding.properties.severity,
+				sighting: { revision, finding },
+				rounds: [],
+				trigger: { hash: "f".repeat(64), proof: [] },
+			});
+			expect(bytes(record)).not.toContain(token);
+		}
+	});
+
 	it("as the text of a static check Melian does not know yet", async () => {
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
 		const madeUp: StoredFinding[] = stored.map((finding) => ({
