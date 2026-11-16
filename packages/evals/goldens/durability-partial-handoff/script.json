@@ -63,6 +63,11 @@
       "text": "Reported 0 findings."
     }
   ],
+  "trust-boundary-probes": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
   "removed-behaviour": [
     {
       "calls": [

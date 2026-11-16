@@ -3,10 +3,13 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, syml
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
+	Changeset,
+	checksOfTier,
 	defaultConfig,
 	Finding,
 	type FindingInput,
 	Lens,
+	loadConfig,
 	type MelianConfig,
 	type ResolvedFinding,
 	revisionLimits,
@@ -47,6 +50,7 @@ import {
 	ProbingCombination,
 	type ProbingRunners,
 	ProbingSettings,
+	probingGoldenPrefix,
 } from "../src/probing.ts";
 import { GoldenRunError } from "../src/run-error.ts";
 
@@ -75,6 +79,7 @@ const paid = new StageTelemetry("base..head", [
 		subject: "trust-boundary@1@deep",
 		outcome: "completed",
 		coverage: { scope: "", paths: ["**"], nearer: [] },
+		shown: [".github/workflows/claim.yml", "moved/claim.yml", ".github/root.txt"],
 		timing: "unavailable",
 		reused: false,
 		resumed: false,
@@ -244,6 +249,65 @@ describe("ProbingCombination", () => {
 		expect(routed.config.lenses["trust-boundary"]).toStrictEqual({ route: { model: "a/plan" } });
 		const boundary = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(Object.values(boundary.levels).map((level) => level?.probe)).toEqual([undefined, undefined, undefined]);
+	});
+});
+
+// A probing golden measures one prober, trust-boundary's, so no other lens of its tier may probe in any arm.
+describe("a probing golden", { timeout: 120_000 }, () => {
+	const probingGoldens = all.filter((each) => each.name.startsWith(probingGoldenPrefix));
+
+	it("leaves trust-boundary the only lens of its tier with a level that probes, in the arm without probes and a pair", async () => {
+		expect(probingGoldens).toHaveLength(6);
+		for (const each of probingGoldens) {
+			const { repo, base } = buildGoldenRepository(each);
+			try {
+				const source = { kind: "revision", commit: base } as const;
+				const { revision } = await Changeset.resolve(repo, "main...feature");
+				const config = (await loadConfig(repo, source, ".")).config;
+				const loaded = await Lens.load(repo, source, revision.paths());
+				const tier = checksOfTier(config, "full");
+				for (const [entry, probing] of [
+					["off=a/plan", []],
+					["pair=a/plan>b/probe", ["trust-boundary"]],
+				] as const) {
+					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded);
+					const probers = routed.lenses
+						.filter((lens) => tier.includes(`lens.${lens.name}`))
+						.filter((lens) => Object.values(lens.levels).some((level) => level?.probe !== undefined))
+						.map((lens) => lens.name);
+					expect(probers, `${each.name} ${entry}`).toEqual(probing);
+				}
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it("runs the lenses it ran before Melian's own rounds probed, with trust-boundary alone planning and probing", async () => {
+		const run = await runGolden(golden("trust-boundary-probe-round-environ-leak"), {
+			kind: "scripted",
+			probes: "unconfined",
+		});
+		expect(
+			(run.verdict.ran ?? [])
+				.map(({ name }) => name)
+				.filter((name) => name.startsWith("lens."))
+				.sort(),
+		).toEqual([
+			"lens.contracts",
+			"lens.conventions",
+			"lens.correctness",
+			"lens.design",
+			"lens.removed-behaviour",
+			"lens.tests",
+			"lens.trust-boundary",
+		]);
+		expect(run.notes).toEqual([
+			{
+				reason: expect.stringMatching(/^it planned 2 attacks and ran 2 probes in /),
+				checks: ["lens.trust-boundary"],
+			},
+		]);
 	});
 });
 
@@ -1191,6 +1255,258 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(lines).toContainEqual(expect.stringMatching(/^pair pass 1 one of two: found, /));
 			expect(lines).toContainEqual(expect.stringMatching(/^pair: no score, 6 reviews had none/));
 			expect(status).toBe(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("scores a miss only where a trust-boundary run was shown its file or read its lines", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			// Lines wider than the defect's one, so each end of the overlap decides a case of its own.
+			const [start, line] = defect[0]!.lines();
+			const end = line + 3;
+			expect(start).toBeGreaterThan(1);
+			const [stage] = paid.stages;
+			const { shown: _, ...unseen } = stage!;
+			const telemetry = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				new StageTelemetry(
+					"base..head",
+					stages.map((fields) => ({ ...unseen, ...fields })),
+				);
+			const lensRun = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				ran(defect, { telemetry: telemetry(...stages) });
+			const read = (path: string, first: number, last: number) => ({
+				read: [{ path, ranges: [[first, last] as [number, number]] }],
+			});
+			const cases: [string, RangeRun, boolean, string][] = [
+				["older", lensRun({}), true, "unadjudicated"],
+				["unshown", lensRun({ shown: [] }), true, "unadjudicated"],
+				["shown another", lensRun({ shown: ["elsewhere.ts"] }), true, "unadjudicated"],
+				["read another", lensRun({ shown: [], ...read("elsewhere.ts", start, end) }), true, "unadjudicated"],
+				["read before", lensRun({ shown: [], ...read(at.file, 1, start - 1) }), true, "unadjudicated"],
+				["read after", lensRun({ shown: [], ...read(at.file, end + 1, end + 9) }), true, "unadjudicated"],
+				[
+					"prober shown",
+					lensRun({ shown: [] }, { role: "prober", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				[
+					"ended shown",
+					lensRun({ shown: [] }, { outcome: "ended", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				["shown", lensRun({ shown: [at.file] }), true, "found"],
+				["second run shown", lensRun({ shown: [] }, { shown: [at.file], usage: undefined }), true, "found"],
+				[
+					"read another first",
+					lensRun({
+						shown: [],
+						read: [
+							{ path: "elsewhere.ts", ranges: [[start, end]] },
+							{ path: at.file, ranges: [[start, start]] },
+						],
+					}),
+					true,
+					"found",
+				],
+				[
+					"one range inside",
+					lensRun({
+						shown: [],
+						read: [
+							{
+								path: at.file,
+								ranges: [
+									[1, 1],
+									[start, start],
+								],
+							},
+						],
+					}),
+					true,
+					"found",
+				],
+				["read to start", lensRun({ shown: [], ...read(at.file, 1, start) }), true, "found"],
+				["read from end", lensRun({ shown: [], ...read(at.file, end, end + 9) }), true, "found"],
+				[
+					"read, missed",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, start, start) }) }),
+					true,
+					"missed",
+				],
+				["unread, no lines", ran([], { telemetry: telemetry({ shown: [] }) }), false, "unadjudicated"],
+				[
+					"read, no lines",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, end + 1, end + 1) }) }),
+					false,
+					"missed",
+				],
+			];
+			const runs = cases.map(([, run]) => run);
+			const range = vi.fn(async () => runs.shift()!);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, , lined]) => ({
+							name,
+							repo,
+							base,
+							head,
+							...at,
+							...(lined ? { lines: [start, end] } : {}),
+						})),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, run, lined, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or ${lined ? `read lines ${start}-${end} of it` : "read it"}`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			git(repo, "checkout", "--quiet", "-b", "hunks", "feature");
+			const path = join(repo, at.file);
+			const text = readFileSync(path, "utf8").split("\n");
+			// Head-side hunks at 30, 50-52, and a deletion of line 70, which the head holds as no lines after line 69.
+			text[29] = "# changed 30";
+			for (const line of [49, 50, 51]) text[line] = `# changed ${line + 1}`;
+			text.splice(69, 1);
+			writeFileSync(path, text.join("\n"));
+			// Another file the range adds, whose one hunk holds every line the misses name.
+			writeFileSync(
+				join(repo, "other.txt"),
+				`${Array.from({ length: 100 }, (_, index) => `line ${index + 1}`).join("\n")}\n`,
+			);
+			git(repo, "add", "other.txt");
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "hunks");
+			const head = git(repo, "rev-parse", "hunks");
+			const shown = ran([], {
+				telemetry: new StageTelemetry("base..head", [{ ...paid.stages[0]!, shown: [at.file] }]),
+			});
+			const cases: [string, [number, number], string][] = [
+				["one-line hunk", [30, 30], "missed"],
+				["before one-line hunk", [29, 29], "unadjudicated"],
+				["after one-line hunk", [31, 31], "unadjudicated"],
+				["hunk's first line", [50, 50], "missed"],
+				["hunk's last line", [52, 52], "missed"],
+				["before hunk", [49, 49], "unadjudicated"],
+				["after hunk", [53, 53], "unadjudicated"],
+				// The deletion's hunk holds no head line, though one counted as a line would end at 68 and start at 69.
+				["deletion", [68, 70], "unadjudicated"],
+			];
+			const range = vi.fn(async () => shown);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, missed]) => ({ name, repo, base, head, ...at, lines: missed })),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, [first, last], said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${first}-${last} of it`
+							: said
+					}, ${shown.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("counts a fix-located miss as seen only where the lens was shown or read a line its fix changes", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			const commit = (branch: string, from: string, lines: number[]) => {
+				git(repo, "checkout", "--quiet", "-b", branch, from);
+				const path = join(repo, at.file);
+				const text = readFileSync(path, "utf8").split("\n");
+				for (const line of lines) text[line - 1] = `# ${branch} ${line}`;
+				writeFileSync(path, text.join("\n"));
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					branch,
+				);
+				return git(repo, "rev-parse", branch);
+			};
+			// The range changes line 30 alone; one fix changes 40-42 and 80, one changes 30, and one changes 30 and 80.
+			const head = commit("ranged", base, [30]);
+			commit("apart", head, [40, 41, 42, 80]);
+			commit("inside", head, [30]);
+			commit("both", head, [30, 80]);
+			const [stage] = paid.stages;
+			const lensRun = (fields: Partial<typeof stage>) =>
+				ran([], { telemetry: new StageTelemetry("base..head", [{ ...stage!, shown: [], ...fields }]) });
+			const reading = (first: number, last: number) =>
+				lensRun({ read: [{ path: at.file, ranges: [[first, last]] }] });
+			const cases: [string, string, RangeRun, string][] = [
+				["fix's first line", "apart", reading(40, 40), "missed"],
+				["fix's last line", "apart", reading(42, 42), "missed"],
+				["before fix", "apart", reading(39, 39), "unadjudicated"],
+				["after fix", "apart", reading(43, 43), "unadjudicated"],
+				["fix's other hunk", "apart", reading(80, 80), "missed"],
+				["shown off the fix", "apart", lensRun({ shown: [at.file] }), "unadjudicated"],
+				["shown on the fix", "inside", lensRun({ shown: [at.file] }), "missed"],
+				["shown on one of the fix's hunks", "both", lensRun({ shown: [at.file] }), "missed"],
+			];
+			const range = vi.fn();
+			for (const [, , run] of cases) range.mockResolvedValueOnce(run);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(cases.map(([name, fix]) => ({ name, repo, base, head, ...at, fix }))),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, fix, run, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${fix === "apart" ? "40-42, 80-80" : "30-30"} of it`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

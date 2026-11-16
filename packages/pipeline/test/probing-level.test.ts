@@ -8,6 +8,8 @@ import {
 	Lens,
 	type LensBudget,
 	type LensProbing,
+	type LensProbingWording,
+	lensProbingWording,
 	type MelianConfig,
 	MemoryRecordStore,
 	ReviewPlan,
@@ -49,12 +51,36 @@ import type { TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingHost, probingLimits, probingWording } from "../src/probing.ts";
+import type * as Probing from "../src/probing.ts";
+import {
+	headTreeLimits,
+	ProbeReruns,
+	probeEvidenceBudget,
+	probeEvidenceCutWording,
+	probingHost,
+	probingLimits,
+	probingWording,
+	probingWordingOf,
+} from "../src/probing.ts";
 import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { injectionPolicy } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
+
+// The evidence budget a test may lower, so one claim's least rendering passes it; every other test keeps the real one.
+const evidenceBudget = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
+vi.mock("../src/probing.ts", async (importOriginal) => {
+	const actual = await importOriginal<typeof Probing>();
+	return {
+		...actual,
+		get probeEvidenceBudget() {
+			return evidenceBudget.bytes ?? actual.probeEvidenceBudget;
+		},
+		boundProbeEvidence: (...[evidence, nonce, budget]: Parameters<typeof actual.boundProbeEvidence>) =>
+			actual.boundProbeEvidence(evidence, nonce, budget ?? evidenceBudget.bytes),
+	};
+});
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
 // sandbox that runs them unconfined, since every probe here is the test's own, and the verifier judges what they show.
@@ -303,7 +329,8 @@ function withoutProbes(options: Parameters<typeof review>[1]) {
 	);
 }
 
-describe("a level that probes", () => {
+// The macOS runner takes four times as long as Linux here, so these pass five seconds there.
+describe("a level that probes", { timeout: 60_000 }, () => {
 	it("reports a finding only with a probe that failed, and the verifier judges the probe it ran again", async () => {
 		const { run, requests, heads } = await review({ planner: plan, prober: probing(failing) });
 		const { verdict } = await run;
@@ -339,6 +366,163 @@ describe("a level that probes", () => {
 		expect(requests[prober]).toHaveLength(3);
 		expect(lastResults(requests[prober]![1]!)).toMatch(/probe p[0-9]+ failed: it exited 1, so it shows the defect/);
 		expect(lastResults(requests[prober]![1]!)).toContain(`<untrusted-`);
+	});
+
+	// Issue #357: a probe past the evidence budget is cut in the verifier's prompt alone. Its rerun reads the stored probe
+	// whole, so the probe fails again only because its file still holds every byte the prober wrote.
+	it("cuts a probe past the evidence budget in the verifier's prompt, and runs it again from the whole record", async () => {
+		const bytes = probingLimits.fileBytes;
+		const script = `${failing.replace(
+			'text === "LEAK"',
+			`text === "LEAK" && readFileSync("pad.txt").length === ${bytes}`,
+		)}// ${"y".repeat(probingLimits.script - failing.length - 200)}\n`;
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script, files: [{ path: "pad.txt", text: "z".repeat(bytes) }] }),
+				(messages) => call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))![1]!)),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["confirmed"]);
+		const judged = systemPromptOf(requests["Melian adversarial verifier"]![0]!);
+		expect(judged).toContain("When Melian ran it again it failed, exiting 1.");
+		expect(judged).toMatch(
+			new RegExp(
+				`Melian cut this claim's evidence to fit the ${probeEvidenceBudget} bytes of probe evidence a verifier is shown: file 1, cut by \\d+ of its ${bytes} bytes\\. `,
+			),
+		);
+		// The script is shorter than what the cut keeps of the file, so it renders whole.
+		expect(judged).toContain(script.slice(-100));
+		expect(judged).toContain(probeEvidenceCutWording.conclude);
+		const evidence = judged.slice(judged.indexOf("## Claim c1's probe"), judged.lastIndexOf("\n</instructions>"));
+		expect(Buffer.byteLength(evidence)).toBeLessThanOrEqual(probeEvidenceBudget);
+	});
+
+	it("asks no verifier of a candidate whose probe evidence passes the budget cut to nothing, and is not reviewed", async () => {
+		evidenceBudget.bytes = 1;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		const { run, requests } = await review({ planner: plan, prober: probing(failing) });
+		const error = await run.then(
+			() => undefined,
+			(thrown: unknown) => thrown,
+		);
+		expect(error).toBeInstanceOf(ReviewError);
+		expect((error as ReviewError).code).toBe("verifierFailed");
+		const verdict = (error as ReviewError).verdict!;
+		expect(verdict.status).toBe("not-reviewed");
+		expect(requests["Melian adversarial verifier"]).toBeUndefined();
+		expect(verdict.notRun).toContainEqual(
+			expect.objectContaining({
+				status: "failed",
+				reason:
+					"Melian did not ask the verifier: the probe evidence of the candidate's 1 probing claim passes the 1 bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget",
+			}),
+		);
+	});
+
+	// A credential command runs only for a route a request will use, so a candidate asked nothing unlocks nothing.
+	it.each([
+		["unlocks nothing for the verifier's provider of a candidate it asks nothing", 1, false],
+		["unlocks the verifier's provider of a candidate whose evidence fits", undefined, true],
+	])("%s", async (_, bytes, asked) => {
+		evidenceBudget.bytes = bytes;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		const fake = createFakeModels({ models: [{ id: "planning" }] });
+		const judge = createFakeModels({ provider: "judging", models: [{ id: "judge" }] }, fake.review);
+		const unlocked: string[] = [];
+		const { run } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{
+				fake,
+				config: {
+					models: {
+						heavy: { model: `${fake.ref("planning").provider}/planning` },
+						verifier: { model: `${judge.ref("judge").provider}/judge` },
+					},
+				},
+				unlockModels: async (providers: readonly string[]) => {
+					unlocked.push(...providers);
+				},
+			},
+		);
+		await run.catch(() => undefined);
+		expect(unlocked.includes("judging")).toBe(asked);
+	});
+
+	it.each([
+		["2 probing claims", true],
+		["1 probing claim", false],
+	])("names the count of probing claims, %s, when a merged candidate's evidence cannot fit", async (count, probes) => {
+		evidenceBudget.bytes = 1;
+		onTestFinished(() => {
+			evidenceBudget.bytes = undefined;
+		});
+		// A copy of trust-boundary shares its rules and its probing wording, so the two lenses' reports of one defect merge
+		// into one candidate. One without probes says so in its instructions, which its script matches.
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		words.set("boundary-copy", words.get("trust-boundary")!);
+		onTestFinished(() => {
+			words.delete("boundary-copy");
+		});
+		const unprobed = "This copy runs without probes.";
+		const copy = (loaded: readonly Lens[]) => {
+			const lens = loaded.find(({ name }) => name === "trust-boundary")!;
+			const { probe: _, ...deep } = lens.level("deep");
+			return [
+				Lens.from({
+					...lens.toJSON(),
+					name: "boundary-copy",
+					...(probes
+						? {}
+						: { levels: { ...lens.levels, deep }, instructions: `${lens.instructions}\n\n${unprobed}` }),
+				}),
+			];
+		};
+		const { probe: _, ...plain } = finding("p0");
+		// A planner records its plan on its first turn and finishes on its next, whichever lens's planner asks.
+		const planning: ScriptedReply = (messages) =>
+			messages.some((message) => message.role === "assistant")
+				? fauxAssistantMessage("Planned 1 attack.")
+				: call("record_plan", { attacks: [attack] });
+		const { run } = await review(
+			{
+				planner: [planning, planning, planning, planning],
+				prober: probing(failing),
+				others: probes
+					? [{ match: "You are the prober for the boundary-copy lens", replies: probing(failing) }]
+					: [
+							{
+								match: unprobed,
+								replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+							},
+							// A lens without probes starts a wave, whose verifier judges the copy's claim alone first.
+							{ match: "Melian adversarial verifier", replies: [(messages) => scriptVerifier(messages)] },
+						],
+			},
+			{
+				config: {
+					tiers: { full: ["lens.trust-boundary", "lens.boundary-copy"] },
+					lenses: {
+						"trust-boundary": { level: { floor: "deep" } },
+						"boundary-copy": { level: { floor: "deep" } },
+					},
+				},
+				lenses: copy,
+			},
+		);
+		const verdict = (await failure(run)).verdict!;
+		expect(verdict.notRun).toContainEqual(
+			expect.objectContaining({
+				name: "verifier",
+				reason: `Melian did not ask the verifier: the probe evidence of the candidate's ${count} passes the 1 bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget`,
+			}),
+		);
 	});
 
 	it("refuses a finding whose probe passed, so a probe that shows nothing reports nothing", async () => {
@@ -536,11 +720,17 @@ describe("a level that probes", () => {
 					],
 				},
 				{
-					rewrite: (command) => (inHeadTree(command) ? `date +%s%3N >> '${log}'; ${command}` : command),
+					rewrite: (command) =>
+						inHeadTree(command)
+							? `'${process.execPath}' -e 'console.log(Date.now())' >> '${log}'; ${command}`
+							: command,
 				},
 			);
 			await run;
-			const [first, second] = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			const starts = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			expect(starts).toHaveLength(2);
+			expect(starts.every(Number.isFinite), `start times ${starts.join(", ")}`).toBe(true);
+			const [first, second] = starts;
 			expect(second! - first!).toBeGreaterThanOrEqual(500);
 		} finally {
 			rmSync(join(log, ".."), { recursive: true, force: true });
@@ -930,7 +1120,7 @@ describe("a level that probes", () => {
 		expect(probed[4]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[5]).toContain("attack 2 is not in the plan, which has 1");
 		expect(probed[6]).toContain("a probe's files hold at most 131072 bytes; these hold 131073");
-		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so the boundary held/);
+		expect(probed[7]).toMatch(/probe p[0-9]+ passed: it exited 0, so it showed no defect/);
 		expect(probed[7]).toContain("65536");
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["melian/injection-attempt"]);
 	});
@@ -1030,6 +1220,17 @@ describe("a level that probes", () => {
 		expect(telemetry.runDetails().stages.map((stage) => stage.name)).toEqual(
 			expect.arrayContaining(["lens trust-boundary planner", "lens trust-boundary prober"]),
 		);
+	});
+
+	it("names the files the planner's prompt showed, and none for the prober, which reads the plan alone", async () => {
+		const { run, changeset } = await review({ planner: plan, prober: probing(failing) });
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const [planner, prober] = telemetry.stages.filter((stage) => stage.name === "melian.lens");
+		expect(planner!.shown).toEqual(changeset.revision.files.map((file) => file.path));
+		expect(planner!.shown).not.toEqual([]);
+		expect(prober).toMatchObject({ role: "prober" });
+		expect(prober).not.toHaveProperty("shown");
 	});
 
 	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
@@ -1206,14 +1407,14 @@ describe("a level that probes", () => {
 		);
 		const firstDone = first.run.catch(() => undefined);
 		try {
-			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1));
+			await vi.waitFor(() => expect(first.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			const second = await review(
 				{ planner: plan, prober: probing(failing) },
 				{ fake, writer: { trusted: true, by: "writer" } },
 			);
 			second.run.catch(() => undefined);
 			// The probe environment names whose head it is, so the second review plans for itself rather than wait.
-			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 3_000 });
+			await vi.waitFor(() => expect(second.requests[planner]?.length).toBeGreaterThan(0), { timeout: 10_000 });
 			release();
 			await second.run.catch(() => undefined);
 		} finally {
@@ -1252,7 +1453,7 @@ describe("a level that probes", () => {
 					{ fake },
 				);
 				second.run.catch(() => undefined);
-				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 3_000 });
+				await vi.waitFor(() => expect(second!.requests[planner]).toHaveLength(1), { timeout: 10_000 });
 			}
 			return record;
 		}) as typeof reviewer.waitForTask;
@@ -2353,7 +2554,13 @@ describe("a level that probes", () => {
 			messages.some((message) => message.role === "assistant")
 				? fauxAssistantMessage("Planned 1 attack.")
 				: call("record_plan", { attacks: [attack] });
-		// A copy of trust-boundary shares its rules, so the two lenses' reports of one defect merge into one finding.
+		// A copy of trust-boundary shares its rules and its probing wording, so the two lenses' reports of one defect merge
+		// into one finding.
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		words.set("boundary-copy", words.get("trust-boundary")!);
+		onTestFinished(() => {
+			words.delete("boundary-copy");
+		});
 		const copy = (loaded: readonly Lens[]) => [
 			probingWith({ timeout: 40_000 })(
 				Lens.from({ ...loaded.find((lens) => lens.name === "trust-boundary")!.toJSON(), name: "boundary-copy" }),
@@ -3457,7 +3664,7 @@ describe("the turns a lens run is sent", () => {
 		);
 		for (const section of ["instructions", injectionPolicySection.key])
 			keyed.add(`<${section}>`).add(`</${section}>`);
-		const templates = Object.values(probingWording).flatMap(linesOf).map(template);
+		const templates = Object.values(probingWordingOf("trust-boundary")).flatMap(linesOf).map(template);
 		const sent = [reviewer, planner, prober].flatMap((who) =>
 			requests[who]!.flatMap((messages) =>
 				messages
@@ -3468,8 +3675,105 @@ describe("the turns a lens run is sent", () => {
 		// The script reached each kind of turn it claims to: the carried findings, the plan, and both reminders.
 		expect(sent).toContain(probingWording.carriedHeading);
 		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
-		expect(sent).toContain(probingWording.recordPlan);
+		expect(sent).toContain(probingWordingOf("trust-boundary").recordPlan);
 		expect(sent.some((line) => line.startsWith("Attack 2 has no probe that showed anything, nor a skip"))).toBe(true);
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
+	});
+});
+
+// The turns a planner and prober of the trust-boundary lens's wording were sent through an escalation, a plan and both
+// reminders, with the nonce and commits written as names. `proberOf` is the text that finds the prober's conversation.
+async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, proberOf: string): Promise<string> {
+	const { probe: _, ...plain } = finding("p0");
+	const proberReplies: ScriptedReply[] = [
+		call("run_probe", { attack: 1, script: failing }),
+		(messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) =>
+			call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? "p0")),
+		fauxAssistantMessage("Done."),
+		call("skip_attack", { attack: 2, reason: "it needs the network" }),
+		fauxAssistantMessage("Reported 1 finding."),
+	];
+	const scripts = {
+		planner: [],
+		prober: proberOf === prober ? proberReplies : [],
+		others: [
+			...(proberOf === prober ? [] : [{ match: proberOf, replies: proberReplies }]),
+			{
+				match: planner,
+				replies: [
+					fauxAssistantMessage("Nothing."),
+					call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }),
+					plan[1]!,
+				],
+			},
+			{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+		],
+	};
+	const { run, requests, changeset } = await review(scripts, options);
+	// The review blocks on its finding; anything else it throws is the failure to show.
+	await run.catch((error: unknown) => {
+		if (!(error instanceof ReviewError)) throw error;
+	});
+	const store = harness!.harness;
+	const root = await store.root(backgroundContext);
+	const task = (await store.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[
+		Revision.key(changeset.revision)
+	]!.task;
+	const { nonce } = (
+		(await store.getTask(task as TaskId, backgroundContext))!.input as { revision: { nonce: string } }
+	).revision;
+	const turns = [planner, proberOf].flatMap((who) =>
+		requests[who]!.map((messages, index) =>
+			[
+				`=== ${who === planner ? "planner" : "prober"} request ${index + 1} ===`,
+				...messages
+					.filter(({ role }) => role === "system" || role === "user")
+					.map((message) => `--- ${message.role} ---\n${textOf(message)}`),
+			].join("\n"),
+		),
+	);
+	// The nonce is drawn afresh and the commits are dated, so each is written as a name.
+	const { base, head } = changeset.revision;
+	const shown = turns
+		.join("\n\n")
+		.replaceAll(nonce, "NONCE")
+		.replaceAll(base.slice(0, 12), "BASE")
+		.replaceAll(head.slice(0, 12), "HEAD");
+	return shown;
+}
+
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
+// trust-boundary lens's planner and prober must still be shown what they were shown then, but for the prober's
+// sentence on probes that show nothing and its reminder, which the maintainer's ruling of 2026-11-16 on issue #493 changed.
+describe("the trust-boundary lens's probing turns", () => {
+	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+		const shown = await probingTurns(escalating(createFakeModels()), prober);
+		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
+	});
+
+	// The maintainer ruled on 2026-11-16 that Melian's own rounds probe through a lens that extends trust-boundary
+	// under another name, so that lens's planner and prober read trust-boundary's wording, and only its name differs.
+	it("are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name", async () => {
+		const name = "trust-boundary-probes";
+		const options = escalating(createFakeModels());
+		const shown = await probingTurns(
+			{
+				...options,
+				decider: new RecordedDecider(
+					{ triage: { version: "1", answers: { [name]: { distribution: { quick: 1 } } } } },
+					{ name: "recorded" },
+				),
+				lens: (lens: Lens) => Lens.from({ ...options.lens(lens).toJSON(), name, probesAs: "trust-boundary" }),
+				config: {
+					...options.config,
+					tiers: { full: [`lens.${name}`] },
+					lenses: { [name]: options.config.lenses["trust-boundary"] },
+				},
+			},
+			`You are the prober for the ${name} lens`,
+		);
+		expect(shown).toContain(name);
+		const golden = readFileSync(new URL("golden/trust-boundary-probing-turns.txt", import.meta.url), "utf8");
+		expect(`${shown.replaceAll(name, "trust-boundary")}\n`).toBe(golden);
 	});
 });

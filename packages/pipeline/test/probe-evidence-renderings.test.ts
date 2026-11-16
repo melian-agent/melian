@@ -16,14 +16,14 @@ it("renders every probe evidence on every branch as the golden holds it, the sam
 it("gives the verifier's version the evidence renderings the golden holds", async () => {
 	vi.resetModules();
 	const instructions = await import("../src/verification-instructions.ts");
-	const { probeEvidenceWording, probingWording } = await import("../src/probing.ts");
+	const { evidenceWordingOf, probingWording } = await import("../src/probing.ts");
 	const { verificationQuestions } = await import("@melian-agent/core");
 	expect(instructions.verifierVersion).toBe(
 		instructions.computeVerifierVersion(
 			instructions.verifierInstructions,
 			instructions.reportVerdictSchema,
 			verificationQuestions,
-			{ ...probeEvidenceWording, planRow: probingWording.planRow, renderings: golden },
+			{ ...evidenceWordingOf("trust-boundary"), planRow: probingWording.planRow, renderings: golden },
 		),
 	);
 });

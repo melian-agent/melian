@@ -41,6 +41,7 @@ import * as testing from "@melian-agent/pipeline/testing";
 import { parseAst } from "vite";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { parse } from "yaml";
+import { probingGoldenPrefix } from "../src/probing.ts";
 import { GoldenRunError } from "../src/run-error.ts";
 
 const goldens = loadGoldens();
@@ -482,10 +483,17 @@ describe("a golden's standards and policy", () => {
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
 		expect(copies.length - tiered.length).toBe(exempt.length);
+		// A probing golden measures one prober, its own trust-boundary's, so it leaves out the lens that probes beside it.
+		const probing = tiered.filter((copy) => basename(copy.parentPath).startsWith(probingGoldenPrefix));
+		expect(probing).toHaveLength(6);
 		for (const copy of tiered) {
 			const path = join(copy.parentPath, copy.name);
-			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
+			const expected = probing.includes(copy)
+				? root.filter((check) => check !== "lens.trust-boundary-probes")
+				: root;
+			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(expected);
 		}
+		expect(root).toContain("lens.trust-boundary-probes");
 	});
 
 	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
