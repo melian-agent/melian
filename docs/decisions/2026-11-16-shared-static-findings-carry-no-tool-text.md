@@ -1,0 +1,34 @@
+# A shared static finding carries no tool's text
+
+Amends: [A shared record carries no text a tool, a provider or the head wrote](2026-11-16-shared-records-carry-no-outside-text.md), a record's sightings and Enola's receipt
+Amends: [Melian stores no Biome or tsc text](2026-11-06-static-configuration-stays-in-the-checkout.md), the Enola and mutation follow-ups, for exported records alone
+
+Status: the coordinator's answer of 2026-11-16 on [issue #516](https://github.com/melian-agent/melian/issues/516#issuecomment-6913692853), on approach. It is not a maintainer's ruling.
+
+## Problem
+
+A record a review exports keeps each finding it holds whole. Biome and tsc findings already carry Melian's fixed sentence, but Enola's and the mutation check's keep the text their tool wrote. That text can quote what the head led the tool to read, outside the checkout too.
+
+Example: a mutant's replacement, a mutator's name, an ignored mutant's reason from a disabling comment, and the test files named to kill it all reach the finding's message and explanation. Enola's message on a symbol does the same. A head that makes either tool print a login sends it into a record any reader of the store can fetch. Enola's receipt went out whole as well, with any field Enola added.
+
+An Enola result with no code to go by, such as a broken constraint, took its message as its discriminator. The discriminator is stored with the finding, and the message decides its ID, so the text reached the record whatever the export rewrote.
+
+## Decision
+
+- `ReviewRecords` rewrites every static finding a record holds, in a check's or a lens's sightings and a dismissal's, unless its check is `static.biome` or `static.tsc`. Those two hold a fixed sentence from core's `staticFindings` already. The list sits beside its reason in `packages/pipeline/src/review-records.ts`. Any other static check, one Melian adds later included, is rewritten: the rule denies by default.
+- A rewritten finding's message and `explanation.what` read "`<check>` reports `<rule>` here.", then the fixed sentence `withheld`. Its `whyHere` and `whatToDo` are `withheld`. It keeps its rule, place, snippet, trigger and ID, which are the head's own content. Core's `Finding.parse` takes the ID from path, rule, snippet and discriminator, never from the message, so the rewritten finding still parses with its ID.
+- A finding of a tool other than Biome and tsc with no code to go by takes `message <sha256 of the tool's message>` as its discriminator, in core's `identify`. A hash is the first kind of string a record may hold. Two results of one rule with different messages keep distinct IDs, identical ones still merge into one, counted, and a repeat review of the same head gives the same IDs. Biome and tsc keep their place, `line L, column C`.
+- Enola's receipt keeps only the three fields Melian checks, `format_version`, `snapshot_id` and `enola_version`, re-serialised, and only when each has the shape Melian accepts. A receipt that is not that is `withheld`. The payload schema is unchanged.
+- The local store and terminal keep every finding's text as the tool wrote it.
+
+`packages/pipeline/test/review-records-static-text.test.ts` feeds a made-up token through Enola's and Stryker's real normalisers, a made-up static check, a dismissal and a receipt, and asserts no record's bytes hold it.
+
+## What this gives up
+
+A reader of another host's round sees which rule a static tool reported where, not the tool's words. It reads the reviewing host's terminal or store for them.
+
+An Enola finding with no code to go by gets a new ID once, so a dismissal of one reopens once after the upgrade.
+
+The hash of a short message a reader can guess can be checked by guessing. A login is not short or guessable, and the message's other content is the head's own.
+
+The published review on a pull request still prints Enola's and the mutation check's text. That is the older follow-up of [the 2026-11-06 decision](2026-11-06-static-configuration-stays-in-the-checkout.md), and this decision does not change it.

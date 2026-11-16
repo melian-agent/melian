@@ -38,4 +38,4 @@ The full text stays in the reviewing host's own store and terminal. No verdict c
 
 A reader of another host's round cannot see why a check did not run, beyond its code and `cause`. It reads the reviewing host's terminal or store for that.
 
-A sighting keeps a finding whole, and a finding Enola or the mutation check reported keeps the message its tool wrote, so a check record's `sightings` can still carry that tool's text. Biome and tsc findings carry Melian's fixed sentence already. [Issue #516](https://github.com/melian-agent/melian/issues/516) closes the gap before records leave the machine.
+A sighting keeps a finding whole, and a finding Enola or the mutation check reported keeps the message its tool wrote, so a check record's `sightings` can still carry that tool's text. Biome and tsc findings carry Melian's fixed sentence already. [Issue #516](https://github.com/melian-agent/melian/issues/516) closes the gap before records leave the machine, as [the decision that amends this one](2026-11-16-shared-static-findings-carry-no-tool-text.md) records.

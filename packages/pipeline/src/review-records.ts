@@ -331,7 +331,10 @@ export class ReviewRecords {
 			reason: facts.reason,
 			at: facts.at,
 			severity: facts.severity,
-			sighting: { revision: facts.sighting.revision, finding: facts.sighting.finding as unknown as RecordJson },
+			sighting: {
+				revision: facts.sighting.revision,
+				finding: sighting(facts.sighting.finding) as unknown as RecordJson,
+			},
 			head: this.head,
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
@@ -387,14 +390,50 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].sort(byId) as unknown as RecordJson[];
+	return [...sightings].map(sighting).sort(byId) as unknown as RecordJson[];
+}
+
+// core's staticFindings already gives a Biome or tsc finding a fixed sentence (issue #281). Every other static check,
+// one Melian adds later included, writes a tool's message and advice, which can quote what the head led it to read.
+const fixedStaticText: ReadonlySet<string> = new Set(["static.biome", "static.tsc"]);
+
+// A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text.
+function sighting(finding: StoredFinding): StoredFinding {
+	const { check } = finding.properties.source;
+	if (!check.startsWith("static.") || fixedStaticText.has(check)) return finding;
+	const what = `${check} reports ${finding.ruleId} here. ${withheld}.`;
+	return {
+		...finding,
+		message: { ...finding.message, text: what },
+		properties: { ...finding.properties, explanation: { what, whyHere: withheld, whatToDo: withheld } },
+	};
+}
+
+// Melian checks only these three fields of Enola's receipt; the rest is Enola's text.
+function receipt(text: string): string {
+	let parsed: { format_version?: unknown; snapshot_id?: unknown; enola_version?: unknown };
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		return withheld;
+	}
+	const { format_version, snapshot_id, enola_version } = parsed ?? {};
+	if (
+		format_version !== 1 ||
+		typeof snapshot_id !== "string" ||
+		!/^sha256:[a-f0-9]{64}$/.test(snapshot_id) ||
+		typeof enola_version !== "string" ||
+		!/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)
+	)
+		return withheld;
+	return JSON.stringify({ format_version, snapshot_id, enola_version });
 }
 
 function snapshot(each: EnolaSnapshot): RecordJson {
 	return {
 		commit: each.commit,
 		snapshotId: each.snapshotId,
-		receipt: each.receipt,
+		receipt: receipt(each.receipt),
 		cacheKey: orNull(each.cacheKey),
 		coverage:
 			each.coverage === undefined
