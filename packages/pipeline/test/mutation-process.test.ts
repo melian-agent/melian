@@ -96,6 +96,24 @@ describe("terminateRecorded", () => {
 		expect(fake.kills).toEqual([]);
 	});
 
+	it("leaves a recorded pid alone when its start second matches and its command does not", async () => {
+		const fake = new FakeProcesses([{ ...at(10, 1), command: "vim" }]);
+		await terminateRecorded([{ pid: 10, start: "s10", command: "ssh" }], fake, async () => {}, []);
+		expect(fake.kills).toEqual([]);
+	});
+
+	it("signals a recorded pid whose start and command both match", async () => {
+		const fake = new FakeProcesses([{ ...at(10, 1), command: "ssh" }]);
+		await terminateRecorded([{ pid: 10, start: "s10", command: "ssh" }], fake, async () => {}, []);
+		expect(fake.kills).toEqual([[10, "SIGTERM"]]);
+	});
+
+	it("signals a recorded pid with no command by its start alone, as before, whatever command ps shows", async () => {
+		const fake = new FakeProcesses([{ ...at(10, 1), command: "vim" }]);
+		await terminateRecorded(recorded(at(10, 1)), fake, async () => {}, []);
+		expect(fake.kills).toEqual([[10, "SIGTERM"]]);
+	});
+
 	it("leaves a recorded pid alone when no such process runs", async () => {
 		const fake = new FakeProcesses([at(99, 1)]);
 		await terminateRecorded(recorded(at(10, 1)), fake, async () => {}, []);
@@ -291,15 +309,15 @@ describe("ProcessTable reads", () => {
 		vi.mocked(spawnSync).mockImplementation(actual);
 	});
 
-	it("asks ps for every pid, parent, start and state in decoded text", () => {
+	it("asks ps for every pid, parent, start, state and command in decoded text", () => {
 		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			expect(command).toBe("/bin/ps");
-			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat="]);
+			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="]);
 			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
-			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S", stderr: "" } as ReturnType<typeof spawnSync>;
+			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S ssh", stderr: "" } as ReturnType<typeof spawnSync>;
 		});
 		expect(new ProcessTable().list()).toStrictEqual([
-			{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S" },
+			{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S", command: "ssh" },
 		]);
 		expect(asked).toHaveBeenCalledTimes(1);
 	});

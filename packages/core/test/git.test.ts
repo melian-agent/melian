@@ -272,9 +272,10 @@ describe("git with a standard error past its limit", () => {
 
 	it("stops git's tree on a flood, through the process table it is given", async () => {
 		const processes = new RecordingTable();
-		// Git still runs when the stop reads the table; one that had exited would be a zombie, which is not signalled.
+		// Git still runs when the stop reads the table; one that had exited would be a zombie, which is not signalled. It
+		// runs no exec, which would change its command before the signal, and nothing it starts outlives a second.
 		const error = await rejection(
-			git(repo, ["fetch"], { env: standIn(`${writes(stderrLimit + 1)}\nexec sleep 30`), processes }),
+			git(repo, ["fetch"], { env: standIn(`${writes(stderrLimit + 1)}\nwhile :; do sleep 1; done`), processes }),
 			ChangesetError,
 		);
 		expect(error.message).toBe(

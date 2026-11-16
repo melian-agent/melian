@@ -112,6 +112,39 @@ describe("stopTree", () => {
 		expect(table.kills).toEqual([[100, "SIGTERM"]]);
 	});
 
+	it("signals a recorded process whose start and command both still match", async () => {
+		const table = new FakeTable([
+			entry(1, 0),
+			entry(self, 1),
+			{ ...entry(100, self), command: "git" },
+			{ ...entry(101, 100), command: "ssh" },
+		]);
+		await stopTree(100, table, instant);
+		expect(table.kills).toEqual([
+			[100, "SIGTERM"],
+			[101, "SIGTERM"],
+		]);
+	});
+
+	it("never signals a pid whose start second still matches but whose command does not", async () => {
+		const table = new FakeTable([
+			entry(1, 0),
+			entry(self, 1),
+			{ ...entry(100, self), command: "git" },
+			{ ...entry(101, 100), command: "ssh" },
+		]);
+		const list = table.list.bind(table);
+		table.list = () => {
+			const entries = list();
+			// After the read that records the tree, pid 101 passes to another program started in the same second.
+			if (table.reads > 1)
+				table.entries = entries.map((each) => (each.pid === 101 ? { ...entry(101, 1), command: "vim" } : each));
+			return table.entries;
+		};
+		await stopTree(100, table, instant);
+		expect(table.kills).toEqual([[100, "SIGTERM"]]);
+	});
+
 	it("signals nothing when the process table cannot be read", () => {
 		const table = new FakeTable([entry(1, 0), entry(self, 1), entry(100, self)]);
 		table.broken = true;
@@ -134,11 +167,12 @@ describe("stopTree", () => {
 });
 
 describe("ProcessTable", () => {
-	it("reads this process from the real table, with its start and a state that is not a zombie's", () => {
+	it("reads this process from the real table, with its start, its command and a state that is not a zombie's", () => {
 		// The one check of ps's real output on each system CI runs, macOS included.
 		const own = new ProcessTable().list().find((each) => each.pid === process.pid);
 		expect(own).toMatchObject({ ppid: process.ppid, start: expect.stringMatching(/^\S+( \S+){4}$/) });
 		expect(own?.state).toMatch(/^[A-Za-z]/);
 		expect(own?.state).not.toMatch(/^Z/);
+		expect(own?.command).toMatch(/node/);
 	});
 });

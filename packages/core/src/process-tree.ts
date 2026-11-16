@@ -4,13 +4,14 @@ import { spawnSync } from "node:child_process";
 // has it, never 0, 1, a negative pid or a group. This file is in mutation-paths.ts's signal set, so no mutation runs over
 // it; its guards are proved on a fake process.kill.
 
-export type RecordedProcess = { pid: number; start: string };
+// `command` is the program's name, where ps was asked for it. A record that has one also needs it to match, which
+// narrows a pid passed on within the start's second to another copy of the same program.
+export type RecordedProcess = { pid: number; start: string; command?: string };
 
 export interface ProcessEntry extends RecordedProcess {
 	ppid: number;
-	// Present only where ps was asked for stat= and args=.
+	// Present only where ps was asked for stat=.
 	state?: string;
-	command?: string;
 }
 
 export interface ProcessControl {
@@ -19,7 +20,7 @@ export interface ProcessControl {
 }
 
 // Embedded in the supervisor script as source, so it names nothing outside itself. Reads pid=,ppid=,lstart= with an
-// optional stat= and then args= after it. lstart is ctime's five fields, so the state is the word after them.
+// optional stat= and then comm= after it. lstart is ctime's five fields, so the state is the word after them.
 export function parseProcesses(text: string): ProcessEntry[] {
 	const entries: ProcessEntry[] = [];
 	for (const line of text.split("\n")) {
@@ -51,7 +52,11 @@ export async function terminateRecorded(
 				// A zombie has exited and holds its pid until it is reaped, so it is neither signalled nor waited for. Only a
 				// state ps reports as a zombie counts; a missing one does not.
 				table.some(
-					(entry) => entry.pid === record.pid && entry.start === record.start && entry.state?.startsWith("Z") !== true,
+					(entry) =>
+						entry.pid === record.pid &&
+						entry.start === record.start &&
+						(record.command === undefined || entry.command === record.command) &&
+						entry.state?.startsWith("Z") !== true,
 				),
 		);
 	};
@@ -89,27 +94,29 @@ export function stopTree(
 	const kept: number[] = [];
 	for (let pid: number | undefined = process.pid; pid !== undefined && !kept.includes(pid); pid = parents.get(pid))
 		kept.push(pid);
-	const recorded = new Map<number, string>();
+	const recorded = new Map<number, ProcessEntry>();
 	const queue: number[] = [];
 	for (const entry of table)
 		if (entry.pid === root) {
-			recorded.set(entry.pid, entry.start);
+			recorded.set(entry.pid, entry);
 			queue.push(entry.pid);
 		}
 	for (let next = queue.shift(); next !== undefined; next = queue.shift())
 		for (const entry of table)
 			if (entry.ppid === next && !recorded.has(entry.pid)) {
-				recorded.set(entry.pid, entry.start);
+				recorded.set(entry.pid, entry);
 				queue.push(entry.pid);
 			}
-	const records = [...recorded].map(([pid, start]) => ({ pid, start }));
+	const records = [...recorded.values()].map(({ pid, start, command }) =>
+		command === undefined ? { pid, start } : { pid, start, command },
+	);
 	return terminateRecorded(records, control, sleep, kept);
 }
 
 export class ProcessTable implements ProcessControl {
 	list(): ProcessEntry[] {
 		// parseProcesses reads lstart as ctime's five fields, which only the C locale promises.
-		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], {
+		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="], {
 			encoding: "utf8",
 			env: { ...process.env, LC_ALL: "C" },
 		});
