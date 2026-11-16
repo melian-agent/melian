@@ -5,6 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import { runInNewContext } from "node:vm";
+import { stopTree } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
 import {
@@ -294,13 +295,36 @@ describe("ProcessTable reads", () => {
 		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			expect(command).toBe("/bin/ps");
 			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat="]);
-			expect(options).toEqual({ encoding: "utf8" });
+			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
 			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S", stderr: "" } as ReturnType<typeof spawnSync>;
 		});
 		expect(new ProcessTable().list()).toStrictEqual([
 			{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S" },
 		]);
 		expect(asked).toHaveBeenCalledTimes(1);
+	});
+
+	it("stops its recorded child in any locale, since it reads ps in the C locale and leaves this process's own alone", async () => {
+		const locale = process.env.LC_ALL;
+		vi.mocked(spawnSync).mockImplementation(
+			fakePs([
+				{ pid: 100, ppid: 1, state: "S" },
+				{ pid: 101, ppid: 100, state: "S" },
+			]) as unknown as typeof spawnSync,
+		);
+		const table = new ProcessTable();
+		const kills: [number, string][] = [];
+		table.kill = (pid, signal) => {
+			kills.push([pid, signal]);
+		};
+		await stopTree(100, table, async () => {});
+		expect(kills).toEqual([
+			[100, "SIGTERM"],
+			[101, "SIGTERM"],
+			[100, "SIGKILL"],
+			[101, "SIGKILL"],
+		]);
+		expect(process.env.LC_ALL).toBe(locale);
 	});
 
 	it("reports a failed ps request instead of accepting its output", () => {
@@ -774,16 +798,22 @@ describe("MutationProcess.execute", () => {
 	);
 });
 
-// A fake ps: each row gets the start lstart prints, and its state only when ps is asked for stat=.
-const fakePs = (rows: { pid: number; ppid: number; state: string }[]) => (_command: string, args: string[]) => ({
-	status: 0,
-	stdout: rows
-		.map(({ pid, ppid, state }) => `${pid} ${ppid} Mon Nov 16 01:00:0${pid % 10} 2026${args[2]!.includes("stat=") ? ` ${state}` : ""}`)
-		.join("\n"),
-	stderr: "",
-});
+// A fake ps: each row gets its state only when ps is asked for stat=, and the start in ctime's five fields only when
+// LC_ALL is C. Any other locale gets a start of two fields, as some locales print it.
+const fakePs =
+	(rows: { pid: number; ppid: number; state: string }[]) =>
+	(_command: string, args: readonly string[], options?: { env?: Record<string, string | undefined> }) => ({
+		status: 0,
+		stdout: rows
+			.map(({ pid, ppid, state }) => {
+				const start = options?.env?.LC_ALL === "C" ? `Mon Nov 16 01:00:0${pid % 10} 2026` : `2026-11-16 01:00:0${pid % 10}`;
+				return `${pid} ${ppid} ${start}${args[2]!.includes("stat=") ? ` ${state}` : ""}`;
+			})
+			.join("\n"),
+		stderr: "",
+	});
 
-it("leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree", async () => {
+it("leaves a recorded process that its own ps shows as a zombie alone when the supervisor ends its tree, in any locale", async () => {
 	let exited: ((code: number) => void) | undefined;
 	const rows = [
 		{ pid: 10, ppid: 1, state: "S" },
@@ -811,7 +841,7 @@ it("leaves a recorded process that its own ps shows as a zombie alone when the s
 				exited = callback;
 			},
 		}),
-		spawnSync: (command: string, args: string[]) => fakePs(rows)(command, args),
+		spawnSync: fakePs(rows),
 		writeFileSync: () => {},
 		renameSync: () => {},
 		setInterval: () => 1,

@@ -133,7 +133,7 @@ const parseProcesses = ${parseProcesses};
 const terminateRecorded = ${terminateRecorded};
 const supervise = ${supervise};
 const list = () => {
-	const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], { encoding: "utf8" });
+	const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], { encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
 	if (result.status !== 0) throw new Error("ps failed");
 	return parseProcesses(result.stdout);
 };

@@ -108,7 +108,11 @@ export function stopTree(
 
 export class ProcessTable implements ProcessControl {
 	list(): ProcessEntry[] {
-		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], { encoding: "utf8" });
+		// parseProcesses reads lstart as ctime's five fields, which only the C locale promises.
+		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart=,stat="], {
+			encoding: "utf8",
+			env: { ...process.env, LC_ALL: "C" },
+		});
 		if (result.status !== 0) throw new Error(`ps failed: ${result.stderr}`);
 		return parseProcesses(result.stdout);
 	}
