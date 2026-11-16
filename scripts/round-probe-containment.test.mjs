@@ -775,6 +775,18 @@ describe("Listener", () => {
 		}
 	});
 
+	it("closes the sockets it reaches itself from", async () => {
+		const listener = await Listener.open("127.0.0.1");
+		const open = () => process.getActiveResourcesInfo().filter((kind) => kind === "UDPWrap").length;
+		try {
+			const before = open();
+			await listener.control();
+			await vi.waitFor(() => expect(open()).toBe(before));
+		} finally {
+			await listener.close();
+		}
+	});
+
 	it("frees both ports when it closes", async () => {
 		const listener = await Listener.open("127.0.0.1");
 		const { tcp, udp } = listener.targets();
@@ -791,6 +803,9 @@ describe("Listener", () => {
 	});
 
 	it("fails its control, and throws nothing else, when its connection errors", { timeout: 20_000 }, async () => {
+		const uncaught = [];
+		const record = (error) => uncaught.push(error);
+		process.on("uncaughtException", record);
 		const listener = await Listener.open("127.0.0.1");
 		const { udp } = listener.targets();
 		listener.targets = () => ({ tcp: { host: "melian.invalid", port: 1 }, udp });
@@ -798,10 +813,15 @@ describe("Listener", () => {
 			await expect(listener.control()).rejects.toThrow("no connection from the host reached melian.invalid:1");
 		} finally {
 			await listener.close();
+			process.off("uncaughtException", record);
 		}
+		expect(uncaught).toEqual([]);
 	});
 
 	it("fails its control, and throws nothing else, when its datagram errors", { timeout: 20_000 }, async () => {
+		const uncaught = [];
+		const record = (error) => uncaught.push(error);
+		process.on("uncaughtException", record);
 		const listener = await Listener.open("127.0.0.1");
 		const { tcp } = listener.targets();
 		listener.targets = () => ({ tcp, udp: { host: "melian.invalid", port: 1 } });
@@ -809,7 +829,9 @@ describe("Listener", () => {
 			await expect(listener.control()).rejects.toThrow("no datagram from the host reached melian.invalid:1");
 		} finally {
 			await listener.close();
+			process.off("uncaughtException", record);
 		}
+		expect(uncaught).toEqual([]);
 	});
 
 	it("fails its control when no connection reaches it", { timeout: 20_000 }, async () => {
