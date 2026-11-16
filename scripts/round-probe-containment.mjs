@@ -29,8 +29,22 @@ export const loginNames = [
 ];
 
 /**
- * Every variable a probe starts with: the four Probe sets, and those sandbox-runtime adds to reach its proxy, which
- * allows no host. A name outside this list fails the check until someone reads what it carries.
+ * The read roots whose files are public, each with why. A token's shape in them is an example, such as a README's or a
+ * test's, so the check lists it there and fails only on the canary. A root the policy grants that no rule names is not
+ * public, so a token's shape in it fails.
+ */
+export const publicRoots = [
+	{
+		reason: "the system's programs and libraries",
+		matches: (path) => /^\/(bin|sbin|lib|lib32|lib64|usr)(\/|$)/.test(path),
+	},
+	{ reason: "installed npm packages", matches: (path) => path.split("/").includes("node_modules") },
+	{ reason: "the Node binary that runs the round", matches: (path) => path === process.execPath },
+];
+
+/**
+ * Every variable a probe starts with: PATH, HOME and TMPDIR from Probe, LANG when the host has one, the shell's PWD,
+ * OLDPWD and SHLVL, and those sandbox-runtime adds to reach its proxy, which allows no host. The set must match exactly.
  */
 export const expectedEnvironment = [
 	"ALL_PROXY",
@@ -143,7 +157,9 @@ const statusLine = (data, socket, ended) => {
 	const text = data.toString("latin1");
 	const end = text.indexOf("\\r\\n");
 	if (end >= 0) return text.slice(0, end).split(" ")[1] ?? "unparsed";
-	return ended ? "closed" : undefined;
+	// A close counts as the proxy's refusal only when no byte of a reply came first.
+	if (ended) return data.length === 0 ? "closed" : "closed after " + data.length + " bytes";
+	return undefined;
 };
 // The probe cannot read /etc/hosts, so it reaches a proxy on localhost by address, as any probe could.
 function proxyOf(name) {
@@ -197,7 +213,8 @@ if (socks !== undefined) {
 				return undefined;
 			}
 			if (stage === "request" && rest.length >= 2) return rest[1] === 0 ? "succeeded" : "reply " + rest[1];
-			return ended ? stage + " closed" : undefined;
+			if (ended) return rest.length === 0 ? stage + " closed" : stage + " closed after " + rest.length + " bytes";
+			return undefined;
 		});
 	}
 } else report.socksProxy.missing = "ALL_PROXY";
@@ -258,9 +275,11 @@ console.log(JSON.stringify(report));
  */
 export function judge(report, plan, argv, host) {
 	const failures = [];
-	const unexpected = report.environment.filter((name) => !expectedEnvironment.includes(name));
+	const unexpected = report.environment.filter((name) => !plan.environment.includes(name));
 	if (unexpected.length > 0)
 		failures.push(`the probe's environment holds unexpected variables: ${unexpected.join(", ")}`);
+	const missing = plan.environment.filter((name) => !report.environment.includes(name));
+	if (missing.length > 0) failures.push(`the probe's environment lacks expected variables: ${missing.join(", ")}`);
 	if (report.environmentCanary) failures.push("the probe's environment holds the canary");
 	if (report.selfEnviron !== "clean") failures.push(`/proc/self/environ read as ${report.selfEnviron}, not clean`);
 	if (report.environCanary.length > 0)
@@ -319,8 +338,8 @@ export function judge(report, plan, argv, host) {
 	return failures;
 }
 
-/** One line per walked root: its counts and, for /sys, its top-level entries. */
-export function walked(report) {
+/** One line per walked root: its counts and, for /sys, its top-level entries; then each match, and how many token shapes the public roots held. */
+export function walked(report, plan) {
 	const lines = Object.entries(report.walk).map(
 		([root, s]) =>
 			`${root}: ${s.files} files, ${s.directories} directories, ${s.unreadable} unreadable, ${s.bytes} bytes read`,
@@ -331,6 +350,11 @@ export function walked(report) {
 	);
 	for (const [root, summary] of Object.entries(report.walk))
 		for (const { kind, path } of summary.matches) lines.push(`${root} holds a ${kind} shape in ${path}`);
+	const listed = Object.entries(report.walk)
+		.filter(([root]) => plan.public.includes(root))
+		.flatMap(([, summary]) => summary.matches)
+		.filter(({ kind }) => kind !== "canary");
+	lines.push(`token shapes listed in ${plan.public.length} public roots: ${listed.length}`);
 	return lines;
 }
 
@@ -397,6 +421,8 @@ async function main() {
 				canary,
 				shm,
 				shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
+				// Probe passes the host's LANG on, so the probe holds it exactly when the host does.
+				environment: expectedEnvironment.filter((name) => name !== "LANG" || process.env.LANG !== undefined),
 				readable: [join(tree, "package.json"), tree],
 				read: [
 					join(tree, "package.json"),
@@ -433,8 +459,13 @@ async function main() {
 					...(runtime === "localhost" ? [] : [{ host: runtime, port: 443 }]),
 				],
 				walk: policy.read,
-				// Package installs, Node and the system's programs: public content, where a token's shape is an example.
-				public: policy.read.filter((path) => path !== tree && path !== run && path !== probeDirectory),
+				public: policy.read.filter(
+					(path) =>
+						path !== tree &&
+						path !== run &&
+						path !== probeDirectory &&
+						publicRoots.some((root) => root.matches(path)),
+				),
 				self: join(probeDirectory, "targets.json"),
 			};
 			writeFileSync(plan.self, JSON.stringify(plan));
@@ -450,7 +481,7 @@ async function main() {
 			const cleanup = await probe.close();
 			if (!cleanup.removed) console.log(`the probe's scratch was left at ${cleanup.leftover}`);
 		}
-		for (const line of walked(report)) console.log(line);
+		for (const line of walked(report, plan)) console.log(line);
 		console.log(`environment: ${report.environment.join(" ")}`);
 		console.log(`processes visible: ${report.processes}; sudo: ${report.sudo}; dns: ${report.dns}`);
 		console.log(`tcp: ${JSON.stringify(report.tcp)}`);

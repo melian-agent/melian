@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectedEnvironment, judge, tokenShapes, walked } from "./round-probe-containment.mjs";
+import { expectedEnvironment, judge, publicRoots, tokenShapes, walked } from "./round-probe-containment.mjs";
 
 const canary = "melian-canary-0123";
 const walkSummary = (files) => ({ files, directories: 1, unreadable: 0, bytes: 10, matches: [], cut: false, top: [] });
@@ -7,6 +7,7 @@ const walkSummary = (files) => ({ files, directories: 1, unreadable: 0, bytes: 1
 function plan() {
 	return {
 		canary,
+		environment: [...expectedEnvironment],
 		read: ["/tree", "/canary", "/home"],
 		readable: ["/tree"],
 		write: ["/run/home/written", "/tmp/melian-written"],
@@ -18,7 +19,7 @@ function plan() {
 
 function report() {
 	return {
-		environment: ["HOME", "PATH"],
+		environment: [...expectedEnvironment],
 		environmentCanary: false,
 		selfEnviron: "clean",
 		environCanary: [],
@@ -53,6 +54,21 @@ describe("judge", () => {
 		expect(judge(r, plan(), argv, host())).toEqual([
 			"the probe's environment holds unexpected variables: CLAUDE_CODE_OAUTH_TOKEN",
 		]);
+	});
+
+	it("judges against the plan's set, not the full list", () => {
+		const r = report();
+		r.environment = expectedEnvironment.filter((name) => name !== "LANG");
+		const withoutLang = { ...plan(), environment: r.environment };
+		expect(judge(r, withoutLang, argv, host())).toEqual([]);
+		r.environment = [...expectedEnvironment];
+		expect(judge(r, withoutLang, argv, host())).toEqual(["the probe's environment holds unexpected variables: LANG"]);
+	});
+
+	it("names each expected variable the probe lacks", () => {
+		const r = report();
+		r.environment = expectedEnvironment.filter((name) => name !== "PATH" && name !== "PWD");
+		expect(judge(r, plan(), argv, host())).toEqual(["the probe's environment lacks expected variables: PATH, PWD"]);
 	});
 
 	it("fails on the canary in the environment, in /proc/self/environ, or in another process", () => {
@@ -133,6 +149,16 @@ describe("judge", () => {
 		]);
 	});
 
+	it("fails a close that came after part of a reply", () => {
+		const r = report();
+		r.httpProxy["GET api.github.com:443"] = "closed after 12 bytes";
+		r.socksProxy["169.254.169.254:80"] = "request closed after 1 bytes";
+		expect(judge(r, plan(), argv, host())).toEqual([
+			"the HTTP proxy never answered GET api.github.com:443: closed after 12 bytes",
+			"the SOCKS proxy never answered for 169.254.169.254:80: request closed after 1 bytes",
+		]);
+	});
+
 	it("accepts each answer a refusing SOCKS proxy gives, and fails a connection or a silence", () => {
 		const r = report();
 		r.socksProxy = { a: "reply 5", b: "authentication refused", c: "no acceptable method", d: "greeting closed" };
@@ -197,13 +223,45 @@ describe("walked", () => {
 	it("summarises each walk and names each match, without its text", () => {
 		const r = report();
 		r.sys.top = ["class:3"];
-		r.walk["/usr"].matches = [{ kind: "jwt", path: "/usr/lib/a" }];
-		expect(walked(r)).toEqual([
+		r.walk["/usr"].matches = [
+			{ kind: "jwt", path: "/usr/lib/a" },
+			{ kind: "canary", path: "/usr/lib/b" },
+		];
+		r.walk["/tree"].matches = [{ kind: "github token", path: "/tree/c" }];
+		expect(walked(r, plan())).toEqual([
 			"/tree: 3 files, 1 directories, 0 unreadable, 10 bytes read",
 			"/usr: 5 files, 1 directories, 0 unreadable, 10 bytes read",
 			"/sys: 2 files, 1 directories, 0 unreadable; class:3",
+			"/tree holds a github token shape in /tree/c",
 			"/usr holds a jwt shape in /usr/lib/a",
+			"/usr holds a canary shape in /usr/lib/b",
+			"token shapes listed in 1 public roots: 1",
 		]);
+	});
+});
+
+describe("publicRoots", () => {
+	const reasons = (path) => publicRoots.filter((root) => root.matches(path)).map((root) => root.reason);
+
+	it("names the system's directories, npm packages and the running Node as public", () => {
+		expect(["/bin", "/sbin", "/lib", "/lib32", "/lib64", "/usr", "/usr/share"].map(reasons)).toEqual(
+			Array(7).fill(["the system's programs and libraries"]),
+		);
+		expect(reasons("/work/melian/node_modules/@octokit")).toEqual(["installed npm packages"]);
+		expect(reasons(process.execPath)).toEqual(["the Node binary that runs the round"]);
+	});
+
+	it("leaves every other root, and a name that only starts like a public one, not public", () => {
+		for (const path of [
+			"/tmp/melian-probe-x/tree",
+			"/home/runner",
+			"/usr2",
+			"/binary",
+			"/work/node_modules2",
+			`${process.execPath}2`,
+			"/opt/usr",
+		])
+			expect(reasons(path), path).toEqual([]);
 	});
 });
 
