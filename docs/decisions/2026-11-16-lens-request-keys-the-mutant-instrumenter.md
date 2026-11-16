@@ -19,3 +19,5 @@ The ruling of 2026-11-15 that [the per-request decision](2026-11-15-lens-runs-re
 ## Limits
 
 The key does not hold the instrumenter's own dependencies, such as Babel, for the reason the per-request decision gives for the packages beneath pi-ai. Nor does it hold the base's Stryker exclusions: the base is in the key already, and the tool reads them from it.
+
+One case awaits the maintainer's read; it is not accepted. The review resolves the instrumenter once to build the key, and `list_mutants` resolves it again each time it runs. An instrumenter that changes during one review, across a crash and replay, can therefore leave that run stored under the key that names the old one, and a later review could copy it. Closing it means the tool checks the instrumenter it resolves against the one the run was keyed with. The lens task stores only the request's hash, so that identity would need a field on the task's stored run, and a new field takes a task version that [issue #493](https://github.com/melian-agent/melian/issues/493) and [issue #489](https://github.com/melian-agent/melian/issues/489) already claim.
