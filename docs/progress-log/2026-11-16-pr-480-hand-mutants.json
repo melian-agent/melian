@@ -3310,6 +3310,168 @@
     "name": "stopTree > signals nothing, and says it could not stop the tree, when the root is a zombie"
    },
    "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(child.pid === undefined || child.exitCode !== null) && child.signalCode !== null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "child.pid === undefined && child.exitCode !== null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "result": "equivalent",
+   "note": "forcing child.pid === undefined false sends an undefined pid to stopTree, which refuses a root that is not a safe integer and returns undefined, the same answer"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 5,
+   "endLine": 147,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.pid !== undefined",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 32,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git exits, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 32,
+   "endLine": 147,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.exitCode === null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 59,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > signals nothing below git once git is killed by a signal, though another process now holds its pid"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 147,
+   "column": 59,
+   "endLine": 147,
+   "endColumn": 84,
+   "mutatorName": "EqualityOperator",
+   "replacement": "child.signalCode === null",
+   "ranAt": "7b829d3bfc511b76d43ae89627256daefb6096af",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
+   },
+   "result": "killed"
   }
  ]
 }
