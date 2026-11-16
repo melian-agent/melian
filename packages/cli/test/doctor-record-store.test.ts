@@ -280,6 +280,32 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("counts the leftovers the sweep left when its deadline ran out", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: [], kept: [], failed: [], unswept: 3 },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory holds 3 leftovers of exited calls that the sweep ran out of time to remove, which the next open removes; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
+	it("says one leftover was left when the deadline ran out", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: [], kept: [], failed: [], unswept: 1 },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory holds a leftover of an exited call that the sweep ran out of time to remove, which the next open removes; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
 	it("says nothing of a sweep that removed what it found", async () => {
 		origin(remote.url);
 		vi.spyOn(GitRecordStore, "open").mockResolvedValue({

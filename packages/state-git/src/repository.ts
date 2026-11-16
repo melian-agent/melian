@@ -46,9 +46,10 @@ const lostRace =
  * What a store's sweep did with the leftovers of calls that ended before they removed what they made: the temporary
  * indexes, half-made repositories and fetch refs whose owner had gone, which it removed; those whose owner it cannot
  * tell, which it kept; and those it found stale but could not remove. `unread` says why it swept nothing, when the
- * process table could not be read. A leftover a live call holds is in none of the lists.
+ * process table could not be read, and `unswept` counts the stale leftovers it left when the call's deadline ran out,
+ * which the next open removes.
  */
-export type Sweep = { removed: string[]; kept: string[]; failed: string[]; unread?: string };
+export type Sweep = { removed: string[]; kept: string[]; failed: string[]; unread?: string; unswept?: number };
 
 // A leftover as the sweep lists it: its name, the owner its name records, whether it is the kind of thing the store
 // makes under that name, and how to remove it.
@@ -177,6 +178,7 @@ export class RecordRepository {
 			if (!leftover.fits || leftover.owner === undefined || !leftover.owner.isHere()) sweep.kept.push(leftover.name);
 			else if (table === undefined) continue;
 			else if (!leftover.owner.isGone(table)) sweep.kept.push(leftover.name);
+			else if (deadline.left() <= 0) sweep.unswept = (sweep.unswept ?? 0) + 1;
 			else
 				try {
 					await leftover.remove();

@@ -563,6 +563,10 @@ function sweepNotes(sweep: Sweep): string[] {
 		notes.push(
 			`the state directory holds ${sweep.failed.length === 1 ? "a leftover" : `${sweep.failed.length} leftovers`} of an exited call that Melian could not remove: ${listed(sweep.failed)}`,
 		);
+	if (sweep.unswept !== undefined)
+		notes.push(
+			`the state directory holds ${sweep.unswept === 1 ? "a leftover of an exited call" : `${sweep.unswept} leftovers of exited calls`} that the sweep ran out of time to remove, which the next open removes`,
+		);
 	return notes;
 }
 

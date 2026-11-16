@@ -6,6 +6,7 @@ import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Clock } from "../src/deadline.ts";
 import { Owner } from "../src/owner.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
@@ -327,6 +328,61 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		const store = await remote.open({ directory: fresh });
 		expect(kind(join(fresh, `records.git.${suffix}`))).toBe("absent");
 		expect(store.sweep).toEqual({ removed: [`records.git.${suffix}`], kept: [], failed: [] });
+	});
+});
+
+// A clock that stands still until the sweep has read the process table, then reads `left` ms before the deadline and
+// moves 1 ms each time it is read, so the sweep's removals meet the deadline while its listing and git commands do not.
+function sweepClock(left: number): { clock: Clock; processes: { list(): ProcessEntry[] } } {
+	const table = new ProcessTable().list();
+	let now = 0;
+	let ticking = false;
+	let reads = 0;
+	return {
+		clock: { now: () => (ticking ? now++ : now), sleep: async () => {} },
+		processes: {
+			list: () => {
+				// The first read names this process for what it makes; the second is the sweep's.
+				if (++reads === 2) {
+					now = 30_000 - left;
+					ticking = true;
+				}
+				return table;
+			},
+		},
+	};
+}
+
+describe("the sweep's deadline", { timeout: 60_000 }, () => {
+	const folders = (suffixes: readonly string[]) =>
+		suffixes.map((suffix) => kind(join(directory, `records.git.${suffix}`)));
+	const half = (suffix: string) => mkdirSync(join(directory, `records.git.${suffix}`));
+
+	it("removes what it reaches while time is left, and counts the rest unswept", async () => {
+		const owner = await exited();
+		const suffixes = [owned(owner.pid), owned(owner.pid)].sort();
+		for (const suffix of suffixes) half(suffix);
+		const store = await remote.open({ directory, deadlineMs: 30_000, ...sweepClock(1) });
+		expect(folders(suffixes)).toEqual(["absent", "directory"]);
+		expect(store.sweep).toEqual({ removed: [`records.git.${suffixes[0]}`], kept: [], failed: [], unswept: 1 });
+	});
+
+	it("removes nothing once no time is left, still names what it keeps, and the next open finishes", async () => {
+		const owner = await exited();
+		const suffixes = [owned(owner.pid), owned(owner.pid)].sort();
+		for (const suffix of suffixes) half(suffix);
+		const unowned = randomUUID();
+		half(unowned);
+		const late = await remote.open({ directory, deadlineMs: 30_000, ...sweepClock(0) });
+		expect(folders(suffixes)).toEqual(["directory", "directory"]);
+		expect(late.sweep).toEqual({ removed: [], kept: [`records.git.${unowned}`], failed: [], unswept: 2 });
+		const next = await remote.open({ directory });
+		expect(folders(suffixes)).toEqual(["absent", "absent"]);
+		expect(next.sweep).toEqual({
+			removed: suffixes.map((suffix) => `records.git.${suffix}`),
+			kept: [`records.git.${unowned}`],
+			failed: [],
+		});
 	});
 });
 
