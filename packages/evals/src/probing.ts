@@ -15,6 +15,8 @@ import {
 	type MemberClaim,
 	openSource,
 	parseModelReference,
+	revisionLimits,
+	SourceError,
 	type Verification,
 	VerificationState,
 	visibleText,
@@ -42,7 +44,6 @@ type Print = (line: string) => void;
 
 const probingLens = "trust-boundary";
 const probingCheck = `lens.${probingLens}`;
-const maxMissBytes = 16 * 1024 * 1024;
 
 /** The goldens a probing measurement scores: those named for `trust-boundary`'s level that probes. */
 export const probingGoldenPrefix = "trust-boundary-probe-";
@@ -277,7 +278,12 @@ export class Miss {
 		if (!selection.lens.rules.some(({ id }) => id === this.rule))
 			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
 		const source = await openSource(this.repo, { kind: "revision", commit: target.head });
-		const text = await source.readText(this.file, maxMissBytes);
+		const text = await source.readText(this.file, revisionLimits.fileBytes).catch((error: unknown) => {
+			if (error instanceof SourceError && error.code === "tooLarge") return null;
+			throw error;
+		});
+		if (text === null)
+			return `${this.name}: ${this.file} at ${target.head} is larger than the ${revisionLimits.fileBytes} bytes a lens can read`;
 		if (text === undefined) return `${this.name}: ${this.file} does not exist at ${target.head}`;
 		if (text === "") return `${this.name}: ${this.file} is empty at ${target.head}`;
 		if (this.lines === undefined) return undefined;

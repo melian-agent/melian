@@ -9,6 +9,7 @@ import {
 	Lens,
 	type MelianConfig,
 	type ResolvedFinding,
+	revisionLimits,
 	Verdict,
 } from "@melian-agent/core";
 import {
@@ -1400,6 +1401,61 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					`The misses file cannot be scored: excluded: the base's policy does not let the trust-boundary lens review ${renamed}`,
 				],
 			});
+			expect(refused.using.range).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("accepts a miss on a file at the size a lens can read, and refuses, before any provider, one a byte past it", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const file = defect[0]!.properties.path!;
+			const rule = defect[0]!.ruleId;
+			const sized = (branch: string, bytes: number) => {
+				git(repo, "checkout", "--quiet", "-b", branch, "feature");
+				writeFileSync(join(repo, file), `${"x".repeat(bytes - 1)}\n`);
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					branch,
+				);
+				return git(repo, "rev-parse", "HEAD");
+			};
+			const run = (name: string, head: string) => {
+				const using = runners();
+				const result = measure(
+					{
+						...env,
+						MELIAN_EVAL_MISSES: missesFile([{ name, repo, base, head, file, rule }]),
+						MELIAN_EVAL_PROBE_SET: "misses",
+						MELIAN_EVAL_PROBE_PASSES: "1",
+						MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+					},
+					using,
+				);
+				return { using, result };
+			};
+			const atBound = sized("at-bound", revisionLimits.fileBytes);
+			const accepted = run("at-bound", atBound);
+			expect(await accepted.result).toMatchObject({ status: 0, errors: [] });
+			expect(accepted.using.range).toHaveBeenCalledTimes(1);
+			const pastBound = sized("past-bound", revisionLimits.fileBytes + 1);
+			const refused = run("past-bound", pastBound);
+			expect(await refused.result).toMatchObject({
+				status: 2,
+				errors: [
+					`The misses file cannot be scored: past-bound: ${file} at ${pastBound} is larger than the ${revisionLimits.fileBytes} bytes a lens can read`,
+				],
+			});
+			expect(refused.using.models).not.toHaveBeenCalled();
 			expect(refused.using.range).not.toHaveBeenCalled();
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
