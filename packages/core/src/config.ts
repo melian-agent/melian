@@ -1093,6 +1093,25 @@ function checkFallbacks(sites: readonly RouteSite[], layers: readonly { site: Si
 	}
 }
 
+// A route whose fallback names a level must name its own, so a model that names none runs at the route's and never at
+// a fallback's that a missing credential promoted, by the maintainer's ruling of 2026-11-17 on issue #489.
+function checkRouteLevels(sites: readonly RouteSite[], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const { key: at, route, of } of sites) {
+		const levelled = route?.fallbacks?.find(
+			(each): each is Exclude<typeof each, string> => typeof each !== "string" && each.thinking !== undefined,
+		);
+		if (levelled === undefined || route?.thinking !== undefined) continue;
+		const site = layers.find(({ layer }) => of(layer)?.fallbacks !== undefined)!.site;
+		const key = `${at}.thinking`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${at}.fallbacks" names a thinking level for ${levelled.model}, so the route must name its own; set "${key}"`,
+			{ key },
+		);
+	}
+}
+
 // A lens route exists only where it names a model or an accept; one that names neither would run the lens on nothing.
 function checkLensRoutes(lenses: MelianConfig["lenses"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
 	for (const [lens, { route }] of Object.entries(lenses)) {
@@ -1325,6 +1344,12 @@ async function loadLayers(
 	checkLensRoutes(committedLenses, layers.slice(preferences));
 	checkLensRoutes(config.lenses, layers);
 	checkFallbacks(routeSites(config), layers);
+	// Committed policy must hold alone, since a round on Actions reads no preference.
+	checkRouteLevels(
+		routeSites({ models: committed.models as MelianConfig["models"], lenses: committedLenses }),
+		layers.slice(preferences),
+	);
+	checkRouteLevels(routeSites(config), layers);
 	const lensTiers: Record<string, LensTier> = {};
 	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
 		if (settings.tier !== undefined) lensTiers[name] = settings.tier;
