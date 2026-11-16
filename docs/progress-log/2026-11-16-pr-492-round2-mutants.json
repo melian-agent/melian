@@ -1,0 +1,562 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "de5cd8cdd08fe16f0cec4381c8286116191dff8f",
+    "head": "2d187e59c82702f23c521305134d8ba28b25f171"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/mutant-listing.ts",
+    "packages/pipeline/src/lens-tools.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 908,
+      "column": 14,
+      "endLine": 908,
+      "endColumn": 581,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "723c4de896b532d5b11579e1f07afb30ab5b294965fe0f2126c9d6056d816be0"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 945,
+      "column": 7,
+      "endLine": 945,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ae095598a15f8079feab20e89599cae52ca91f0b8629b693d13d2b7eb68b3f01"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 961,
+      "column": 7,
+      "endLine": 961,
+      "endColumn": 125,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "944fc88db6e218a58e32c46484864813142e6d2fe26086625653947793940bf2"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 46,
+      "column": 13,
+      "endLine": 46,
+      "endColumn": 15,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "f38abc6cb8e79b7bc1c16223c3a1de28533280641a81c323be92ad1e9f7b3524",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 47,
+      "endLine": 50,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e0361c6a58c7467f70e4a1344f5c90371a767731563aa166f0852fbdc681815d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 3,
+      "endLine": 48,
+      "endColumn": 53,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "size -= Buffer.byteLength(describeMutant(row)) + 1",
+      "status": "generated",
+      "id": "0a1e6405a88ae608c84b11b20365e2cc77467ef7bc6982349f1c1c8feaff6f6d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 1 bytes short of the bound: 1, with { count: 1, startLine: 2 } left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 11,
+      "endLine": 48,
+      "endColumn": 53,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "Buffer.byteLength(describeMutant(row)) - 1",
+      "status": "generated",
+      "id": "c6d4ae218b544a01b8275f2b9b5db7176f5e990ab13dc241beb36ccc95412c09",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 1 bytes short of the bound: 1, with { count: 1, startLine: 2 } left"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 10,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "06c833859313d02527ad58def3e4ca27a82628cfa7e7af4866a74beb18d36568",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 10,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8f5a74964f4eb11f4f604663a6258ce72e2a43bde1b82b7cb0c85612771c2a8d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 10,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "LogicalOperator",
+      "replacement": "index === maxListedMutants && size > maxBytes",
+      "status": "generated",
+      "id": "4b3e3e16a04ad81681640d620862111e0d06791a8ed2a355a5c29fda68f97af6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 10,
+      "endLine": 49,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "18355b7e897b251f1135f5b72c3c21d350454bf28e220572a78835ba746f471f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 10,
+      "endLine": 49,
+      "endColumn": 36,
+      "mutatorName": "EqualityOperator",
+      "replacement": "index !== maxListedMutants",
+      "status": "generated",
+      "id": "325864015ab10e093318cefeef23459535e36ce998a67c47167717f487a9da0b",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 40,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b28e6a6a2307ab1e2c0c6b8027fe5bcd44d048b86f357fa3403fa4364fb8d183",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 1 bytes short of the bound: 1, with { count: 1, startLine: 2 } left"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 40,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size >= maxBytes",
+      "status": "generated",
+      "id": "a457b4e8adc1466dbea6262ccf2e9dac33396a97f7ca1114b69ca1866e8e73af",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 40,
+      "endLine": 49,
+      "endColumn": 55,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size <= maxBytes",
+      "status": "generated",
+      "id": "c662660bcd8c95792512f8232b7ac31f8e94f87f4355bf29e97eeca9de3ff83d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 51,
+      "column": 6,
+      "endLine": 51,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "24d0b80d991d1147bd79cb5722910ec8a6ad579a8505c921804faea01d8a8c24",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 51,
+      "column": 6,
+      "endLine": 51,
+      "endColumn": 16,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "18797bbe19af44f350441e2ffb0b40cf5a88af1a2f9dc29bc272fb650b1b8749",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 51,
+      "column": 6,
+      "endLine": 51,
+      "endColumn": 16,
+      "mutatorName": "EqualityOperator",
+      "replacement": "cut !== -1",
+      "status": "generated",
+      "id": "0218001b97a2f488a70019e620eb70ec692640c2b5429c6a9f5d7264f9666c9f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 51,
+      "column": 14,
+      "endLine": 51,
+      "endColumn": 16,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "f34f1c72ba8c36e0fcfcc632259edc3bc2490e05e0459dfab86c7c58d9550126",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 51,
+      "column": 25,
+      "endLine": 51,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d57eb854c3fc5cb14ca710ca1cd5451a290b22e26b732779f5a934ae54c3835f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "shows the rows whose text fits 0 bytes short of the bound: 2, with undefined left"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 54,
+      "column": 16,
+      "endLine": 54,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b575d747d9fcf5a9ab069b43296e34000b89f12c140606643ed7551063fed022",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 54,
+      "column": 16,
+      "endLine": 54,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "04cef6f60ceddcb6857bdd780a1acba31622c844b76c0ecc507d879236cb0207",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "pages at a line boundary when the cap falls inside a line, so the next call repeats none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 54,
+      "column": 16,
+      "endLine": 54,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length >= 0",
+      "status": "generated",
+      "id": "d63aeaa399bde2b90594316989bbba699cd35f8013d2373b7b0833fae390e8da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 54,
+      "column": 16,
+      "endLine": 54,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length <= 0",
+      "status": "generated",
+      "id": "ec4738005dac126680fbcd2819f0a8631092890f2dec1e0f5f0c979332443cd0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 54,
+      "column": 43,
+      "endLine": 54,
+      "endColumn": 63,
+      "mutatorName": "MethodExpression",
+      "replacement": "listed",
+      "status": "generated",
+      "id": "98b6aed5194bcad390dc3923ee9e87290bd986e2ec3d25c0947e03d8fb0ead4a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 25,
+  "omitted": 0,
+  "unmutated": []
+}

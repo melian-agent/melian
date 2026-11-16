@@ -1,0 +1,390 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "9f782aa97a77fd1024776bdb1bc8587c442d98a3",
+  "head": "0c3abb2ddccee7bd346872a18657a495868b3059"
+ },
+ "claimsIn": [
+  "packages/state-git/src/repository.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+ "mutants": [
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 569,
+   "column": 6,
+   "endLine": 569,
+   "endColumn": 116,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "7c9df2f87e5441ed8a9b974242090f6aeaed023ed9e70d2c27ba7c0a92d629a2"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 6,
+   "endLine": 570,
+   "endColumn": 219,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "4035b84cf0fde005c09335fe774eb4d0aa60ec26d432669d146c6e5aca649ea6"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 35,
+   "endLine": 570,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "d2b3e7fdd7a4a990f583f3f850b8d9f77131f20f2a85695c1f785a34853a1a64"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 35,
+   "endLine": 570,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "68baed732e091a4201a9e04d474a6b64561af97f8f6fbb47cb3a1bf3fc8e2cae"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 35,
+   "endLine": 570,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "sweep.unswept !== 1",
+   "status": "generated",
+   "id": "1355193374ac4f317924273cee4b82ec388b068e570fa29eb65fbecbc70fa1e2"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 57,
+   "endLine": 570,
+   "endColumn": 87,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "3f692bec965dead51a6073edeaedf785606e867dc694d7f1671631f2660ec953"
+  },
+  {
+   "file": "packages/cli/src/doctor.ts",
+   "line": 570,
+   "column": 90,
+   "endLine": 570,
+   "endColumn": 134,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "3c1b541d9ebfd3fc9627e3dcf84fdd780a07e110c03ca12f804c99eb3bec0793"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 178,
+   "column": 72,
+   "endLine": 178,
+   "endColumn": 113,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "3b138ed674d3d17f90d645fcfd5006bf608f2cd7c53adf4025a3b2ae06d9e945",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "removes nothing, and the open still succeeds, when the state directory cannot be listed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 178,
+   "column": 79,
+   "endLine": 178,
+   "endColumn": 112,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "b4ea13e522e9ec3c85d9ae8b12915bbff403999013977843451e228dc60af69e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "removes nothing, and the open still succeeds, when the state directory cannot be listed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 178,
+   "column": 92,
+   "endLine": 178,
+   "endColumn": 94,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "6f987759f9c43c7280d3315f792203aac049fcc63ed5680999501c0c8d856644",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "removes nothing, and the open still succeeds, when the state directory cannot be listed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 178,
+   "column": 106,
+   "endLine": 178,
+   "endColumn": 110,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "efcf4694921b0a36b1968662029dcb1b6bd84d72d5bb8d0c097c112f1f11c0e4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "removes nothing, and the open still succeeds, when the state directory cannot be listed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 6,
+   "endLine": 228,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "10c10bf4abaf49df592b85bce77d0ed0223e36b7ff3e7e20a1427b4d08005890",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep when the store opens",
+      "removes what a process that has exited left, and keeps the hint ref"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 6,
+   "endLine": 228,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "4014ae321f4d2cb2834af7d3325951dbf6a4d5f1f460b3b705f813a9052b561f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "lists no fetch refs once no time is left, removes nothing, and the open still succeeds"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 6,
+   "endLine": 228,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "deadline.left() < 0",
+   "status": "generated",
+   "id": "f6cdc6458972d3446b1c4ce2b136f14d07dd546ad24b0dca57a3187d6a26d017",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "lists no fetch refs once no time is left, removes nothing, and the open still succeeds"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 6,
+   "endLine": 228,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "deadline.left() > 0",
+   "status": "generated",
+   "id": "b7c840a6cc8f957f93242bad6fb4c30be98f4131d06884242cc9788ce3f7c5bb",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "starts the listing while a millisecond is left"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 35,
+   "endLine": 228,
+   "endColumn": 64,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "037c1e85ed9021471bd5040389a16399705f66f92fb0fd1c5df76f00a10c2997",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "lists no fetch refs once no time is left, removes nothing, and the open still succeeds"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 228,
+   "column": 58,
+   "endLine": 228,
+   "endColumn": 62,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f6560e84bf94915fe2201974a7f6c006eab5a994c646098ce0f37427f09b6ec0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep's listing",
+      "lists no fetch refs once no time is left, removes nothing, and the open still succeeds"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 230,
+   "column": 35,
+   "endLine": 230,
+   "endColumn": 99,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "6b6f62110496709d65c73684a83730767592ba7339a556cc7e6d11b78de5b35a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the sweep when the store opens",
+      "removes what a process that has exited left, and keeps the hint ref"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 230,
+   "column": 36,
+   "endLine": 230,
+   "endColumn": 50,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "5df4f7b6cede3c44d9e9a214eeae73900d5003179ebe7214a6d03b34fcf75fce"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 230,
+   "column": 52,
+   "endLine": 230,
+   "endColumn": 68,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "98d3927f938ca6d2fec70f2e5ab83ed563facc40a4aa5fadc1cacae172c65213"
+  },
+  {
+   "file": "packages/state-git/src/repository.ts",
+   "line": 230,
+   "column": 70,
+   "endLine": 230,
+   "endColumn": 91,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "71f0cb80572e711c2628f64a47e2ead325cb9c46122faa9f51da94a2c893ff39"
+  }
+ ],
+ "total": 21,
+ "omitted": 0,
+ "unmutated": []
+}
