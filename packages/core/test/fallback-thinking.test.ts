@@ -384,6 +384,26 @@ describe("a preference that changes a fallback's level", () => {
 		]);
 	});
 
+	it("judges a guarded route that names no model in accept's order, not its fallbacks'", async () => {
+		const { config, routes } = await loaded({
+			"melian.yaml":
+				"models:\n  heavy:\n    accept: [faux/second, faux/third]\n    fallbacks: [{ model: faux/third, thinking: high }]\n    acceptOverridden: false\n",
+		});
+		const plan = ReviewPlan.resolve({
+			config,
+			routes,
+			catalog,
+			credentials: { faux: "test" },
+			lenses: [],
+			checks: [],
+		});
+		expect(plan.tier("heavy")).toMatchObject({ status: "routed" });
+		expect(plan.tier("heavy").models).toEqual([
+			{ model: "faux/second", credential: "test", family: "second" },
+			{ model: "faux/third", credential: "test", family: "third", thinking: "high" },
+		]);
+	});
+
 	it("refuses a guarded tier whose last kept fallback loses its inherited level once the model ahead of it drops", async () => {
 		const { config, routes } = await loaded({
 			"melian.yaml":
