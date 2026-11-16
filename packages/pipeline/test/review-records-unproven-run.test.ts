@@ -229,3 +229,18 @@ describe("a check run made in this process for another revision", () => {
 		}
 	});
 });
+
+describe("a check run handed to a review", () => {
+	it.each([
+		["another base", (_: string, head: string) => ({ base: "a".repeat(40), head, tier: "full" })],
+		["another tier", (base: string, head: string) => ({ base, head, tier: "standard" })],
+	])("is refused when it names %s than the review's", async (_, names) => {
+		const { base, head } = (await Changeset.resolve(repo, "main...feature")).revision;
+		const made = runUnder(current);
+		const checkRun = { ...made, identity: { ...made.identity, ...names(base, head) } };
+
+		await expect(
+			review(new MemoryRecordStore({ payloads: reviewPayloads }), { checkRun, asMade: true }),
+		).rejects.toMatchObject({ code: "foreignCheckRun", lenses: [] });
+	});
+});
