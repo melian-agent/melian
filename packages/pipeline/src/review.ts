@@ -3661,7 +3661,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						summary.walkthrough,
 					),
 			findings,
-			// The policy the adjudication task decided under, as its input names it.
 			input.resolutionPolicy ?? null,
 		);
 	}

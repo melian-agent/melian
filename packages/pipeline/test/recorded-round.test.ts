@@ -421,6 +421,20 @@ describe("a round decided under another policy", () => {
 		);
 	});
 
+	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>]>([
+		["a checkout and no policy source", { repoRoot: "." }],
+		["a policy source and no checkout", { policy: worktree }],
+	])("reads under the configuration alone, as the review did, when the reader holds %s", async (_, given) => {
+		const reviewed = await review(exported());
+		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
+			...(given.policy === undefined ? {} : { policy: given.policy }),
+		});
+		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+	});
+
 	it("reads not reviewed when the review read no policy source and the reader reads one", async () => {
 		const reviewed = await review(exported());
 		expect(accountOf(reviewed).resolutionPolicy).toBeNull();
