@@ -228,11 +228,14 @@ try {
 	report.ipc = { listed, removed };
 } catch (error) { report.ipc = { error: code(error) }; }
 
-const buffer = Buffer.alloc(262144);
+const buffer = Buffer.alloc(1048576);
+// Each read after a file's first starts with the last bytes of the one before, so a match across two reads is whole.
+const overlap = 4096;
+const byteLimit = 16 * 1024 ** 3;
 function walk(root, maxDepth, readBytes) {
 	const summary = { files: 0, directories: 0, unreadable: 0, bytes: 0, top: [], matches: [] };
 	const stack = [[root, 0]];
-	while (stack.length > 0 && summary.files + summary.directories < 400000) {
+	while (stack.length > 0 && summary.files + summary.directories < 400000 && summary.bytes < byteLimit) {
 		const [path, depth] = stack.pop();
 		let stat;
 		try { stat = lstatSync(path); } catch { summary.unreadable++; continue; }
@@ -248,21 +251,30 @@ function walk(root, maxDepth, readBytes) {
 		summary.files++;
 		let fd;
 		try { fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK); } catch { summary.unreadable++; continue; }
+		const found = new Set();
 		try {
-			const size = readSync(fd, buffer, 0, Math.min(readBytes, buffer.length), 0);
-			summary.bytes += size;
-			const text = buffer.toString("latin1", 0, size);
-			if (text.includes(canary) && path !== t.self) summary.matches.push({ kind: "canary", path });
-			for (const [kind, shape] of shapes) if (shape.test(text)) summary.matches.push({ kind, path });
+			let at = 0;
+			let carried = "";
+			while (at < readBytes && summary.bytes < byteLimit) {
+				const size = readSync(fd, buffer, 0, Math.min(readBytes - at, buffer.length), at);
+				if (size === 0) break;
+				at += size;
+				summary.bytes += size;
+				const text = carried + buffer.toString("latin1", 0, size);
+				if (text.includes(canary) && path !== t.self) found.add("canary");
+				for (const [kind, shape] of shapes) if (shape.test(text)) found.add(kind);
+				carried = text.slice(-overlap);
+			}
 		} catch { summary.unreadable++; } finally { closeSync(fd); }
+		for (const kind of found) summary.matches.push({ kind, path });
 	}
-	summary.cut = stack.length > 0;
+	summary.cut = stack.length > 0 || summary.bytes >= byteLimit;
 	summary.top = summary.top.slice(0, 40);
 	summary.matches = summary.matches.slice(0, 200);
 	return summary;
 }
 report.walk = {};
-for (const root of t.walk) report.walk[root] = walk(root, 64, buffer.length);
+for (const root of t.walk) report.walk[root] = walk(root, 64, Infinity);
 report.sys = walk("/sys", 8, 4096);
 console.log(JSON.stringify(report));
 `;
@@ -332,7 +344,7 @@ export function judge(report, plan, argv, host) {
 	for (const [root, summary] of [...Object.entries(report.walk), ["/sys", report.sys]]) {
 		for (const { kind, path } of summary.matches)
 			if (kind === "canary" || !plan.public.includes(root)) failures.push(`${path} holds a ${kind}`);
-		if (summary.cut) failures.push(`the walk of ${root} stopped at its entry limit`);
+		if (summary.cut) failures.push(`the walk of ${root} stopped at its entry or byte limit`);
 	}
 	if ((report.walk[plan.walk[0]]?.files ?? 0) === 0) failures.push(`the walk read no file of ${plan.walk[0]}`);
 	for (const root of plan.walk)

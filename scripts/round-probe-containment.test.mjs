@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,6 +13,7 @@ import {
 	main,
 	observeHost,
 	outcome,
+	probeScript,
 	publicRoots,
 	recording,
 	shmId,
@@ -230,7 +232,7 @@ describe("judge", () => {
 		r.sys.cut = true;
 		r.walk["/tree"].files = 0;
 		expect(judge(r, plan(), argv, host())).toEqual([
-			"the walk of /sys stopped at its entry limit",
+			"the walk of /sys stopped at its entry or byte limit",
 			"the walk read no file of /tree",
 		]);
 		const later = report();
@@ -345,6 +347,85 @@ describe("tokenShapes", () => {
 			expect(shape.test(short[kind]), kind).toBe(false);
 		}
 	});
+});
+
+describe("the probe script", () => {
+	const dirs = [];
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	// Runs the script outside the sandbox, on fake values, so what it detects is tested apart from what the sandbox hides.
+	function collect(env) {
+		const dir = mkdtempSync(join(tmpdir(), "melian-containment-script-"));
+		dirs.push(dir);
+		const secret = `melian-canary-${randomBytes(16).toString("hex")}`;
+		const walked = join(dir, "walked");
+		mkdirSync(walked);
+		const files = {
+			late: join(walked, "late"),
+			straddle: join(walked, "straddle"),
+			clean: join(walked, "clean"),
+			leak: join(dir, "leak"),
+		};
+		// A canary past the first 256 KiB, and a token across the boundary between two of the script's 1 MiB reads.
+		writeFileSync(files.late, `${" ".repeat(300_000)}${secret}\n`);
+		writeFileSync(files.straddle, `${" ".repeat(1_048_576 - 10)} ghp_${"A".repeat(36)} \n`);
+		writeFileSync(files.clean, "nothing here\n");
+		writeFileSync(files.leak, `${secret}\n`);
+		const targets = {
+			canary: secret,
+			shm: "",
+			shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
+			read: [files.leak, files.clean],
+			write: [],
+			network: [],
+			walk: [walked],
+			self: join(dir, "targets.json"),
+		};
+		writeFileSync(join(dir, "probe.mjs"), probeScript);
+		writeFileSync(targets.self, JSON.stringify(targets));
+		const run = spawnSync(process.execPath, [join(dir, "probe.mjs")], {
+			cwd: dir,
+			env: { PATH: process.env.PATH, ...env(secret) },
+			encoding: "utf8",
+			timeout: 120_000,
+		});
+		expect(run.status).toBe(0);
+		const bytes = Object.values(files)
+			.filter((file) => file.startsWith(walked))
+			.reduce((total, file) => total + readFileSync(file).length, 0);
+		return { report: JSON.parse(run.stdout.trim().split("\n").at(-1)), files, bytes, walked };
+	}
+
+	it.runIf(process.platform === "linux")(
+		"finds a canary in its environment and in a file it reads, and every match to the end of each walked file",
+		{ timeout: 300_000 },
+		() => {
+			const { report, files, bytes, walked } = collect((secret) => ({ MELIAN_LEAKED: secret }));
+			expect(report.environmentCanary).toBe(true);
+			expect(report.selfEnviron).toBe("canary");
+			expect(report.reads).toEqual({ [files.leak]: "canary", [files.clean]: "read" });
+			const summary = report.walk[walked];
+			expect(summary.files).toBe(3);
+			expect(summary.bytes).toBe(bytes);
+			expect(summary.cut).toBe(false);
+			expect([...summary.matches].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+				{ kind: "canary", path: files.late },
+				{ kind: "github token", path: files.straddle },
+			]);
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"reports a clean environment when no variable holds the canary",
+		{ timeout: 300_000 },
+		() => {
+			const { report } = collect(() => ({ MELIAN_OTHER: "nothing" }));
+			expect(report.environmentCanary).toBe(false);
+			expect(report.selfEnviron).toBe("clean");
+		},
+	);
 });
 
 describe("unfinished", () => {
