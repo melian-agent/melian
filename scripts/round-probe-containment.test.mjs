@@ -535,6 +535,7 @@ describe("outcome", () => {
 describe("containmentPlan", () => {
 	const input = {
 		canary,
+		tag: "ab12",
 		shm: "7",
 		policy: { read: ["/r/tree", "/usr/lib", "/opt/x", "/usr/x/run", "/usr/x/probe"], write: ["/usr/x/run"] },
 		files: ["/s/canary", "/h/.melian-canary-1"],
@@ -582,8 +583,8 @@ describe("containmentPlan", () => {
 				"/usr/x/run/home/written",
 				"/r/tree/written",
 				"/s/written",
-				"/tmp/melian-written",
-				"/h/melian-written",
+				"/tmp/melian-written-ab12",
+				"/h/melian-written-ab12",
 			],
 			network: [
 				{ host: "api.github.com", port: 443 },
@@ -807,6 +808,30 @@ describe("main", () => {
 			code: 1,
 			logs: [[expect.stringMatching(/^the probe's scratch was left at \/.*\/left$/)]],
 		});
+	});
+
+	it.runIf(process.platform === "linux")("leaves a file that was at a write target before it ran", async () => {
+		const report = {
+			walk: {},
+			sys: { files: 0, directories: 0, unreadable: 0, top: [], matches: [] },
+			environment: [],
+			environCanary: [],
+			selfEnviron: "clean",
+			listings: {},
+			processes: 0,
+			tcp: {},
+			httpProxy: {},
+			socksProxy: {},
+			ipc: {},
+			reads: {},
+			writes: {},
+		};
+		const finished = { exitCode: 0, signal: null, timedOut: false, truncated: false, output: JSON.stringify(report) };
+		const result = await mainWith((root) => {
+			writeFileSync(join(root, "home", "melian-written"), "mine\n");
+			return stoppedProbes(root, true, finished);
+		});
+		expect(result.left).toEqual(["melian-written"]);
 	});
 
 	it("runs nothing when another module imports it", () => {

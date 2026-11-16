@@ -431,6 +431,7 @@ export function outcome(failures) {
 /** What the containment probe tries, from the policy Probe gave it and what the step planted on the host. */
 export function containmentPlan({
 	canary,
+	tag,
 	shm,
 	policy,
 	files,
@@ -480,8 +481,9 @@ export function containmentPlan({
 			join(run, "home", "written"),
 			join(tree, "written"),
 			join(scratch, "written"),
-			"/tmp/melian-written",
-			join(home, "melian-written"),
+			// Shared directories take a fresh name each run, so the cleanup that follows removes nothing it did not plan.
+			`/tmp/melian-written-${tag}`,
+			join(home, `melian-written-${tag}`),
 		],
 		network: [
 			{ host: "api.github.com", port: 443 },
@@ -563,6 +565,7 @@ export async function main(probes = Probe, read = probeRead) {
 		try {
 			plan = containmentPlan({
 				canary,
+				tag: randomBytes(8).toString("hex"),
 				shm,
 				policy,
 				files,
