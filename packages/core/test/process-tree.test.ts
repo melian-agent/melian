@@ -77,6 +77,15 @@ describe("stopTree", () => {
 		expect(table.kills).toEqual([[101, "SIGTERM"]]);
 	});
 
+	it("ends when the table shows a process as its own parent, as macOS's ps shows pid 0", async () => {
+		const table = new FakeTable([entry(0, 0), entry(1, 0), entry(self, 1), entry(100, self), entry(101, 100)]);
+		await stopTree(100, table, instant);
+		expect(table.kills).toEqual([
+			[100, "SIGTERM"],
+			[101, "SIGTERM"],
+		]);
+	});
+
 	it.each([0, 1, -1, 2.5])("signals nothing, and reads no table, for a root of %s", async (root) => {
 		const table = new FakeTable([entry(1, 0), entry(self, 1), entry(500, 1), entry(501, 0)]);
 		expect(stopTree(root, table, instant)).toBeUndefined();
