@@ -10,6 +10,7 @@ import {
 	maxConfigBytes,
 	OutsideRepositoryError,
 	ReviewPlan,
+	writesWriterTrust,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -698,6 +699,42 @@ describe("loadConfig from a revision", () => {
 		writeFiles(repo, { "src/a.ts": "" });
 		const error = await rejection(loadConfig(join(repo, "src"), { kind: "revision", commit: "HEAD" }, "a.ts"));
 		expect(error.code).toBe("notARepository");
+	});
+});
+
+describe("writesWriterTrust", () => {
+	const commit = (files: Record<string, string>) => {
+		writeFiles(repo, { "a.ts": "", ...files });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+		return gitIn(repo, "rev-parse", "HEAD");
+	};
+
+	it.each([
+		["writes trust.writers: true", { "melian.yaml": lines("trust:", "  writers: true") }, true],
+		["writes trust.writers: false", { "melian.yaml": lines("trust:", "  writers: false") }, false],
+		["leaves trust out", { "melian.yaml": lines("tiers:", "  fast: [guardrails]") }, false],
+		["has no melian.yaml", {}, false],
+		["sets it only in a nested melian.yaml", { "src/melian.yaml": lines("trust:", "  writers: true") }, false],
+	])("reads %s as %s", async (_, files, expected) => {
+		expect(defaultConfig.trust.writers).toBe(true);
+		expect(await writesWriterTrust(repo, commit(files))).toBe(expected);
+	});
+
+	it("reads the commit it is given, not the worktree", async () => {
+		const base = commit({ "melian.yaml": lines("trust:", "  writers: false") });
+		writeFiles(repo, { "melian.yaml": lines("trust:", "  writers: true") });
+		expect(await writesWriterTrust(repo, base)).toBe(false);
+	});
+
+	it("refuses a root melian.yaml it cannot parse", async () => {
+		const base = commit({ "melian.yaml": lines("trust: [") });
+		expect(await rejection(writesWriterTrust(repo, base))).toMatchObject({ file: "melian.yaml" });
+	});
+
+	it("refuses a commit that does not resolve", async () => {
+		commit({});
+		expect(await rejection(writesWriterTrust(repo, "no-such-ref"))).toMatchObject({ code: "unknownCommit" });
 	});
 });
 

@@ -11,8 +11,11 @@ import {
 	type LensProbingWording,
 	lensProbingWording,
 	type MelianConfig,
+	MemoryRecordStore,
 	ReviewPlan,
 	Revision,
+	reviewPayloads,
+	SharedRecord,
 	Standards,
 } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
@@ -21,6 +24,7 @@ import {
 	createMemoryStorage,
 	openReviewHarness,
 	type ProbeSandbox,
+	RecordedRound,
 	ReviewError,
 	type ReviewHarness,
 	recordDismissal,
@@ -192,6 +196,7 @@ async function review(
 		unlockModels?: ReviewOptions["unlockModels"];
 		rerun?: boolean;
 		policy?: ReviewOptions["policy"];
+		records?: ReviewOptions["records"];
 	} = {},
 ) {
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -243,8 +248,9 @@ async function review(
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.policy === undefined ? {} : { policy: options.policy }),
+		...(options.records === undefined ? {} : { records: options.records }),
 	});
-	return { run, requests, sandbox, heads, changeset };
+	return { run, requests, sandbox, heads, changeset, config };
 }
 
 // The trust-boundary lens with its deep level's probe set to `probe`, and its other fields as loaded.
@@ -390,6 +396,29 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record.status).toBe("ended");
 		expect(record.reason).toContain("its prober left attack 2 with neither a probe nor a skip");
 		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("reads back from its records the verdict of a review whose prober left an attack untried", async () => {
+		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { run, changeset, config } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage("Still done."),
+				],
+			},
+			{ records },
+		);
+		const { verdict } = await run;
+		expect(verdict.status).toBe("not-reviewed");
+		const stored = await records.list(changeset.id);
+		const round = SharedRecord.parseEnvelope(stored.filter(({ kind }) => kind === "round").at(-1)!).id;
+		const recorded = RecordedRound.of(stored, round, () => true);
+		expect(recorded.refusal()).toBeUndefined();
+		const read = await recorded.verdict({ revision: changeset.revision, config });
+		expect(read.toJSON()).toEqual(verdict.toJSON());
 	});
 
 	it.each([

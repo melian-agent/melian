@@ -316,7 +316,7 @@ describe("SharedRecord", () => {
 			expect(parse(envelope({ kind, supersedes: [hex("1")] })).supersedes).toEqual([hex("1")]);
 		});
 
-		it.each(["check", "lens", "verification", "walkthrough", "telemetry", "marker"])(
+		it.each(["check", "lens", "verification", "walkthrough", "triage", "telemetry", "marker"])(
 			"refuses supersedes on a %s",
 			(kind) => {
 				expect(refusal(envelope({ kind, supersedes: [hex("1")] })).code).toBe("supersedesNotAllowed");
@@ -435,6 +435,7 @@ describe("SharedRecord", () => {
 			["a record's signer and signature appear together or not at all", envelope({ signer: "host" })],
 			["a record's signer is a non-empty string", envelope({ signer: "", signature })],
 			["a record's signature is 64 bytes in canonical base64", envelope({ signer: "host", signature: "x" })],
+			["an account names its revision", envelope({ kind: "account" })],
 			[
 				"a round names its revision",
 				envelope({ kind: "round", payload: { read: [], walkthrough: null, replaces: [], before: [] } }),
