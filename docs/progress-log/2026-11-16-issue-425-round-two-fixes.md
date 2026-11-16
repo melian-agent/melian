@@ -4,4 +4,4 @@ The round blocked on one finding. A later review of the same revision could repl
 
 A test now reads a round's findings under each path's own `melian.yaml`, which no test had exercised; it fails when the reader uses one configuration for every path (53b18ea5). The replacement decision links its issue references, and a long sentence in the design is split (88e51066). Biome's comma-operator finding was fixed earlier (df8df671).
 
-The round's other acknowledge finding asks whether the reader should refuse a working-tree range whose policy changed since its review. The coordinator took it to the maintainer on 2026-11-16, and the pull request changes nothing for it until he rules.
+The round's other acknowledge finding asks whether the reader should refuse a working-tree range whose policy changed since its review. The coordinator took it to the maintainer on 2026-11-16, and the pull request changes nothing for it until the maintainer rules.
