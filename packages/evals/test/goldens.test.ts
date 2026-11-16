@@ -1411,7 +1411,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 			{ stopReason: "toolUse" },
 		);
 
-	it("gives no score to a live run whose prober leaves an attack with neither a probe nor a skip", async () => {
+	it("gives no score to a live run whose prober leaves an attack with no probe that showed anything, nor a skip", async () => {
 		const golden = claim();
 		const availability = vi.spyOn(Probe, "availability").mockResolvedValue({ available: true });
 		onTestFinished(() => {
@@ -1456,7 +1456,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
 		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
 		await expect(live).rejects.toThrow(
-			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with neither a probe nor a skip/,
+			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with no probe that showed anything, nor a skip/,
 		);
 	});
 
@@ -1513,6 +1513,29 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 			await expect(runGolden({ ...golden, directory: copy }, { kind: "scripted" })).rejects.toThrow(
 				/^Not reviewed: .*lens\.conventions skipped \(lenses\.conventions\.enabled is false\)/,
 			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("records the tier each lens ran on, after the golden's policy retiers a lens", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const directory = mkdtempSync(join(tmpdir(), "melian-retiered-golden-"));
+		try {
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const policy = readFileSync(join(copy, "melian.golden.yaml"), "utf8");
+			writeFileSync(join(copy, "melian.golden.yaml"), `${policy}  tests:\n    tier: light\n`);
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted", probes: "unconfined" });
+			expect(run.tiers).toEqual({
+				"lens.contracts": "heavy",
+				"lens.conventions": "heavy",
+				"lens.correctness": "heavy",
+				"lens.design": "heavy",
+				"lens.removed-behaviour": "heavy",
+				"lens.tests": "light",
+				"lens.trust-boundary": "heavy",
+			});
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}

@@ -333,14 +333,15 @@ type LensOutcome =
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
-// the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
+// the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither a skip nor
+// a probe that showed anything. A version 7 task stored `skipped` as a count.
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
 	readonly attacks: number;
 	readonly probes: number;
 	readonly milliseconds: number;
-	readonly skipped: number;
+	readonly skipped: number | readonly number[];
 	readonly unanswered: readonly number[];
 };
 
@@ -542,8 +543,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// prober's conversation in the checkpoint under `<key>/prober` and what it did in the outcome's `probing`; an older
 	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
 	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
-	// runs have no request key, so no later task copies them, and it copies none.
-	version: 7,
+	// runs have no request key, so no later task copies them, and it copies none. Version 8 answers an attack only with a
+	// skip or a probe that showed something, and lists the skipped attacks in the outcome's `probing.skipped`, which an
+	// older task stored as a count; an older task's input and checkpoint are unchanged.
+	version: 8,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -624,10 +627,14 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				if (settled.status === "done") return undefined;
 				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
 			};
-			// The attack numbers the prober answered with neither a probe nor a skip.
+			// The attack numbers the prober answered with neither a skip nor a probe that showed anything.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
 				const state = (await runtime.snapshot(ProbingDocument, prober, context)) ?? {};
-				const probed = new Set(Object.values(state.probes ?? {}).map((probe) => probe.attack));
+				const probed = new Set(
+					Object.values(state.probes ?? {})
+						.filter((probe) => probeConclusive(probe.result))
+						.map((probe) => probe.attack),
+				);
 				return Array.from({ length: attacks }, (_, index) => index + 1).filter(
 					(attack) => !probed.has(attack) && state.skips?.[String(attack)] === undefined,
 				);
@@ -675,7 +682,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						};
 					}, context);
 				}
-				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
+				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: [], unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
 				const answered = await converse(
 					key,
@@ -703,10 +710,12 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					attacks: plan.length,
 					probes: probes.length,
 					milliseconds: probes.reduce((sum, each) => sum + each.milliseconds, 0),
-					// An attack skipped and then probed was probed.
-					skipped: Object.keys(state.skips ?? {}).filter(
-						(attack) => !probes.some((probe) => probe.attack === Number(attack)),
-					).length,
+					// An attack skipped and then probed by a probe that showed something was probed. Integer keys list in order.
+					skipped: Object.keys(state.skips ?? {})
+						.map(Number)
+						.filter(
+							(attack) => !probes.some((probe) => probe.attack === attack && probeConclusive(probe.result)),
+						),
 					unanswered: open,
 				};
 			};
@@ -1991,7 +2000,13 @@ function probingNote(probing: ProbingOutcome): string {
 	// A probe that ran took some time, however fast the machine: never "0.0 s".
 	const seconds = (probing.milliseconds / 1000).toFixed(1);
 	const time = probing.probes > 0 && seconds === "0.0" ? "under 0.1" : seconds;
-	const skipped = probing.skipped === 0 ? "" : `, and skipped ${plural(probing.skipped, "attack")}`;
+	const { skipped: listed } = probing;
+	const count = typeof listed === "number" ? listed : listed.length;
+	const which =
+		typeof listed === "number"
+			? plural(count, "attack")
+			: `${count === 1 ? "attack" : "attacks"} ${listed.join(", ")}`;
+	const skipped = count === 0 ? "" : `, and skipped ${which}`;
 	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}`;
 }
 
@@ -2011,7 +2026,7 @@ function lensRecord(
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		// An attack with neither a probe nor a skip is one the review never tried.
+		// An attack with neither a skip nor a probe that showed anything is one the review never answered.
 		const open = probing?.unanswered ?? [];
 		if (open.length > 0) {
 			const attacks = `${open.length === 1 ? "attack" : "attacks"} ${open.join(", ")}`;
@@ -2020,7 +2035,7 @@ function lensRecord(
 				status: "ended",
 				level,
 				...(budgetEnded === undefined ? {} : { budgetEnded }),
-				reason: failed(`its prober left ${attacks} with neither a probe nor a skip`),
+				reason: failed(`its prober left ${attacks} with no probe that showed anything, nor a skip`),
 			};
 		}
 		if (outcome.capped !== undefined) {

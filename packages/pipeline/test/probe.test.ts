@@ -195,6 +195,7 @@ describe("Probe.open", () => {
 		["PROBE.MJS"],
 		["run.mjs"],
 		["watchdog.mjs"],
+		["main.mjs"],
 	])("refuses the file path %j", async (path) => {
 		const { sandbox } = passthrough();
 		const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
@@ -231,14 +232,21 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs", "watchdog.mjs"]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual([
+			"a",
+			"main.mjs",
+			"probe.mjs",
+			"run.mjs",
+			"watchdog.mjs",
+		]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
-		// The runner imports the watchdog, then the probe's module, statically and in that order, so the watchdog is
-		// armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and
-		// is unref'd, so a probe that finishes keeps its own exit code.
-		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
-		expect(runner).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
+		// The probe's own process imports the watchdog, then the probe's module, statically and in that order, so the
+		// watchdog is armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops
+		// it, and is unref'd, so a probe that finishes keeps its own exit code. The runner starts that process.
+		const main = readFileSync(join(root, "probe", "main.mjs"), "utf8");
+		expect(main).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
+		expect(readFileSync(join(root, "probe", "run.mjs"), "utf8")).toContain('new URL("./main.mjs", import.meta.url)');
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
 		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/);
 		await probe.close();
@@ -1315,13 +1323,30 @@ describe("Probe.availability", () => {
 		expect(await Probe.availability(sandbox)).toEqual({ available: true });
 		expect(asked).toHaveLength(1);
 		expect(sandbox.close).toHaveBeenCalledOnce();
-		const failing = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
+		const recorded = (ending: string) => `printf '\\n%s\\n' '${ending}' >&3`;
+		const failing = passthrough({
+			wrap: async () => ["/bin/sh", "-c", `echo broken; ${recorded('{"code":4,"signal":null}')}; exit 4`] as never,
+		});
 		expect(await Probe.availability(failing.sandbox)).toEqual({
 			available: false,
 			reason: "an empty probe exited 4: broken",
 		});
-		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
+		const silent = passthrough({
+			wrap: async () => ["/bin/sh", "-c", `${recorded('{"code":5,"signal":null}')}; exit 5`] as never,
+		});
 		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
+		const killed = passthrough({
+			wrap: async () => ["/bin/sh", "-c", recorded('{"code":null,"signal":"SIGKILL"}')] as never,
+		});
+		expect(await Probe.availability(killed.sandbox)).toEqual({
+			available: false,
+			reason: "an empty probe was ended by SIGKILL",
+		});
+		const unrecorded = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
+		expect(await Probe.availability(unrecorded.sandbox)).toEqual({
+			available: false,
+			reason: "an empty probe ended with no record of how: broken",
+		});
 		expect(left()).toEqual([]);
 	});
 

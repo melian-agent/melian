@@ -347,7 +347,12 @@ describe("a level that probes", () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{
+				rewrite: (command) =>
+					inHeadTree(command) && ++heads > 1
+						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
+						: command,
+			},
 		);
 		const error = await run.then(
 			() => undefined,
@@ -375,10 +380,10 @@ describe("a level that probes", () => {
 		const asked = requests[prober]!;
 		expect(lastResults(requests[planner]![1]!)).toContain("recorded a plan of 2 attacks");
 		expect(asked).toHaveLength(3);
-		expect(textOf(asked[2]!.at(-1)!)).toContain("Attack 2 has neither a probe nor a skip");
+		expect(textOf(asked[2]!.at(-1)!)).toContain("Attack 2 has no probe that showed anything, nor a skip");
 		const record = verdict.notRun.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record.status).toBe("ended");
-		expect(record.reason).toContain("its prober left attack 2 with neither a probe nor a skip");
+		expect(record.reason).toContain("its prober left attack 2 with no probe that showed anything, nor a skip");
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
@@ -423,7 +428,7 @@ describe("a level that probes", () => {
 		});
 		const record = (await run).verdict.ran!.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record).toMatchObject({ status: "ran" });
-		expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+		expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1");
 	});
 
 	it("counts only the skipped attacks no probe answered, beside another the prober probed", async () => {
@@ -436,7 +441,52 @@ describe("a level that probes", () => {
 			],
 		});
 		const { reason } = record((await run).verdict);
-		expect(reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped 1 attack/);
+		expect(reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped attack 1(?![0-9,])/);
+	});
+
+	const killed = 'process.kill(process.pid, "SIGKILL");\n';
+
+	it("leaves an attack whose only probe showed nothing unanswered, and asks the prober for it again", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: killed }),
+				fauxAssistantMessage("Done."),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		const ended = record((await run).verdict);
+		expect(ended).toMatchObject({ status: "ended", level: "deep" });
+		expect(ended.reason).toContain("its prober left attack 1 with no probe that showed anything, nor a skip");
+		const asked = requests[prober]!;
+		expect(textOf(asked.at(-1)!.at(-1)!)).toContain("Attack 1 has no probe that showed anything, nor a skip");
+	});
+
+	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
+		const { run } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: killed }),
+				call("skip_attack", { attack: 1, reason: "it needs the network" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		const ran = record((await run).verdict);
+		expect(ran).toMatchObject({ status: "ran" });
+		expect(ran.reason).toMatch(/it planned 1 attack and ran 1 probe in .+ s, and skipped attack 1$/);
+	});
+
+	it("names every skipped attack, in plan order", async () => {
+		const { run } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack, attack] }), plan[1]!],
+			prober: [
+				call("skip_attack", { attack: 3, reason: "it needs the network" }),
+				call("run_probe", { attack: 2, script: passing }),
+				call("skip_attack", { attack: 1, reason: "it needs a credential" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		expect(record((await run).verdict).reason).toMatch(/, and skipped attacks 1, 3$/);
 	});
 
 	it("runs a round's probes one at a time, so each writes its head's tree alone", async () => {
@@ -520,6 +570,7 @@ describe("a level that probes", () => {
 				planner: plan.map((reply) => on("planner", reply)),
 				prober: [
 					on("prober", call("run_probe", { attack: 1, script: "setInterval(() => {}, 1000);\n" })),
+					on("prober", call("skip_attack", { attack: 1, reason: "it needs more time than a probe has" })),
 					on("prober", fauxAssistantMessage("Reported 0 findings.")),
 				],
 			},
@@ -950,6 +1001,42 @@ describe("a level that probes", () => {
 		expect(telemetry.runDetails().stages.map((stage) => stage.name)).toEqual(
 			expect.arrayContaining(["lens trust-boundary planner", "lens trust-boundary prober"]),
 		);
+	});
+
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+		const { run, changeset } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			prober: [
+				// An attack skipped and then probed was probed, as the run's own record counts it.
+				call("skip_attack", { attack: 2, reason: "it needs the network" }),
+				call("run_probe", { attack: 2, script: passing }),
+				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
+				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const prober = telemetry.stages.find((stage) => stage.role === "prober");
+		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
+			id: expect.stringMatching(/^p[0-9]+$/),
+			attack,
+			ended,
+			exitCode,
+			signal: null,
+			timedOut: false,
+			truncated,
+			milliseconds: expect.any(Number),
+		});
+		expect(prober!.probes).toEqual({
+			count: 3,
+			milliseconds: expect.any(Number),
+			limit: 30_000,
+			attacks: 4,
+			skipped: [4],
+			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
+		});
 	});
 
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
@@ -1874,7 +1961,12 @@ describe("a level that probes", () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{
+				rewrite: (command) =>
+					inHeadTree(command) && ++heads > 1
+						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
+						: command,
+			},
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -1953,6 +2045,23 @@ describe("a level that probes", () => {
 		expect(accepted[0]).toMatch(/probe p[0-9]+ passed/);
 		expect(accepted.slice(1).every((result) => result.includes("as skipped"))).toBe(true);
 		expect(ran.status).toBe("ran");
+	});
+
+	it("says a probe whose runner wrote no record of how it ended shows nothing", async () => {
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [
+					round([["run_probe", { attack: 1, script: "process.exit(1);\n" }]]),
+					call("skip_attack", { attack: 1, reason: "it needs a runner that records" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ rewrite: (command) => (inHeadTree(command) ? "exit 1" : command) },
+		);
+		await run;
+		const [unrecorded] = resultsOf(requests[prober]![1]!);
+		expect(unrecorded).toMatch(/probe p[0-9]+ ended with no record of how, which shows nothing/);
 	});
 
 	it("says how a probe ended: timed out, cut, ended by a signal, or silent", async () => {
@@ -2080,7 +2189,7 @@ describe("a level that probes", () => {
 		);
 		const ended = record((await probed.run).verdict);
 		expect(probed.requests[prober]).toHaveLength(2);
-		expect(ended.reason).toContain("its prober left attack 2 with neither a probe nor a skip");
+		expect(ended.reason).toContain("its prober left attack 2 with no probe that showed anything, nor a skip");
 		expect(ended.budgetEnded).toMatchObject({ budget: "tools", limit: 1 });
 	});
 
@@ -2090,7 +2199,7 @@ describe("a level that probes", () => {
 			prober: [fauxAssistantMessage("Done."), fauxAssistantMessage("Still done.")],
 		});
 		const ended = record((await run).verdict);
-		expect(ended.reason).toContain("its prober left attacks 1, 2 with neither a probe nor a skip");
+		expect(ended.reason).toContain("its prober left attacks 1, 2 with no probe that showed anything, nor a skip");
 		expect(ended).not.toHaveProperty("budgetEnded");
 	});
 
@@ -3306,7 +3415,7 @@ describe("the turns a lens run is sent", () => {
 		expect(sent).toContain(probingWording.carriedHeading);
 		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
 		expect(sent).toContain(probingWording.recordPlan);
-		expect(sent.some((line) => line.startsWith("Attack 2 has neither a probe nor a skip"))).toBe(true);
+		expect(sent.some((line) => line.startsWith("Attack 2 has no probe that showed anything, nor a skip"))).toBe(true);
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
 	});
 });
