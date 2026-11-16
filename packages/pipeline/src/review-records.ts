@@ -314,11 +314,6 @@ export class ReviewRecords {
 }
 
 /**
- * `records` in one order a round's records can rebuild: by the check's place in the tier's `checks`, then by name for a
- * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
- * records order checks alike, so both write the same verdict.
- */
-/**
  * An account's key: a request of its revision, the IDs of the records it counts, and the fingerprint of the policy it
  * decided under. The rest of its payload follows from those records and that policy.
  */
@@ -329,6 +324,11 @@ export function accountKey(
 	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
 }
 
+/**
+ * `records` in one order a round's records can rebuild: by the check's place in the tier's `checks`, then by name for a
+ * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
+ * records order checks alike, so both write the same verdict.
+ */
 export function inManifestOrder(checks: readonly string[], records: readonly CheckRecord[]): CheckRecord[] {
 	const at = (name: string) => {
 		const index = checks.indexOf(name);
