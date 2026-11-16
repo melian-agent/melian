@@ -136,11 +136,13 @@ describe("Enola policy and reports", () => {
 		const policy = EnolaPolicy.from([
 			{
 				path: "enola/constraints/a.yaml",
-				text: "rules:\n  - id: b-rule\n  - id: a-rule\n  - id: ''\n  - id: 3\n  - x\n",
+				text: "rules:\n  - id: b-rule\n  - id: a-rule\n  - id: ''\n  - id: 3\n  - x\n  - ~\n",
 			},
 			{ path: "enola/constraints/b.yaml", text: "rules:\n  - id: a-rule\n" },
 			{ path: "enola/constraints/c.yaml", text: "rules: { id: map-rule }\n" },
 			{ path: "enola/constraints/d.yaml", text: "rules: [\n" },
+			{ path: "enola/constraints/e.yaml", text: "" },
+			{ path: "enola/constraints/f.yaml", text: "rules:\n  - id: *missing\n" },
 			{ path: "enola-intent.yaml", text: "rules:\n  - id: intent-rule\n" },
 			{ path: "enola.yaml", text: "rules:\n  - id: config-rule\n" },
 			{ path: ".enola/suppressions.yaml", text: "rules:\n  - id: suppressed-rule\n" },
@@ -156,6 +158,7 @@ describe("Enola policy and reports", () => {
 						results: [
 							{ ruleId: "core-layer", level: "error", message: { text: "Layer crossed" } },
 							{ ruleId: "core-layer-x", level: "error", message: { text: "Layer crossed" } },
+							{ ruleId: "core-layer-y", level: "error" },
 						],
 					},
 				],
@@ -168,6 +171,10 @@ describe("Enola policy and reports", () => {
 			[
 				`rule-${createHash("sha256").update("core-layer-x").digest("hex").slice(0, 16)}`,
 				'Enola reported the rule "core-layer-x", which its policy does not declare: Layer crossed',
+			],
+			[
+				`rule-${createHash("sha256").update("core-layer-y").digest("hex").slice(0, 16)}`,
+				'Enola reported the rule "core-layer-y", which its policy does not declare: ',
 			],
 		]);
 	});
