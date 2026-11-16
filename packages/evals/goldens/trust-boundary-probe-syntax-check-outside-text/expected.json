@@ -14,12 +14,12 @@
       "evidence": [
         {
           "file": "src/syntax-check.mjs",
-          "line": 40,
+          "line": 50,
           "role": "cause"
         },
         {
           "file": "src/syntax-check.mjs",
-          "line": 26,
+          "line": 31,
           "role": "context"
         }
       ]

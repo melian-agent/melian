@@ -10,20 +10,30 @@ function modules(root, directory = root) {
 		if (entry.name === ".git" || entry.name === "node_modules") continue;
 		const path = join(directory, entry.name);
 		if (entry.isDirectory()) found.push(...modules(root, path));
-		else if (/\.m?js$/.test(entry.name)) found.push(path);
+		else if (/\.[cm]?js$/.test(entry.name)) found.push(path);
 	}
 	return found.sort();
 }
 
-// Node prints the failing file and line, the source line with a caret under it, a blank line, then the error.
-export function parseCheck(output) {
-	const lines = output.split("\n");
-	const place = /:(\d+)$/.exec(lines[0] ?? "");
-	const error = lines.findIndex((line) => /^\w*Error: /.test(line));
-	if (place === null || error === -1) return undefined;
-	const [name, ...rest] = lines[error].split(": ");
-	const quoted = lines.slice(1, error).filter((line) => line.trim() !== "");
-	return { line: Number(place[1]), rule: name, text: [rest.join(": "), ...quoted].join("\n") };
+// Node prints the path it was given and the failing line, the source line with a caret under it, a blank line, then
+// the error. A file name can hold a newline and the source line can look like an error, so the place is read after
+// the known path, and the rule after the blank line, only from Node's own error names.
+const errorNames = ["SyntaxError", "ReferenceError", "TypeError", "RangeError", "Error"];
+
+export function parseCheck(output, path) {
+	if (!output.startsWith(`${path}:`)) return undefined;
+	const lines = output.slice(path.length).split("\n");
+	const place = /^:(\d+)$/.exec(lines[0]);
+	const blank = lines.indexOf("");
+	const name = blank === -1 ? undefined : lines[blank + 1]?.split(": ")[0];
+	if (place === null || !errorNames.includes(name)) return undefined;
+	const quoted = lines.slice(1, blank).filter((line) => line.trim() !== "");
+	return { line: Number(place[1]), rule: name, text: [lines[blank + 1].slice(name.length + 2), ...quoted].join("\n") };
+}
+
+// A file name is the head's, and can hold a terminal's control characters.
+function visible(text) {
+	return text.replace(/[\u0000-\u001f\u007f-\u009f]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
 export function checkFindings(root) {
@@ -31,7 +41,7 @@ export function checkFindings(root) {
 	for (const path of modules(root)) {
 		const run = spawnSync(process.execPath, ["--check", path], { encoding: "utf8" });
 		if (run.status === 0) continue;
-		const parsed = parseCheck(run.stderr);
+		const parsed = parseCheck(run.stderr, path);
 		const file = relative(root, path);
 		if (parsed === undefined) {
 			findings.push({ file, line: 1, rule: "node/check-failed", message: `node --check failed: ${run.stderr}` });
@@ -44,5 +54,5 @@ export function checkFindings(root) {
 
 export function render(findings) {
 	if (findings.length === 0) return "No findings.\n";
-	return `${findings.map(({ file, line, rule, message }) => `P1 ${file}:${line} ${rule}\n  ${message.replaceAll("\n", "\n  ")}`).join("\n")}\n`;
+	return `${findings.map(({ file, line, rule, message }) => `P1 ${visible(file)}:${line} ${rule}\n  ${visible(message)}`).join("\n")}\n`;
 }

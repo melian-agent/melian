@@ -6,6 +6,8 @@ The faithful golden would run `staticFindings` from #282's merge base. That modu
 
 The head adds `src/syntax-check.mjs`, a small wrapper that runs `node --check` on every module of a checkout and keeps the line Node quotes in each finding's text. The level that probes plans one attack. Its probe builds a checkout whose `src/vendor.mjs` is a link to an outside file that holds a planted token on a line with a syntax error. It then runs the head's `checkFindings` and `render`, and exits 1 because both quote the token.
 
-The rule is `secret-exposure`, at P1: an author reaches a file outside the checkout with realistic input.
+The rule is `secret-exposure`, at P1: an author reaches a file outside the checkout with realistic input. Following the link stays: #282's fix let the tools read through links and stored nothing they printed, so the clean twin follows it too.
+
+The first live measurement drew three other findings on the head, each right and each scored as a false positive: the rule came from the first line shaped like an error, which a quoted source line can forge; `render` printed file names unescaped; and the walk skipped `.cjs`. A reviewer's read before this golden settled found a fourth: the place came from Node's first line, which a file name holding a newline can move. Both twins now fix all four, so the defect twin differs from the clean twin by the measured leak alone. None of the four is an expectation: each was an accident of the stand-in, not the defect #282 fixed.
 
 The golden's `.melian/lenses/trust-boundary/LENS.golden.md` gives `deep` a probe, since no shipped level probes until the live measurement picks the routes.
