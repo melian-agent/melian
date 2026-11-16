@@ -1346,7 +1346,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("accepts a miss on a file the head renamed, when the base's policy lets trust-boundary review its old path, as the review does", async () => {
+	it("accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does", async () => {
 		const { repo } = buildGoldenRepository(lost);
 		try {
 			const file = defect[0]!.properties.path!;
@@ -1355,33 +1355,52 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const commit = (message: string) =>
 				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
 			const floor = "    level: { floor: deep }\n";
-			git(repo, "checkout", "--quiet", "-b", "narrowed", "feature");
-			const policy = readFileSync(join(repo, "melian.yaml"), "utf8");
-			writeFileSync(join(repo, "melian.yaml"), policy.replace(floor, `${floor}    paths: ["**", "!moved/**"]\n`));
-			git(repo, "add", "--all");
-			commit("narrowed");
-			const narrowed = git(repo, "rev-parse", "HEAD");
-			mkdirSync(join(repo, "moved"));
-			git(repo, "mv", file, renamed);
-			writeFileSync(join(repo, renamed), `${readFileSync(join(repo, renamed), "utf8")}# moved\n`);
-			git(repo, "add", "--all");
-			commit("rename");
-			const moved = git(repo, "rev-parse", "HEAD");
-			const using = runners();
-			const { status, errors } = await measure(
-				{
-					...env,
-					MELIAN_EVAL_MISSES: missesFile([
-						{ name: "renamed", repo, base: narrowed, head: moved, file: renamed, rule },
-					]),
-					MELIAN_EVAL_PROBE_SET: "misses",
-					MELIAN_EVAL_PROBE_PASSES: "1",
-					MELIAN_EVAL_PROBE_TRUST: `${narrowed},${moved}`,
-				},
-				using,
-			);
+			const policy = `${git(repo, "show", "feature:melian.yaml")}\n`;
+			// A base whose trust-boundary paths are `paths`, and a head on it that renames the file into `moved/` and changes
+			// a file the lens still reviews, so the lens is selected either way.
+			const renaming = (branch: string, paths: string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, "feature");
+				expect(policy).toContain(floor);
+				writeFileSync(join(repo, "melian.yaml"), policy.replace(floor, `${floor}    paths: ${paths}\n`));
+				git(repo, "add", "--all");
+				commit(branch);
+				const base = git(repo, "rev-parse", "HEAD");
+				mkdirSync(join(repo, "moved"), { recursive: true });
+				git(repo, "mv", file, renamed);
+				writeFileSync(join(repo, renamed), `${readFileSync(join(repo, renamed), "utf8")}# moved\n`);
+				writeFileSync(join(repo, "other.txt"), `${branch}\n`);
+				git(repo, "add", "--all");
+				commit(`${branch} rename`);
+				return { base, head: git(repo, "rev-parse", "HEAD") };
+			};
+			const covered = renaming("covered", `["**", "!moved/**"]`);
+			const excluded = renaming("excluded", `["**", "!moved/**", "!${file}"]`);
+			const run = (name: string, { base, head }: { base: string; head: string }) => {
+				const using = runners();
+				const result = measure(
+					{
+						...env,
+						MELIAN_EVAL_MISSES: missesFile([{ name, repo, base, head, file: renamed, rule }]),
+						MELIAN_EVAL_PROBE_SET: "misses",
+						MELIAN_EVAL_PROBE_PASSES: "1",
+						MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+					},
+					using,
+				);
+				return { using, result };
+			};
+			const accepted = run("covered", covered);
+			const { status, errors } = await accepted.result;
 			expect({ status, errors }).toEqual({ status: 0, errors: [] });
-			expect(using.range).toHaveBeenCalledTimes(1);
+			expect(accepted.using.range).toHaveBeenCalledTimes(1);
+			const refused = run("excluded", excluded);
+			expect(await refused.result).toMatchObject({
+				status: 2,
+				errors: [
+					`The misses file cannot be scored: excluded: the base's policy does not let the trust-boundary lens review ${renamed}`,
+				],
+			});
+			expect(refused.using.range).not.toHaveBeenCalled();
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
