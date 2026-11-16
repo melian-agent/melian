@@ -1,4 +1,6 @@
-import { RecordError } from "@melian-agent/core";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { RecordError, stderrLimit } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Deadline } from "../src/deadline.ts";
 import type { Clock } from "../src/index.ts";
@@ -83,8 +85,11 @@ describe("concurrent writers", { timeout: 120_000 }, () => {
 		await store.add([check("first")]);
 		const before = remote.tip();
 		const push = loseRaces(1);
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
 		await store.add([check("second")]);
 		expect(push).toHaveBeenCalledTimes(2);
+		// One read of the tip for each attempt: a push a newer tip refused needs no check of whether it landed.
+		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(push.mock.calls[0]![3]).toBe(before);
 		expect(push.mock.calls[1]![3]).not.toBe(before);
 		expect(keys(await store.list(changeset))).toEqual(["first", "second"]);
@@ -169,7 +174,7 @@ describe("the retry deadline", { timeout: 120_000 }, () => {
 				expect(await push.apply(this, args)).toBe("landed");
 				now += args[4].left();
 				pushed = true;
-				return "timedOut";
+				return "stopped";
 			});
 			// After the push, a fetch takes a second, or stalls until the time it is given runs out.
 			const given: number[] = [];
@@ -215,9 +220,24 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 		) {
 			if (lands) expect(await push.apply(this, args)).toBe("landed");
 			before();
-			return "timedOut";
+			return "stopped";
 		});
 	}
+
+	it("counts as landed when the remote floods standard error after the push lands, and pushes no second commit", async () => {
+		const store = await remote.open();
+		await writeFile(
+			join(remote.path, "hooks", "post-receive"),
+			`#!/bin/sh\nhead -c ${stderrLimit + 1} /dev/zero | tr '\\0' x >&2\n`,
+			{ mode: 0o755 },
+		);
+		await store.add([check("flooded")]);
+		expect(remote.git(["rev-list", "--count", "refs/heads/melian/state"])).toBe("1");
+		expect(keys(await (await remote.open()).list(changeset))).toEqual(["flooded"]);
+		// A cell, unlike a record, is leased on its version, so a retry of a write that landed would answer false.
+		expect(await store.writeCell(changeset, undefined, '"flooded"')).toBe(true);
+		expect(remote.git(["rev-list", "--count", "refs/heads/melian/state"])).toBe("2");
+	});
 
 	it("counts as landed when its commit is the tip, and pushes no second commit", async () => {
 		const store = await remote.open();
@@ -329,7 +349,7 @@ describe("a push stopped at its deadline", { timeout: 120_000 }, () => {
 			...args
 		) {
 			late = () => push.apply(this, args);
-			return "timedOut";
+			return "stopped";
 		});
 		vi.spyOn(RecordRepository.prototype, "fetch").mockImplementation(async function (
 			this: RecordRepository,
