@@ -229,14 +229,30 @@ type ProbingState = {
 	frozen?: true;
 };
 
+// Version 1 was written by a runner that reported a probe a signal ended as exit 128 plus the signal's number, with no
+// signal, so version 2 reads such a result as one that ended with no record of how.
 export const ProbingDocument = defineDoc<ProbingState>({
 	kind: "melian.probing",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({}),
+	migrate: (value) => {
+		const state = value as ProbingState;
+		if (state.probes === undefined) return state;
+		const probes = Object.fromEntries(
+			Object.entries(state.probes).map(([id, probe]) => [id, { ...probe, result: unsignalled(probe.result) }]),
+		);
+		return { ...state, probes };
+	},
 });
+
+function unsignalled(result: StoredProbeResult): StoredProbeResult {
+	return result.exitCode !== null && result.exitCode > 128 && result.signal === null
+		? { ...result, exitCode: null }
+		: result;
+}
 
 /**
  * What a probing level lets a probe hold. Tighter than {@link probeLimits}: every probe is stored with the review so the
@@ -743,11 +759,30 @@ export const ProbeReruns = defineDoc<{
 	tasks?: Record<string, { task: number; key: string }>;
 }>({
 	kind: "melian.probe-reruns",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ runs: {} }),
+	// Version 1 holds runs from the runner that reported a signal as exit 128 plus its number, as ProbingDocument says.
+	migrate: (value) => {
+		const state = value as {
+			runs: Record<string, Record<string, ProbeRun>>;
+			tasks?: Record<string, { task: number; key: string }>;
+		};
+		const runs = Object.fromEntries(
+			Object.entries(state.runs).map(([revision, byKey]) => [
+				revision,
+				Object.fromEntries(
+					Object.entries(byKey).map(([key, run]) => [
+						key,
+						"result" in run ? { ...run, result: unsignalled(run.result) } : run,
+					]),
+				),
+			]),
+		);
+		return { ...state, runs };
+	},
 });
 
 let renderings: string | undefined;
