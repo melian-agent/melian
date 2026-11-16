@@ -382,7 +382,7 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
    "run": "not run"
   },
   {
@@ -395,7 +395,7 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
    "run": "not run"
   },
   {
@@ -408,7 +408,7 @@
    "replacement": "\"\"",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
-   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
    "run": "not run"
   }
  ],
