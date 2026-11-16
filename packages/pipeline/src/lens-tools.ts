@@ -880,8 +880,18 @@ export function verifierInjectionPolicy(nonce: string): string {
 const enumerations = new GraphMemo<MutationEnumeration>(2);
 const listings = new GraphMemo<MutantListing>(4);
 // Each listing's worker may take 512 MiB, and Pi runs a turn's tool calls in parallel, as it runs lenses, so the
-// process enumerates one listing at a time. The queue holds only work that is already bounded.
-let enumerating: Promise<unknown> = Promise.resolve();
+// process runs one worker at a time. Nothing unbounded may wait in line, so the queue holds the worker alone, which
+// ends at its call's deadline, and every read happens before a call joins it.
+export class EnumerationQueue {
+	#tail: Promise<unknown> = Promise.resolve();
+
+	run<T>(worker: () => Promise<T>): Promise<T> {
+		const turn = this.#tail.then(worker);
+		this.#tail = turn.catch(() => {});
+		return turn;
+	}
+}
+const enumerating = new EnumerationQueue();
 
 function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 	const change = [review.nonce, review.repoRoot, review.base, review.head].join("\0");
@@ -895,9 +905,13 @@ function listingOf(review: ReviewState, path: string): Promise<MutantListing> {
 				policy: { kind: "revision", commit: review.base },
 			}),
 		);
-		const turn = enumerating.then(() => enumeration.list({ all: true, limitedTo: [path], deadline }));
-		enumerating = turn.catch(() => {});
-		return MutantListing.of((await turn).toJSON(), path);
+		const inventory = await enumeration.list({
+			all: true,
+			limitedTo: [path],
+			deadline,
+			gate: (worker) => enumerating.run(worker),
+		});
+		return MutantListing.of(inventory.toJSON(), path);
 	});
 }
 

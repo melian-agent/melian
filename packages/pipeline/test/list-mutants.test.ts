@@ -1,4 +1,6 @@
-import { Changeset, defaultConfig, Lens } from "@melian-agent/core";
+import type * as ChildProcess from "node:child_process";
+import { promisify } from "node:util";
+import { Changeset, defaultConfig, Lens, openSource, type SourceReader } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -15,10 +17,28 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ToolExecutionApi } from "../src/harness.ts";
-import { LensDocument, lensListedTools, reviewFiles } from "../src/lens-tools.ts";
+import { EnumerationQueue, LensDocument, lensListedTools, reviewFiles } from "../src/lens-tools.ts";
 import { describeMutant, MutantListing, maxListedMutants, maxReplacementChars } from "../src/mutant-listing.ts";
-import { MutationEnumeration } from "../src/mutation-enumeration.ts";
+import { MutationEnumeration, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
+
+// Counts the enumeration workers the process starts, by the flags only the worker is spawned with.
+const workers = vi.hoisted(() => ({ active: 0, most: 0, started: 0 }));
+vi.mock("node:child_process", async (importOriginal) => {
+	const original = await importOriginal<typeof ChildProcess>();
+	const execFile = (...args: unknown[]) => {
+		const [file, flags, options, callback] = args as [string, string[], object, (...result: unknown[]) => void];
+		if (file !== process.execPath || !Array.isArray(flags) || !flags.includes("--input-type=module"))
+			return (original.execFile as (...args: unknown[]) => unknown)(...args);
+		workers.started++;
+		workers.most = Math.max(workers.most, ++workers.active);
+		return original.execFile(file, flags, options, (...result: unknown[]) => {
+			workers.active--;
+			callback(...result);
+		});
+	};
+	return { ...original, execFile: Object.assign(execFile, { [promisify.custom]: promisify(original.execFile) }) };
+});
 
 const nonce = "0123456789abcdef01234567";
 const tool = lensListedTools.list_mutants;
@@ -26,6 +46,7 @@ let repo: string;
 let base: string;
 
 beforeEach(() => {
+	Object.assign(workers, { active: 0, most: 0, started: 0 });
 	repo = createRepository();
 	base = commit(repo, {
 		"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["StringLiteral"] } }),
@@ -279,7 +300,9 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		await call(head, { path: "src/flags.ts" });
 		await call(head, { path: "src/flags.ts", startLine: maxListedMutants + 1 });
 		await call(head, { path: "src/flags.ts", startLine: 1, endLine: 3 });
-		expect(list.mock.calls).toEqual([[{ all: true, limitedTo: ["src/flags.ts"], deadline: expect.any(Number) }]]);
+		expect(list.mock.calls).toEqual([
+			[{ all: true, limitedTo: ["src/flags.ts"], deadline: expect.any(Number), gate: expect.any(Function) }],
+		]);
 	});
 
 	it.each([
@@ -372,39 +395,25 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 	it("runs one enumeration worker at a time, across parallel calls and concurrent reviews", async () => {
 		const paths = Array.from({ length: 3 }, (_, index) => `src/file${index}.ts`);
 		const head = commit(repo, Object.fromEntries(paths.map((path) => [path, flags(1)])));
-		const list = MutationEnumeration.prototype.list;
-		let active = 0;
-		let most = 0;
-		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
-			this: MutationEnumeration,
-			options,
-		) {
-			most = Math.max(most, ++active);
-			try {
-				return await list.call(this, options);
-			} finally {
-				active--;
-			}
-		});
 		const results = await Promise.all([
 			...paths.map((path) => call(head, { path })),
 			...paths.map((path) => call(head, { path }, "c".repeat(24))),
 		]);
 		expect(results.map(({ details }) => details?.mutants.length)).toEqual([1, 1, 1, 1, 1, 1]);
-		expect(most).toBe(1);
+		expect(workers).toEqual({ active: 0, most: 1, started: 6 });
 	});
 
-	it("starts each listing's deadline when the call joins the queue, not when its turn comes", async () => {
+	it("starts each listing's deadline when the call begins, not when its turn comes", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
-		const list = MutationEnumeration.prototype.list;
+		const enumerate = TypeScriptMutationAdapter.prototype.enumerate;
 		const deadlines: (number | undefined)[] = [];
-		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
-			this: MutationEnumeration,
-			options,
+		vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(async function (
+			this: TypeScriptMutationAdapter,
+			...args
 		) {
-			deadlines.push(options?.deadline);
+			deadlines.push(args[3]);
 			await new Promise((resolve) => setTimeout(resolve, 500));
-			return list.call(this, options);
+			return enumerate.apply(this, args);
 		});
 		const before = performance.now();
 		await Promise.all([call(head, { path: "src/a.ts" }), call(head, { path: "src/b.ts" })]);
@@ -450,18 +459,140 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("lists for one review while a read inside another review's listing has not settled", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1) });
+		const reader: SourceReader = Object.getPrototypeOf(await openSource(repo, { kind: "revision", commit: base }));
+		const readText = reader.readText;
+		let release: () => void = () => {};
+		const stalled = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered: () => void = () => {};
+		const stalling = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		let reads = 0;
+		vi.spyOn(reader, "readText").mockImplementation(async function (this: SourceReader, path, maxBytes) {
+			if (path === "src/a.ts" && reads++ === 0) {
+				entered();
+				await stalled;
+			}
+			return readText.call(this, path, maxBytes);
+		});
+		// The second review starts only once the first is stalled reading the file it lists.
+		const first = call(head, { path: "src/a.ts" });
+		await stalling;
+		try {
+			const second = await Promise.race([
+				call(head, { path: "src/a.ts" }, "f".repeat(24)),
+				new Promise<"blocked">((resolve) => setTimeout(() => resolve("blocked"), 10_000)),
+			]);
+			expect(second).not.toBe("blocked");
+			expect((second as Awaited<typeof first>).details?.mutants).toHaveLength(1);
+		} finally {
+			release();
+			await first;
+		}
+	});
+
+	it("reads nothing while an enumeration worker holds the queue", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
+		let held = 0;
+		const during: string[] = [];
+		let read = 0;
+		const run = EnumerationQueue.prototype.run;
+		vi.spyOn(EnumerationQueue.prototype, "run").mockImplementation(function (
+			this: EnumerationQueue,
+			worker: () => Promise<unknown>,
+		) {
+			return run.call(this, async () => {
+				held++;
+				try {
+					return await worker();
+				} finally {
+					held--;
+				}
+			});
+		});
+		const reader: SourceReader = Object.getPrototypeOf(await openSource(repo, { kind: "revision", commit: base }));
+		const readText = reader.readText;
+		vi.spyOn(reader, "readText").mockImplementation(function (this: SourceReader, path, maxBytes) {
+			read++;
+			if (held > 0) during.push(`read ${path}`);
+			return readText.call(this, path, maxBytes);
+		});
+		const resolve = TypeScriptMutationAdapter.open;
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockImplementation((...args) => {
+			if (held > 0) during.push("resolve the instrumenter");
+			return resolve.apply(TypeScriptMutationAdapter, args);
+		});
+		const open = MutationEnumeration.open;
+		vi.spyOn(MutationEnumeration, "open").mockImplementation((...args) => {
+			if (held > 0) during.push("resolve the changeset");
+			return open.apply(MutationEnumeration, args);
+		});
+		// One call at a time, so every read while the queue is held is that call's own.
+		for (const [path, review] of [
+			["src/a.ts", nonce],
+			["src/b.ts", nonce],
+			["src/a.ts", "g".repeat(24)],
+		] as const)
+			expect((await call(head, { path }, review)).details?.mutants).toHaveLength(1);
+		expect(read).toBeGreaterThanOrEqual(6);
+		expect(workers.started).toBe(3);
+		expect(during).toEqual([]);
+	});
+
+	it("starts no worker for a call whose deadline passed while it waited in the queue", async () => {
+		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
+		let queued = 0;
+		const run = EnumerationQueue.prototype.run;
+		vi.spyOn(EnumerationQueue.prototype, "run").mockImplementation(function (
+			this: EnumerationQueue,
+			worker: () => Promise<unknown>,
+		) {
+			queued++;
+			return run.call(this, worker);
+		});
+		const enumerate = TypeScriptMutationAdapter.prototype.enumerate;
+		let release: () => void = () => {};
+		const holding = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let enumerated = 0;
+		vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(async function (
+			this: TypeScriptMutationAdapter,
+			...args
+		) {
+			if (enumerated++ === 0) await holding;
+			return enumerate.apply(this, args);
+		});
+		const first = call(head, { path: "src/a.ts" });
+		const second = call(head, { path: "src/b.ts" });
+		try {
+			await vi.waitFor(() => expect(queued).toBe(2), { timeout: 30_000 });
+			const now = performance.now.bind(performance);
+			vi.spyOn(performance, "now").mockImplementation(() => now() + 121_000);
+		} finally {
+			release();
+		}
+		const [, late] = await Promise.all([first, second]);
+		expect(late.isError).toBe(true);
+		expect(late.text).toContain("deadline");
+		expect(workers.started).toBe(0);
+	});
+
 	it("lists the next file after an enumeration fails", async () => {
 		const head = commit(repo, { "src/a.ts": flags(1), "src/b.ts": flags(1) });
-		const list = MutationEnumeration.prototype.list;
+		const enumerate = TypeScriptMutationAdapter.prototype.enumerate;
 		const order: string[] = [];
-		vi.spyOn(MutationEnumeration.prototype, "list").mockImplementation(async function (
-			this: MutationEnumeration,
-			options,
+		vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(async function (
+			this: TypeScriptMutationAdapter,
+			...args
 		) {
-			const path = options?.limitedTo?.[0] ?? "";
-			order.push(path);
+			order.push(args[0][0]?.name ?? "");
 			if (order.length === 1) throw new Error("worker failed");
-			return list.call(this, options);
+			return enumerate.apply(this, args);
 		});
 		const results = await Promise.all([call(head, { path: "src/a.ts" }), call(head, { path: "src/b.ts" })]);
 		const [failed, next] = order.map((path) => results[path === "src/a.ts" ? 0 : 1]!);

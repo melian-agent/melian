@@ -427,7 +427,8 @@ export class MutationEnumeration {
 	 * Lists the mutants of the range's changed lines. `claimsIn` records the files whose rows owe a claim and lists every
 	 * file still; `limitedTo` lists only its files, for reading, and the inventory can never be sampled. A file the range
 	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants. `deadline`, a
-	 * `performance.now()` time, ends it sooner than its own 120 seconds.
+	 * `performance.now()` time, ends it sooner than its own 120 seconds. `gate` runs the enumeration worker, and only
+	 * the worker: every read is done before it.
 	 */
 	async list(
 		options: {
@@ -436,6 +437,7 @@ export class MutationEnumeration {
 			claimsIn?: readonly string[];
 			limitedTo?: readonly string[];
 			deadline?: number;
+			gate?: (worker: () => Promise<MutationBatch>) => Promise<MutationBatch>;
 		} = {},
 	): Promise<MutationInventory<MutationInventoryV2>> {
 		const deadline = Math.min(options.deadline ?? Number.POSITIVE_INFINITY, performance.now() + 120_000);
@@ -531,8 +533,11 @@ export class MutationEnumeration {
 		}
 		const adapter = files.length === 0 ? undefined : await TypeScriptMutationAdapter.open(repoRoot);
 		remainingTime(deadline);
+		const gate = options.gate ?? ((worker) => worker());
 		const { mutants: rows, total } =
-			adapter === undefined ? { mutants: [], total: 0 } : await adapter.enumerate(files, excluded, limit, deadline);
+			adapter === undefined
+				? { mutants: [], total: 0 }
+				: await gate(() => adapter.enumerate(files, excluded, limit, deadline));
 		remainingTime(deadline);
 		const inventory = MutationInventory.create({
 			range: {
