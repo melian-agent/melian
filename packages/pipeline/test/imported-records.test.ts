@@ -82,6 +82,33 @@ describe("ImportedRecords", () => {
 		expect(imported.records()).toEqual([]);
 	});
 
+	it("answers no producer's request with a reused kind written under a round's or an account's key", () => {
+		const records = ReviewRecords.of(changeset, { base, head });
+		const run = records.lens(lensRun, done, []);
+		const account = records.account({
+			checks: ["lens.security"],
+			records: [run],
+			filled: [],
+			allowSkip: [],
+			producers: [],
+			resolutionPolicy: null,
+		});
+		const round = records.round([run, account], undefined, [], []);
+		const check = records
+			.check(request, { name: "static.biome", status: "ran", findings: 0, notes: [] }, [])
+			.toJSON();
+		const imported = ImportedRecords.from(
+			changeset,
+			[account.key, round.key].flatMap((key) => [
+				{ ...run.toJSON(), key },
+				{ ...check, key },
+			]),
+		);
+		expect(imported.records()).toHaveLength(4);
+		expect(imported.match("lens", revision, request)).toBeUndefined();
+		expect(imported.check(request, { base, head }, "static.biome")).toBeUndefined();
+	});
+
 	it("answers nothing when two records under one key disagree, so a clean one never hides one with findings", () => {
 		const imported = ImportedRecords.from(changeset, [lens(), lens([finding("one")])]);
 		expect(imported.records()).toHaveLength(2);
