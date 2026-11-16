@@ -101,10 +101,30 @@ describe("lensCopies", () => {
 	});
 
 	it("copies a probing run that finished as asked, as it copies any run", () => {
-		const probing = { ...careful, probe: { route: [] } };
+		const probing = { ...careful, probe: {} };
 		expect(
 			lensCopies({ task: 3, nonce: "n3", lenses: [probing], result: { [careful.key]: done() } }, [probing], never),
 		).toEqual({ [careful.key]: { task: 3, nonce: "n3", outcomes: { [careful.key]: { ...done(), reused: 3 } } } });
+	});
+
+	it.each([
+		["on its level's own tier, by the level's policy", { onLevelTier: true as const }, {}],
+		["on a tier of its own, which its check is not judged by", {}, { [careful.key]: "copied" }],
+	])("judges a probing run's prober %s", (_, probe, expected) => {
+		const probing = { ...careful, probe };
+		const result = { [careful.key]: { ...done(), probing: { model: "anthropic/claude-b" } } };
+		const refused = (key: string, model: string) => key === careful.key && model === "anthropic/claude-b";
+		const copies = lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], refused);
+		expect(Object.fromEntries(Object.keys(copies).map((key) => [key, "copied"]))).toEqual(expected);
+	});
+
+	it("copies a probing run whose planner and prober both finished on models the plan accepts", () => {
+		const probing = { ...careful, probe: { onLevelTier: true as const } };
+		const result = { [careful.key]: { ...done(), probing: { model: "anthropic/claude-b" } } };
+		const refused = (_key: string, model: string) => model === "anthropic/claude-z";
+		expect(Object.keys(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], refused))).toEqual([
+			careful.key,
+		]);
 	});
 
 	it("copies a quick run that did not escalate on its own", () => {
@@ -138,7 +158,7 @@ describe("lensCopies", () => {
 	});
 
 	it("copies a quick run with the probing run it escalated to", () => {
-		const probing = { ...quick, escalation: { next: { ...careful, probe: { route: [] } } } };
+		const probing = { ...quick, escalation: { next: { ...careful, probe: {} } } };
 		const result = { [quick.key]: done({ escalation: { to: careful.key } }), [careful.key]: done() };
 		expect(lensCopies({ task: 3, nonce: "n3", lenses: [probing], result }, [probing], never)).toEqual({
 			[quick.key]: {

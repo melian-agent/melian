@@ -114,7 +114,7 @@ import {
 	UsageDoc,
 } from "./harness.ts";
 import { continuePrompt, lensRequest } from "./lens-request.ts";
-import { type LensCopy, lensCopies } from "./lens-reuse.ts";
+import { judgedModels, type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
 	budgetEnded,
 	findingsCapped,
@@ -1268,10 +1268,9 @@ function ranOn(
 		if (outcome?.status !== "done" || outcome.model === undefined) continue;
 		// A prober on its level's own tier answers to the policy the plan judges that level by, as its planner does, so a
 		// preference that moved the lens cannot carry the prober onto a model the committed tier refuses.
-		const prober = lens.probe?.onLevelTier === true ? outcome.probing?.model : undefined;
 		ran.set(lens.name, [
 			...(ran.get(lens.name) ?? []),
-			...[outcome.model, ...(prober === undefined ? [] : [prober])].map((model) => ({
+			...judgedModels(outcome, lens.probe).map((model) => ({
 				scope: lens.coverage.scope,
 				version: lens.version,
 				level: lens.level,
@@ -1816,6 +1815,7 @@ async function anyLensFailed(
 
 function lensFailed(
 	record: {
+		readonly input: unknown;
 		readonly state: {
 			readonly status: string;
 			readonly outcome?: { readonly status: string; readonly result?: unknown };
@@ -1826,8 +1826,10 @@ function lensFailed(
 	const { outcome } = record.state;
 	if (record.state.status !== "terminal" || outcome === undefined) return false;
 	if (outcome.status !== "completed") return true;
+	const runs = new Map(runsOf((record.input as StoredLensTaskInput).lenses).map((run) => [run.key, run]));
 	return Object.entries(outcome.result as LensResult).some(
-		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
+		([key, lens]) =>
+			lens.status !== "done" || judgedModels(lens, runs.get(key)?.probe).some((model) => refused(key, model)),
 	);
 }
 

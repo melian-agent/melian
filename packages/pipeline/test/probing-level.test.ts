@@ -2411,6 +2411,51 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.reason).toContain("models.heavy.acceptOverridden is false");
 	});
 
+	it("runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "backup" }] });
+		const provider = fake.ref("plan").provider;
+		const [accepted, backup] = [`${provider}/plan`, `${provider}/backup`];
+		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
+		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const options = {
+			fake,
+			config: {
+				lenses: { "trust-boundary": { tier: "light" as const, level: { floor: "deep" as const } } },
+				models: { heavy: committed, light: { model: accepted, fallbacks: [backup] } },
+			},
+			plan: async (config: MelianConfig, lenses: readonly Lens[], models: FakeModels) => {
+				const { catalog, credentials } = await planInputs(models.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: {
+						committed: { heavy: committed },
+						overridden: { light: "melian.local.yaml" },
+						lensTiers: {},
+						retiered: { "trust-boundary": "melian.local.yaml" },
+					},
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
+			},
+		};
+		const verdictOf = (run: ReturnType<typeof reviewChangeset>) =>
+			run.then(
+				(done) => done.verdict,
+				(error: unknown) => (error as ReviewError).verdict!,
+			);
+		// The prober's first request fails on the accepted model, so it finishes on the fallback the tier refuses.
+		const first = await review({ planner: plan, prober: [() => overloaded, ...probing(failing)] }, options);
+		expect(record(await verdictOf(first.run))).toMatchObject({ status: "failed" });
+		// The provider has recovered: a rerun asks the lens again, and the review is reviewed.
+		const again = await review({ planner: plan, prober: probing(failing) }, { ...options, rerun: true });
+		const verdict = await verdictOf(again.run);
+		expect(again.requests[planner]).toHaveLength(2);
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.status).not.toBe("not-reviewed");
+	});
+
 	it.each([
 		["the root's", false],
 		["the scoped variant's", true],

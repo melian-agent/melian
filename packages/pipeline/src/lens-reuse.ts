@@ -1,7 +1,11 @@
-/** A lens run as the copy rule reads it: its key, its request's key, and the run it escalates to. */
+/**
+ * A lens run as the copy rule reads it: its key, its request's key, whether its prober answers to the level's own tier,
+ * and the run it escalates to.
+ */
 export type ReusableRun = {
 	readonly key: string;
 	readonly request?: string;
+	readonly probe?: { readonly onLevelTier?: true };
 	readonly escalation?: { readonly next?: ReusableRun };
 };
 
@@ -9,11 +13,21 @@ export type ReusableRun = {
 export type ReusableOutcome = {
 	readonly status: string;
 	readonly model?: string;
+	readonly probing?: { readonly model?: string };
 	readonly budgetEnded?: unknown;
 	readonly capped?: number;
 	readonly escalation?: { readonly to?: string };
 	readonly reused?: number;
 };
+
+/**
+ * The models a run's check is judged by: the one it finished on, and its prober's when the prober answers to the level's
+ * own tier, as its planner does. A prober on a tier of its own is not yet judged, by the prober-tier lineage limit.
+ */
+export function judgedModels(outcome: ReusableOutcome, probe: ReusableRun["probe"]): string[] {
+	const prober = probe?.onLevelTier === true ? outcome.probing?.model : undefined;
+	return [outcome.model, prober].filter((model) => model !== undefined);
+}
 
 /**
  * A lens's runs copied from an earlier task: that task, the nonce its conversations were rendered under, and the outcome
@@ -25,7 +39,7 @@ export type LensCopy<Outcome> = {
 	readonly outcomes: Record<string, Outcome>;
 };
 
-// A run that ended as asked: answered, on a model the plan accepts, and within its budgets. A probing run's request key
+// A run that ended as asked: answered, on models the plan accepts, and within its budgets. A probing run's request key
 // holds its probing environment, so it is copied only into a review that would probe under the same one.
 function finished(
 	run: ReusableRun,
@@ -37,7 +51,7 @@ function finished(
 		outcome.status === "done" &&
 		outcome.budgetEnded === undefined &&
 		outcome.capped === undefined &&
-		!(outcome.model !== undefined && refused(run.key, outcome.model))
+		!judgedModels(outcome, run.probe).some((model) => refused(run.key, model))
 	);
 }
 
