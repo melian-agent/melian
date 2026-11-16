@@ -9,15 +9,22 @@ import {
 	runProbe,
 	skipAttack,
 } from "./lens-tools.ts";
-import { probingWording } from "./probing.ts";
+import { probingWording, probingWordingOf } from "./probing.ts";
 import { identityNonce, injectionPolicy } from "./untrusted.ts";
 
 /** The input a lens run's model is given when the model before it on the route failed. */
 export const continuePrompt =
 	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
-/** The fields of a lens run its request reads beyond the run itself: the tools it lists, and whether it probes. */
-export type LensRequestRun = { readonly tools: readonly LensToolName[]; readonly probe?: unknown };
+/**
+ * The fields of a lens run its request reads beyond the run itself: its lens, whose probing wording it keys, the tools
+ * it lists, and whether it probes.
+ */
+export type LensRequestRun = {
+	readonly name: string;
+	readonly tools: readonly LensToolName[];
+	readonly probe?: { readonly probesAs?: string; readonly [field: string]: unknown };
+};
 
 // Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, and whether
 // that is the checkout's install or Melian's; `unavailable` when neither resolves.
@@ -85,10 +92,11 @@ const specOf = ({ name, description, parameters, outputLimits, argumentBytes }: 
  * Durable and pi-ai releases that render and send it, the injection policy that renders ahead of its instructions with
  * the name of the section that tags it, each tool its planner and prober are offered by name, description and
  * schema, the wording a failover sends, the revision's base and head, `escalateAt`, the escalation by its next run's
- * key, the whole probing wording table for a run that probes or escalates, the standards it quotes as their
- * source gave them, and, for a run offered `list_mutants`, the instrumenter that answers it. Best-effort context stays out, as rule 5 of the shared record decision says:
- * the caller section, and the Enola graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under the
- * review's own nonce with its caller section.
+ * key, the probing wording of its own lens for a run that probes and the shared lines for one that escalates, the
+ * standards it quotes as their source gave them, and, for a run offered `list_mutants`, the instrumenter that answers
+ * it. Best-effort context stays out, as rule 5 of the shared record decision says: the caller section, and the Enola
+ * graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under the review's own nonce with its caller
+ * section.
  */
 export function lensRequest<Run extends LensRequestRun>(
 	input: LensRequestInput<Run>,
@@ -118,11 +126,13 @@ export function lensRequest<Run extends LensRequestRun>(
 			head: input.head,
 			...(input.escalateAt === undefined ? {} : { escalateAt: input.escalateAt }),
 			...(input.escalation === undefined ? {} : { escalation: { ...input.escalation } }),
-			// A prober reads the plan and its reminders in this table, and the run escalated to, which is copied only with
-			// this run, reads this run's findings in it.
-			...(probes || (input.escalation !== undefined && "next" in input.escalation)
-				? { wording: probingWording }
-				: {}),
+			// A planner and prober read their lens's wording, the shared lines and its own. The run escalated to, which is
+			// copied only with this run, reads this run's findings in the shared lines, and its own key holds its lens's.
+			...(probes
+				? { wording: probingWordingOf(keyed.probe?.probesAs ?? keyed.name) }
+				: input.escalation !== undefined && "next" in input.escalation
+					? { wording: probingWording }
+					: {}),
 			standards: requestJson(input.standards),
 			...(lists ? { mutants: input.mutants! } : {}),
 		},

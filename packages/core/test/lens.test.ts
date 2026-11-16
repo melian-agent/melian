@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -10,6 +10,7 @@ import {
 	lensCovers,
 	lensGraphToolNames,
 	lensMutationToolNames,
+	lensProbingWording,
 	lensToolNames,
 	loadConfig,
 	type MelianConfig,
@@ -54,6 +55,11 @@ const security = [
 	"  - id: injection",
 	"    description: Input reaches a query unescaped.",
 ];
+
+// A repository's own lens that extends a built-in core gives probing wording, so a level of it may probe.
+const probing = security.flatMap((line) =>
+	line === "name: security" ? ["name: correctness", "extends: correctness"] : [line],
+);
 
 function melianLensFiles(melian: string): string[] {
 	return readdirSync(join(melian, ".melian/lenses"))
@@ -256,7 +262,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "32db6552d78d",
 			tests: "32e8090b617b",
 			"trust-boundary": "e78af31b1e01",
-			"trust-boundary-probes": "e97c17e2fe1d",
+			"trust-boundary-probes": "3c1046d5364f",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
@@ -268,7 +274,7 @@ describe("built-in lenses", () => {
 			"removed-behaviour": "0885fd05330f",
 			tests: "7d8c4ba3c2e1",
 			"trust-boundary": "7d072a9e5e2c",
-			"trust-boundary-probes": "caf41cbbdb7e",
+			"trust-boundary-probes": "07e117503895",
 		});
 	});
 
@@ -843,53 +849,52 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 
 	it("reads a level that probes, keeps it whole through extends and a retier, and leaves other levels' versions alone", async () => {
 		writeFiles(repo, {
-			".melian/lenses/security/LENS.md": lensFile([
-				...security,
+			".melian/lenses/correctness/LENS.md": lensFile([
+				...probing,
 				"levels:",
 				"  deep: { tier: heavy, probe: { prober: light, timeout: 5000 } }",
 			]),
 		});
-		const [lens] = named(await load(["src/index.ts"]), "security");
+		const [lens] = named(await load(["src/index.ts"]), "correctness");
+		const [builtin] = named(await Lens.builtins(), "correctness");
 		expect(lens!.levels.deep).toEqual({
+			...builtin!.levels.deep,
 			tier: "heavy",
-			reads: "hunks",
-			verify: true,
-			budget: { findings: 10 },
 			probe: { prober: "light", timeout: 5000 },
 		});
-		expect(lens!.levels.careful).toEqual({ tier: "medium", reads: "hunks", verify: true, budget: { findings: 10 } });
+		expect(lens!.levels.careful).toEqual({ ...builtin!.levels.careful, tier: "medium" });
 		expect(lens!.levels.careful).not.toHaveProperty("probe");
 		expect(lens!.configured({ tier: "light" }).levels.deep?.probe).toEqual({ prober: "light", timeout: 5000 });
 		writeFiles(repo, {
-			".melian/lenses/security/LENS.md": lensFile([...security, "levels:", "  deep: { tier: heavy }"]),
+			".melian/lenses/correctness/LENS.md": lensFile([...probing, "levels:", "  deep: { tier: heavy }"]),
 		});
-		const [plain] = named(await load(["src/index.ts"]), "security");
+		const [plain] = named(await load(["src/index.ts"]), "correctness");
 		expect(plain!.version).not.toBe(lens!.version);
 		expect(plain!.levels.deep).not.toHaveProperty("probe");
 	});
 
 	it("inherits a level's probe through extends, and replaces it whole when the extending lens sets one", async () => {
 		writeFiles(repo, {
-			".melian/lenses/security/LENS.md": lensFile([
-				...security,
+			".melian/lenses/correctness/LENS.md": lensFile([
+				...probing,
 				"levels:",
 				"  deep: { tier: heavy, probe: { prober: light } }",
 			]),
-			"pkg/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security"]),
+			"pkg/.melian/lenses/correctness/LENS.md": lensFile(["name: correctness", "extends: correctness"]),
 			"pkg/x.ts": lines("export {};"),
 		});
-		const [inherited] = named(await load(["pkg/x.ts"]), "security");
+		const [inherited] = named(await load(["pkg/x.ts"]), "correctness");
 		expect(inherited!.levels.deep?.probe).toEqual({ prober: "light" });
 		expect(inherited!.levels.careful).not.toHaveProperty("probe");
 		writeFiles(repo, {
-			"pkg/.melian/lenses/security/LENS.md": lensFile([
-				"name: security",
-				"extends: security",
+			"pkg/.melian/lenses/correctness/LENS.md": lensFile([
+				"name: correctness",
+				"extends: correctness",
 				"levels:",
 				"  deep: { probe: { timeout: 9000 } }",
 			]),
 		});
-		const [replaced] = named(await load(["pkg/x.ts"]), "security");
+		const [replaced] = named(await load(["pkg/x.ts"]), "correctness");
 		expect(replaced!.levels.deep?.probe).toEqual({ timeout: 9000 });
 		expect(replaced!.levels.deep?.tier).toBe("heavy");
 	});
@@ -917,15 +922,310 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		}
 	});
 
+	// A lens's planner, prober and verifier read wording of its own, which only the lenses in core's table have, so a
+	// lens that probes under another lens's words is refused when it loads.
+	it("refuses a level that probes in a lens with no probing wording, naming the lens", async () => {
+		for (const name of ["security", "constructor"]) {
+			writeFiles(repo, {
+				[`.melian/lenses/${name}/LENS.md`]: lensFile([
+					...security.map((line) => line.replace("name: security", `name: ${name}`)),
+					"levels:",
+					"  deep: { tier: heavy, probe: {} }",
+				]),
+			});
+			const refused = await rejection(load(["src/index.ts"]), LensError);
+			expect(refused).toMatchObject({
+				code: "missingField",
+				field: "levels.deep.probe",
+				lens: name,
+				level: "deep",
+			});
+			expect(refused.message).toBe(
+				`.melian/lenses/${name}/LENS.md: lens ${name}, level deep: "probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens's words`,
+			);
+			rmSync(join(repo, `.melian/lenses/${name}`), { recursive: true });
+		}
+	});
+
+	it("loads a level that probes in each lens that extends a built-in with probing wording, at any level", async () => {
+		for (const [name, level] of [
+			["trust-boundary", "deep"],
+			["correctness", "quick"],
+		] as const) {
+			writeFiles(repo, {
+				[`.melian/lenses/${name}/LENS.md`]: lensFile([
+					`name: ${name}`,
+					`extends: ${name}`,
+					"levels:",
+					`  ${level}: { probe: {} }`,
+				]),
+			});
+			const [lens] = named(await load(["src/index.ts"]), name);
+			expect(lens!.level(level).probe).toEqual({});
+			// It probes in its own name's wording, so it records none and keeps the version it had before.
+			expect(Object.keys(lens!.toJSON())).not.toContain("probesAs");
+		}
+	});
+
+	// The maintainer ruled on 2026-11-16 that Melian's own rounds read through trust-boundary and probe through a second
+	// lens that extends it, so a lens of another name reads the wording of the built-in its `extends` reaches.
+	it("probes in the wording of the built-in a lens extends under another name, through every farther lens", async () => {
+		const layouts: Record<string, string>[] = [
+			{
+				".melian/lenses/trust-boundary-probes/LENS.md": lensFile([
+					"name: trust-boundary-probes",
+					"extends: trust-boundary",
+					"levels:",
+					"  deep: { probe: {} }",
+				]),
+			},
+			{
+				".melian/lenses/trust-boundary/LENS.md": lensFile(["name: trust-boundary", "extends: trust-boundary"]),
+				"pkg/.melian/lenses/trust-boundary-probes/LENS.md": lensFile([
+					"name: trust-boundary-probes",
+					"extends: trust-boundary",
+					"levels:",
+					"  deep: { probe: {} }",
+				]),
+				"pkg/x.ts": lines("export {};"),
+			},
+		];
+		for (const files of layouts) {
+			for (const folder of [".melian/lenses", "pkg"]) rmSync(join(repo, folder), { recursive: true, force: true });
+			writeFiles(repo, files);
+			const loaded = await load(["pkg/x.ts", "src/index.ts"]);
+			const [probes] = named(loaded, "trust-boundary-probes");
+			expect(probes!.level("deep").probe).toEqual({});
+			expect(probes!.probesAs).toBe("trust-boundary");
+			expect(Lens.from(probes!.toJSON())).toEqual(probes);
+			expect(probes!.toJSON().probesAs).toBe("trust-boundary");
+			// A lens that reads its own name's wording records none, so its version is the one it had before.
+			expect(named(loaded, "trust-boundary")[0]!.probesAs).toBeUndefined();
+		}
+	});
+
+	it("probes in trust-boundary's wording through the two lens files pull request #494 adds, byte for byte", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary/LENS.md": [
+				"---",
+				"name: trust-boundary",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { budget: { tokens: 600000, tools: 90 } }",
+				"budget: { findings: 8, tokens: 600000, tools: 90 }",
+				"---",
+				"",
+			].join("\n"),
+			".melian/lenses/trust-boundary-probes/LENS.md": [
+				"---",
+				"name: trust-boundary-probes",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { probe: { prober: medium }, budget: { tokens: 600000, tools: 90 } }",
+				"budget: { findings: 8, tokens: 600000, tools: 90 }",
+				"---",
+				"The trust-boundary lens reviews this change by reading it. This lens is its second half: it tests the boundary with probes.",
+				"",
+			].join("\n"),
+		});
+		const loaded = await load(["src/index.ts"]);
+		const [probes] = named(loaded, "trust-boundary-probes");
+		expect(probes!.level("deep").probe).toEqual({ prober: "medium" });
+		expect(probes!.probesAs).toBe("trust-boundary");
+		expect(lensProbingWording.get(probes!.probesAs!)).toBe(lensProbingWording.get("trust-boundary"));
+		expect(named(loaded, "trust-boundary")[0]!.probesAs).toBeUndefined();
+	});
+
+	it("records no wording for a lens of another name that extends a built-in and does not probe", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary-notes/LENS.md": lensFile([
+				"name: trust-boundary-notes",
+				"extends: trust-boundary",
+			]),
+		});
+		const [notes] = named(await load(["src/index.ts"]), "trust-boundary-notes");
+		expect(Object.keys(notes!.toJSON())).not.toContain("probesAs");
+	});
+
+	it("refuses a level that probes in a lens of another name whose `extends` reaches no built-in with probing wording", async () => {
+		for (const [file, files, message] of [
+			[
+				".melian/lenses/trust-boundary-probes/LENS.md",
+				{
+					".melian/lenses/trust-boundary-probes/LENS.md": lensFile([
+						...security.map((line) => line.replace("name: security", "name: trust-boundary-probes")),
+						"levels:",
+						"  deep: { tier: heavy, probe: {} }",
+					]),
+				},
+				"needs",
+			],
+			[
+				".melian/lenses/contracts-probes/LENS.md",
+				{
+					".melian/lenses/contracts-probes/LENS.md": lensFile([
+						"name: contracts-probes",
+						"extends: contracts",
+						"levels:",
+						"  deep: { probe: {} }",
+					]),
+				},
+				"needs",
+			],
+			[
+				".melian/lenses/tests-probes/LENS.md",
+				{
+					".melian/lenses/tests-probes/LENS.md": lensFile([
+						"name: tests-probes",
+						"extends: tests",
+						"levels:",
+						"  deep: { probe: {} }",
+					]),
+				},
+				"tests",
+			],
+		] as const) {
+			rmSync(join(repo, ".melian/lenses"), { recursive: true, force: true });
+			writeFiles(repo, files);
+			const name = file.split("/").at(-2)!;
+			const refused = await rejection(load(["src/index.ts"]), LensError);
+			expect(refused, file).toMatchObject({
+				code: "missingField",
+				field: "levels.deep.probe",
+				lens: name,
+				level: "deep",
+			});
+			expect(refused.message, file).toBe(
+				message === "tests"
+					? `${file}: lens ${name}, level deep: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`
+					: `${file}: lens ${name}, level deep: "probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens's words`,
+			);
+		}
+	});
+
+	// An attack of the tests lens's plan counts as answered whatever its probe showed, so a test that fails before any
+	// change would leave the lens clean; issue #493 decides what such an attack counts as.
+	it("refuses a level that probes in the tests lens, at any level, until issue #493", async () => {
+		for (const level of ["quick", "careful", "deep"] as const) {
+			writeFiles(repo, {
+				".melian/lenses/tests/LENS.md": lensFile([
+					"name: tests",
+					"extends: tests",
+					"levels:",
+					`  ${level}: { probe: {} }`,
+				]),
+			});
+			const refused = await rejection(load(["src/index.ts"]), LensError);
+			expect(refused).toMatchObject({ code: "missingField", field: `levels.${level}.probe`, lens: "tests", level });
+			expect(refused.message).toBe(
+				`.melian/lenses/tests/LENS.md: lens tests, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
+			);
+		}
+	});
+
+	// A lens that takes a built-in's name without extending it has a purpose of its own, which the built-in's probing
+	// wording was not written for.
+	it("refuses a level that probes in a lens that takes a built-in's name without extending the built-in", async () => {
+		const refusal = (file: string, name: string) =>
+			`${file}: lens ${name}, level deep: "probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in ${name} lens's name without extending it; give it and every farther ${name} lens "extends: ${name}"`;
+		for (const [file, files] of [
+			// The built-in contracts lens has no probing wording, so a lens in its place must not borrow another's.
+			[
+				".melian/lenses/contracts/LENS.md",
+				{
+					".melian/lenses/contracts/LENS.md": lensFile([
+						"name: contracts",
+						"extends: trust-boundary",
+						"levels:",
+						"  deep: { probe: {} }",
+					]),
+				},
+			],
+			[
+				".melian/lenses/trust-boundary/LENS.md",
+				{
+					".melian/lenses/trust-boundary/LENS.md": lensFile([
+						...security.map((line) => line.replace("name: security", "name: trust-boundary")),
+						"levels:",
+						"  deep: { tier: heavy, probe: {} }",
+					]),
+				},
+			],
+			[
+				".melian/lenses/correctness/LENS.md",
+				{
+					".melian/lenses/correctness/LENS.md": lensFile([
+						"name: correctness",
+						"extends: trust-boundary",
+						"levels:",
+						"  deep: { probe: {} }",
+					]),
+				},
+			],
+			[
+				"pkg/.melian/lenses/correctness/LENS.md",
+				{
+					".melian/lenses/correctness/LENS.md": lensFile(["name: correctness", "extends: correctness"]),
+					"pkg/.melian/lenses/correctness/LENS.md": lensFile([
+						...security.map((line) => line.replace("name: security", "name: correctness")),
+						"levels:",
+						"  deep: { tier: heavy, probe: {} }",
+					]),
+					"pkg/x.ts": lines("export {};"),
+				},
+			],
+			[
+				"pkg/.melian/lenses/correctness/LENS.md",
+				{
+					".melian/lenses/correctness/LENS.md": lensFile(
+						security.map((line) => line.replace("name: security", "name: correctness")),
+					),
+					"pkg/.melian/lenses/correctness/LENS.md": lensFile([
+						"name: correctness",
+						"extends: correctness",
+						"levels:",
+						"  deep: { probe: {} }",
+					]),
+					"pkg/x.ts": lines("export {};"),
+				},
+			],
+			// A folder's name is the head's to choose, so it cannot pass for the mark of a lens Melian ships.
+			[
+				"builtin:x/.melian/lenses/correctness/LENS.md",
+				{
+					"builtin:x/.melian/lenses/correctness/LENS.md": lensFile([
+						...security.map((line) => line.replace("name: security", "name: correctness")),
+						"levels:",
+						"  deep: { tier: heavy, probe: {} }",
+					]),
+					"builtin:x/x.ts": lines("export {};"),
+				},
+			],
+		] as const) {
+			for (const folder of [".melian/lenses", "pkg", "builtin:x"])
+				rmSync(join(repo, folder), { recursive: true, force: true });
+			writeFiles(repo, files);
+			const name = file.split("/").at(-2)!;
+			const refused = await rejection(load(["builtin:x/x.ts", "pkg/x.ts", "src/index.ts"]), LensError);
+			expect(refused, file).toMatchObject({
+				code: "missingField",
+				field: "levels.deep.probe",
+				lens: name,
+				level: "deep",
+			});
+			expect(refused.message, file).toBe(refusal(file, name));
+		}
+	});
+
 	it("takes a probe timeout of ten minutes, the longest a probe may run", async () => {
 		writeFiles(repo, {
-			".melian/lenses/security/LENS.md": lensFile([
-				...security,
+			".melian/lenses/correctness/LENS.md": lensFile([
+				...probing,
 				"levels:",
 				"  deep: { probe: { timeout: 600000 } }",
 			]),
 		});
-		const lens = (await load(["src/index.ts"])).find((each) => each.name === "security");
+		const lens = (await load(["src/index.ts"])).find((each) => each.name === "correctness");
 		expect(lens!.level("deep").probe).toEqual({ timeout: 600_000 });
 	});
 

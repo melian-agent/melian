@@ -230,6 +230,8 @@ interface LensRun {
 		readonly environment: ProbingEnvironment;
 		// Present when the prober runs on its level's own tier, so it answers to the policy the plan judges that level by.
 		readonly onLevelTier?: true;
+		// The built-in lens whose probing wording the run reads, when it is not the lens's own name: the lens's `probesAs`.
+		readonly probesAs?: string;
 	};
 }
 
@@ -633,7 +635,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				let plan = await planOf();
 				const failed = await remind(
 					planner,
-					recordPlanPrompt,
+					recordPlanPrompt(lens.probe?.probesAs ?? lens.name),
 					`lens:${lens.key}:plan`,
 					"the planner's reminder",
 					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
@@ -1427,6 +1429,7 @@ async function claimProbes(
 			plan: structuredClone(plan),
 			probe: structuredClone(probe),
 			environment: structuredClone(run.probe!.environment),
+			...(run.probe!.probesAs === undefined ? {} : { probesAs: run.probe!.probesAs }),
 		};
 	}
 	return Object.keys(probes).length === 0 ? {} : { probes };
@@ -2642,12 +2645,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const timeout = settings.probe!.timeout ?? probeLimits.timeout.default;
 			const thinking = prober.route!.thinking;
 			const { decisions: atBase, earlier } = await probingContext();
+			const wording = lens.probesAs ?? lens.name;
 			return {
 				run: {
 					route: [...(resolved.get(prober.key) as { route: ModelReference[] }).route],
 					...(thinking === undefined ? {} : { thinking }),
 					...(settings.probe!.prober === undefined ? { onLevelTier: true as const } : {}),
-					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
+					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout, wording),
 					// Only a level whose probes may run reaches here, so the host has said whose head this is.
 					environment: {
 						writer: options.writer!,
@@ -2656,8 +2660,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						read: [...(await baseConfig()).probe.read],
 						host: probingHost(probeSandboxOf(options)),
 					},
+					...(lens.probesAs === undefined ? {} : { probesAs: lens.probesAs }),
 				},
-				context: (boundary: string) => plannerContext(atBase, earlier, boundary),
+				context: (boundary: string) => plannerContext(wording, atBase, earlier, boundary),
 			};
 		};
 		// A run at `level`, keyed by its request, with `escalation` for a quick run: the run it moves to, built first, so
@@ -2672,7 +2677,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const probing =
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
 			const planning = (boundary: string) =>
-				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
+				probing === undefined
+					? ""
+					: `\n\n${plannerInstructions(lens.probesAs ?? lens.name, probing.context(boundary))}`;
 			const thinking = routeAt(lens, level).route?.thinking;
 			const route = [...(routeFor(lens, level) as { route: ModelReference[] }).route];
 			const keyed = lensRequest({

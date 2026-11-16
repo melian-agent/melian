@@ -1,0 +1,1642 @@
+{
+ "range": {
+  "base": "15177603a7416b130ab77bcb722812cdb43b377c",
+  "head": "fff66b6347bea2e655fb7a0f512e786e95b6d49d"
+ },
+ "note": "Each run applied one mutant and ran its named test alone, by an anchored ancestorTitles > title pattern; it counts only when exactly one test was collected and that test passed unmutated first, at the same head.",
+ "runs": [
+  {
+   "id": "d5fb98ec02b9f499e9e71b61e97dd9b30b49cb67a08013126c2de69da5dbae11",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "cab9dce6036a83d18723839f76abe26cf15d4520ffb9541325e9117762164312",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9c63ab33b747770061d2b89d77f364b8978520e4de00fc272402d53a93510d91",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probe !== undefined && builtins.has(name) || origin !== name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "records no wording for a lens of another name that extends a built-in and does not probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "37a42ccb23473447ce586249722000e2c18c89f7a568d57ff7bfb53f379221ed",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "records no wording for a lens of another name that extends a built-in and does not probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "76943097acaa15fe31ea89501c71d5952ff3c0f1979cdb3c4229e754a21291db",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probe !== undefined || builtins.has(name)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "cdcdd4fe2ffb4884637b922af05882b584d88d74f7b8e1cfa7814b490aac2106",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1074b6bbd1992bd5bc25d906638db7ba4c5392b9db84f5d4cfa064f2fa13301c",
+   "at": "packages/core/src/lens.ts:421:6",
+   "mutator": "EqualityOperator",
+   "replacement": "probe === undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "bae3ecaea1a6118e1b551cab6e874b5a9e0fc3c0b5484e42cf7b714cd24912c3",
+   "at": "packages/core/src/lens.ts:421:51",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "05c7c7a3048b5b5085dc929ac6845118f526910a9064d1ce731d05df7264edc7",
+   "at": "packages/core/src/lens.ts:421:51",
+   "mutator": "EqualityOperator",
+   "replacement": "origin === name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "62adf4a36261f02f0300c621e60f2ae20e5964386dbdf3b7383025cd589bd999",
+   "at": "packages/core/src/lens.ts:429:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "70ab24d4f7b22f8824c1d6b505025a8413d12aa92e12bc3b26991cea77eede3f",
+   "at": "packages/core/src/lens.ts:429:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a53c6f7000a09db5972a90dc6e0a41209cb55d2f85c552703c0d2d68ea288c6e",
+   "at": "packages/core/src/lens.ts:429:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probe !== undefined || origin === undefined || !lensProbingWording.has(origin)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "08ccaf746498d38d96fa2eddb1685f5524658ebd44594152db8977cef09df2c6",
+   "at": "packages/core/src/lens.ts:429:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "741bb7de7812af0bbbe206417dfe39c077e2a261543ffd58dd85a403919a77a9",
+   "at": "packages/core/src/lens.ts:429:6",
+   "mutator": "EqualityOperator",
+   "replacement": "probe === undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "50c27d925a3c0b5092cf0af5839f2001d22954b2f6f2d3ad01885caffd89e2fa",
+   "at": "packages/core/src/lens.ts:429:30",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9bd0cda6d246930dd370d84bfc96cf5f3b7fcd645fcec45cd4a135536c1e7ce2",
+   "at": "packages/core/src/lens.ts:429:30",
+   "mutator": "LogicalOperator",
+   "replacement": "origin === undefined && !lensProbingWording.has(origin)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens of another name whose `extends` reaches no built-in with probing wording"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "d5640e865a822ad3d564631f5b525a2fa69d662b3db852352e949d2b2c6b820e",
+   "at": "packages/core/src/lens.ts:429:30",
+   "mutator": "EqualityOperator",
+   "replacement": "origin !== undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "6bb9de61e5c13853aadb36dd39b0d93879c26c16f5a6fe5e12856eb45f80cc9d",
+   "at": "packages/core/src/lens.ts:429:54",
+   "mutator": "BooleanLiteral",
+   "replacement": "lensProbingWording.has(origin)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "45e32dae41d96e4853997e2bd89ba970e0b841ac42d6a0326c2e62e4f0aa3c58",
+   "at": "packages/core/src/lens.ts:430:18",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "9ad0d03641a44f44de69483b0190244d0425fecfad8ee4b3ca29365ba4835e42",
+   "at": "packages/core/src/lens.ts:434:124",
+   "mutator": "MethodExpression",
+   "replacement": "worded",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "4a1a569a787956005ece8fd4d605ed7a36fe572212ed4d25f83e37fdfb367309",
+   "at": "packages/core/src/lens.ts:434:140",
+   "mutator": "UnaryOperator",
+   "replacement": "+1",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "8f87cae57a27469022fe3f4f9cd8be6d35598272889000766f6254d58205a644",
+   "at": "packages/core/src/lens.ts:434:172",
+   "mutator": "UnaryOperator",
+   "replacement": "+1",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "fc3f35bf5285fbd5ef06c5516b1b696da2028f51e6300cb64c2937fcadd7678d",
+   "at": "packages/core/src/lens.ts:440:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0dd8f4528556096a20a773066cc930d09852346662e81d05c66bc086bac017eb",
+   "at": "packages/core/src/lens.ts:440:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in the tests lens, at any level, until issue #493"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e69a620988b1b55f07df421404f4659350a309f25c2d5910584b019e4eba8c37",
+   "at": "packages/core/src/lens.ts:440:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probe !== undefined || origin === \"tests\"",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "b7614da9513a35ac5acf7021f5fd4f5326b6d9abc3ccfd15663007838761b4bd",
+   "at": "packages/core/src/lens.ts:440:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "aae9586246858f41207a06f65a43da0898d26018f67435dac4ea947094a880bf",
+   "at": "packages/core/src/lens.ts:440:6",
+   "mutator": "EqualityOperator",
+   "replacement": "probe === undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "333cebd8d70e3f6bd59afa7f17bfdc632bbe6ed154408d71b1e4f5c8db0c0fc2",
+   "at": "packages/core/src/lens.ts:440:29",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "fde838548d1ae61f02db6c8cb9d82a2f638364310e5c075282f27b8b226cd899",
+   "at": "packages/core/src/lens.ts:440:29",
+   "mutator": "EqualityOperator",
+   "replacement": "origin !== \"tests\"",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "29426ce12d4ead0c657323668907c27ccfca268a9a3e43833cc45410b71a9575",
+   "at": "packages/core/src/lens.ts:490:48",
+   "mutator": "OptionalChaining",
+   "replacement": "base.origin",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens with no probing wording, naming the lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "df08c23d4feec4f730da8d1b6a32a5a8ec7e0c3d2f28e9e9975cfc13298eb5ab",
+   "at": "packages/core/src/lens.ts:494:56",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "e5851a626c70d858973ccac6f722d887474cda9dbebbb77e36d82d85c5091a26",
+   "at": "packages/core/src/lens.ts:495:16",
+   "mutator": "MethodExpression",
+   "replacement": "Object.values(levels).every(level => level.probe !== undefined)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "7e04c431b2c4cabe75dc8b30d1a5e4deb2342b31a200752be8af084719d88b37",
+   "at": "packages/core/src/lens.ts:495:43",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "1706e59d1f12f30a5832a63f984b8ee58fc9bc6fcf20276df539a846668c6a1b",
+   "at": "packages/core/src/lens.ts:495:54",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "records no wording for a lens of another name that extends a built-in and does not probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "66133020eada61c6ab4d36201d4557518bc2d48f9d440ea8d1d5aed4561a273d",
+   "at": "packages/core/src/lens.ts:495:54",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "43732e978b066dca81994fae49231b4e680587963c2c4c53f5e32e546e27d313",
+   "at": "packages/core/src/lens.ts:495:54",
+   "mutator": "EqualityOperator",
+   "replacement": "level.probe === undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "records no wording for a lens of another name that extends a built-in and does not probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "3f39675099541f627b9e9845ea8b46dc519bd45a3c280c90ae27c8df78f6064b",
+   "at": "packages/core/src/lens.ts:512:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "923574b947081d9916a0c86f93387f285f3a575f8a888099a489139b689f4ef2",
+   "at": "packages/core/src/lens.ts:512:6",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "de3d4ec7c96d15143907013bd9f0081f7d8a408845d18469d780fcafc84f4d80",
+   "at": "packages/core/src/lens.ts:512:6",
+   "mutator": "LogicalOperator",
+   "replacement": "probes || origin !== own.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "records no wording for a lens of another name that extends a built-in and does not probe"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0bdbfac5f0b41be2105d8094e1e939f2b0436a7a5a418d0597f4111aaa280a92",
+   "at": "packages/core/src/lens.ts:512:16",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c5e24f626b99e9c90653087b5b2fa55572c73c5d37dba108aa05a451e6aa77b0",
+   "at": "packages/core/src/lens.ts:512:16",
+   "mutator": "EqualityOperator",
+   "replacement": "origin === own.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "254bc03258d6ab875945594ebb2d6d9da570aafaa738e81e355630e105d13be7",
+   "at": "packages/core/src/lens.ts:512:38",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "31baea4bda3e843b05ef0eb8891e12774c8bb7482a9bbca54a41c22a770cf629",
+   "at": "packages/core/src/lens.ts:514:8",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "f79e7cb6ea53a0f036fd25bdc5f326fa4724cf36554fa130c89b6a69b51dfeee",
+   "at": "packages/core/src/lens.ts:636:26",
+   "mutator": "MethodExpression",
+   "replacement": "definitions",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "03eed3efb48856471645a3f3f6c79b225db2c1c2d824390d31c5d0288c74890b",
+   "at": "packages/core/src/lens.ts:636:45",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "80da2f5a563b66ea48ef31f5bcfaeb8559516f7222372fbaa9301927e9a66174",
+   "at": "packages/core/src/lens.ts:636:75",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "668647d22420ac03b14389f37c38afd2d6beda57c1a20431c7d74570560103bd",
+   "at": "packages/core/src/lens.ts:650:2",
+   "mutator": "CallExpression",
+   "replacement": ";",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "a3832f66f7d4e521835eb2a3f3a5363c4c781289e391566a6e2e34b822d40d37",
+   "at": "packages/core/src/lens.ts:1117:7",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "65d476aa0c02e7fcdbf8851cba2bf965ee4363d8783923c5df6283a1035dc650",
+   "at": "packages/core/src/lens.ts:1117:7",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0d5dc1380f177ab56ff3fe7f69d9b9aca62e251909801da0689230351d9eec5c",
+   "at": "packages/core/src/lens.ts:1117:7",
+   "mutator": "EqualityOperator",
+   "replacement": "probesAs !== undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "0c246d9cb6b8c7a8c415b65b837907dfa36f2b3577d824edaffcc7ad6d7d56b5",
+   "at": "packages/core/src/lens.ts:1117:37",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/core/test/lens.test.ts",
+    "path": [
+     "repository lenses from the worktree",
+     "probes in the wording of the built-in a lens extends under another name, through every farther lens"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "cb39db2b138796248f5f32bc3e62434dc07572d601b93416eda2c2365c668e57",
+   "at": "packages/pipeline/src/lens-request.ts:122:6",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/lens-request.test.ts",
+    "path": [
+     "lensRequest",
+     "keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "fece113d5ab175b13710da9395e21c20319198faae5032b0f41b4c46e79b6e13",
+   "at": "packages/pipeline/src/lens-request.ts:122:34",
+   "mutator": "LogicalOperator",
+   "replacement": "keyed.probe?.probesAs && keyed.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "23070122d3cf54415cfe3b662de6d05641818caa228b134ae462b867988dea80",
+   "at": "packages/pipeline/src/review.ts:637:22",
+   "mutator": "LogicalOperator",
+   "replacement": "lens.probe?.probesAs && lens.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "3aa4e6fac48d6981eadde1e7ff189c5fada9ec0c0b5a2b06bc3bbc0049f6a7dc",
+   "at": "packages/pipeline/src/review.ts:1431:7",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c9c3dd2928b044225a0a265392cd74403286a1d1915f4598fcbff68b400bae69",
+   "at": "packages/pipeline/src/review.ts:1431:7",
+   "mutator": "EqualityOperator",
+   "replacement": "run.probe!.probesAs !== undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "c0b88c986f36a57a483dce5b18198f2d951a8aa220343ad4ed34b6fbc47e44ad",
+   "at": "packages/pipeline/src/review.ts:1431:48",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "03e71aef002a1bd3d6fe228027e5b25714e3aeef3556b2c25ccce8475650dac5",
+   "at": "packages/pipeline/src/review.ts:2637:19",
+   "mutator": "LogicalOperator",
+   "replacement": "lens.probesAs && lens.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "6df6430c1b4d2d6193966f472205565eb8353db6e3e4203145b952b14bc497ce",
+   "at": "packages/pipeline/src/review.ts:2652:9",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "6067135502cbac48a2d986792d51bdc2c3c03b2900c8db845843cce9e7d2ae86",
+   "at": "packages/pipeline/src/review.ts:2652:9",
+   "mutator": "EqualityOperator",
+   "replacement": "lens.probesAs !== undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "2f90e8e731ad7e99c666f04474845c2a06b36ed5233113465011c48b66ed7ef4",
+   "at": "packages/pipeline/src/review.ts:2652:44",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "22ad0607c4c91bed959bf93f86c0515adaa0c0f7ca32b428ae5e27a07a408702",
+   "at": "packages/pipeline/src/review.ts:2654:13",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "fa7089d1dcd73c770a36d714136909e3a08de7c74affb6b8c5794da472452db7",
+   "at": "packages/pipeline/src/review.ts:2669:4",
+   "mutator": "ConditionalExpression",
+   "replacement": "true",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "bda56d8f15b9ba0f3cd497ec16059051e513ee7d5c9ed7bc4d297dfe62a3b684",
+   "at": "packages/pipeline/src/review.ts:2669:4",
+   "mutator": "ConditionalExpression",
+   "replacement": "false",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "eed255cfd2165e5e10f26b9b0699e2056a5e8405931f1b7b0ab7096f1c77ca92",
+   "at": "packages/pipeline/src/review.ts:2669:4",
+   "mutator": "EqualityOperator",
+   "replacement": "probing !== undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "227b243fc48e7658bea90f889ae538fe32320fc48321c7396743bb03e0a3cefa",
+   "at": "packages/pipeline/src/review.ts:2671:34",
+   "mutator": "LogicalOperator",
+   "replacement": "lens.probesAs && lens.name",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are sent, byte for byte but for its name, to a lens that extends trust-boundary under another name"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "8eaafecd0d37ecce2b508253f6202f4aa237acdb5c284d6c4ec0d4f437288e95",
+   "at": "packages/pipeline/src/verification.ts:185:11",
+   "mutator": "ArrayDeclaration",
+   "replacement": "[]",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "61321bd2788d91a70ca0ced543634a210cf72f78aa58f83d0b7a5892776fd0ae",
+   "at": "packages/pipeline/src/verification.ts:185:12",
+   "mutator": "ObjectLiteral",
+   "replacement": "{}",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "4abdd543a90c178d036f6e25bfd410622eea1fbe25f9fde0b1c5a0cbf33f4a4c",
+   "at": "packages/pipeline/src/verification.ts:185:48",
+   "mutator": "LogicalOperator",
+   "replacement": "probe.probe.probesAs && lensOf(source)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "a level that probes",
+     "reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "b6f307fd4ba4707c53a008a393dd946f130d322b7ba7f75a6fff136564ecc499",
+   "at": "packages/pipeline/src/verification.ts:590:8",
+   "mutator": "ArrowFunction",
+   "replacement": "() => undefined",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  },
+  {
+   "id": "be5eec5e4a0ad2f720e73c8f5d953c994dcf9a7d1fd083ae4391814c720e938a",
+   "at": "packages/pipeline/src/verification.ts:590:19",
+   "mutator": "LogicalOperator",
+   "replacement": "candidate.probes![probeClaimKey(claim)]!.probesAs && lensOf(claim.source)",
+   "head": "fff66b63",
+   "test": {
+    "file": "packages/pipeline/test/probing-level.test.ts",
+    "path": [
+     "the trust-boundary lens's probing turns",
+     "are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders"
+    ]
+   },
+   "baseline": {
+    "collected": 1,
+    "passed": true
+   },
+   "result": {
+    "collected": 1,
+    "passed": false
+   },
+   "killed": true
+  }
+ ]
+}

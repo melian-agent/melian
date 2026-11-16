@@ -1361,11 +1361,11 @@ const attackParameter = Type.Object(
 		}),
 		reason: Type.String({
 			...bounded(probingLimits.reason),
-			description: "Why something untrusted might cross a boundary there, and who controls it",
+			description: "Why a probe might show a defect there, and what supplies its input",
 		}),
 		passing: Type.String({
 			...bounded(probingLimits.outcome),
-			description: "What a probe that passes, exiting 0, prints when the boundary holds",
+			description: "What a probe that passes, exiting 0, prints when it shows no defect",
 		}),
 		failing: Type.String({
 			...bounded(probingLimits.outcome),
@@ -1399,7 +1399,7 @@ export const recordPlan = defineLensTool(
 		// A later call replaces the plan, so calls in one turn run in order and the last one stands, on replay too.
 		executionMode: "sequential",
 		description:
-			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why something untrusted might cross a boundary there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
+			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why a probe might show a defect there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
 		parameters: Type.Object(
 			{ attacks: Type.Array(attackParameter, { maxItems: probingLimits.attacks }) },
 			{ additionalProperties: false },
@@ -1463,7 +1463,7 @@ function describeProbe(id: string, result: ProbeRecord["result"], timeout: numbe
 	if (result.truncated)
 		return `probe ${id}'s output passed its limit, so it was cut and the probe ended, which shows nothing`;
 	if (result.exitCode === null) return `probe ${id} was ended by ${result.signal}, which shows nothing`;
-	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so the boundary held`;
+	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so it showed no defect`;
 	return `probe ${id} failed: it exited ${result.exitCode}, so it shows the defect if it exercises the attack. Report a finding it shows with probe "${id}"`;
 }
 
@@ -1478,7 +1478,7 @@ export function runProbeTool(sandbox?: ProbeSandbox) {
 			// Each probe writes its head's tree before its sandbox starts, so one at a time bounds a lens's scratch to one tree.
 			executionMode: "sequential",
 			description:
-				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 when the boundary holds and non-zero when the probe shows the defect. Returns the probe's ID, its exit, and its output.",
+				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 for the attack's passing outcome and non-zero when the probe shows the defect. Returns the probe's ID, its exit, and its output.",
 			parameters: Type.Object(
 				{
 					attack: Type.Integer({ minimum: 1, description: "The attack's number in the plan" }),
