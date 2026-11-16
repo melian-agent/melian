@@ -51,3 +51,43 @@ describe("a probe main recorded as exit 137 with no signal", () => {
 		expect(probeConclusive(ended)).toBe(false);
 	});
 });
+
+// Bubblewrap reports a signal n as exit 128 + n, and n is at least 1, so exit 128 is the probe's own exit.
+describe("reading a version-1 probe result", () => {
+	const result = (exitCode: number | null, signal: string | null = null) => ({
+		exitCode,
+		signal,
+		output: "out",
+		truncated: false,
+		timedOut: false,
+	});
+	const cases: [ReturnType<typeof result>, ReturnType<typeof result>][] = [
+		[result(0), result(0)],
+		[result(1), result(1)],
+		[result(128), result(128)],
+		[result(129), result(null)],
+		[result(137), result(null)],
+		[result(137, "SIGKILL"), result(137, "SIGKILL")],
+		[result(null, "SIGKILL"), result(null, "SIGKILL")],
+		[result(null), result(null)],
+	];
+
+	it("reads an exit past 128 with no signal as an ending with no record of how, in the prober's record", () => {
+		const migrate = ProbingDocument.definition.migrate!;
+		const probe = { attack: 1, script: "s", files: [], milliseconds: 1 };
+		for (const [stored, read] of cases)
+			expect(migrate({ plan: [], probes: { p1: { ...probe, result: stored } } }, 1)).toEqual({
+				plan: [],
+				probes: { p1: { ...probe, result: read } },
+			});
+		expect(migrate({ plan: [] }, 1)).toEqual({ plan: [] });
+	});
+
+	it("reads the same in the review's reruns, and keeps a refused rerun", () => {
+		const migrate = ProbeReruns.definition.migrate!;
+		for (const [stored, read] of cases)
+			expect(
+				migrate({ runs: { r: { k: { result: stored, milliseconds: 1 }, n: { refused: "no sandbox" } } } }, 1),
+			).toEqual({ runs: { r: { k: { result: read, milliseconds: 1 }, n: { refused: "no sandbox" } } } });
+	});
+});
