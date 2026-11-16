@@ -625,6 +625,34 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(text.stdout).toBe(ids.map((id) => `Round ${id}\n${rendered}`).join("\n"));
 	});
 
+	it("renders a recorded round's silent findings under --all, and its notes under --notes", () => {
+		const { repo, env: script } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		const env = { ...script, MELIAN_STATE_DIR: join(scratch, "state") };
+		// A silent finding shows only under --all, and Enola's absence leaves a note on every lens for --notes.
+		policyBase(repo, "trusting", `${trustingPolicy}resolution:\n  P1: silent\nstatic:\n  enola: { enabled: true }\n`);
+		const store = join(scratch, "records");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+		const host = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict,
+		);
+		const [round] = JSON.parse(
+			melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env).stdout,
+		) as { round: string }[];
+		const shown = (options: { all?: boolean; notes?: boolean }) =>
+			`Round ${round!.round}\n${host.render(new Rendering({ ids: true, decided: true, target: "trusting", ...options }))}`;
+
+		const plain = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+		const all = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all"], env);
+		const notes = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--notes"], env);
+
+		expect([plain.status, all.status, notes.status]).toEqual([0, 0, 0]);
+		expect(plain.stdout).toBe(shown({}));
+		expect(all.stdout).toBe(shown({ all: true }));
+		expect(notes.stdout).toBe(shown({ notes: true }));
+		expect(all.stdout).not.toBe(plain.stdout);
+		expect(notes.stdout).not.toBe(plain.stdout);
+	});
+
 	it("refuses a store that holds no round of the revision, though it holds one of another", async () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
 		policyBase(repo, "trusting", trustingPolicy);
