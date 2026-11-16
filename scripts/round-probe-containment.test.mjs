@@ -35,6 +35,7 @@ function plan() {
 		write: ["/run/home/written", "/tmp/melian-written"],
 		writable: ["/run/home/written"],
 		walk: ["/tree", "/usr"],
+		network: [{ host: "api.github.com", port: 443 }],
 		own: ["/tree"],
 		public: ["/usr"],
 	};
@@ -69,6 +70,17 @@ const argv = [["/usr/bin/unshare", "--ipc", "--", "bwrap", "sh"]];
 describe("judge", () => {
 	it("passes a probe every route of which was shut", () => {
 		expect(judge(report(), plan(), argv, host())).toEqual([]);
+	});
+
+	it.each([
+		["tcp", "api.github.com:443"],
+		["httpProxy", "CONNECT api.github.com:443"],
+		["httpProxy", "GET api.github.com:443"],
+		["socksProxy", "api.github.com:443"],
+	])("fails a probe whose %s report has no attempt %s", (route, attempt) => {
+		const r = report();
+		delete r[route][attempt];
+		expect(judge(r, plan(), argv, host())).toEqual(["the probe did not try every route to api.github.com:443"]);
 	});
 
 	it("names each variable outside the expected set, and passes every expected one", () => {
@@ -166,7 +178,7 @@ describe("judge", () => {
 		}
 		const r = report();
 		r.httpProxy = { missing: "HTTP_PROXY", "CONNECT api.github.com:443": "ECONNREFUSED" };
-		expect(judge(r, plan(), argv, host())).toEqual([
+		expect(judge(r, { ...plan(), network: [] }, argv, host())).toEqual([
 			"the probe has no HTTP_PROXY to try",
 			"the HTTP proxy never answered CONNECT api.github.com:443: ECONNREFUSED",
 		]);
@@ -185,9 +197,9 @@ describe("judge", () => {
 	it("accepts each answer a refusing SOCKS proxy gives, and fails a connection or a silence", () => {
 		const r = report();
 		r.socksProxy = { a: "reply 5", b: "authentication refused", c: "no acceptable method", d: "greeting closed" };
-		expect(judge(r, plan(), argv, host())).toEqual([]);
+		expect(judge(r, { ...plan(), network: [] }, argv, host())).toEqual([]);
 		r.socksProxy = { missing: "ALL_PROXY", a: "succeeded", b: "ECONNREFUSED" };
-		expect(judge(r, plan(), argv, host())).toEqual([
+		expect(judge(r, { ...plan(), network: [] }, argv, host())).toEqual([
 			"the probe has no ALL_PROXY to try",
 			"the SOCKS proxy connected a",
 			"the SOCKS proxy never answered for b: ECONNREFUSED",
@@ -251,7 +263,7 @@ describe("judge", () => {
 		const r = report();
 		r.httpProxy = { a: "ECONNRESET at 200", b: "200 then ECONNRESET", c: "half closed" };
 		r.socksProxy = { d: "reply 91", e: "no reply 5", f: "ECONNRESET in reply 5 x" };
-		expect(judge(r, plan(), argv, host())).toEqual([
+		expect(judge(r, { ...plan(), network: [] }, argv, host())).toEqual([
 			"the HTTP proxy never answered a: ECONNRESET at 200",
 			"the HTTP proxy never answered b: 200 then ECONNRESET",
 			"the HTTP proxy never answered c: half closed",

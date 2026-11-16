@@ -320,6 +320,12 @@ export function judge(report, plan, argv, host) {
 				failures.push(`${path} should be writable, and wrote ${report.writes[path]}`);
 		} else if (host.written.includes(path)) failures.push(`the probe's write to ${path} reached the host`);
 	}
+	for (const { host, port } of plan.network) {
+		const target = `${host}:${port}`;
+		const tried = [report.tcp[target], report.httpProxy[`CONNECT ${target}`], report.httpProxy[`GET ${target}`]];
+		if ([...tried, report.socksProxy[target]].includes(undefined))
+			failures.push(`the probe did not try every route to ${target}`);
+	}
 	for (const [target, outcome] of Object.entries(report.tcp))
 		if (outcome === "connected") failures.push(`a TCP connection to ${target} opened`);
 	if (report.dns === "resolved") failures.push("a DNS lookup resolved");
