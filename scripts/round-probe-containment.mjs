@@ -334,7 +334,7 @@ export function judge(report, plan, argv, host) {
 			if (kind === "canary" || !plan.public.includes(root)) failures.push(`${path} holds a ${kind}`);
 		if (summary.cut) failures.push(`the walk of ${root} stopped at its entry limit`);
 	}
-	if (report.walk[plan.walk[0]]?.files === 0) failures.push(`the walk read no file of ${plan.walk[0]}`);
+	if ((report.walk[plan.walk[0]]?.files ?? 0) === 0) failures.push(`the walk read no file of ${plan.walk[0]}`);
 	for (const root of plan.walk)
 		if (!plan.own.includes(root) && !plan.public.includes(root))
 			failures.push(`the policy lets a probe read ${root}, which is neither its own nor a named public root`);
@@ -361,8 +361,8 @@ export function walked(report, plan) {
 	return lines;
 }
 
-// A ProbeSandbox that records each command line Probe's own sandbox is given.
-function recording(sandbox, argv) {
+/** A ProbeSandbox that forwards to `sandbox` and records each command line it is given. */
+export function recording(sandbox, argv) {
 	return {
 		platform: sandbox.platform,
 		kind: sandbox.kind,
@@ -378,8 +378,45 @@ function recording(sandbox, argv) {
 	};
 }
 
-async function main() {
-	const available = await Probe.availability();
+/** The line a probe that did not finish prints, or undefined when it exited 0 in time with its whole output. */
+export function unfinished(result) {
+	if (result.exitCode === 0 && !result.timedOut && !result.truncated) return undefined;
+	return `the containment probe did not finish: exit ${result.exitCode ?? result.signal}, timed out ${result.timedOut}, cut ${result.truncated}`;
+}
+
+/**
+ * What the host holds after the probe: each read path's entries, the way to each path the policy reaches through it,
+ * and each refused write that exists on the host, which it removes.
+ */
+export function observeHost(plan, reached) {
+	const host = { names: {}, passages: {}, written: [] };
+	for (const path of plan.read) {
+		try {
+			host.names[path] = readdirSync(path);
+		} catch {
+			continue;
+		}
+		host.passages[path] = reached
+			.filter((target) => target.startsWith(`${path === "/" ? "" : path}/`))
+			.map((target) => relative(path, target).split(sep)[0]);
+	}
+	for (const path of plan.write)
+		if (!plan.writable.includes(path) && existsSync(path)) {
+			host.written.push(path);
+			rmSync(path, { force: true });
+		}
+	return host;
+}
+
+/** The step's exit code and the lines it prints for the failures judge found. */
+export function outcome(failures) {
+	if (failures.length === 0) return { code: 0, lines: ["every route tried is shut"] };
+	return { code: 1, lines: failures.map((failure) => `not contained: ${failure}`) };
+}
+
+/** Runs the containment probe through `probes`, Probe unless a test gives another, and returns the step's exit code. */
+export async function main(probes = Probe) {
+	const available = await probes.availability();
 	if (!available.available) {
 		console.log(`probes cannot run here: ${available.reason}`);
 		return 1;
@@ -398,7 +435,7 @@ async function main() {
 	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
 	try {
 		const argv = [];
-		const probe = await Probe.open(
+		const probe = await probes.open(
 			{
 				script: probeScript,
 				files: [{ path: "targets.json", text: "{}" }],
@@ -407,7 +444,7 @@ async function main() {
 				head: { checkout, commit },
 				writer: { trusted: true, by: "reviewer" },
 				trustWriters: true,
-				sandbox: recording(Probe.sandbox, argv),
+				sandbox: recording(probes.sandbox, argv),
 				timeout: 600_000,
 				outputLimit: 1_048_576,
 			},
@@ -471,10 +508,9 @@ async function main() {
 			};
 			writeFileSync(plan.self, JSON.stringify(plan));
 			const result = await probe.run();
-			if (result.exitCode !== 0 || result.timedOut || result.truncated) {
-				console.log(
-					`the containment probe did not finish: exit ${result.exitCode ?? result.signal}, timed out ${result.timedOut}, cut ${result.truncated}`,
-				);
+			const stopped = unfinished(result);
+			if (stopped !== undefined) {
+				console.log(stopped);
 				return 1;
 			}
 			report = JSON.parse(result.output);
@@ -491,28 +527,10 @@ async function main() {
 		console.log(`ipc: ${JSON.stringify(report.ipc)}`);
 		console.log(`reads: ${JSON.stringify(report.reads)}`);
 		console.log(`writes: ${JSON.stringify(report.writes)}`);
-		const host = { names: {}, passages: {}, written: [] };
-		const reached = [...policy.read, ...policy.write];
-		for (const path of plan.read) {
-			try {
-				host.names[path] = readdirSync(path);
-			} catch {
-				continue;
-			}
-			host.passages[path] = reached
-				.filter((target) => target.startsWith(`${path === "/" ? "" : path}/`))
-				.map((target) => relative(path, target).split(sep)[0]);
-		}
-		for (const path of plan.write)
-			if (!plan.writable.includes(path) && existsSync(path)) {
-				host.written.push(path);
-				rmSync(path, { force: true });
-			}
-		const failures = judge(report, plan, argv, host);
-		for (const failure of failures) console.log(`not contained: ${failure}`);
-		if (failures.length > 0) return 1;
-		console.log("every route tried is shut");
-		return 0;
+		const host = observeHost(plan, [...policy.read, ...policy.write]);
+		const { code, lines } = outcome(judge(report, plan, argv, host));
+		for (const line of lines) console.log(line);
+		return code;
 	} finally {
 		closeSync(held);
 		for (const file of files) rmSync(file, { force: true });

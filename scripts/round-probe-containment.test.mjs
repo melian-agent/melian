@@ -1,5 +1,22 @@
-import { describe, expect, it } from "vitest";
-import { expectedEnvironment, judge, publicRoots, tokenShapes, walked } from "./round-probe-containment.mjs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Probe } from "../packages/pipeline/src/probe.ts";
+import {
+	expectedEnvironment,
+	judge,
+	loginNames,
+	main,
+	observeHost,
+	outcome,
+	publicRoots,
+	recording,
+	tokenShapes,
+	unfinished,
+	walked,
+} from "./round-probe-containment.mjs";
 
 const canary = "melian-canary-0123";
 const walkSummary = (files) => ({ files, directories: 1, unreadable: 0, bytes: 10, matches: [], cut: false, top: [] });
@@ -218,6 +235,25 @@ describe("judge", () => {
 		later.walk["/usr"].files = 0;
 		expect(judge(later, plan(), argv, host())).toEqual([]);
 	});
+
+	it("fails a first root the walk has no summary of", () => {
+		const r = report();
+		delete r.walk["/tree"];
+		expect(judge(r, plan(), argv, host())).toEqual(["the walk read no file of /tree"]);
+	});
+
+	it("reads a status as the proxy's only when it is the whole answer", () => {
+		const r = report();
+		r.httpProxy = { a: "ECONNRESET at 200", b: "200 then ECONNRESET", c: "half closed" };
+		r.socksProxy = { d: "reply 91", e: "no reply 5", f: "ECONNRESET in reply 5 x" };
+		expect(judge(r, plan(), argv, host())).toEqual([
+			"the HTTP proxy never answered a: ECONNRESET at 200",
+			"the HTTP proxy never answered b: 200 then ECONNRESET",
+			"the HTTP proxy never answered c: half closed",
+			"the SOCKS proxy never answered for e: no reply 5",
+			"the SOCKS proxy never answered for f: ECONNRESET in reply 5 x",
+		]);
+	});
 });
 
 describe("judge's read roots", () => {
@@ -238,6 +274,7 @@ describe("walked", () => {
 		r.walk["/usr"].matches = [
 			{ kind: "jwt", path: "/usr/lib/a" },
 			{ kind: "canary", path: "/usr/lib/b" },
+			{ kind: "anthropic key", path: "/usr/lib/e" },
 		];
 		r.walk["/tree"].matches = [{ kind: "github token", path: "/tree/c" }];
 		expect(walked(r, plan())).toEqual([
@@ -247,7 +284,8 @@ describe("walked", () => {
 			"/tree holds a github token shape in /tree/c",
 			"/usr holds a jwt shape in /usr/lib/a",
 			"/usr holds a canary shape in /usr/lib/b",
-			"token shapes listed in 1 public roots: 1",
+			"/usr holds a anthropic key shape in /usr/lib/e",
+			"token shapes listed in 1 public roots: 2",
 		]);
 	});
 });
@@ -294,10 +332,198 @@ describe("tokenShapes", () => {
 			jwt: `eyJ${"a".repeat(9)}.eyJ${"a".repeat(10)}.${"a".repeat(10)}`,
 			"private key": "-----BEGIN RSA PUBLIC KEY-----",
 		};
+		for (const short of [
+			`eyJ${"a".repeat(10)}.eyJ${"a".repeat(9)}.${"a".repeat(10)}`,
+			`eyJ${"a".repeat(10)}.eyJ${"a".repeat(10)}.${"a".repeat(9)}`,
+		])
+			expect(tokenShapes.jwt.test(short), short).toBe(false);
 		expect(Object.keys(tokenShapes).sort()).toEqual(Object.keys(samples).sort());
 		for (const [kind, shape] of Object.entries(tokenShapes)) {
 			expect(shape.test(samples[kind]), kind).toBe(true);
 			expect(shape.test(short[kind]), kind).toBe(false);
 		}
+	});
+});
+
+describe("unfinished", () => {
+	const done = { exitCode: 0, signal: undefined, timedOut: false, truncated: false };
+
+	it("passes a probe that exited 0 in time with its whole output", () => {
+		expect(unfinished(done)).toBeUndefined();
+	});
+
+	it("names a probe that exited non-zero, was killed, timed out or was cut", () => {
+		expect(unfinished({ ...done, exitCode: 2 })).toBe(
+			"the containment probe did not finish: exit 2, timed out false, cut false",
+		);
+		expect(unfinished({ ...done, exitCode: undefined, signal: "SIGKILL" })).toBe(
+			"the containment probe did not finish: exit SIGKILL, timed out false, cut false",
+		);
+		expect(unfinished({ ...done, timedOut: true })).toBe(
+			"the containment probe did not finish: exit 0, timed out true, cut false",
+		);
+		expect(unfinished({ ...done, truncated: true })).toBe(
+			"the containment probe did not finish: exit 0, timed out false, cut true",
+		);
+	});
+});
+
+describe("observeHost", () => {
+	let root;
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("lists each readable path with the way to what the policy reaches, and removes each refused write it finds", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-observe-"));
+		const home = join(root, "home");
+		mkdirSync(join(home, "runner", "work"), { recursive: true });
+		mkdirSync(join(home, "melian"));
+		const refused = join(root, "refused");
+		const writable = join(root, "writable");
+		writeFileSync(refused, "x");
+		writeFileSync(writable, "x");
+		const plan = {
+			read: [home, join(root, "missing")],
+			write: [writable, refused, join(root, "absent")],
+			writable: [writable],
+		};
+		const host = observeHost(plan, [join(home, "runner", "work"), join(root, "elsewhere")]);
+		expect({ ...host, names: { [home]: [...host.names[home]].sort() } }).toEqual({
+			names: { [home]: ["melian", "runner"] },
+			passages: { [home]: ["runner"] },
+			written: [refused],
+		});
+		expect(existsSync(refused)).toBe(false);
+		expect(existsSync(writable)).toBe(true);
+	});
+
+	it("reads the way to each reached path under the root", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-observe-"));
+		const host = observeHost({ read: ["/"], write: [], writable: [] }, ["/usr/lib", "/tmp/x"]);
+		expect(host.passages).toEqual({ "/": ["usr", "tmp"] });
+	});
+
+	it("leaves a host that holds a listing beyond the passages for judge to fail", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-observe-"));
+		mkdirSync(join(root, "runner"));
+		mkdirSync(join(root, "melian"));
+		const p = { ...plan(), read: [root], readable: [] };
+		const r = { ...report(), reads: { [root]: "listed" }, listings: { [root]: ["runner", "melian"] } };
+		const host = observeHost({ ...p, write: [], writable: [] }, [join(root, "runner", "x")]);
+		expect(judge(r, p, argv, host)).toEqual([`${root} lists 1 of the host's entries`]);
+	});
+});
+
+describe("outcome", () => {
+	it("exits 0 with one line only when judge found nothing", () => {
+		expect(outcome([])).toEqual({ code: 0, lines: ["every route tried is shut"] });
+	});
+
+	it("exits 1 and names each failure, a canary found or a write that reached the host", () => {
+		expect(outcome(["/canary read as canary", "the probe's write to /tmp/x reached the host"])).toEqual({
+			code: 1,
+			lines: [
+				"not contained: /canary read as canary",
+				"not contained: the probe's write to /tmp/x reached the host",
+			],
+		});
+	});
+});
+
+describe("main", () => {
+	it("fails, and opens no probe, when the sandbox cannot run", async () => {
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		try {
+			const open = vi.fn();
+			const probes = { availability: async () => ({ available: false, reason: "bubblewrap is missing" }), open };
+			await expect(main(probes)).resolves.toBe(1);
+			expect(log.mock.calls).toEqual([["probes cannot run here: bubblewrap is missing"]]);
+			expect(open).not.toHaveBeenCalled();
+		} finally {
+			log.mockRestore();
+		}
+	});
+});
+
+// The step itself, run as CI and the round job run it. MELIAN_PROBE_SANDBOX=1 makes a missing sandbox fail this test.
+const availability = await Probe.availability();
+const required = process.env.MELIAN_PROBE_SANDBOX === "1";
+describe.runIf(process.platform === "linux" && (availability.available || required))("the containment step", () => {
+	it("shuts every route on this machine, and prints each line a reader of the log needs", { timeout: 600_000 }, () => {
+		const run = spawnSync(
+			process.execPath,
+			["--conditions=@melian-agent/source", "scripts/round-probe-containment.mjs"],
+			{
+				cwd: join(import.meta.dirname, ".."),
+				encoding: "utf8",
+				timeout: 540_000,
+			},
+		);
+		const lines = run.stdout.trim().split("\n");
+		expect(lines.filter((line) => line.startsWith("not contained:"))).toEqual([]);
+		expect(run.status).toBe(0);
+		const kinds = lines
+			.map(
+				(line) =>
+					/^(\/sys|token shapes listed|environment|processes visible|tcp|http proxy|socks proxy|ipc|reads|writes|every route tried is shut)\b/.exec(
+						line,
+					)?.[1],
+			)
+			.filter((kind) => kind !== undefined);
+		expect(kinds).toEqual([
+			"/sys",
+			"token shapes listed",
+			"environment",
+			"processes visible",
+			"tcp",
+			"http proxy",
+			"socks proxy",
+			"ipc",
+			"reads",
+			"writes",
+			"every route tried is shut",
+		]);
+		expect(
+			lines.filter((line) => / files, \d+ directories, \d+ unreadable, \d+ bytes read$/.test(line)).length,
+		).toBeGreaterThan(0);
+	});
+});
+
+describe("loginNames", () => {
+	it("names every login the round job holds in its environment", () => {
+		const workflow = readFileSync(
+			join(import.meta.dirname, "..", ".github", "workflows", "melian-round.yml"),
+			"utf8",
+		);
+		expect(loginNames).toEqual([
+			"CLAUDE_CODE_OAUTH_TOKEN",
+			"MELIAN_CODEX_ACCESS_TOKEN",
+			"GITHUB_TOKEN",
+			"ACTIONS_RUNTIME_TOKEN",
+		]);
+		for (const name of loginNames.slice(0, 2)) expect(workflow, name).toContain(name);
+	});
+});
+
+describe("recording", () => {
+	it("forwards every call to the sandbox, and records each command line", async () => {
+		const calls = [];
+		const sandbox = {
+			platform: "linux",
+			kind: "fake",
+			unavailable: () => "no bwrap",
+			open: async () => calls.push("open"),
+			wrap: async (command) => [command, "wrapped"],
+			cleanup: () => calls.push("cleanup"),
+			close: async () => calls.push("close"),
+		};
+		const argv = [];
+		const wrapped = recording(sandbox, argv);
+		expect([wrapped.platform, wrapped.kind, wrapped.unavailable()]).toEqual(["linux", "fake", "no bwrap"]);
+		await wrapped.open();
+		expect(await wrapped.wrap("sh", {})).toEqual(["sh", "wrapped"]);
+		wrapped.cleanup();
+		await wrapped.close();
+		expect(calls).toEqual(["open", "cleanup", "close"]);
+		expect(argv).toEqual([["sh", "wrapped"]]);
 	});
 });

@@ -3673,6 +3673,77 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "untrusted-writer" }]);
 	});
 
+	it("checks no level above one triage did not choose quick for", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			...options,
+			decider: new RecordedDecider(
+				{ triage: { version: "1", answers: { "trust-boundary": { distribution: { careful: 1 } } } } },
+				{ name: "recorded" },
+			),
+			lens: probingWith({}),
+			config: {
+				...options.config,
+				lenses: { "trust-boundary": { level: { floor: "quick", ceiling: "deep" } } },
+			},
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "ran", level: "careful" });
+		expect(gaps).toEqual([]);
+	});
+
+	it("fails a level that cannot probe when the host takes no gaps", async () => {
+		const { run } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "deep" });
+	});
+
+	it("fails a level whose prober's probe could not run when the host takes no gaps", async () => {
+		const base = unconfinedSandbox();
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
+			{
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+			},
+		);
+		expect((await settled(run)).status).toBe("failed");
+	});
+
+	it("fails as the lens failed when its task ended with no result", async () => {
+		const aborted: ScriptedReply = async () => {
+			const root = await harness!.harness.root(backgroundContext);
+			const index = await harness!.harness.snapshot(ReviewIndex, root.id, backgroundContext);
+			await harness!.harness.abortTask(Object.values(index!.reviews)[0]!.task as TaskId, backgroundContext);
+			return fauxAssistantMessage("Reported 0 findings.");
+		};
+		const { run } = await review(
+			{ planner: [], prober: [], others: [{ match: reviewer, replies: [aborted] }] },
+			{ lens: (lens) => lens, requireProbes: true, probeGap: () => {} },
+		);
+		await expect(run).rejects.toMatchObject({ code: "lensFailed" });
+	});
+
 	it("fails a quick level whose escalation would run without probes, before it runs", async () => {
 		const fake = createFakeModels();
 		const gaps: unknown[] = [];

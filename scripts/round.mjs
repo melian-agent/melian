@@ -373,7 +373,7 @@ export class RoundComment {
 			mergeBase,
 			reviewed,
 			current,
-			unprobed: probeGapChecks(probeGaps === undefined ? "" : readOr(probeGaps, "")),
+			unprobed: probeGapChecks(readOr(probeGaps, "")),
 		});
 	}
 

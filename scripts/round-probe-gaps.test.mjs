@@ -88,4 +88,18 @@ describe("round-probe-gaps", () => {
 			rmSync(directory, { recursive: true, force: true });
 		}
 	});
+
+	it("prints nothing when another module imports it", () => {
+		const imported = spawnSync(
+			process.execPath,
+			[
+				"--conditions=@melian-agent/source",
+				"--input-type=module",
+				"-e",
+				'await import("./scripts/round-probe-gaps.mjs");',
+			],
+			{ encoding: "utf8" },
+		);
+		expect([imported.status, imported.stdout]).toEqual([0, ""]);
+	});
 });
