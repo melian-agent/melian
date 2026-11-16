@@ -16,18 +16,21 @@ import {
 import {
 	type CheckRun,
 	type CheckRunRecord,
+	checksExtension,
 	backgroundContext as context,
 	createMemoryStorage,
+	createNodeExecutionEnv,
 	createReviewRegistry,
 	type Harness,
 	openHarness,
 	RecordedRound,
 	reviewChangeset,
+	runChecks,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { replaceCheckFindings } from "../src/findings.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 // Text an earlier build stored from Biome's output, which the head's tree does not hold, such as a login it led Biome to
@@ -89,7 +92,7 @@ const current = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.eno
 // One review of the fixture, after the host's store already holds Biome's sighting of the revision, holding `text`.
 async function review(
 	store: MemoryRecordStore,
-	run: { readonly checkRun?: CheckRun } = {},
+	run: { readonly checkRun?: CheckRun; readonly asMade?: true } = {},
 	text: string | undefined = token,
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
@@ -122,7 +125,21 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => name === "correctness" || name === "contracts"),
 		standards: [],
 		models: fake.review,
-		...(run.checkRun === undefined ? { checks } : { checkRun: run.checkRun }),
+		...(run.checkRun === undefined
+			? { checks }
+			: run.asMade
+				? { checkRun: run.checkRun }
+				: // A run built here names this review's revision, so only its proof is in question.
+					{
+						checkRun: {
+							...run.checkRun,
+							identity: {
+								...run.checkRun.identity,
+								base: changeset.revision.base,
+								head: changeset.revision.head,
+							},
+						},
+					}),
 		records: store,
 	});
 	const stored = await store.list(changeset.id);
@@ -172,5 +189,43 @@ describe("a static check's sightings, exported from a run that does not prove th
 		expect(reviewed.verdict.status).toBe("findings");
 		expect(verdict.status).toBe("not-reviewed");
 		expect(verdict.notRun.map(({ name }) => name)).toContain("static.biome");
+	});
+});
+
+describe("a check run made in this process for another revision", () => {
+	it("is refused by a review of this one, so neither its records nor its proof stand for checks never run here", async () => {
+		gitIn(repo, "checkout", "--quiet", "-b", "other");
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "other");
+		gitIn(repo, "checkout", "--quiet", "feature");
+		const fake = createFakeModels();
+		const registry = createReviewRegistry();
+		registry.install(checksExtension);
+		const elsewhere = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			env: () => createNodeExecutionEnv(repo),
+		});
+		try {
+			const config: MelianConfig = { ...defaultConfig, tiers: twoLensTiers };
+			const run = await runChecks(
+				elsewhere,
+				{
+					rootConversationId: (await elsewhere.root(context, { agent: { model: fake.ref() } })).id,
+					changeset: await Changeset.resolve(repo, "main...other"),
+					config,
+					source: { kind: "revision", commit: gitIn(repo, "rev-parse", "main") },
+					tier: "full",
+				},
+				context,
+			);
+			const store = new MemoryRecordStore({ payloads: reviewPayloads });
+
+			await expect(review(store, { checkRun: run, asMade: true })).rejects.toMatchObject({
+				code: "foreignCheckRun",
+			});
+			expect(bytes(await store.list((await Changeset.resolve(repo, "main...feature")).id))).not.toContain(token);
+		} finally {
+			await elsewhere.close(context);
+		}
 	});
 });

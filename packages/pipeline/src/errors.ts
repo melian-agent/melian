@@ -81,6 +81,7 @@ export type ReviewErrorCode =
 	| "verifierFailed"
 	| "allModelsFailed"
 	| "adjudicationFailed"
+	| "foreignCheckRun"
 	| "superseded";
 
 /**
