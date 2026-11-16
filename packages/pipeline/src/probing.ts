@@ -98,14 +98,14 @@ export const probeEvidenceWording = Object.freeze({
 
 /**
  * The bytes of probe evidence one verifier is shown, over every claim of its candidate: well under the context of every
- * model the committed verifier route accepts, as `test/probe-evidence-budget.test.ts` checks against the catalogue.
+ * model the committed verifier route accepts, as `test/probe-evidence-bound.test.ts` checks against the catalogue.
  */
 export const probeEvidenceBudget = 128 * 1024;
 
 /**
  * Every fixed wording a verifier reads of probe evidence Melian cut to fit {@link probeEvidenceBudget}. The verifier's
- * version does not hash it, so adding it judged no stored claim again: a verification's request keys it, with the
- * budget, only when its candidates carry probe evidence.
+ * version does not hash it, so adding it judged no stored claim again: a verification's request keys the cut evidence
+ * of each candidate it cut, which holds this wording as rendered.
  */
 export const probeEvidenceCutWording = Object.freeze({
 	marker: "[Melian cut {bytes} bytes here]",
