@@ -162,10 +162,11 @@ describe("verificationRequest", () => {
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
 // that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #493 changed the shared
 // evidence wording on purpose, for a probe that ended with no record of how and one that exited 125, so these values moved.
+// Issue #481 keys each shown dismissal's record, and the sample shows one, so the key moved again; the version did not.
 describe("a verification no probe evidence reaches", () => {
-	it("keeps the key and the verifier's version main gave it", () => {
+	it("keeps the verifier's version main gave it, and the key the dismissal record gives it", () => {
 		expect(verifierVersion).toBe("c458134278f8c3ab");
-		expect(verificationRequest(sample).key).toBe("3fd4e7e3989d48157fa7a7d4027588f3ff738ccf74773b3fe335cf075d0518d8");
+		expect(verificationRequest(sample).key).toBe("28a6f54b68f3a7a1f5217ad83f5c8d5462c6087f20a6538192239555182afee5");
 	});
 });
 
