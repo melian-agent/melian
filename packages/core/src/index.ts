@@ -275,9 +275,14 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export {
+	type FallbackEntry,
+	fallbackEntry,
+	fallbackModel,
+	fallbackThinking,
 	type ModelReference,
 	parseModelReference,
 	type ResolvedModelRoute,
+	type RoutedModel,
 	resolveModelForTier,
 	resolveModelRoute,
 } from "./models.ts";

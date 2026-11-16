@@ -46,12 +46,14 @@ const levelBand = Type.Object(
 	{ floor: Type.Optional(Type.Union([Type.Literal("skip"), scrutinyLevel])), ceiling: Type.Optional(scrutinyLevel) },
 	strict,
 );
+// A fallback names its model, or its model and the level it runs at in place of the route's.
+const fallback = Type.Union([name, Type.Object({ model: name, thinking: Type.Optional(thinkingLevelSchema) }, strict)]);
 // `accept`, `unavailable`, and `acceptOverridden` are policy: only a committed melian.yaml may set them.
 const modelRoute = Type.Object(
 	{
 		model: Type.Optional(name),
 		thinking: Type.Optional(thinkingLevelSchema),
-		fallbacks: Type.Optional(Type.Array(name)),
+		fallbacks: Type.Optional(Type.Array(fallback)),
 		accept: Type.Optional(Type.Array(name)),
 		unavailable: Type.Optional(Type.Union([Type.Literal("derive"), Type.Literal("fail")])),
 		acceptOverridden: Type.Optional(Type.Boolean()),
@@ -338,7 +340,8 @@ export const modelTiers: readonly ModelTier[] = ["light", "medium", "heavy", "de
 export type RuleAlias = readonly string[] | { readonly rules: readonly string[]; readonly distinct?: boolean };
 
 /**
- * A model and the models to try, in order, when it fails; with `accept`, the models that satisfy the tier, and what to
+ * A model and the models to try, in order, when it fails, each at the route's `thinking` unless its entry names its own;
+ * with `accept`, the models that satisfy the tier, and what to
  * do when none of them has credentials, `unavailable`, `derive` by default. `acceptOverridden: false` refuses a check
  * that would run on the tier outside `accept`.
  */

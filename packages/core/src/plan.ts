@@ -8,7 +8,7 @@ import {
 	type RouteLineage,
 } from "./config.ts";
 import { defaultScrutinyLevel, type Lens, type ScrutinyLevel, scrutinyLevels } from "./lens.ts";
-import { parseModelReference } from "./models.ts";
+import { type FallbackEntry, fallbackEntry, fallbackModel, fallbackThinking, parseModelReference } from "./models.ts";
 import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
@@ -48,8 +48,11 @@ export interface PlanInput {
 export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable" | "refused";
 
 // Type aliases with mutable arrays: the plan is stored as JSON in a durable task's input.
-/** One model of a tier's route, and where its credentials come from, or `none`. */
-export type PlannedModel = { model: string; credential: string; family?: string };
+/**
+ * One model of a tier's route, and where its credentials come from, or `none`. `thinking` is the level its fallback entry
+ * names in place of the route's; absent, it runs at the route's level, as every model of an older plan does.
+ */
+export type PlannedModel = { model: string; credential: string; family?: string; thinking?: ModelRoute["thinking"] };
 
 /** One route of a {@link ReviewPlan}, a tier's or a lens's, as stored. */
 export type PlannedRoute = {
@@ -306,7 +309,9 @@ export class ReviewPlan {
 		const { at, policy, effective, flag } = source;
 		const tier = source.tier;
 		const parse = (name: string) => parseModelReference(name, tier, at);
-		const accept = policy?.accept ?? (policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? [])]);
+		const accept =
+			policy?.accept ??
+			(policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)]);
 		const wanted = policy?.model;
 		let by: string | undefined;
 		let route: readonly string[];
@@ -314,12 +319,16 @@ export class ReviewPlan {
 			route = [flag];
 			by = "--model";
 		} else if (effective?.model !== undefined) {
-			route = [effective.model, ...(effective.fallbacks ?? [])];
+			route = [effective.model, ...(effective.fallbacks ?? []).map(fallbackModel)];
 			by = source.overridden;
 		} else {
-			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? [])])];
+			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? []).map(fallbackModel)])];
 			by = source.overridden;
 		}
+		// The level each model runs at: its fallback entry's own, else the route's. `--model` runs at the route's.
+		const levelIn = (routed: ModelRoute | undefined, model: string) =>
+			ReviewPlan.ownLevel(routed, model) ?? routed?.thinking;
+		const own = (model: string) => (flag === undefined ? ReviewPlan.ownLevel(effective, model) : undefined);
 		for (const name of [...route, ...accept]) parse(name);
 		const entry = (name: string) => {
 			const { provider, modelId } = parse(name);
@@ -331,10 +340,13 @@ export class ReviewPlan {
 				model,
 				credential: credentials[parse(model).provider] ?? "none",
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
+				...(own(model) === undefined ? {} : { thinking: own(model) }),
 			}));
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>
-			name === policy?.model || policy?.fallbacks?.includes(name) === true || accept.includes(name);
+			name === policy?.model ||
+			policy?.fallbacks?.some((each) => fallbackModel(each) === name) === true ||
+			accept.includes(name);
 		for (const [name, source] of [
 			...route.map((each): [string, string] => [each, committed(each) ? "melian.yaml" : (by ?? "melian.yaml")]),
 			...accept.map((each): [string, string] => [each, "melian.yaml"]),
@@ -406,7 +418,9 @@ export class ReviewPlan {
 			by = "derived";
 		}
 		if (policy?.acceptOverridden === false && accept.length > 0) {
-			const kept = chosen.filter((model) => !thinkingChanged && accept.includes(model));
+			// A fallback whose own level policy did not set runs outside policy, as one outside accept does.
+			const relevelled = (model: string) => (own(model) ?? effective?.thinking) !== levelIn(policy, model);
+			const kept = chosen.filter((model) => !thinkingChanged && accept.includes(model) && !relevelled(model));
 			if (kept.length === 0) {
 				return {
 					...base,
@@ -416,7 +430,9 @@ export class ReviewPlan {
 					outside: !accept.includes(chosen[0]!),
 					reason: thinkingChanged
 						? `${at}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
-						: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
+						: accept.includes(chosen[0]!)
+							? `${at}.acceptOverridden is false, and ${by ?? "its route"} runs ${chosen[0]} at thinking ${own(chosen[0]!) ?? effective?.thinking ?? "unset"}; committed policy wants ${levelIn(policy, chosen[0]!) ?? "unset"}`
+							: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
 				};
 			}
 			chosen = kept;
@@ -430,6 +446,14 @@ export class ReviewPlan {
 			...(by === undefined ? {} : { by }),
 			...(outside ? { outside } : {}),
 		};
+	}
+
+	// The level `model`'s fallback entry names in `route`, from the first entry that names the model; the route's own
+	// model has none of its own.
+	private static ownLevel(route: ModelRoute | undefined, model: string): ModelRoute["thinking"] {
+		if (route === undefined || route.model === model) return undefined;
+		const entry = (route.fallbacks ?? []).find((each: FallbackEntry) => fallbackModel(each) === model);
+		return entry === undefined ? undefined : fallbackThinking(entry);
 	}
 
 	// The same model from another provider with credentials, by name, preferring a name without a qualifier such as a
@@ -499,9 +523,13 @@ export class ReviewPlan {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
 		for (const { tier, status, models, thinking } of this.tiers) {
 			if (thinking !== undefined) routes[tier] = { thinking };
-			const [first, ...rest] = models.map((each) => each.model);
+			const [first, ...rest] = models;
 			if (first === undefined || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = { ...routes[tier], model: first, fallbacks: rest };
+			routes[tier] = {
+				...routes[tier],
+				model: first.model,
+				fallbacks: rest.map(({ model, thinking }) => fallbackEntry(model, thinking)),
+			};
 		}
 		return routes;
 	}
@@ -516,7 +544,17 @@ export class ReviewPlan {
 						.map((tier) => this.tier(tier))
 						.filter((tier) => tier.status === "routed")
 				: [own];
-		const models = [...new Map(tiers.flatMap((tier) => tier.models).map((model) => [model.model, model])).values()];
+		// A lens tier's model runs at verifier thinking, so a level its own fallback entry names stays with the lens tier.
+		const models = [
+			...new Map(
+				tiers
+					.flatMap((tier) => tier.models)
+					.map(({ thinking, ...model }) => [
+						model.model,
+						own.status === "unrouted" ? model : { ...model, ...(thinking === undefined ? {} : { thinking }) },
+					]),
+			).values(),
+		];
 		const family = [...this.tiers, ...this.lensRoutes]
 			.flatMap((route) => route.models)
 			.find((model) => model.model === finder)?.family;
