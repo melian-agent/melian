@@ -20,6 +20,7 @@ import {
 	type DocumentRecord,
 	defineDocFamily,
 	type EntryId,
+	type EntryRecord,
 	type Harness,
 	type JsonObject,
 	ROOT_CONVERSATION_ID,
@@ -27,9 +28,10 @@ import {
 	type TaskId,
 	UsageDoc,
 } from "./harness.ts";
-import { LensDocument } from "./lens-tools.ts";
+import { LensDocument, type LensPolicy } from "./lens-tools.ts";
 import { probeLimits } from "./probe.ts";
 import { ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
+import { ReviewTranscript } from "./review-coverage.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
@@ -131,6 +133,10 @@ export type Stage = {
 	role?: "planner" | "prober";
 	/** For a lens, where its stored policy let it look. */
 	coverage?: LensCoverage;
+	/** For a lens, the head path of each file whose diff its prompt carried whole; absent from a lens an older Melian created. */
+	shown?: string[];
+	/** For a lens, the head lines of each changed file that `read_file` delivered to it, as first and last line of each run. */
+	read?: { path: string; ranges: [number, number][] }[];
 	/**
 	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the attacks in the plan it was
 	 * given and the ones it skipped; and how each probe ended.
@@ -487,6 +493,25 @@ export class StageTelemetry {
 }
 
 /** Reads durable records without opening a harness or scheduler. */
+// The head lines `read_file` delivered for each changed file, as runs of consecutive lines; a search confers none.
+function delivered(records: readonly EntryRecord[], lens: LensPolicy): NonNullable<Stage["read"]> {
+	const { revision } = lens;
+	const paths = revision.files.map((file) => file.path);
+	const lines = new Map<string, Set<number>>();
+	for (const read of ReviewTranscript.from(records, lens.name, paths, revision.nonce).reads())
+		if (read.kind === "read" && read.revision === "head")
+			for (const line of read.lines) lines.set(read.path, (lines.get(read.path) ?? new Set()).add(line));
+	return [...lines].map(([path, numbers]) => {
+		const ranges: [number, number][] = [];
+		for (const line of [...numbers].sort((a, b) => a - b)) {
+			const last = ranges.at(-1);
+			if (last !== undefined && last[1] + 1 === line) last[1] = line;
+			else ranges.push([line, line]);
+		}
+		return { path, ranges };
+	});
+}
+
 export class TelemetryReader {
 	private readonly storage: Storage;
 
@@ -839,8 +864,10 @@ export class TelemetryReader {
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
 		// An answer without a duration leaves the wait unknown, so the stage reports none rather than a short one.
 		let modelMs: number | undefined = 0;
+		const records: EntryRecord[] = [];
 		let entries = await this.storage.scanEntries({ conversationId: id }, 200, undefined, context);
 		for (;;) {
+			records.push(...entries.items);
 			for (const entry of entries.items)
 				for (const message of entry.model ?? [])
 					if (message.role === "assistant")
@@ -851,6 +878,7 @@ export class TelemetryReader {
 			if (entries.next === undefined) break;
 			entries = await this.storage.scanEntries({ conversationId: id }, 200, entries.next, context);
 		}
+		const read = name !== "melian.lens" || policy?.lens === undefined ? [] : delivered(records, policy.lens);
 		return {
 			id: `conversation:${id}`,
 			name,
@@ -870,6 +898,8 @@ export class TelemetryReader {
 						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
 						...(role === undefined ? {} : { role }),
 						...(policy.lens?.coverage === undefined ? {} : { coverage: structuredClone(policy.lens.coverage) }),
+						...(policy.lens?.shown === undefined ? {} : { shown: [...policy.lens.shown] }),
+						...(read.length === 0 ? {} : { read }),
 						...(probes === undefined
 							? {}
 							: {

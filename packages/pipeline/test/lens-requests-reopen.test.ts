@@ -70,6 +70,26 @@ afterEach(async () => {
 });
 
 describe("a store main wrote before lens runs had request keys", () => {
+	it("reads each lens stage main wrote as showing nothing, since its policy names no shown files", async () => {
+		const storage = await openSqliteStorage(join(directory, "state.sqlite"));
+		try {
+			const stages = (await TelemetryReader.open(storage).read(recorded.revision)).stages.filter(
+				({ name }) => name === "melian.lens",
+			);
+
+			expect(stages.map(({ subject, outcome }) => [subject.split("@")[0], outcome]).sort()).toEqual([
+				["contracts", "completed"],
+				["correctness", "completed"],
+			]);
+			for (const stage of stages) {
+				expect(stage.coverage).toBeDefined();
+				expect(stage).not.toHaveProperty("shown");
+			}
+		} finally {
+			await storage.close();
+		}
+	});
+
 	it("asks each lens once on a repeat review, copying none of the version-6 task's runs", async () => {
 		expect([gitIn(repo, "rev-parse", "main"), gitIn(repo, "rev-parse", "feature")]).toEqual([
 			recorded.base,

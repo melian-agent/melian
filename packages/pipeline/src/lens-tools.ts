@@ -195,6 +195,9 @@ export type LensPolicy = {
 	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers, and the head
 	// path of each file the review moved out of them.
 	coverage: { scope: string; paths: string[]; nearer: string[]; moved?: string[] };
+	// The head path of each file whose diff the lens's prompt carried whole; absent from a prober, which reads the plan
+	// alone, and from a lens an older Melian created.
+	shown?: string[];
 	// The cache root and key of the head's verified Enola snapshot, which the graph tools read; absent when the review
 	// had none, and from a lens an older Melian created.
 	graph?: { root: string; parts: GraphKeyParts };
