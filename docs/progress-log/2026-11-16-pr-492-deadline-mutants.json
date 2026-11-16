@@ -1,0 +1,223 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "bc954a22cde51ad0a69fd3ccdeb5d750e66bb219",
+		"head": "8793e91f3eaaea5027ed0c67ddecca492047ebd3"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-tools.ts",
+		"packages/pipeline/src/mutation-enumeration.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 890,
+			"column": 19,
+			"endLine": 890,
+			"endColumn": 46,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "performance.now() - 120_000",
+			"status": "generated",
+			"id": "1829b5f3f2c0e297fd0f4b113847b1dba410672c832fa78a046eb1285794cf09",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"starts each listing's deadline when the call joins the queue, not when its turn comes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 891,
+			"column": 32,
+			"endLine": 891,
+			"endColumn": 79,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "784c2a0b5c7625fb4a0a54dbb574589f1f9fa644665f27f5458bc1da99f86a1e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 905,
+			"column": 43,
+			"endLine": 905,
+			"endColumn": 85,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9106db2bf55aa685c59923a9bdc39db654cfdf03039467d064f8480b8731f068",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 905,
+			"column": 50,
+			"endLine": 905,
+			"endColumn": 54,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "46424c197f64dbd935f5a4c37ccc6c24af3dd96dc493f3647582d0b6b39bc981",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 905,
+			"column": 67,
+			"endLine": 905,
+			"endColumn": 73,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "afa141694d39dfe0f44ebecc64a78740577885dc451cdd97074d5212e1ea5b21",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 441,
+			"column": 19,
+			"endLine": 441,
+			"endColumn": 102,
+			"mutatorName": "MethodExpression",
+			"replacement": "Math.max(options.deadline ?? Number.POSITIVE_INFINITY, performance.now() + 120_000)",
+			"status": "generated",
+			"id": "e8d6aa13f2bad98804849e172d7c55e3283490a5d3d96fc14662863c94a84b27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-enumeration.test.ts",
+					"path": [
+						"mutation enumeration",
+						"keeps its own 120 seconds when a caller's deadline is later"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 441,
+			"column": 28,
+			"endLine": 441,
+			"endColumn": 72,
+			"mutatorName": "LogicalOperator",
+			"replacement": "options.deadline && Number.POSITIVE_INFINITY",
+			"status": "generated",
+			"id": "e034ae622a5433dfa6769b978ccffca55bff09a3d9e63e4c5e88a86b60148c70",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-enumeration.test.ts",
+					"path": [
+						"mutation enumeration",
+						"at 1000 ms against a caller's deadline of 1000, starts work: false"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 441,
+			"column": 74,
+			"endLine": 441,
+			"endColumn": 101,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "performance.now() - 120_000",
+			"status": "generated",
+			"id": "61e8d8c2f07c26ec5e3b22b15b4f32120f2040973e18f1d50e7af1875f2da9e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-enumeration.test.ts",
+					"path": [
+						"mutation enumeration",
+						"at 999 ms against a caller's deadline of 1000, starts work: true"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/mutation-enumeration.ts",
+			"line": 442,
+			"column": 2,
+			"endLine": 442,
+			"endColumn": 26,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "c43b9c39592edef8599bd34a3b334278378f254fb788c6e3342653241544eb64",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/mutation-enumeration.test.ts",
+					"path": [
+						"mutation enumeration",
+						"at 1000 ms against a caller's deadline of 1000, starts work: false"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 9,
+	"omitted": 0,
+	"unmutated": []
+}
