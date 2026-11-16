@@ -628,11 +628,14 @@ describe("the fixed wording each role reads", () => {
 		expect(told.map(([name]) => name)).toEqual([]);
 	});
 
-	it("holds no wording in probing.ts outside its two tables, but in code that renders no prompt", () => {
+	it("holds no wording in probing.ts outside its three tables, but in code that renders no prompt", () => {
 		// The top-level declarations whose literals no planner, prober or verifier reads, each with why.
 		const notPrompts: Record<string, string> = {
 			probingWording: "is the table the planner's and prober's prompts take their wording from",
 			probeEvidenceWording: "is the table the verifier's version hashes",
+			probeEvidenceCutWording: "is the table a verification whose candidates carry probe evidence keys",
+			keepEnds: "names the encoding a cut counts bytes in",
+			probeEvidenceCutRendering: "renders a cut over fixed samples for a probing verification's key",
 			ProbingDocument: "names a stored document",
 			ProbeReruns: "names a stored document",
 			boundedHead: "runs git and says why the head is too large",

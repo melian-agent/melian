@@ -28,14 +28,18 @@ import {
 	verifierInjectionPolicy,
 } from "./lens-tools.ts";
 import {
+	boundProbeEvidence,
 	type ClaimProbe,
+	type ProbeEvidence,
 	ProbeReruns,
 	type ProbeRun,
 	probeClaimKey,
+	probeEvidenceBudget,
+	probeEvidenceCutRendering,
+	probeEvidenceCutWording,
 	probeEvidenceWording,
 	probeFailed,
 	probingWording,
-	renderProbeEvidence,
 	rerunKey,
 	type StoredProbeResult,
 } from "./probing.ts";
@@ -450,7 +454,7 @@ function verifierPrompt(
 	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
 	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
 	dismissed: readonly { label: string; id: string }[],
-	evidence: readonly { label: string; probe: Omit<ClaimProbe, "environment">; again: ProbeRun | undefined }[],
+	evidence: readonly ProbeEvidence[],
 	nonce: string,
 ): string {
 	return [
@@ -466,7 +470,7 @@ function verifierPrompt(
 				]),
 		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
 		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
-		...evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, nonce)),
+		...boundProbeEvidence(evidence, nonce),
 	].join("\n\n");
 }
 
@@ -548,8 +552,8 @@ export function waveVersion(version: string): string {
 /**
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
  * nonce, which is drawn afresh on every review, and the outcomes it reuses. It holds each candidate by its identity, the
- * fixed text the verifier is given beyond its version, and `reruns`, the probe reruns this review read, which the
- * verifier is shown.
+ * fixed text the verifier is given beyond its version, `evidence`, how its probe evidence is cut to fit, when its
+ * candidates carry any, and `reruns`, the probe reruns this review read, which the verifier is shown.
  */
 export function verificationRequest(
 	{
@@ -563,6 +567,9 @@ export function verificationRequest(
 	}: VerificationInput,
 	reruns: Record<string, ProbeRun> = {},
 ): KeyedRequest<RecordJson> {
+	const probing = candidates.some(({ state, probes }) =>
+		state.claims.some((claim) => probes?.[probeClaimKey(claim)] !== undefined),
+	);
 	return KeyedRequest.of(
 		"verification",
 		requestJson({
@@ -570,6 +577,16 @@ export function verificationRequest(
 			revision,
 			candidates: candidates.map(candidateIdentity),
 			text: verifierText(),
+			// Only a verifier shown probe evidence can read a cut, so only its key holds how one is made.
+			...(probing
+				? {
+						evidence: {
+							budget: probeEvidenceBudget,
+							wording: probeEvidenceCutWording,
+							rendering: probeEvidenceCutRendering(),
+						},
+					}
+				: {}),
 			reruns,
 		}),
 		{ nonce },

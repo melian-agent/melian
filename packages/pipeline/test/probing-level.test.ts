@@ -45,7 +45,15 @@ import type { TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
-import { headTreeLimits, ProbeReruns, probingHost, probingLimits, probingWording } from "../src/probing.ts";
+import {
+	headTreeLimits,
+	ProbeReruns,
+	probeEvidenceBudget,
+	probeEvidenceCutWording,
+	probingHost,
+	probingLimits,
+	probingWording,
+} from "../src/probing.ts";
 import { Predecessors } from "../src/restatement.ts";
 import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -333,6 +341,38 @@ describe("a level that probes", () => {
 		expect(requests[prober]).toHaveLength(3);
 		expect(lastResults(requests[prober]![1]!)).toMatch(/probe p[0-9]+ failed: it exited 1, so it shows the defect/);
 		expect(lastResults(requests[prober]![1]!)).toContain(`<untrusted-`);
+	});
+
+	// Issue #357: a probe past the evidence budget is cut in the verifier's prompt alone. Its rerun reads the stored probe
+	// whole, so the probe fails again only because its file still holds every byte the prober wrote.
+	it("cuts a probe past the evidence budget in the verifier's prompt, and runs it again from the whole record", async () => {
+		const bytes = probingLimits.fileBytes;
+		const script = `${failing.replace(
+			'text === "LEAK"',
+			`text === "LEAK" && readFileSync("pad.txt").length === ${bytes}`,
+		)}// ${"y".repeat(probingLimits.script - failing.length - 200)}\n`;
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script, files: [{ path: "pad.txt", text: "z".repeat(bytes) }] }),
+				(messages) => call("report_finding", finding(/probe (p[0-9]+)/.exec(lastResults(messages))![1]!)),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["confirmed"]);
+		const judged = systemPromptOf(requests["Melian adversarial verifier"]![0]!);
+		expect(judged).toContain("When Melian ran it again it failed, exiting 1.");
+		expect(judged).toMatch(
+			new RegExp(
+				`Melian cut this claim's evidence to fit the ${probeEvidenceBudget} bytes of probe evidence a verifier is shown: file 1, cut by \\d+ of its ${bytes} bytes\\. `,
+			),
+		);
+		// The script is shorter than what the cut keeps of the file, so it renders whole.
+		expect(judged).toContain(script.slice(-100));
+		expect(judged).toContain(probeEvidenceCutWording.conclude);
+		const evidence = judged.slice(judged.indexOf("## Claim c1's probe"), judged.lastIndexOf("\n</instructions>"));
+		expect(Buffer.byteLength(evidence)).toBeLessThanOrEqual(probeEvidenceBudget);
 	});
 
 	it("refuses a finding whose probe passed, so a probe that shows nothing reports nothing", async () => {

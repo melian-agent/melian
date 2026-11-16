@@ -1,7 +1,14 @@
 import { KeyedRequest } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
-import { probeEvidenceWording } from "../src/probing.ts";
+import {
+	type ClaimProbe,
+	probeClaimKey,
+	probeEvidenceBudget,
+	probeEvidenceCutRendering,
+	probeEvidenceCutWording,
+	probeEvidenceWording,
+} from "../src/probing.ts";
 import {
 	candidateKey,
 	type VerificationCandidate,
@@ -160,6 +167,62 @@ describe("verificationRequest's probe evidence", () => {
 			rests("c2", "failed, exiting 1", "Melian could not run it again; why is in the probe's block below."),
 		);
 		expect(text.prompt).toContain(rests("c3", "passed, exiting 0", "When Melian ran it again it failed, exiting 1."));
+	});
+});
+
+describe("verificationRequest's cut of probe evidence", () => {
+	const probe: ClaimProbe = {
+		id: "p7",
+		attack: 1,
+		environment: {
+			writer: { trusted: true, by: "reviewer" },
+			trustWriters: true,
+			read: [],
+			host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
+		},
+		plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
+		probe: {
+			attack: 1,
+			script: "S",
+			files: [],
+			result: { exitCode: 1, signal: null, output: "", truncated: false, timedOut: false },
+			milliseconds: 5,
+		},
+	};
+	const claim = candidate.state.claims[0]!;
+	const probed = (probes: Record<string, ClaimProbe>): VerificationInput => ({
+		...sample,
+		candidates: [{ ...candidate, probes }],
+	});
+
+	// Issue #357: a verifier shown probe evidence may read a cut of it, so its key holds how a cut is made. A verifier
+	// shown none reads no cut, and its key stays as it was before cuts existed.
+	it("keys the budget, the cut wording and a cut's rendering only when a candidate's claim carries probe evidence", () => {
+		const evidence = verificationRequest(probed({ [probeClaimKey(claim)]: probe })).request;
+		expect(evidence).toHaveProperty("evidence", {
+			budget: probeEvidenceBudget,
+			wording: probeEvidenceCutWording,
+			rendering: probeEvidenceCutRendering(),
+		});
+		expect(verificationRequest(sample).request).not.toHaveProperty("evidence");
+		const unclaimed = verificationRequest(probed({ "another claim": probe }));
+		expect(unclaimed.request).not.toHaveProperty("evidence");
+	});
+
+	it("renders a cut of every part a model or the head wrote in the rendering it keys", () => {
+		const rendering = probeEvidenceCutRendering();
+		for (const part of [
+			probeEvidenceCutWording.plan,
+			probeEvidenceCutWording.script,
+			"file 1",
+			"file 2",
+			probeEvidenceCutWording.proberRan,
+			probeEvidenceCutWording.refused,
+			probeEvidenceCutWording.melianRan,
+		])
+			expect(rendering).toMatch(new RegExp(`[:;] ${part}, cut by (\\d+) of its \\1 bytes[;.]`));
+		expect(rendering).toContain(probeEvidenceCutWording.conclude);
+		expect(rendering).toContain("[Melian cut 1 bytes here]");
 	});
 });
 
