@@ -1407,6 +1407,89 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden(), [merged(20, 40)()])).toMatchObject({ recall: 1 });
 	});
 
+	it("places a merged speaker's own claim by the speaker's place, and a member's by its cause, through its end line", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [{ ...comment!, source: "lens.tests", lines: [10, 12] as [number, number] }],
+			},
+		};
+		const cause = (startLine: number, endLine?: number) => ({
+			file: comment!.file,
+			startLine,
+			...(endLine === undefined ? {} : { endLine }),
+			role: "cause" as const,
+			revision: "head" as const,
+			snippet: "user.name",
+		});
+		const placed = (location: number, own: number) => {
+			const speaker = Finding.create({
+				rule: comment!.rule,
+				file: comment!.file,
+				startLine: location,
+				discriminator: "user",
+				message: "The user can be null.",
+				severity: "P1",
+				cause: comment!.cause,
+				source: { check: "lens.tests", version: "v" },
+				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+			});
+			return Finding.from({
+				...speaker.toJSON(),
+				properties: {
+					...speaker.properties,
+					otherClaims: [
+						{
+							id: speaker.id,
+							ruleId: comment!.rule,
+							source: { check: "lens.tests", version: "v" },
+							evidence: [cause(own)],
+						},
+						{
+							id: "other",
+							ruleId: "wrong-result",
+							source: { check: "lens.correctness", version: "v" },
+							evidence: [cause(own)],
+						},
+					],
+				},
+			});
+		};
+		expect(scoreGolden(golden, [placed(11, 30)])).toMatchObject({ found: 1, recall: 1 });
+		expect(scoreGolden(golden, [placed(30, 11)])).toMatchObject({ found: 0, recall: 0 });
+		const member = (start: number, end: number) => {
+			const speaker = Finding.create({
+				rule: "wrong-result",
+				file: comment!.file,
+				startLine: 30,
+				discriminator: "user",
+				message: "The user can be null.",
+				severity: "P1",
+				cause: comment!.cause,
+				source: { check: "lens.correctness", version: "v" },
+				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
+			});
+			return Finding.from({
+				...speaker.toJSON(),
+				properties: {
+					...speaker.properties,
+					otherClaims: [
+						{
+							id: "tests",
+							ruleId: comment!.rule,
+							source: { check: "lens.tests", version: "v" },
+							evidence: [cause(start, end)],
+						},
+					],
+				},
+			});
+		};
+		expect(scoreGolden(golden, [member(5, 10)])).toMatchObject({ recall: 1 });
+		expect(scoreGolden(golden, [member(5, 9)])).toMatchObject({ recall: 0 });
+	});
+
 	it("answers no expectation in another file through a merged claim's cause there, so one claim counts once", () => {
 		const [comment] = nullDeref!.expected.comments;
 		const golden = {
