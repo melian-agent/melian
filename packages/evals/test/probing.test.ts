@@ -1288,6 +1288,60 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			git(repo, "checkout", "--quiet", "-b", "hunks", "feature");
+			const path = join(repo, at.file);
+			const text = readFileSync(path, "utf8").split("\n");
+			// Head-side hunks at 30, 50-52, and a deletion of line 70, which the head holds as none after line 69.
+			text[29] = "# changed 30";
+			for (const line of [49, 50, 51]) text[line] = `# changed ${line + 1}`;
+			text.splice(69, 1);
+			writeFileSync(path, text.join("\n"));
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "hunks");
+			const head = git(repo, "rev-parse", "hunks");
+			const shown = ran([], {
+				telemetry: new StageTelemetry("base..head", [{ ...paid.stages[0]!, shown: [at.file] }]),
+			});
+			const cases: [string, [number, number], string][] = [
+				["one-line hunk", [30, 30], "missed"],
+				["before one-line hunk", [29, 29], "unadjudicated"],
+				["after one-line hunk", [31, 31], "unadjudicated"],
+				["hunk's first line", [50, 50], "missed"],
+				["hunk's last line", [52, 52], "missed"],
+				["before hunk", [49, 49], "unadjudicated"],
+				["after hunk", [53, 53], "unadjudicated"],
+				["deletion", [69, 70], "unadjudicated"],
+			];
+			const range = vi.fn(async () => shown);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, missed]) => ({ name, repo, base, head, ...at, lines: missed })),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, [first, last], said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${first}-${last} of it`
+							: said
+					}, ${shown.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review or one it could not score", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {

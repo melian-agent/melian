@@ -302,8 +302,9 @@ export class Miss {
 	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
 	 * conversation, other than a prober, whose stored coverage holds the miss's file, and which its prompt showed the
 	 * file's diff whole, or `read_file` delivered it the miss's lines, or any line of the file for a miss without lines.
+	 * The diff has no context lines, so it shows a miss's lines only where a head-side hunk of `target`'s diff holds them.
 	 */
-	unscoped(run: Pick<RangeRun, "telemetry">): string | undefined {
+	async unscoped(run: Pick<RangeRun, "telemetry">, target: Pick<ReviewTarget, "range">): Promise<string | undefined> {
 		const scoped = run.telemetry.stages.filter(
 			(stage) =>
 				stage.name === "melian.lens" &&
@@ -315,9 +316,18 @@ export class Miss {
 		);
 		if (scoped.length === 0) return `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
 		const lines = this.lines;
+		const { revision } = await Changeset.resolve(this.repo, target.range);
+		const diffShows =
+			lines === undefined ||
+			revision.files
+				.filter((file) => file.path === this.file)
+				.flatMap((file) => file.hunks)
+				.some(
+					({ newStart, newLines }) => newLines > 0 && newStart <= lines[1] && newStart + newLines - 1 >= lines[0],
+				);
 		const seen = scoped.some(
 			(stage) =>
-				stage.shown?.includes(this.file) ||
+				(diffShows && stage.shown?.includes(this.file)) ||
 				stage.read?.some(
 					(read) =>
 						read.path === this.file &&
@@ -829,7 +839,7 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				const unscoped = miss.unscoped(run);
+				const unscoped = await miss.unscoped(run, target);
 				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
 				const unadjudicated =
 					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
