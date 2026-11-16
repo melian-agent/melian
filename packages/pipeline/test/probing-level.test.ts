@@ -1012,6 +1012,8 @@ describe("a level that probes", () => {
 				call("run_probe", { attack: 2, script: passing }),
 				call("run_probe", { attack: 1, script: failing }),
 				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
+				// A probe cut at its output limit showed nothing, so a skip after it counts.
+				call("skip_attack", { attack: 3, reason: "its output passes the limit" }),
 				call("skip_attack", { attack: 4, reason: "it needs the network" }),
 				fauxAssistantMessage("Done."),
 			],
@@ -1034,7 +1036,7 @@ describe("a level that probes", () => {
 			milliseconds: expect.any(Number),
 			limit: 30_000,
 			attacks: 4,
-			skipped: [4],
+			skipped: [3, 4],
 			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
 		});
 	});

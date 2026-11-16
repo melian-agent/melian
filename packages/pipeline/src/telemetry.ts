@@ -878,10 +878,15 @@ export class TelemetryReader {
 										milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
 										limit: probing!.timeout ?? probeLimits.timeout.default,
 										attacks: probed!.plan!.length,
-										// Integer keys list in ascending order. An attack skipped and then probed was probed.
+										// Integer keys list in ascending order. An attack skipped and then probed conclusively was probed.
 										skipped: Object.keys(probed!.skips ?? {})
 											.map(Number)
-											.filter((attack) => !probes.some(([, probe]) => probe.attack === attack)),
+											.filter(
+												(attack) =>
+													!probes.some(
+														([, probe]) => probe.attack === attack && probeConclusive(probe.result),
+													),
+											),
 										runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
 											id: probeId,
 											attack,
