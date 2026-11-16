@@ -614,3 +614,123 @@ it("keeps an empty legacy verifier route invalid when thinking is unset", async 
 		rmSync(repo, { recursive: true, force: true });
 	}
 });
+
+it("asks a planned lens route's and verifier route's fallbacks at the levels their own entries name", async () => {
+	const repo = crashRepository();
+	const fake = createFakeModels({
+		models: [{ id: "routed" }, { id: "spare" }, { id: "judge-unavailable" }, { id: "judge" }],
+	});
+	const asked = new Set<string>();
+	let reported = false;
+	fake.provider.setResponses(
+		Array.from({ length: 12 }, () => (request, options, _state, model) => {
+			asked.add(`${model.id} ${options?.reasoning}`);
+			if (model.id === "routed" || model.id === "judge-unavailable")
+				return fauxAssistantMessage("", { stopReason: "error", errorMessage: "Rate limit exceeded" });
+			if (model.id === "judge") return scriptVerifier(request.messages);
+			if (reported) return fauxAssistantMessage("Done.");
+			reported = true;
+			return fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" });
+		}),
+	);
+	const opened = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
+	try {
+		const lens = (await Lens.builtins()).find((each) => each.name === "correctness")!;
+		const route = {
+			model: "faux/routed",
+			thinking: "low" as const,
+			fallbacks: [{ model: "faux/spare", thinking: "high" as const }],
+		};
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			lenses: { correctness: { route } },
+			models: {
+				verifier: {
+					model: "faux/judge-unavailable",
+					thinking: "low",
+					fallbacks: [{ model: "faux/judge", thinking: "medium" }],
+				},
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: config.models,
+				overridden: {},
+				lensTiers: {},
+				retiered: {},
+				lensRoutes: { correctness: route },
+				lensRouteThinking: { correctness: "melian.yaml" },
+			},
+			catalog,
+			credentials,
+			lenses: [lens],
+			checks: ["lens.correctness"],
+		});
+		await reviewChangeset({
+			harness: opened,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			lenses: [lens],
+			standards: [],
+			models: fake.review,
+			checks: [],
+			config,
+			plan,
+		});
+		expect([...asked].sort()).toEqual(["judge medium", "judge-unavailable low", "routed low", "spare high"]);
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
+});
+
+it("refuses a review whose planned lens route names a level and no model, saying what to set", async () => {
+	const repo = crashRepository();
+	const fake = createFakeModels();
+	const opened = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
+	try {
+		const lens = (await Lens.builtins()).find((each) => each.name === "correctness")!;
+		const route = { thinking: "high" as const };
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			lenses: { correctness: { route } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: config.models,
+				overridden: {},
+				lensTiers: {},
+				retiered: {},
+				lensRoutes: { correctness: route },
+				lensRouteThinking: { correctness: "melian.yaml" },
+			},
+			catalog,
+			credentials,
+			lenses: [lens],
+			checks: ["lens.correctness"],
+		});
+		await expect(
+			reviewChangeset({
+				harness: opened,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				lenses: [lens],
+				standards: [],
+				models: fake.review,
+				checks: [],
+				config,
+				plan,
+			}),
+		).rejects.toThrow(
+			"careful runs on heavy, and no model is configured for lenses.correctness.route; set lenses.correctness.route.model in melian.yaml",
+		);
+		expect(fake.provider.state.callCount).toBe(0);
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
+});

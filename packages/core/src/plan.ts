@@ -326,8 +326,7 @@ export class ReviewPlan {
 			by = source.overridden;
 		}
 		// The level each model runs at: its fallback entry's own, else the route's. `--model` runs at the route's.
-		const levelIn = (routed: ModelRoute | undefined, model: string) =>
-			ReviewPlan.ownLevel(routed, model) ?? routed?.thinking;
+		const levelIn = (routed: ModelRoute, model: string) => ReviewPlan.ownLevel(routed, model) ?? routed.thinking;
 		const own = (model: string) => (flag === undefined ? ReviewPlan.ownLevel(effective, model) : undefined);
 		for (const name of [...route, ...accept]) parse(name);
 		const entry = (name: string) => {
@@ -431,7 +430,7 @@ export class ReviewPlan {
 					reason: thinkingChanged
 						? `${at}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
 						: accept.includes(chosen[0]!)
-							? `${at}.acceptOverridden is false, and ${by ?? "its route"} runs ${chosen[0]} at thinking ${own(chosen[0]!) ?? effective?.thinking ?? "unset"}; committed policy wants ${levelIn(policy, chosen[0]!) ?? "unset"}`
+							? `${at}.acceptOverridden is false, and ${by} runs ${chosen[0]} at thinking ${own(chosen[0]!) ?? effective?.thinking ?? "unset"}; committed policy wants ${levelIn(policy, chosen[0]!) ?? "unset"}`
 							: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
 				};
 			}
