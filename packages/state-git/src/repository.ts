@@ -97,8 +97,6 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 	return new RecordError("unreachable", said ? `${message}: ${said}` : message, { cause });
 }
 
-// The bare repository Melian keeps beside a clone, at `records.git` in its state directory, which holds fetches of the
-// branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
 // An entry another call removed after the listing reads as gone; any other failure fails the listing, so the sweep
 // reports it rather than skipping an entry it could not inspect.
 async function statIfThere(path: string) {
@@ -107,6 +105,8 @@ async function statIfThere(path: string) {
 	});
 }
 
+// The bare repository Melian keeps beside a clone, at `records.git` in its state directory, which holds fetches of the
+// branch's tip and the commits Melian builds on them. Its configuration is Melian's alone, checked before every command.
 export class RecordRepository {
 	readonly path: string;
 	readonly #owner: Owner | undefined;
