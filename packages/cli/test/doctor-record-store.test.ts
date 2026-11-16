@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { ProcessTable } from "@melian-agent/core";
 import * as pipeline from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -222,5 +223,61 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		expect(line()).toBe(
 			`warn records ${clean}; who may write it is unknown, since the trust policy cannot be read: no committed root policy is available`,
 		);
+	});
+	it("names a leftover the sweep kept because its name records no maker it can check", async () => {
+		origin(remote.url);
+		const state = await stateDirectory(repo, io.env);
+		mkdirSync(join(state, "records.git.not-an-owner"), { recursive: true });
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory keeps a leftover whose maker Melian cannot tell is gone, which a person may remove once no Melian uses the directory: records.git.not-an-owner; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
+	it("names five kept leftovers, counts the rest, and shows a control character as visible text", async () => {
+		origin(remote.url);
+		const state = await stateDirectory(repo, io.env);
+		for (const n of [0, 1, 2, 3, 4, 5]) mkdirSync(join(state, `records.git.kept-${n}`), { recursive: true });
+		mkdirSync(join(state, "records.git.bad\u001b[31m"), { recursive: true });
+		await doctor(io);
+		expect(line()).not.toContain("\u001b");
+		expect(line()).toMatch(
+			/^warn records .*; the state directory keeps 7 leftovers whose maker Melian cannot tell is gone, which a person may remove once no Melian uses the directory: records\.git\.bad.*, records\.git\.kept-0, records\.git\.kept-1, records\.git\.kept-2, records\.git\.kept-3, and 2 more; its writers/,
+		);
+	});
+
+	it("says the sweep removed nothing when the process table cannot be read", async () => {
+		origin(remote.url);
+		vi.spyOn(ProcessTable.prototype, "list").mockImplementation(() => {
+			throw new Error("ps failed: no ps here");
+		});
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory was not swept, since the process table cannot be read: ps failed: no ps here; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
+	it("names a leftover the sweep could not remove", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: ["records.git.gone"], kept: [], failed: ["refs/melian/fetch/held"] },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the state directory holds a leftover of an exited call that Melian could not remove: refs/melian/fetch/held; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
+	it("says nothing of a sweep that removed what it found", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: ["records.git.gone"], kept: [], failed: [] },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(`ok records ${clean}; ${writersTrusted("origin/main", trusted)}`);
 	});
 });
