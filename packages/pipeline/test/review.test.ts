@@ -2652,6 +2652,7 @@ describe("reviewChangeset", () => {
 			expect(findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 			const handover = requests[correctness]![1]!.filter((message) => message.role === "user").map(textOf);
 			expect(handover).toHaveLength(2);
+			expect(handover[0]).toMatch(/^Review the change from /);
 			expect(handover[1]).toContain("failed before it started");
 			expect(handover[1]).toContain("from the beginning");
 			expect(handover[1]).not.toMatch(/already recorded|take over|continue/i);
