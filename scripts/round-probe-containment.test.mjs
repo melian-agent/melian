@@ -568,7 +568,10 @@ describe("main", () => {
 			return {
 				code,
 				logs: log.mock.calls,
-				left: [...readdirSync(join(root, "home")), ...readdirSync(join(root, "temp"))],
+				// GitHub's runner image wraps git, which counts its calls in $RUNNER_TEMP; main did not plant that file.
+				left: [...readdirSync(join(root, "home")), ...readdirSync(join(root, "temp"))].filter(
+					(name) => name !== ".git-invocation-counts.json",
+				),
 				segmentsKept: segments() === before.segments,
 				fdsKept: readdirSync("/proc/self/fd").length === before.fds,
 			};
