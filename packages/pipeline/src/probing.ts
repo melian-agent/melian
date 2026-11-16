@@ -699,60 +699,6 @@ export const ProbeReruns = defineDoc<{
 	initial: () => ({ runs: {} }),
 });
 
-/**
- * Probe evidence cut on every part it holds, over fixed sample inputs: one claim Melian could not run again and one it
- * ran, with every part cut to nothing, then one whose long parts the budget's search cuts partway. A verification whose candidates carry probe evidence keys it beside the cut wording, so
- * a change in how a cut is put together changes that key as a changed word does.
- */
-export function probeEvidenceCutRendering(): string {
-	const result = (output: string): StoredProbeResult => ({
-		exitCode: 1,
-		signal: null,
-		output,
-		truncated: false,
-		timedOut: false,
-	});
-	const probe: Omit<ClaimProbe, "environment"> = {
-		id: "p7",
-		attack: 1,
-		plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
-		probe: {
-			attack: 1,
-			script: "S",
-			files: [
-				{ path: "f", text: "F" },
-				{ path: "g", text: "G" },
-			],
-			result: result("O"),
-			milliseconds: 5,
-		},
-	};
-	const nonce = "0123456789abcdef01234567";
-	const long = (part: string) => `${part} begins ${"\u00e9".repeat(200)} ${part} ends`;
-	const partial: ProbeEvidence = {
-		label: "c3",
-		probe: {
-			...probe,
-			probe: {
-				...probe.probe,
-				script: long("script"),
-				files: [{ path: "f", text: long("file f") }],
-				result: result(long("output")),
-			},
-		},
-		again: { result: result(long("output")), milliseconds: 4 },
-	};
-	const whole = Buffer.byteLength(renderedEvidence(partial, nonce));
-	return [
-		...[
-			{ label: "c1", probe, again: { refused: "R" } },
-			{ label: "c2", probe, again: { result: result("M"), milliseconds: 4 } },
-		].map((claim) => renderedEvidence(claim, nonce, { keep: 0, budget: 0 })),
-		// Cut partway by the search a verifier's prompt runs, so how much a cut keeps, and where, is in the rendering.
-		...boundProbeEvidence([partial], nonce, whole - 200)!,
-	].join("\n\n");
-}
-
 let renderings: string | undefined;
 
 /**

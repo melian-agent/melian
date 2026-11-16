@@ -633,9 +633,8 @@ describe("the fixed wording each role reads", () => {
 		const notPrompts: Record<string, string> = {
 			probingWording: "is the table the planner's and prober's prompts take their wording from",
 			probeEvidenceWording: "is the table the verifier's version hashes",
-			probeEvidenceCutWording: "is the table a verification whose candidates carry probe evidence keys",
+			probeEvidenceCutWording: "is the table a cut of probe evidence takes its wording from",
 			keepEnds: "names the encoding a cut counts bytes in",
-			probeEvidenceCutRendering: "renders a cut over fixed samples for a probing verification's key",
 			ProbingDocument: "names a stored document",
 			ProbeReruns: "names a stored document",
 			boundedHead: "runs git and says why the head is too large",

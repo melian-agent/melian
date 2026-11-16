@@ -35,11 +35,10 @@ import {
 	type ProbeRun,
 	probeClaimKey,
 	probeEvidenceBudget,
-	probeEvidenceCutRendering,
-	probeEvidenceCutWording,
 	probeEvidenceWording,
 	probeFailed,
 	probingWording,
+	renderProbeEvidence,
 	rerunKey,
 	type StoredProbeResult,
 } from "./probing.ts";
@@ -176,10 +175,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						candidate,
 						claims,
 						dismissed,
-						claims.flatMap(({ label, id, source }) => {
-							const probe = probed({ id, source });
-							return probe === undefined ? [] : [{ label, ...probe }];
-						}),
+						candidateEvidence(candidate, reruns),
 						task.input.revision.nonce,
 					);
 					// A candidate with no conversation is one whose evidence no verifier may be shown; it ends unasked.
@@ -480,6 +476,24 @@ function verifierPrompt(
 	].join("\n\n");
 }
 
+// The probe evidence a candidate's verifier is shown, a block for each probing claim, labelled as its claim's line is.
+function candidateEvidence(candidate: VerificationCandidate, reruns: Record<string, ProbeRun>): ProbeEvidence[] {
+	return candidate.state.claims.flatMap((claim, index) => {
+		const probe = candidate.probes?.[probeClaimKey(claim)];
+		return probe === undefined ? [] : [{ label: `c${index + 1}`, probe, again: reruns[rerunKey(claim, probe)] }];
+	});
+}
+
+// What a cut candidate's verifier is shown, under the key's fixed nonce, or why it is asked nothing; nothing for
+// evidence that fits, which its probes and the reruns already key.
+function cutEvidence(candidate: VerificationCandidate, reruns: Record<string, ProbeRun>): string | undefined {
+	const evidence = candidateEvidence(candidate, reruns);
+	const shown = boundProbeEvidence(evidence, identityNonce);
+	if (shown === undefined) return unshown(candidate);
+	const whole = evidence.map(({ label, probe, again }) => renderProbeEvidence(label, probe, again, identityNonce));
+	return shown.join("\n\n") === whole.join("\n\n") ? undefined : shown.join("\n\n");
+}
+
 function unshown(candidate: VerificationCandidate): string {
 	const probing = candidate.state.claims.filter(
 		(claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined,
@@ -565,8 +579,8 @@ export function waveVersion(version: string): string {
 /**
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
  * nonce, which is drawn afresh on every review, and the outcomes it reuses. It holds each candidate by its identity, the
- * fixed text the verifier is given beyond its version, `evidence`, how its probe evidence is cut to fit, when its
- * candidates carry any, and `reruns`, the probe reruns this review read, which the verifier is shown.
+ * fixed text the verifier is given beyond its version, `cuts`, the probe evidence each candidate cut to fit is shown, or
+ * why it is asked nothing, and `reruns`, the probe reruns this review read, which the verifier is shown.
  */
 export function verificationRequest(
 	{
@@ -580,8 +594,11 @@ export function verificationRequest(
 	}: VerificationInput,
 	reruns: Record<string, ProbeRun> = {},
 ): KeyedRequest<RecordJson> {
-	const probing = candidates.some(({ state, probes }) =>
-		state.claims.some((claim) => probes?.[probeClaimKey(claim)] !== undefined),
+	const cuts = Object.fromEntries(
+		candidates.flatMap((candidate) => {
+			const cut = cutEvidence(candidate, reruns);
+			return cut === undefined ? [] : [[candidate.key, cut]];
+		}),
 	);
 	return KeyedRequest.of(
 		"verification",
@@ -590,16 +607,8 @@ export function verificationRequest(
 			revision,
 			candidates: candidates.map(candidateIdentity),
 			text: verifierText(),
-			// Only a verifier shown probe evidence can read a cut, so only its key holds how one is made.
-			...(probing
-				? {
-						evidence: {
-							budget: probeEvidenceBudget,
-							wording: probeEvidenceCutWording,
-							rendering: probeEvidenceCutRendering(),
-						},
-					}
-				: {}),
+			// A request with no cut candidate keeps the key it had before cuts.
+			...(Object.keys(cuts).length === 0 ? {} : { cuts }),
 			reruns,
 		}),
 		{ nonce },
