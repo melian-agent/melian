@@ -1260,6 +1260,17 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	return { config, sources, routes, resolutionLayers };
 }
 
+/**
+ * Whether the root `melian.yaml` at `commit` writes `trust.writers: true` out. A store that is no branch of the
+ * repository counts its writers' records only then: the default, `true`, would trust a store whose writers Melian
+ * cannot see. Throws {@link ConfigError} as {@link loadConfig} does for a root file it cannot read or parse.
+ */
+export async function writesWriterTrust(repoRoot: string, commit: string): Promise<boolean> {
+	const reader = await openSource(repoRoot, { kind: "revision", commit }).catch(fromSource(repoRoot));
+	const site = { file: melianPaths.config, where: reader.label(melianPaths.config) };
+	return (await readLayer(reader, site))?.trust?.writers === true;
+}
+
 // Every `melian.yaml` in `directories`, nearest first, merged over the defaults. From the working tree, the preference
 // files come first of all: the root's `melian.local.yaml`, then the user-level file. They are the maintainer's own,
 // never a revision's, so a head cannot supply them.

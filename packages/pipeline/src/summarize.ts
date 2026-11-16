@@ -155,6 +155,26 @@ export function publishedWalkthroughNote(
 		? "No walkthrough available. Another light route wrote it."
 		: undefined;
 }
+// The walkthrough a round of `revision` exports: the one publication posts, when the task the summary index names wrote
+// it on its own route under its request's key. That task, once completed, has written its route's walkthrough or
+// removed it; one that failed or was aborted removes nothing, and an older Melian's task holds no key.
+export async function exportedWalkthrough(
+	harness: Harness,
+	root: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<{ key: string; route: string; walkthrough: Walkthrough } | undefined> {
+	const task = (await harness.snapshot(SummaryIndex, root, context))?.tasks[revision];
+	const record = task === undefined ? undefined : await harness.getTask(task as TaskId, context);
+	if (record?.state.status !== "terminal" || record.state.outcome.status !== "completed") return undefined;
+	const input = record.input as unknown as SummaryInput;
+	if (input.key === undefined) return undefined;
+	const state = await harness.snapshot(VerdictDocument, root, context);
+	const route = routeOf(input);
+	const walkthrough = state?.routedWalkthroughs?.[revision]?.[route];
+	if (walkthrough === undefined || walkthrough !== publishedWalkthrough(state, revision)) return undefined;
+	return { key: input.key, route, walkthrough };
+}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,

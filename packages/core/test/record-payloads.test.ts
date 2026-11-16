@@ -77,6 +77,8 @@ describe("payload checks", () => {
 		"lens",
 		"verification",
 		"walkthrough",
+		"triage",
+		"account",
 		"telemetry",
 		"marker",
 		"dismissal",
@@ -85,7 +87,8 @@ describe("payload checks", () => {
 		"ledger-comment",
 		"comparison",
 	])("refuses a %s record when no check is registered for its kind", (kind) => {
-		const error = refusal(() => SharedRecord.parse(envelope({ kind }), { other: () => undefined }));
+		const revisioned = kind === "account" ? { revision } : {};
+		const error = refusal(() => SharedRecord.parse(envelope({ kind, ...revisioned }), { other: () => undefined }));
 		expect(error.code).toBe("unvalidatedKind");
 		expect(error.message).toBe(`no payload check is registered for a ${kind} record`);
 	});
@@ -128,6 +131,12 @@ describe("payload checks", () => {
 		expect(refusal(() => SharedRecord.parse({ ...round, payload: {} }, { round: () => undefined })).code).toBe(
 			"invalidRecord",
 		);
+	});
+
+	it("lets tests parse a record of every kind core lists but a round", () => {
+		for (const kind of ["check", "lens", "verification", "walkthrough", "triage", "telemetry", "marker"])
+			expect(SharedRecord.parse(envelope({ kind }), testPayloads).kind).toBe(kind);
+		expect(SharedRecord.parse(envelope({ kind: "account", revision }), testPayloads).kind).toBe("account");
 	});
 
 	it("checks stored bytes the same way", () => {
@@ -306,5 +315,157 @@ describe("RecordSet.missing", () => {
 	it("names nothing for a record that is no round", () => {
 		const { check } = fixture();
 		expect(RecordSet.of([check], { counts: everyRecordCounts, payloads: testPayloads }).missing(check)).toEqual([]);
+	});
+});
+
+describe("RecordSet.account", () => {
+	const parse = (fields: Partial<RecordEnvelope>) => SharedRecord.parse(envelope(fields), testPayloads);
+	const account = (fields: Partial<RecordEnvelope> = {}) => parse({ kind: "account", key: "a", revision, ...fields });
+	const roundOf = (...named: SharedRecord[]) =>
+		parse({
+			kind: "round",
+			key: "r",
+			revision,
+			payload: {
+				...manifest,
+				read: named
+					.map((record) => ({ kind: record.kind, key: record.key, id: record.id }))
+					.sort((a, b) => (a.id < b.id ? -1 : 1)),
+			},
+		});
+	const set = (records: SharedRecord[], counts = everyRecordCounts) =>
+		RecordSet.of(records, { counts, payloads: testPayloads });
+
+	it("is the one account the round names", () => {
+		const own = account();
+		const check = parse({ kind: "check", key: "static.biome" });
+		const round = roundOf(own, check);
+		expect(set([round, own, check]).account(round)?.id).toBe(own.id);
+	});
+
+	it("is none for a round that names no account, so the round is not reviewed", () => {
+		const check = parse({ kind: "check", key: "static.biome" });
+		const round = roundOf(check);
+		expect(set([round, check, account()]).account(round)).toBeUndefined();
+	});
+
+	it("is none for a round that names two", () => {
+		const one = account();
+		const two = account({ key: "b" });
+		const round = roundOf(one, two);
+		expect(set([round, one, two]).account(round)).toBeUndefined();
+	});
+
+	it("is none when the set lacks the account the round names", () => {
+		const own = account();
+		const round = roundOf(own);
+		expect(set([round]).account(round)).toBeUndefined();
+	});
+
+	it("is none when the account is from a writer whose records do not count", () => {
+		const own = account();
+		const round = roundOf(own);
+		const counted = (record: SharedRecord) => record.id !== own.id;
+		expect(set([round, own], counted).account(round)).toBeUndefined();
+		expect(set([round, own], counted).missing(round)).toEqual([{ kind: "account", key: "a", id: own.id }]);
+	});
+
+	it.each([
+		["another changeset", { changeset: "pull-fedcba9876543210" }],
+		["another revision", { revision: `${"c".repeat(40)}..${"d".repeat(40)}` }],
+	])("is none for an account of %s", (_name, fields) => {
+		const elsewhere = account(fields);
+		const round = roundOf(elsewhere);
+		expect(set([round, elsewhere]).account(round)).toBeUndefined();
+	});
+
+	it.each([
+		["another key", { key: "b" }],
+		["another kind", { kind: "check" }],
+	])("is none for a record with the ID the round names but %s", (_name, fields) => {
+		const own = account();
+		const named = { kind: "account", key: "a", id: own.id, ...fields };
+		const round = parse({ kind: "round", key: "r", revision, payload: { ...manifest, read: [named] } });
+		expect(set([round, own]).account(round)).toBeUndefined();
+	});
+
+	it("is the account the round names by ID, of two that share its key", () => {
+		// The set holds records in ID order, so the named account takes the later ID and a lookup that ignores the ID finds the other.
+		const [other, named] = [account({ payload: { n: 1 } }), account()].sort((a, b) => (a.id < b.id ? -1 : 1));
+		const round = roundOf(named);
+		expect(named.key).toBe(other.key);
+		expect(set([round, named, other]).account(round)?.id).toBe(named.id);
+	});
+
+	it("is none for a record of another kind that the round names as its account", () => {
+		const check = parse({ kind: "check", key: "static.biome", revision });
+		const named = { kind: "account", key: check.key, id: check.id };
+		const round = parse({ kind: "round", key: "r", revision, payload: { ...manifest, read: [named] } });
+		expect(set([round, check]).account(round)).toBeUndefined();
+	});
+
+	it("is none for a record that is no round", () => {
+		const own = account();
+		expect(set([own]).account(own)).toBeUndefined();
+	});
+});
+
+describe("a record from the job that ran a head's code", () => {
+	const run = { changeset, revision, fork: false };
+	const parse = (fields: Partial<RecordEnvelope>) =>
+		SharedRecord.parse(envelope({ revision, ...fields }), testPayloads);
+	const round = () => parse({ kind: "round", key: "r", payload: manifest });
+
+	it.each(["check", "lens", "verification", "walkthrough", "triage", "account", "telemetry"])(
+		"takes a %s record from a writer's head",
+		(kind) => {
+			expect(parse({ kind, key: "k" }).refusedFromHeadCode(run)).toBeUndefined();
+		},
+	);
+
+	it("takes a round from a writer's head", () => {
+		expect(round().refusedFromHeadCode(run)).toBeUndefined();
+	});
+
+	it.each(["marker", "post", "status", "ledger-comment", "comparison"])(
+		"refuses a %s record from a writer's head",
+		(kind) => {
+			expect(parse({ kind, key: "k" }).refusedFromHeadCode(run)).toBe(
+				`the job that runs a writer's head hands over no ${kind} record`,
+			);
+		},
+	);
+
+	it("refuses a dismissal from a writer's head", () => {
+		const dismissal = SharedRecord.parse(envelope({ kind: "dismissal", key: "k" }), testPayloads);
+		expect(dismissal.refusedFromHeadCode(run)).toBe(
+			"the job that runs a writer's head hands over no dismissal record",
+		);
+	});
+
+	it("takes only a check record from a fork's head", () => {
+		const fork = { ...run, fork: true };
+		expect(parse({ kind: "check", key: "k" }).refusedFromHeadCode(fork)).toBeUndefined();
+		for (const kind of ["lens", "verification", "walkthrough", "triage", "account", "telemetry"])
+			expect(parse({ kind, key: "k" }).refusedFromHeadCode(fork)).toBe(
+				`the job that runs a fork's head hands over no ${kind} record`,
+			);
+		expect(round().refusedFromHeadCode(fork)).toBe("the job that runs a fork's head hands over no round record");
+	});
+
+	it.each([
+		["changeset", { changeset: "pull-fedcba9876543210" }],
+		["revision", { revision: `${"c".repeat(40)}..${"d".repeat(40)}` }],
+	])("refuses an account of another %s than the run's", (_name, fields) => {
+		expect(parse({ kind: "account", key: "k", ...fields }).refusedFromHeadCode(run)).toBe(
+			"a record from the head's job names another changeset or revision than its run's",
+		);
+	});
+
+	it("refuses a check record with no revision", () => {
+		const bare = SharedRecord.parse(envelope({ kind: "check", key: "k" }), testPayloads);
+		expect(bare.refusedFromHeadCode(run)).toBe(
+			"a record from the head's job names another changeset or revision than its run's",
+		);
 	});
 });
