@@ -904,7 +904,7 @@ function changedRanges(review: ReviewState, path: string): string {
 
 const listMutants = defineLensTool({
 	name: "list_mutants",
-	description: `List the mutants a mutation tool would try on the lines this change adds or alters in one source file, as melian mutants list does: each one's line and columns, mutator, and replacement, cut at ${maxReplacementChars} characters. At most ${maxListedMutants} a call; ask for the rest from the startLine the result names. Nothing is run: the list says what to check, not what any test does. Mutants the base's mutation configuration excludes are counted, not listed; ones a disable comment in the head switches off are listed and marked.`,
+	description: `List the mutants a mutation tool would try on the lines this change adds or alters in one source file, as melian mutants list does: each one's line and columns, mutator, and replacement, cut at ${maxReplacementChars} characters. At most ${maxListedMutants} a call, fewer when their text is long; ask for the rest from the startLine the result names. Nothing is run: the list says what to check, not what any test does. Mutants the base's mutation configuration excludes are counted, not listed; ones a disable comment in the head switches off are listed and marked.`,
 	parameters: Type.Object({
 		path: Type.String({ minLength: 1, description: "A changed file's repository-relative path at head" }),
 		startLine: Type.Optional(Type.Integer({ minimum: 1, description: "First line to list from; 1 when absent" })),
@@ -935,13 +935,13 @@ const listMutants = defineLensTool({
 			const listing = await listingOf(review, args.path);
 			if (listing.unmutated !== undefined) return none(`${visibleText(listing.unmutated)}.`);
 			const lines = args.endLine === undefined ? `from line ${start}` : `on lines ${start} to ${end}`;
-			const window = listing.window(start, end);
+			const window = listing.window(start, end, maxShownBytes);
 			const notes = [
 				window.excluded > 0
 					? `[${window.excluded} more the base's mutation configuration excludes are left out]`
 					: undefined,
 				window.more?.cutLine !== undefined
-					? `[line ${window.more.cutLine} holds more than ${maxListedMutants} mutants; the rest of it are not shown]`
+					? `[line ${window.more.cutLine} holds more mutants than one call shows; the rest of it are not shown]`
 					: undefined,
 				window.more !== undefined
 					? `[${window.more.count} more mutants not shown; call again with startLine ${window.more.startLine}]`

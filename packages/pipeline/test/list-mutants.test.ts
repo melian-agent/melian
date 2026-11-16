@@ -175,6 +175,55 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it("shows every mutant its page counts, and resumes where the shown text ends, when rows are long", async () => {
+		base = commit(repo, {
+			"stryker.config.json": JSON.stringify({
+				mutator: { excludedMutations: ["StringLiteral", "ConditionalExpression"] },
+			}),
+		});
+		const long = "\u9577".repeat(maxReplacementChars + 10);
+		const head = commit(repo, {
+			"src/flags.ts": `declare const x: boolean;\n${Array.from(
+				{ length: maxListedMutants },
+				(_, index) => `export const flag${index} = x && "${long}";\n`,
+			).join("")}`,
+		});
+		const rows = (await cliRows(head, "src/flags.ts")).filter((row) => row.ignoredBy !== "config");
+		expect(rows).toHaveLength(maxListedMutants);
+		const shown: string[] = [];
+		let startLine: number | undefined = 1;
+		while (startLine !== undefined) {
+			const page = await call(head, { path: "src/flags.ts", startLine });
+			const listed = rows.filter((row) => page.details?.mutants.includes(row.id));
+			expect(listed.length).toBeGreaterThan(0);
+			for (const row of listed) expect(page.text).toContain(describeMutant(row));
+			expect(page.text).not.toContain("tool output truncated");
+			shown.push(...ids(listed));
+			startLine = (page.details?.more as { startLine: number } | undefined)?.startLine;
+		}
+		expect(shown).toEqual(ids(rows));
+	});
+
+	it.each([
+		[0, 2, undefined],
+		[1, 1, { count: 1, startLine: 2 }],
+	])("shows the rows whose text fits %s bytes short of the bound: %s, with %o left", async (short, count, more) => {
+		const head = commit(repo, { "src/flags.ts": flags(2) });
+		const inventory = (
+			await (
+				await MutationEnumeration.open(repo, `${base}..${head}`)
+			).list({ all: true, limitedTo: ["src/flags.ts"] })
+		).toJSON();
+		const rows = inventory.mutants;
+		expect(rows.map((row) => row.line)).toEqual([1, 2]);
+		const bytes = Buffer.byteLength(rows.map(describeMutant).join("\n"));
+		expect(MutantListing.of(inventory, "src/flags.ts").window(1, Number.MAX_SAFE_INTEGER, bytes - short)).toEqual({
+			mutants: rows.slice(0, count),
+			excluded: 0,
+			...(more === undefined ? {} : { more }),
+		});
+	});
+
 	it("cuts inside a line that holds more than the cap, and asks for the rest from the next line", async () => {
 		const head = commit(repo, {
 			"src/flags.ts": `export const all = [${Array(maxListedMutants + 2)
@@ -189,9 +238,7 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 			excluded: 0,
 			more: { count: rows.length - maxListedMutants, startLine: 2, cutLine: 1 },
 		});
-		expect(result.text).toContain(
-			`[line 1 holds more than ${maxListedMutants} mutants; the rest of it are not shown]`,
-		);
+		expect(result.text).toContain("[line 1 holds more mutants than one call shows; the rest of it are not shown]");
 	});
 
 	it("says which lines changed when the range asked for holds none", async () => {
@@ -323,9 +370,11 @@ describe("list_mutants", { timeout: 60_000 }, () => {
 		const reversed = { ...inventory, mutants: [...inventory.mutants].reverse() };
 		const listing = MutantListing.of(reversed, "src/value.ts");
 		expect(listing.unmutated).toBeUndefined();
-		expect(listing.window(1, Number.MAX_SAFE_INTEGER).mutants.map((row) => [row.file, row.line, row.column])).toEqual(
-			rows.map((row) => [row.file, row.line, row.column]),
-		);
+		expect(
+			listing
+				.window(1, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
+				.mutants.map((row) => [row.file, row.line, row.column]),
+		).toEqual(rows.map((row) => [row.file, row.line, row.column]));
 		expect(MutantListing.of(reversed, "src/a,b.ts").unmutated).toContain("comma-separated");
 	});
 
