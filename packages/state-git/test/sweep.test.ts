@@ -6,6 +6,7 @@ import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Owner } from "../src/owner.ts";
 import { RecordRepository } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
@@ -17,24 +18,17 @@ let commit: string;
 const children: ChildProcess[] = [];
 
 const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
-const hex = (text: string) => Buffer.from(text, "utf8").toString("hex");
-// A leftover's suffix as the store names it: this host's hash, the owner's pid and start time, and a UUID.
-const owned = (pid: number, start: string, on = host) => `${on}-${pid}-${hex(start)}-${randomUUID()}`;
-const self = () => {
-	const start = new ProcessTable().start(process.pid);
-	if (start === undefined) throw new Error("ps does not list this process");
-	return { pid: process.pid, start };
-};
+// A leftover's suffix as the store names it: this host's hash, the owner's pid, and a UUID.
+const owned = (pid: number, on = host) => `${on}-${pid}-${randomUUID()}`;
 
 // A throwaway process that exits on its own within a minute, stopped by its own pid.
-async function live(): Promise<{ pid: number; start: string; child: ChildProcess }> {
+async function live(): Promise<{ pid: number; child: ChildProcess }> {
 	const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)"], { stdio: "ignore" });
 	children.push(child);
 	await once(child, "spawn");
 	const pid = child.pid as number;
-	const start = new ProcessTable().start(pid);
-	if (start === undefined) throw new Error(`ps does not list pid ${pid}`);
-	return { pid, start, child };
+	if (!new ProcessTable().list().some((entry) => entry.pid === pid)) throw new Error(`ps does not list pid ${pid}`);
+	return { pid, child };
 }
 
 async function stop(child: ChildProcess): Promise<void> {
@@ -44,11 +38,12 @@ async function stop(child: ChildProcess): Promise<void> {
 	await exited;
 }
 
-// A process that was live and has exited, so its pid and start time name no process now.
-async function exited(): Promise<{ pid: number; start: string }> {
-	const { pid, start, child } = await live();
+// A process that was live and has exited, so its pid names no process now.
+async function exited(): Promise<{ pid: number }> {
+	const { pid, child } = await live();
 	await stop(child);
-	return { pid, start };
+	if (new ProcessTable().list().some((entry) => entry.pid === pid)) throw new Error(`ps still lists pid ${pid}`);
+	return { pid };
 }
 
 const git = (args: readonly string[], input?: string) =>
@@ -107,6 +102,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	for (const child of children.splice(0)) await stop(child);
 	await remote.close();
 	rmSync(outside, { recursive: true, force: true });
@@ -115,7 +111,7 @@ afterEach(async () => {
 describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 	it("removes what a process that has exited left, and keeps the hint ref", async () => {
 		const owner = await exited();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		plant(suffix);
 		const store = await remote.open({ directory });
 		expect(planted(suffix)).toEqual(gone);
@@ -123,35 +119,58 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
 	});
 
-	it("keeps what a live process holds, through a second handle's sweep", async () => {
+	it("keeps and names what a live process holds, through a second handle's sweep", async () => {
 		const owner = await live();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		plant(suffix);
 		const store = await remote.open({ directory });
 		expect(planted(suffix)).toEqual(there);
-		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [] });
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
 	});
 
-	it("keeps what this process holds", async () => {
-		const owner = self();
-		const suffix = owned(owner.pid, owner.start);
+	it("keeps and names what this process holds", async () => {
+		const suffix = owned(process.pid);
 		plant(suffix);
 		const store = await remote.open({ directory });
 		expect(planted(suffix)).toEqual(there);
-		expect(store.sweep).toEqual({ removed: [], kept: [], failed: [] });
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
 	});
 
-	it("does not take a process that reuses the pid for the owner", async () => {
-		const suffix = owned(process.pid, "Thu Jan  1 00:00:00 1970");
+	it("keeps what a live process holds when the sweep reads the table under another time zone", async () => {
+		vi.stubEnv("TZ", "UTC");
+		const suffix = Owner.current(new ProcessTable().list())?.name();
+		if (suffix === undefined) throw new Error("ps does not list this process");
 		plant(suffix);
+		vi.stubEnv("TZ", "Australia/Sydney");
 		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+	});
+
+	it("keeps and names what a pid now held by another process left, since it cannot tell that process from the maker", async () => {
+		const reused = { pid: 4_000_000, ppid: 1, start: "Mon Nov 16 01:00:00 2026" };
+		const table = [...new ProcessTable().list(), reused];
+		const suffix = owned(reused.pid);
+		plant(suffix);
+		const store = await remote.open({ directory, processes: { list: () => table } });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+	});
+
+	it("removes what a pid the table does not list left", async () => {
+		const table = new ProcessTable().list();
+		const absent = 4_000_000;
+		expect(table.some((entry) => entry.pid === absent)).toBe(false);
+		const suffix = owned(absent);
+		plant(suffix);
+		const store = await remote.open({ directory, processes: { list: () => table } });
 		expect(planted(suffix)).toEqual(gone);
-		expect(store.sweep.removed).toEqual(names(suffix));
+		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
 	});
 
 	it("keeps and names what another host made, whose processes it cannot see", async () => {
-		const owner = self();
-		const suffix = owned(owner.pid, owner.start, "0123456789abcdef");
+		const owner = await exited();
+		const suffix = owned(owner.pid, "0123456789abcdef");
 		plant(suffix);
 		const store = await remote.open({ directory });
 		expect(planted(suffix)).toEqual(there);
@@ -169,14 +188,16 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 	it("keeps and names a leftover whose name does not parse", async () => {
 		const owner = await exited();
 		const suffixes = [
-			`${host}-${owner.pid}-${hex(owner.start)}`,
-			`${host}-0${owner.pid}-${hex(owner.start)}-${randomUUID()}`,
-			`${host}-${owner.pid}-${hex(owner.start).toUpperCase()}-${randomUUID()}`,
-			`${host}-${owner.pid}-${hex(owner.start)}-${randomUUID()}-x`,
-			`${host}-${owner.pid}--${randomUUID()}`,
-			`${host}-99999999999-${hex(owner.start)}-${randomUUID()}`,
-			`${host}-${owner.pid}-${hex(owner.start)}f-${randomUUID()}`,
-			`${host}-${owner.pid}-ff${hex(owner.start)}-${randomUUID()}`,
+			`${host}-${owner.pid}`,
+			`${host}-0${owner.pid}-${randomUUID()}`,
+			`${host}-${owner.pid}-${randomUUID().toUpperCase()}`,
+			`${host.toUpperCase()}-${owner.pid}-${randomUUID()}`,
+			`${host}-${owner.pid}-${randomUUID()}-x`,
+			`x${host}-${owner.pid}-${randomUUID()}`,
+			`${host.slice(1)}-${owner.pid}-${randomUUID()}`,
+			`${host}--${randomUUID()}`,
+			`${host}-99999999999-${randomUUID()}`,
+			`${host}-${owner.pid}-${Buffer.from("Mon Nov 16 01:00:00 2026").toString("hex")}-${randomUUID()}`,
 		];
 		for (const suffix of suffixes) writeFileSync(join(records, `melian-index-${suffix}`), "index");
 		const store = await remote.open({ directory });
@@ -190,7 +211,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("sweeps nothing, and says why, when the process table cannot be read", async () => {
 		const owner = await exited();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		plant(suffix);
 		const unowned = randomUUID();
 		writeFileSync(join(records, `melian-index-${unowned}`), "index");
@@ -213,7 +234,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("lists the leftovers before it reads the table, so a call that starts in between keeps its own", async () => {
 		const table = new ProcessTable().list();
-		const late = owned(4_000_000, "Thu Jan  1 00:00:00 1970");
+		const late = owned(4_000_000);
 		let reads = 0;
 		// The first read names this process for what it makes; the second is the sweep's.
 		const store = await remote.open({
@@ -232,8 +253,8 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("never follows a link, and keeps and names one", async () => {
 		const owner = await exited();
-		const folder = owned(owner.pid, owner.start);
-		const index = owned(owner.pid, owner.start);
+		const folder = owned(owner.pid);
+		const index = owned(owner.pid);
 		mkdirSync(join(outside, "repository"));
 		writeFileSync(join(outside, "repository", "HEAD"), "kept");
 		writeFileSync(join(outside, "index"), "kept");
@@ -253,7 +274,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("removes a half-made repository without following a link inside it", async () => {
 		const owner = await exited();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		mkdirSync(join(outside, "objects"));
 		writeFileSync(join(outside, "objects", "pack"), "kept");
 		mkdirSync(join(directory, `records.git.${suffix}`));
@@ -266,8 +287,8 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("keeps a directory named as a temporary index, and a file named as a half-made repository", async () => {
 		const owner = await exited();
-		const folder = owned(owner.pid, owner.start);
-		const index = owned(owner.pid, owner.start);
+		const folder = owned(owner.pid);
+		const index = owned(owner.pid);
 		writeFileSync(join(directory, `records.git.${folder}`), "file");
 		mkdirSync(join(records, `melian-index-${index}`));
 		const store = await remote.open({ directory });
@@ -278,7 +299,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("keeps a ref below the fetch refs that is no fetch ref of Melian's", async () => {
 		const owner = await exited();
-		const suffix = `${owned(owner.pid, owner.start)}/deeper`;
+		const suffix = `${owned(owner.pid)}/deeper`;
 		git(["update-ref", `refs/melian/fetch/${suffix}`, commit]);
 		git(["update-ref", "refs/melian/other", commit]);
 		const store = await remote.open({ directory });
@@ -288,7 +309,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("names a stale leftover it could not remove, and still opens", async () => {
 		const owner = await exited();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		git(["update-ref", `refs/melian/fetch/${suffix}`, commit]);
 		const ref = join(records, "refs", "melian", "fetch", suffix);
 		writeFileSync(`${ref}.lock`, "");
@@ -300,7 +321,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 
 	it("sweeps the half-made repositories when records.git itself is not there yet", async () => {
 		const owner = await exited();
-		const suffix = owned(owner.pid, owner.start);
+		const suffix = owned(owner.pid);
 		const fresh = remote.host();
 		mkdirSync(join(fresh, `records.git.${suffix}`), { recursive: true });
 		const store = await remote.open({ directory: fresh });
@@ -310,25 +331,33 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 });
 
 describe("the names a call gives what it makes", { timeout: 60_000 }, () => {
-	const ownedName = (pid: number, start: string) =>
-		new RegExp(`^${host}-${pid}-${hex(start)}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`);
+	const ownedName = new RegExp(
+		`^${host}-${process.pid}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`,
+	);
 
 	it("names its fetch ref and temporary index after this host and process", async () => {
 		const run = vi.spyOn(RecordRepository.prototype, "run");
 		const store = await remote.open({ directory });
 		await store.writeCell("pull-0123456789abcdef", undefined, '"lease"');
-		const owner = self();
 		const fetch = run.mock.calls.map(([args]) => args).find((args) => args[0] === "fetch");
 		const refspec = fetch?.find((arg) => arg.startsWith("+refs/heads/"));
-		expect(refspec?.replace(/^.*:refs\/melian\/fetch\//, "")).toMatch(ownedName(owner.pid, owner.start));
+		expect(refspec?.replace(/^.*:refs\/melian\/fetch\//, "")).toMatch(ownedName);
 		const index = run.mock.calls.map(([, , options]) => options?.index).find((path) => path !== undefined);
 		expect(index?.startsWith(join(records, "melian-index-"))).toBe(true);
-		expect(index?.slice(join(records, "melian-index-").length)).toMatch(ownedName(owner.pid, owner.start));
+		expect(index?.slice(join(records, "melian-index-").length)).toMatch(ownedName);
 	});
 
-	it("gives a plain UUID, which no sweep removes, when this process's start time cannot be read", async () => {
+	const at = "Mon Nov 16 01:00:00 2026";
+	it.each<[string, () => ProcessEntry[]]>([
+		["does not list this process", () => []],
+		[
+			"lists this pid with another parent, as a table read from another pid namespace can",
+			() => [{ pid: process.pid, ppid: process.ppid + 1, start: at }],
+		],
+		["lists this parent with another pid", () => [{ pid: process.pid + 1, ppid: process.ppid, start: at }]],
+	])("gives a plain UUID, which no sweep removes, when the table %s", async (_, list) => {
 		const run = vi.spyOn(RecordRepository.prototype, "run");
-		const store = await remote.open({ directory, processes: { list: () => [] } });
+		const store = await remote.open({ directory, processes: { list } });
 		await store.writeCell("pull-0123456789abcdef", undefined, '"lease"');
 		const fetch = run.mock.calls.map(([args]) => args).find((args) => args[0] === "fetch");
 		const refspec = fetch?.find((arg) => arg.startsWith("+refs/heads/"));

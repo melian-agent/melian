@@ -4,7 +4,7 @@ import { readdir, rename } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import type * as Core from "@melian-agent/core";
-import { git, ProcessTable, RecordError } from "@melian-agent/core";
+import { git, RecordError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Deadline, systemClock } from "../src/deadline.ts";
 import { RecordRepository } from "../src/repository.ts";
@@ -76,9 +76,8 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 		const path = join(remote.host(), "records.git");
 		await RecordRepository.open(path, Deadline.after(systemClock, 30_000));
 		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
-		const start = new ProcessTable().start(process.pid) as string;
 		const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
-		const owner = `${host}-${process.pid}-${Buffer.from(start, "utf8").toString("hex")}`;
+		const owner = `${host}-${process.pid}`;
 		expect(init?.[1][3]).toMatch(
 			new RegExp(`^${path}\\.${owner}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		);

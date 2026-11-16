@@ -175,14 +175,15 @@ export class RecordRepository {
 		}
 		for (const leftover of leftovers) {
 			if (!leftover.fits || leftover.owner === undefined || !leftover.owner.isHere()) sweep.kept.push(leftover.name);
-			else if (table !== undefined && leftover.owner.isGone(table)) {
+			else if (table === undefined) continue;
+			else if (!leftover.owner.isGone(table)) sweep.kept.push(leftover.name);
+			else
 				try {
 					await leftover.remove();
 					sweep.removed.push(leftover.name);
 				} catch {
 					sweep.failed.push(leftover.name);
 				}
-			}
 		}
 		return sweep;
 	}
