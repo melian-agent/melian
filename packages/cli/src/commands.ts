@@ -420,6 +420,7 @@ export async function review(
 				tier,
 				checks: checks.records,
 				checkRun: checks.identity,
+				checkRequest: checks.request,
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,

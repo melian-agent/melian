@@ -18,6 +18,7 @@ import {
 	type DecisionRequest,
 	DirectoryRecordStore,
 	findingId,
+	KeyedRequest,
 	Rendering,
 	reviewPayloads,
 	SharedRecord,
@@ -565,9 +566,17 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const changesets = readdirSync(join(store, "changesets"));
 		expect(changesets).toHaveLength(1);
 		const records = await DirectoryRecordStore.open(store, reviewPayloads);
-		const kinds = (await records.list(changesets[0]!)).map(({ kind }) => kind);
+		const listed = await records.list(changesets[0]!);
 		await records.close();
-		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
+		expect(new Set(listed.map(({ kind }) => kind))).toEqual(new Set(["account", "check", "lens", "round"]));
+		// Each check record is keyed on the request the review's checks ran under, never on none.
+		const checks = listed.filter(({ kind }) => kind === "check");
+		expect(checks.length).toBeGreaterThan(0);
+		for (const { key, revision, payload } of checks) {
+			const [base, head] = revision!.split("..");
+			const name = (payload as { result: { name: string } }).result.name;
+			expect(key).not.toBe(KeyedRequest.of("check.record", { request: null, base, head, name }).key);
+		}
 	});
 
 	it("reviews under a base that trusts writers without --records, and exports nothing", () => {

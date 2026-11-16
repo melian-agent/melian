@@ -1290,6 +1290,8 @@ interface ReviewSettings {
 	readonly config: MelianConfig;
 	/** The identity of checks the host ran upfront. Distinct runs mint rounds even when their records match. */
 	readonly checkRun?: RunIdentity;
+	/** The full key of the request `checkRun` answers, which keys each check's shared record. */
+	readonly checkRequest?: string;
 	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
 	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
@@ -3047,7 +3049,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// bytes, so its round names no round of its own key as replaced.
 	const exportRound = async (
 		store: RecordStore,
-		run: string,
+		run: string | null,
 		checks: readonly CheckRecord[],
 		adjudicated: readonly CheckRecord[],
 		decided: ReadonlyMap<string, CheckRecord>,
@@ -3672,7 +3674,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
 		await exportRound(
 			request.records,
-			JSON.stringify(checked?.identity ?? request.checkRun ?? null),
+			checked?.request ?? request.checkRequest ?? null,
 			options.checks ?? [],
 			verificationCheck === undefined ? checks : [...checks, verificationCheck],
 			decided,

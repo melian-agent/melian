@@ -113,8 +113,8 @@ export class ReviewRecords {
 	 * A check's record, keyed by the check run's full request key, this revision and the check's name: one tier run
 	 * writes one record per check, and two revisions never share one.
 	 */
-	check(run: string, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
-		const key = KeyedRequest.of("check.record", { run, base: this.base, head: this.head, name: result.name }).key;
+	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
+		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
 		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
 	}
 
