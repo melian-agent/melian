@@ -3472,6 +3472,201 @@
     "name": "git with a deadline > reads the process table while git runs, and signals git and its transport by pid"
    },
    "result": "killed"
+  },
+  {
+   "file": "packages/core/src/git.ts",
+   "line": 152,
+   "column": 4,
+   "endLine": 152,
+   "endColumn": 27,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/core/test/git.test.ts",
+    "name": "git with a deadline > lets the process exit when git has already exited and one of the programs it started holds its output open"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 127,
+   "column": 19,
+   "endLine": 127,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 127,
+   "column": 46,
+   "endLine": 130,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 38,
+   "endLine": 137,
+   "endColumn": 84,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 39,
+   "endLine": 137,
+   "endColumn": 43,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 45,
+   "endLine": 137,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 51,
+   "endLine": 137,
+   "endColumn": 83,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 137,
+   "column": 86,
+   "endLine": 142,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 138,
+   "column": 14,
+   "endLine": 138,
+   "endColumn": 20,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 9,
+   "endLine": 139,
+   "endColumn": 51,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 35,
+   "endLine": 139,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 139,
+   "column": 44,
+   "endLine": 139,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/pipeline/test/mutation-process.test.ts",
+    "name": "ProcessTable reads > asks ps for every pid, parent, start, state and command in decoded text"
+   },
+   "result": "killed"
+  },
+  {
+   "file": "packages/core/src/process-tree.ts",
+   "line": 141,
+   "column": 16,
+   "endLine": 141,
+   "endColumn": 25,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "ranAt": "20e85dd1c516ab7bc56d053af9daea6e3f42b4bf",
+   "test": {
+    "file": "packages/core/test/process-tree.test.ts",
+    "name": "ProcessTable > fails a read whose ps runs past the limit, though ps ignores SIGTERM, and the stop then signals nothing"
+   },
+   "result": "killed"
   }
  ]
 }
