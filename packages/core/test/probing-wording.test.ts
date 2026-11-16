@@ -35,6 +35,22 @@ describe("each lens's probing wording", () => {
 		}
 	});
 
+	it("tells every prober that the checkout is beside its probe, at ../tree/, not in the probe's own folder", () => {
+		for (const [lens, wording] of lensProbingWording) {
+			expect(wording.probes, lens).toContain('new URL("../tree/<path>", import.meta.url)');
+			expect(wording.probes, lens).toContain('never as new URL("./<path>", import.meta.url)');
+		}
+	});
+
+	it("asks each prober to cite the file whose code is the cause, and a file that only runs or calls it as context", () => {
+		for (const [lens, wording] of lensProbingWording)
+			expect(wording.findings, lens).toMatch(/as a cause location, .+ a context location\./);
+		expect(lensProbingWording.get("trust-boundary")?.findings).toContain(
+			"not a workflow or configuration that only runs that code",
+		);
+		expect(lensProbingWording.get("correctness")?.findings).toContain("not a file that only calls that code");
+	});
+
 	it("names no boundary, nothing untrusted and no hostile input in the words of a lens that is not about them", () => {
 		for (const lens of ["tests", "correctness"])
 			expect(JSON.stringify(lensProbingWording.get(lens)), lens).not.toMatch(/boundary|untrusted|hostile/i);

@@ -3441,10 +3441,11 @@ async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, 
 	return shown;
 }
 
-// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
-// trust-boundary lens's planner and prober must still be shown what they were shown then.
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, and rewritten
+// by its test for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file. Any other
+// change to what the trust-boundary lens's planner and prober are shown fails it.
 describe("the trust-boundary lens's probing turns", () => {
-	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+	it("are what the golden records, byte for byte, through an escalation, a plan and both reminders", async () => {
 		const shown = await probingTurns(escalating(createFakeModels()), prober);
 		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
 	});
