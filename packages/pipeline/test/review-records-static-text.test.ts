@@ -335,8 +335,8 @@ describe("an exported record keeps what a static finding shares", () => {
 			cacheKey: hash,
 			coverage: { graph: hash, review: hash, test: hash },
 		};
-		const exported = (each: EnolaSnapshot) =>
-			records.check("e".repeat(64), { ...ran("static.enola", 1), snapshots: [each] }, []).toJSON().payload as {
+		const exported = (...snapshots: EnolaSnapshot[]) =>
+			records.check("e".repeat(64), { ...ran("static.enola", 1), snapshots }, []).toJSON().payload as {
 				result: { status: string; reason?: string; snapshots?: unknown };
 				sightings: unknown[];
 			};
@@ -361,7 +361,7 @@ describe("an exported record keeps what a static finding shares", () => {
 			["its review coverage", { ...snapshot, coverage: { ...snapshot.coverage, review: token } }],
 			["its test coverage", { ...snapshot, coverage: { ...snapshot.coverage, test: token } }],
 		])("withholds the check when a snapshot holds text in %s", (_, each) => {
-			const payload = exported(each);
+			const payload = exported(snapshot, each);
 			expect(JSON.stringify(payload)).not.toContain(token);
 			expect(payload).toEqual({
 				v: 1,
