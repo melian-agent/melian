@@ -2080,6 +2080,9 @@ describe("a level that probes", () => {
 						["run_probe", { attack: 1, script: 'process.kill(process.pid, "SIGKILL");\n' }],
 						["run_probe", { attack: 1, script: "process.exit(0);\n" }],
 						["run_probe", { attack: 1, script: 'console.log("held");\nprocess.exit(0);\n' }],
+						["run_probe", { attack: 1, script: "process.exit(124);\n" }],
+						["run_probe", { attack: 1, script: "process.exit(125);\n" }],
+						["run_probe", { attack: 1, script: "process.exit(126);\n" }],
 					]),
 					fauxAssistantMessage("Done."),
 				],
@@ -2087,7 +2090,13 @@ describe("a level that probes", () => {
 			{ lens: probingWith({ timeout: 1000 }) },
 		);
 		await run;
-		const [timed, cut, killed, silent, spoke] = resultsOf(requests[prober]![1]!);
+		const [timed, cut, killed, silent, spoke, exited124, untested, exited126] = resultsOf(requests[prober]![1]!);
+		expect(untested).toMatch(
+			/probe p[0-9]+ exited 125, which says it could not test its attack, so it shows nothing/,
+		);
+		expect(untested).not.toContain("Report a finding");
+		for (const failed of [exited124, exited126])
+			expect(failed).toMatch(/probe p[0-9]+ failed: it exited 12[46], .*Report a finding it shows/);
 		expect(timed).toMatch(/probe p[0-9]+ timed out after 1 second, which shows nothing/);
 		expect(cut).toMatch(
 			/probe p[0-9]+'s output passed its limit, so it was cut and the probe ended, which shows nothing/,

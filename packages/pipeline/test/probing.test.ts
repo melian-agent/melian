@@ -350,6 +350,10 @@ describe("probeFailed", () => {
 		expect(probeFailed(result({ timedOut: true }))).toBe(false);
 		expect(probeFailed(result({ truncated: true }))).toBe(false);
 	});
+
+	it("reads only 125 as a probe that could not test, beside 124 and 126", () => {
+		expect([124, 125, 126].map((exitCode) => probeFailed(result({ exitCode })))).toEqual([true, false, true]);
+	});
 });
 
 describe("probeConclusive", () => {
@@ -359,6 +363,10 @@ describe("probeConclusive", () => {
 		expect(probeConclusive(result({ exitCode: null, signal: "SIGTERM" }))).toBe(false);
 		expect(probeConclusive(result({ exitCode: 0, timedOut: true }))).toBe(false);
 		expect(probeConclusive(result({ exitCode: 0, truncated: true }))).toBe(false);
+	});
+
+	it("reads only 125 as inconclusive, beside 124 and 126", () => {
+		expect([124, 125, 126].map((exitCode) => probeConclusive(result({ exitCode })))).toEqual([true, false, true]);
 	});
 });
 
