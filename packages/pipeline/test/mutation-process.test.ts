@@ -201,7 +201,13 @@ describe("terminateRecorded", () => {
 
 	it("neither signals nor waits for a recorded process that ps shows as a zombie, though its pid and start match", async () => {
 		// A zombie has exited and keeps its pid until it is reaped, so no other process can hold that pid meanwhile.
-		const fake = new FakeProcesses([{ ...at(10, 1), state: "Z" }, { ...at(11, 1), state: "Z+" }], []);
+		const fake = new FakeProcesses(
+			[
+				{ ...at(10, 1), state: "Z" },
+				{ ...at(11, 1), state: "Z+" },
+			],
+			[],
+		);
 		const sleeps: number[] = [];
 		await terminateRecorded(
 			recorded(at(10, 1), at(11, 1)),
@@ -314,7 +320,9 @@ describe("ProcessTable reads", () => {
 			expect(command).toBe("/bin/ps");
 			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart=,stat=,comm="]);
 			expect(options).toEqual({ encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" } });
-			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S ssh", stderr: "" } as ReturnType<typeof spawnSync>;
+			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026 S ssh", stderr: "" } as ReturnType<
+				typeof spawnSync
+			>;
 		});
 		expect(new ProcessTable().list()).toStrictEqual([
 			{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026", state: "S", command: "ssh" },
@@ -347,7 +355,9 @@ describe("ProcessTable reads", () => {
 
 	it("records the same start whatever the caller's time zone, since it reads ps in UTC and leaves this process's own alone", () => {
 		const zone = process.env.TZ;
-		vi.mocked(spawnSync).mockImplementation(fakePs([{ pid: 100, ppid: 1, state: "S" }]) as unknown as typeof spawnSync);
+		vi.mocked(spawnSync).mockImplementation(
+			fakePs([{ pid: 100, ppid: 1, state: "S" }]) as unknown as typeof spawnSync,
+		);
 		try {
 			process.env.TZ = "Australia/Sydney";
 			const sydney = new ProcessTable().start(100);
@@ -844,7 +854,9 @@ const fakePs =
 			.map(({ pid, ppid, state }) => {
 				const hour = zoneHours[options?.env?.TZ ?? "UTC"]!;
 				const start =
-					options?.env?.LC_ALL === "C" ? `Mon Nov 16 ${hour}:00:0${pid % 10} 2026` : `2026-11-16 ${hour}:00:0${pid % 10}`;
+					options?.env?.LC_ALL === "C"
+						? `Mon Nov 16 ${hour}:00:0${pid % 10} 2026`
+						: `2026-11-16 ${hour}:00:0${pid % 10}`;
 				return `${pid} ${ppid} ${start}${args[2]!.includes("stat=") ? ` ${state}` : ""}`;
 			})
 			.join("\n"),

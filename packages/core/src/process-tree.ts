@@ -26,7 +26,11 @@ export function parseProcesses(text: string): ProcessEntry[] {
 	for (const line of text.split("\n")) {
 		const match = /^\s*(\d+)\s+(\d+)\s+(\S+(?:\s+\S+){4})(?:\s+(\S+)(?:\s+(\S.*?))?)?\s*$/.exec(line);
 		if (match === null) continue;
-		const entry: ProcessEntry = { pid: Number(match[1]), ppid: Number(match[2]), start: match[3]!.replace(/\s+/g, " ") };
+		const entry: ProcessEntry = {
+			pid: Number(match[1]),
+			ppid: Number(match[2]),
+			start: match[3]!.replace(/\s+/g, " "),
+		};
 		if (match[4] !== undefined) entry.state = match[4];
 		if (match[5] !== undefined) entry.command = match[5];
 		entries.push(entry);
