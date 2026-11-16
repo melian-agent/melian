@@ -45,7 +45,7 @@ export function checkFindings(root) {
 	for (const path of modules(root)) {
 		const run = spawnSync(process.execPath, ["--check", path], { encoding: "utf8" });
 		if (run.status === 0) continue;
-		const parsed = parseCheck(run.stderr, realpathSync(path));
+		const parsed = parseCheck(run.stderr, realPath(path));
 		const file = relative(root, path);
 		if (parsed === undefined) {
 			findings.push({ file, line: 1, rule: "node/check-failed", message: withheld(file) });
@@ -54,6 +54,15 @@ export function checkFindings(root) {
 		findings.push({ file, line: parsed.line, rule: `node/${parsed.rule}`, message: withheld(file) });
 	}
 	return findings;
+}
+
+// A link to nothing has no real path, and Node names it as given.
+function realPath(path) {
+	try {
+		return realpathSync(path);
+	} catch {
+		return path;
+	}
 }
 
 export function render(findings) {

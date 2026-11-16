@@ -1437,13 +1437,13 @@ describe("scripting a prober", () => {
 
 // Node names a linked module by its target, so a parse that expects the path it was given reads neither twin's place.
 describe("the syntax-check goldens' wrapper on a linked module", { timeout: 60_000 }, () => {
-	const findings = (golden: string) => {
+	const findings = (golden: string, target = "../../outside/types.mjs") => {
 		const scratch = realpathSync(mkdtempSync(join(tmpdir(), "melian-syntax-check-")));
 		onTestFinished(() => rmSync(scratch, { recursive: true, force: true }));
 		mkdirSync(join(scratch, "checkout/src"), { recursive: true });
 		mkdirSync(join(scratch, "outside"));
 		writeFileSync(join(scratch, "outside/types.mjs"), 'export const token = "SECRET-TOKEN" +;\n');
-		symlinkSync("../../outside/types.mjs", join(scratch, "checkout/src/vendor.mjs"));
+		symlinkSync(target, join(scratch, "checkout/src/vendor.mjs"));
 		const wrapper = join(goldensDirectory, golden, "head/src/syntax-check.mjs");
 		const script = `const { checkFindings } = await import(${JSON.stringify(wrapper)}); console.log(JSON.stringify(checkFindings(${JSON.stringify(join(scratch, "checkout"))})));`;
 		return JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" }));
@@ -1456,6 +1456,16 @@ describe("the syntax-check goldens' wrapper on a linked module", { timeout: 60_0
 		const [clean] = findings("trust-boundary-probe-syntax-check-outside-text-clean");
 		expect(clean).toMatchObject({ file: "src/vendor.mjs", line: 1, rule: "node/SyntaxError" });
 		expect(clean.message).not.toContain("SECRET-TOKEN");
+	});
+
+	it("reports a link to nothing as a failed check in both twins, rather than throwing", () => {
+		for (const golden of [
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
+		])
+			expect(findings(golden, "../../outside/missing.mjs"), golden).toEqual([
+				expect.objectContaining({ file: "src/vendor.mjs", line: 1, rule: "node/check-failed" }),
+			]);
 	});
 });
 
