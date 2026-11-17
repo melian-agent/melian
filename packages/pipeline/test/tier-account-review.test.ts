@@ -17,6 +17,7 @@ import {
 	type Harness,
 	type Review,
 	ReviewHarness,
+	type ReviewOrigin,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -79,15 +80,15 @@ const ran: CheckRecord[] = [
 	{ name: "static.tsc", status: "ran" },
 ];
 
-function choosing(level: "skip" | ScrutinyLevel): RecordedDecider {
+function choosing(level: "skip" | ScrutinyLevel, calibrated = false): RecordedDecider {
 	return new RecordedDecider(
 		{ triage: { version: "1", answers: { correctness: { distribution: { [level]: 1 } } } } },
-		{ name: "recorded" },
+		{ name: "recorded", calibrated },
 	);
 }
 
 async function review(
-	options: { config?: Partial<MelianConfig>; checks?: CheckRecord[]; decider?: Decider } = {},
+	options: { config?: Partial<MelianConfig>; checks?: CheckRecord[]; decider?: Decider; origin?: ReviewOrigin } = {},
 ): Promise<Review> {
 	await open(options.decider);
 	scriptConversations(fake, [{ match: correctness, replies: [done] }]);
@@ -100,6 +101,7 @@ async function review(
 		models: fake.review,
 		checks: options.checks ?? ran,
 		...(options.decider === undefined ? {} : { decider: options.decider }),
+		...(options.origin === undefined ? {} : { origin: options.origin }),
 	});
 }
 
@@ -365,5 +367,48 @@ describe("the account a review gives its adjudication", () => {
 			"decisions.fast",
 			"lens.contracts",
 		]);
+	});
+
+	// The default floor depends on whether the host trusts the head and whether triage's decider is calibrated, so neither
+	// may yield a floor of skip: only a configured floor lets triage skip a lens.
+	describe("the default floor", () => {
+		const pulled = (): ReviewOrigin => ({
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "melian" },
+			pullRequest: 62,
+			base: gitIn(repo, "rev-parse", "main"),
+			head: gitIn(repo, "rev-parse", "feature"),
+		});
+
+		it.each([
+			["a trusted head and an uncalibrated decider", false, false],
+			["a trusted head and a calibrated decider", false, true],
+			["an untrusted head and an uncalibrated decider", true, false],
+			["an untrusted head and a calibrated decider", true, true],
+		])("never offers or allows a skip for %s", async (_, untrusted, calibrated) => {
+			const decider = choosing("skip", calibrated);
+
+			const { verdict } = await review({ decider, ...(untrusted ? { origin: pulled() } : {}) });
+
+			expect(decider.requests[0]!.questions[0]!.options).toEqual(
+				untrusted && !calibrated ? ["careful", "deep"] : ["quick", "careful", "deep"],
+			);
+			expect(verdict.status).toBe("passed");
+			expect(await account()).toMatchObject({ checks: [...ran, lensRan], allowSkip: [] });
+		});
+
+		it("offers and allows a skip once configuration sets a floor of skip, even for an untrusted head", async () => {
+			const decider = choosing("skip");
+
+			const { verdict } = await review({
+				decider,
+				origin: pulled(),
+				config: { lenses: { correctness: { level: { floor: "skip" } } } },
+			});
+
+			expect(decider.requests[0]!.questions[0]!.options).toEqual(["skip", "quick", "careful", "deep"]);
+			expect(verdict.status).toBe("passed");
+			expect((await account()).allowSkip).toEqual(["lens.correctness"]);
+		});
 	});
 });
