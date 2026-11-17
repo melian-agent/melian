@@ -9,3 +9,17 @@ The fix's mutants are in `2026-11-16-issue-520-mutants.json`, enumerated over `e
 Codex's review of [pull request #519](https://github.com/melian-agent/melian/pull/519) at 083ce20a found that the sweep's listing read any `lstat` failure as an entry another call had removed. So an entry that stayed but could not be stat'ed, on EIO or EACCES, was skipped without a word: not kept, not failed, and the sweep not `unlisted`. The coordinator added it to this issue on 2026-11-16. The listing now passes over only ENOENT, and any other failure fails the listing, which the sweep reports as `unlisted` and removes nothing. Two tests make `lstat` fail with EIO on a half-made repository and on a temporary index. Both failed first, with the other three leftovers removed and nothing reported, and pass now. The state-git and doctor suites pass, 253 of 253.
 
 That fix's mutants are in `2026-11-16-issue-520-lstat-mutants.json`, over `dd66481a...694ce475` with `--claims-in` naming `repository.ts`: all 5 generated are killed, each by one named test in `sweep.test.ts` run alone at 694ce475 after it passed unmutated, and the runner checked that each mutant replaced exactly the text it names. The guideline and the sweep decision now say a stat that fails for any reason but the entry being gone makes the sweep `unlisted`.
+
+The review of record on [pull request #533](https://github.com/melian-agent/melian/pull/533) found three defects, fixed test-first:
+
+- The namespace test failed on macOS, where `/proc/self/ns/pid` does not exist. A scratch copy that answered ENOENT for that path reproduced the failure. The test now fixes this namespace as well as the other one, and runs in CI's macOS job.
+- Nothing bounded the listing. A sweep now lists at most 1,000 leftovers, `sweepBound`, across the state directory, `records.git` and the fetch refs, and says it is `bounded`. `melian doctor` names the bound. With only the constant added, three tests at the bound and one past it failed, and the doctor test failed too. All of them pass now. The coordinator chose this approach.
+- A table can hide another user's processes, as `/proc` mounted with `hidepid` does. So the sweep now removes only an entry this process's user owns, by its `lstat` owner. It keeps a packed fetch ref, which has no file to say who owns it, and keeps everything where the process has no user ID. The maintainer ruled on this on 2026-11-17. Six tests failed first and pass now.
+
+The final proof is in `2026-11-17-issue-520-final-mutants.json`. It was enumerated over `origin/main...18e79709`, with `--claims-in` naming `owner.ts` and `repository.ts`. Each of the 95 generated mutants in those files ran at 2a75491c. A scratch runner named a test from the sweep and create suites, then ran that test alone, unmutated and then mutated. It counted a kill only when exactly one test passed unmutated and failed mutated. It also checked that each mutant replaced the text it names.
+
+- 93 are killed.
+- One survived, the sort of a listing cut at the bound. A new test, "sweeps in name order what it listed before the bound", reverses the listing past the bound. It passes on the head and fails on that mutant, each run alone.
+- One is equivalent: `uid !== undefined` forced to `true`. `lstat` always reports a numeric owner, so the comparison it guards is false without it.
+
+The only source change between 2a75491c and 18e79709 moves a comment. So each run carries to 18e79709 by git's zero-context line map, with the mutated text checked unchanged.
