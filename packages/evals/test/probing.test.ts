@@ -367,8 +367,10 @@ describe("Miss", () => {
 	const fields = { name: "m", repo: "/r", base: "b", head: "h", file: "f.ts", rule: "fail-open" };
 
 	it("reads a misses file and refuses one missing a field or with an extra one", () => {
-		expect(Miss.load(missesFile([fields])).map((miss) => ({ ...miss }))).toEqual([fields]);
-		const { rule: _, ...missing } = fields;
+		const { rule: _, ...ruleless } = fields;
+		const read = { ...ruleless, rules: ["fail-open"] };
+		expect(Miss.load(missesFile([fields])).map((miss) => ({ ...miss }))).toEqual([read]);
+		const { name: __, ...missing } = fields;
 		expect(() => Miss.load(missesFile([missing]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([{ ...fields, extra: "x" }]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([]))).toThrow(/must be a JSON array of misses/);
@@ -376,10 +378,12 @@ describe("Miss", () => {
 			expect(() => Miss.load(missesFile([{ ...fields, [field]: "" }])), field).toThrow(
 				/must be a JSON array of misses/,
 			);
-		const located = { ...fields, fix: "f", lines: [3, 3] };
-		expect(Miss.load(missesFile([located])).map((miss) => ({ ...miss }))).toEqual([located]);
+		const located = { fix: "f", lines: [3, 3] };
+		expect(Miss.load(missesFile([{ ...fields, ...located }])).map((miss) => ({ ...miss }))).toEqual([
+			{ ...read, ...located },
+		]);
 		expect(() => Miss.load(missesFile([{ ...fields, fix: "" }]))).toThrow(
-			/must be a JSON array of misses, each \{ name, repo, base, head, file, rule, fix\?, lines\? \}/,
+			/must be a JSON array of misses, each \{ name, repo, base, head, file, rule\?, alternativeRules\?, fix\?, lines\? \}/,
 		);
 		for (const lines of [[0, 3], [4, 3], [1.5, 3], [3], [3, 4, 5], ["3", 4]])
 			expect(() => Miss.load(missesFile([{ ...fields, lines }])), JSON.stringify(lines)).toThrow(
@@ -389,6 +393,26 @@ describe("Miss", () => {
 		expect(() => Miss.load(missesFile([fields, { ...fields, lines: [4, 3] }]))).toThrow(
 			/must be a JSON array of misses/,
 		);
+	});
+
+	it("reads a miss's alternative rules, and a miss with no rule only when it has lines", () => {
+		const alternatives = { ...fields, alternativeRules: ["path-traversal", "secret-exposure"] };
+		expect(Miss.load(missesFile([alternatives]))[0]!.rules).toEqual([
+			"fail-open",
+			"path-traversal",
+			"secret-exposure",
+		]);
+		const { rule: _, ...ruleless } = fields;
+		expect(Miss.load(missesFile([{ ...ruleless, lines: [3, 4] }]))[0]!.rules).toEqual([]);
+		const path = missesFile([fields, { ...ruleless, name: "unruled" }]);
+		expect(() => Miss.load(path)).toThrow(`${path}: unruled names no rule, so it needs lines`);
+		const loose = missesFile([{ ...ruleless, lines: [3, 4], alternativeRules: ["fail-open"] }]);
+		expect(() => Miss.load(loose)).toThrow(`${loose}: m names alternative rules but no rule`);
+		for (const alternativeRules of [[], [""]])
+			expect(
+				() => Miss.load(missesFile([{ ...fields, alternativeRules }])),
+				JSON.stringify(alternativeRules),
+			).toThrow(/must be a JSON array of misses/);
 	});
 
 	it("keeps git's diagnostic on a miss's repository off the terminal, since a misses file's path can carry escapes", () => {
@@ -863,6 +887,9 @@ describe("ProbingSettings", () => {
 		const named = ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary " });
 		expect(named.probeLenses).toEqual(["correctness", "trust-boundary"]);
 		expect(named.combinations[0]!.lenses).toEqual(["correctness", "trust-boundary"]);
+		expect(ProbingSettings.parse(env).missReview).toBe("lens");
+		expect(ProbingSettings.parse({ ...env, MELIAN_EVAL_MISS_REVIEW: "" }).missReview).toBe("lens");
+		expect(ProbingSettings.parse({ ...env, MELIAN_EVAL_MISS_REVIEW: "whole" }).missReview).toBe("whole");
 		expect(
 			ProbingSettings.parse({
 				...env,
@@ -880,6 +907,7 @@ describe("ProbingSettings", () => {
 		[{ MELIAN_EVAL_PROBER_TIER: "verifier" }, /MELIAN_EVAL_PROBER_TIER must be light, medium or heavy/],
 		[{ MELIAN_EVAL_PROBE_LENSES: "correctness,correctness" }, /MELIAN_EVAL_PROBE_LENSES repeats correctness/],
 		[{ MELIAN_EVAL_PROBE_LENSES: " , " }, /MELIAN_EVAL_PROBE_LENSES names no lens/],
+		[{ MELIAN_EVAL_MISS_REVIEW: "Whole" }, /^MELIAN_EVAL_MISS_REVIEW must be lens or whole, not "Whole"$/],
 		[{ MELIAN_EVAL_VERIFIER_MODEL: "" }, /MELIAN_EVAL_VERIFIER_MODEL/],
 		[{ MELIAN_EVAL_MODEL: "nomodel" }, /MELIAN_EVAL_MODEL/],
 		[{ MELIAN_EVAL_PROBE_SET: "misses" }, /MELIAN_EVAL_PROBE_SET=misses needs MELIAN_EVAL_MISSES/],
@@ -1131,7 +1159,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			);
 			expect(lines).toContain("pair: no score, 6 reviews had none, 210 tokens, $15");
 			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())), probers: {} };
-			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
+			const review = { kind: "miss", notes: [], sharedProberTier: [], probedBy: [], ...spent };
 			const shown = {
 				id: defect[0]!.id,
 				lines: [start, end],
@@ -1144,7 +1172,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(JSON.parse(readFileSync(out, "utf8")).results[0].passes[0]).toEqual({
 				failed: ["two hunks", "loose"],
 				reviews: [
-					{ name: "hit", found: true, matched: "lines", hits: [shown], near: [], ...review },
+					{
+						name: "hit",
+						found: true,
+						matched: "lines",
+						hits: [shown],
+						near: [],
+						foundBy: [defect[0]!.properties.source],
+						...review,
+					},
 					{
 						name: "two hunks",
 						matched: "fix hunks",
@@ -1433,7 +1469,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				expect(lines).toContain(
 					`pair pass 1 ${name}: ${
 						said === "unadjudicated"
-							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or ${lined ? `read lines ${start}-${end} of it` : "read it"}`
+							? `unadjudicated, no score: never shown to trust-boundary: no completed run of it was shown ${at.file} or ${lined ? `read lines ${start}-${end} of it` : "read it"}`
 							: said
 					}, ${run.telemetry.spend()}`,
 				);
@@ -1494,7 +1530,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				expect(lines).toContain(
 					`pair pass 1 ${name}: ${
 						said === "unadjudicated"
-							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${first}-${last} of it`
+							? `unadjudicated, no score: never shown to trust-boundary: no completed run of it was shown ${at.file} or read lines ${first}-${last} of it`
 							: said
 					}, ${shown.telemetry.spend()}`,
 				);
@@ -1564,7 +1600,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				expect(lines).toContain(
 					`pair pass 1 ${name}: ${
 						said === "unadjudicated"
-							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${fix === "apart" ? "40-42, 80-80" : "30-30"} of it`
+							? `unadjudicated, no score: never shown to trust-boundary: no completed run of it was shown ${at.file} or read lines ${fix === "apart" ? "40-42, 80-80" : "30-30"} of it`
 							: said
 					}, ${run.telemetry.spend()}`,
 				);
@@ -1614,8 +1650,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				reviews: [
 					{ name: lost.name, kind: "golden", error: "no review", notes: [], sharedProberTier: [] },
 					{ name: clean.name, kind: "golden", score: { ...scoreGolden(clean, []) }, ...scored },
-					{ name: "hit", kind: "miss", ...unmatched, ...scored },
-					{ name: "next", kind: "miss", ...unmatched, ...scored },
+					{ name: "hit", kind: "miss", ...unmatched, probedBy: [], ...scored },
+					{ name: "next", kind: "miss", ...unmatched, probedBy: [], ...scored },
 				],
 			});
 			expect(second).toStrictEqual({
@@ -1669,7 +1705,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await measure({ ...settings, MELIAN_EVAL_MISSES: misses }, refused)).toMatchObject({
 				status: 2,
 				errors: [
-					`The misses file cannot be scored: unchanged: README.md is not among the files ${base}...${head} changes; misspelt: fail_open is not a rule the base's trust-boundary lens declares; past: lines ${length}-${length + 1} run past ${at.file}, which has ${length} lines at ${head}`,
+					`The misses file cannot be scored: unchanged: README.md is not among the files ${base}...${head} changes; misspelt: fail_open is not a rule any lens in the base's full tier that reviews ${at.file} declares; past: lines ${length}-${length + 1} run past ${at.file}, which has ${length} lines at ${head}`,
 				],
 			});
 			expect(refused.models).not.toHaveBeenCalled();
@@ -1677,6 +1713,99 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const using = runners();
 			expect((await measure({ ...settings, MELIAN_EVAL_MISSES: missesFile([valid]) }, using)).status).toBe(0);
 			expect(using.range).toHaveBeenCalledTimes(1);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("scores a miss in whole mode only on its lines, and records each responsible lens that never saw them and each prober that completed", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base, head } = buildGoldenRepository(failOpen);
+		try {
+			const at = { repo, base, head, file: "src/scan.ts", rule: "fail-open", alternativeRules: ["wrong-result"] };
+			const settings = {
+				...env,
+				MELIAN_EVAL_MISS_REVIEW: "whole",
+				MELIAN_EVAL_PROBE_SET: "misses",
+				MELIAN_EVAL_PROBE_PASSES: "1",
+				MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+			};
+			const lined = { name: "lined", ...at, lines: [16, 16] };
+			for (const [names, said] of [
+				[["unlined"], "unlined has"],
+				[["one", "two"], "one, two have"],
+			] as const) {
+				const refused = runners();
+				expect(
+					await measure(
+						{ ...settings, MELIAN_EVAL_MISSES: missesFile([lined, ...names.map((name) => ({ name, ...at }))]) },
+						refused,
+					),
+				).toMatchObject({
+					status: 2,
+					errors: [
+						`MELIAN_EVAL_MISS_REVIEW=whole scores a miss only on its hand-entered lines, which ${said} none of`,
+					],
+				});
+				expect(refused.models).not.toHaveBeenCalled();
+			}
+			const foreign = { ...lined, name: "foreign", rule: "wrong-result", alternativeRules: ["null-dereference"] };
+			const misspelt = { ...lined, name: "misspelt", alternativeRules: ["wrong_result"] };
+			for (const review of ["lens", "whole"]) {
+				const refused = runners();
+				expect(
+					await measure(
+						{ ...settings, MELIAN_EVAL_MISS_REVIEW: review, MELIAN_EVAL_MISSES: missesFile([foreign, misspelt]) },
+						refused,
+					),
+					review,
+				).toMatchObject({
+					status: 2,
+					errors: [
+						`The misses file cannot be scored: ${
+							review === "lens"
+								? "foreign: wrong-result or null-dereference is not a rule the base's trust-boundary lens declares; "
+								: ""
+						}misspelt: wrong_result is not a rule any lens in the base's full tier that reviews src/scan.ts declares`,
+					],
+				});
+				expect(refused.models).not.toHaveBeenCalled();
+			}
+			const stage = paid.stages[0]!;
+			const telemetry = new StageTelemetry("base..head", [
+				{ ...stage, id: "c", subject: "correctness@1@careful", shown: [] },
+				{ ...stage, id: "p", subject: "trust-boundary@1@deep", role: "prober", shown: [failOpen.name] },
+				{ ...stage, id: "q", subject: "trust-boundary@1@deep", role: "prober", shown: [] },
+				{ ...stage, id: "r", subject: "contracts@1@deep", role: "prober", outcome: "failed", shown: [] },
+			]);
+			const out = join(scratch, "whole-results.json");
+			const using = runners({ range: vi.fn(async () => ran([], { telemetry })) });
+			const { lines } = await measure(
+				{ ...settings, MELIAN_EVAL_MISSES: missesFile([lined]), MELIAN_EVAL_PROBE_OUT: out },
+				using,
+			);
+			expect(lines).toContain(
+				`pair pass 1 lined: unadjudicated, no score: never shown to correctness: no completed run of it was shown src/scan.ts or read lines 16-16 of it; the review shows no completed trust-boundary run whose scope holds src/scan.ts, ${telemetry.spend()}`,
+			);
+			const [target] = vi.mocked(using.range).mock.calls[0]!;
+			const config = (await loadConfig(repo, { kind: "revision", commit: base }, ".")).config;
+			expect(target.scope!(config, []).config.tiers.full).toEqual(config.tiers.full);
+			const results = JSON.parse(readFileSync(out, "utf8"));
+			expect(results).toMatchObject({ version: 2, missReview: "whole", probeLenses: ["trust-boundary"] });
+			expect(results.misses).toEqual([
+				expect.objectContaining({
+					name: "lined",
+					rules: ["fail-open", "wrong-result"],
+					lenses: ["correctness", "trust-boundary"],
+				}),
+			]);
+			expect(results.results[0].passes[0].reviews[0]).toMatchObject({
+				probedBy: ["trust-boundary"],
+				unseen: [
+					{ lens: "correctness", why: "never shown" },
+					{ lens: "trust-boundary", why: "not run" },
+				],
+			});
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
@@ -1927,7 +2056,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await refused.result).toMatchObject({
 				status: 2,
 				errors: [
-					"The misses file cannot be scored: neither: neither is not a rule the base's trust-boundary lens declares",
+					"The misses file cannot be scored: neither: neither is not a rule any lens in the base's full tier that reviews .github/root.txt declares",
 				],
 			});
 			expect(refused.using.range).not.toHaveBeenCalled();
@@ -2033,19 +2162,23 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			const checkout = import.meta.dirname;
 			const { results: _, ...provenance } = JSON.parse(readFileSync(out, "utf8"));
 			expect(provenance).toEqual({
-				version: 1,
+				version: 2,
 				commit: git(checkout, "rev-parse", "HEAD"),
 				clean: git(checkout, "status", "--porcelain") === "",
 				complete: true,
 				verifier: "c/verify",
 				passes: 1,
+				missReview: "lens",
+				probeLenses: ["trust-boundary"],
 				misses: [
 					{
 						name: "named",
 						repo,
 						base: "moving-base",
 						head: "feature",
-						...fields,
+						file: fields.file,
+						rules: [fields.rule],
+						lenses: ["trust-boundary"],
 						lines: [2, 3],
 						baseCommit: base,
 						headCommit: head,
@@ -2280,6 +2413,80 @@ describe("runRange", { timeout: 60_000 }, () => {
 			expect(run.notes).toEqual([
 				{ reason: expect.stringMatching(/planner found no attack/), checks: ["lens.trust-boundary"] },
 			]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("scores a miss in whole mode on a lens other than trust-boundary, under its alternative rule, and in lens mode as before", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const paths = ["src/scan.ts", "src/rules.ts"];
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, paths);
+			const [read, report, reported] = failOpen.script["trust-boundary"]!;
+			if (report === undefined || !("calls" in report)) throw new Error("the golden's script reports nothing");
+			const [call] = report.calls;
+			const wrong = { calls: [{ ...call!, arguments: { ...call!.arguments, rule: "wrong-result" } }] };
+			const script = () =>
+				scriptLenses(fake, lenses, {
+					...Object.fromEntries(lenses.map(({ name }) => [name, [{ text: "Reported 0 findings." }]])),
+					correctness: [wrong, reported!],
+					"trust-boundary": [read!, { text: "Reported 0 findings." }],
+					verifier: {},
+				});
+			const miss = Miss.load(
+				missesFile([
+					{
+						name: "m",
+						repo,
+						base,
+						head,
+						file: "src/scan.ts",
+						rule: "fail-open",
+						alternativeRules: ["wrong-result"],
+						lines: [16, 16],
+					},
+				]),
+			)[0]!;
+			const trust = ProbeTrust.parse(`${base},${head}`);
+			const location = await miss.locate(head);
+			const live = {
+				kind: "live",
+				models: fake.review,
+				model: `${provider}/plan`,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+			} as const;
+			const whole = miss.target(trust, "whole", ["trust-boundary"]);
+			expect(await miss.reviewers(whole, "whole")).toEqual({ lenses: ["correctness", "trust-boundary"] });
+			script();
+			const reviewed = await runRange(whole, live);
+			expect(
+				miss.match(reviewed, location, "whole").hits.map(({ lines, sightedBy }) => [sightedBy.check, lines]),
+			).toEqual([["lens.correctness", [16, 16]]]);
+			expect(miss.match(reviewed, location, "lens").hits).toEqual([]);
+			const ruled = (rules: Record<string, unknown>) =>
+				Miss.load(missesFile([{ name: "r", repo, base, head, file: "src/scan.ts", lines: [16, 16], ...rules }]))[0]!
+					.match(reviewed, location, "whole")
+					.hits.map(({ sightedBy }) => sightedBy.check);
+			expect(ruled({ rule: "wrong-result" })).toEqual(["lens.correctness"]);
+			expect(ruled({ rule: "fail-open" })).toEqual([]);
+			expect(ruled({ rule: "fail-open", alternativeRules: ["null-dereference"] })).toEqual([]);
+			expect(ruled({ rule: "null-dereference", alternativeRules: ["wrong-result"] })).toEqual(["lens.correctness"]);
+			expect(ruled({})).toEqual(["lens.correctness"]);
+			const lensTarget = miss.target(trust);
+			expect(await miss.reviewers(lensTarget, "lens")).toEqual({ lenses: ["trust-boundary"] });
+			script();
+			const alone = await runRange(lensTarget, live);
+			expect(alone.sightings).toEqual([]);
+			expect(
+				alone.telemetry.stages
+					.filter(({ name }) => name === "melian.lens")
+					.map(({ subject }) => subject.split("@")[0]),
+			).toEqual(["trust-boundary"]);
+			expect(miss.match(alone, location, "lens")).toEqual({ matched: "lines", hits: [], near: [] });
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
