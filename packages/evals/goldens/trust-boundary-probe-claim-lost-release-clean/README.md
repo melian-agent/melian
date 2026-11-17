@@ -6,4 +6,6 @@ The clean twin's head is `main`'s `claim.yml`, after the fix. The same probe pas
 
 The rule is `fail-open`, as the maintainer ruled on 2026-11-07 in [issue #288](https://github.com/melian-agent/melian/issues/288). The status label is the check builders trust to tell them an issue is free. The workflow's own `unlabeled` event is input it did not expect, and it makes the workflow skip the label change it owed, as if the timeline asked for none, so the issue stays held after a writer released it. No trust-boundary rule names an interleaving, and `fail-open` is the one whose outcome this is.
 
+The defect twin's expectation names no `source`, so on this twin a finding from any lens of the lost release, under `fail-open` or `state-ordering`, is a false positive.
+
 The golden's `.melian/lenses/trust-boundary/LENS.golden.md` gives `deep` a probe, since no shipped level probes until the live measurement picks the routes.

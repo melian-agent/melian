@@ -6,4 +6,6 @@ The head is `292e5fed`'s `melian-round.yml`, `round.mjs` and `round-comment.mjs`
 
 The rule is `secret-exposure`, at P1: an author reaches a secret with realistic input. The probe drives the comment alone; the artefact needs a runner, and the finding names the upload's path as context.
 
+Each expectation names its `lines`, and a finding answers it only where its lines overlap them: `round.mjs` lines 104-111, `checkLines`, which prints a check's error, and the workflow's lines 226-239, from the step that writes the raw verdict to the upload of the run's artefact. In the first live measurement a prober showed the comment's leak but cited the workflow. By file and rule alone, such a finding answers the artefact's expectation wherever in the workflow it sits; with lines, it answers only at the step and upload that carry the artefact.
+
 The golden's `.melian/lenses/trust-boundary/LENS.golden.md` gives `deep` a probe, since no shipped level probes until the live measurement picks the routes.

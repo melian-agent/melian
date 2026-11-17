@@ -8,18 +8,21 @@
       "category": "security",
       "file": "src/syntax-check.mjs",
       "rule": "secret-exposure",
+      "alternativeRules": [
+        "path-traversal"
+      ],
       "source": "lens.trust-boundary",
       "cause": "introduced",
       "failureScenario": "A head commits src/vendor.mjs as a link to a file outside the checkout whose first line holds a token and a syntax error. node --check follows the link and quotes that line, parseCheck keeps the quoted line in the finding's text, and the review stores and publishes the finding, so the token reaches the pull request.",
       "evidence": [
         {
           "file": "src/syntax-check.mjs",
-          "line": 40,
+          "line": 50,
           "role": "cause"
         },
         {
           "file": "src/syntax-check.mjs",
-          "line": 26,
+          "line": 31,
           "role": "context"
         }
       ]
