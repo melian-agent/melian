@@ -1,0 +1,329 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "db05bf4ee46d6ce2403dc384dd111300cf248f32",
+		"head": "35e440e1fc8664ab95b39e6f41126f2b2b0b6cf6"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 698,
+			"column": 8,
+			"endLine": 703,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3b20b76f544e1cace76f37a3f29cce52cb843d4f5091496ae37bc424efbe7020",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 699,
+			"column": 12,
+			"endLine": 699,
+			"endColumn": 62,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "908a6dffa1bb76bcc0fae8694ffa311b4aaaf083001d925f5a50210630fe053e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 699,
+			"column": 40,
+			"endLine": 699,
+			"endColumn": 60,
+			"mutatorName": "MethodExpression",
+			"replacement": "request",
+			"status": "generated",
+			"id": "1ea8242917c93b61747edb7c9d5a1510efda9c1a44e27c559c905da7382c6b20",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 829,
+			"column": 5,
+			"endLine": 829,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b461536ab5f54365c3349424a5e63e145fd4f7ccf30832caad879386ae32e848",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks",
+						"rejects a tier that does not exist or includes itself"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 829,
+			"column": 5,
+			"endLine": 829,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "45c43a8e710699753a8455b8b8c465a5907ff02cb1819cf2067a5f0a69f08177",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 829,
+			"column": 5,
+			"endLine": 829,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outcome.status !== \"completed\"",
+			"status": "generated",
+			"id": "d284e17f782566cbdbc45cd9b37013cf80c9e5f0ffd1094a0e8165f7f0f67572",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 829,
+			"column": 24,
+			"endLine": 829,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ba81c63780c2589a4ab25c0ea05f13c55da74e303903e09abc2eaf736b389d29"
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 830,
+			"column": 9,
+			"endLine": 830,
+			"endColumn": 86,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "49374e77d7503a2263e054b2730a263dca1ec99e03b1c092c48718d7474f9ee4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 830,
+			"column": 21,
+			"endLine": 830,
+			"endColumn": 50,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "772548e8aa5ef6134f1e900a87039e24dd9202efa5e81bf654855f012101b73f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-request-reopen.test.ts",
+					"path": [
+						"a check run's full request key",
+						"is the one an uninterrupted run gives, after the process that ran the checks ends and another resumes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 116,
+			"column": 30,
+			"endLine": 116,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "134f2ab1c279ca878d48f888a9667bd110f318494d3107d4dd22047ce03ddd2b"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 116,
+			"column": 46,
+			"endLine": 116,
+			"endColumn": 110,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fdb392cfad6dffea0784d5ad3007784dd9f3bb5d00ddd894eabd57662ce4d438",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"differs for two runs whose requests differ past the identity's prefix"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3649,
+			"column": 3,
+			"endLine": 3649,
+			"endColumn": 51,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(checked?.request ?? request.checkRequest) && null",
+			"status": "generated",
+			"id": "e514c1680e82fb4a57c101fcd252d880148de3f57b3007472c3fec0be8acc83c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"differs for two runs whose requests differ past the identity's prefix"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3649,
+			"column": 3,
+			"endLine": 3649,
+			"endColumn": 43,
+			"mutatorName": "LogicalOperator",
+			"replacement": "checked?.request && request.checkRequest",
+			"status": "generated",
+			"id": "214d3bccefba22ca2409f9d0bdafd75fa16f13ef009f0e03ff4bf9c484dbed19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"differs for two runs whose requests differ past the identity's prefix; applied with parentheses, (checked?.request && request.checkRequest) ?? null, since the unparenthesised form does not parse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3649,
+			"column": 3,
+			"endLine": 3649,
+			"endColumn": 19,
+			"mutatorName": "OptionalChaining",
+			"replacement": "checked.request",
+			"status": "generated",
+			"id": "36fdff1ad599236ca87f8445781ce2da67c1bf31e549b9a29964267f8eefd805",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		}
+	],
+	"total": 14,
+	"omitted": 0,
+	"unmutated": []
+}

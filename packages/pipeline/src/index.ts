@@ -85,6 +85,7 @@ export {
 	readPublished,
 	type SupersededPublication,
 } from "./publish.ts";
+export { RecordedRound, type RecordedRoundContext } from "./recorded-round.ts";
 export {
 	ChangePrompt,
 	createReviewRegistry,
@@ -96,6 +97,7 @@ export {
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
+export { withheld } from "./review-records.ts";
 export {
 	runStaticTool,
 	type StaticRun,
@@ -153,7 +155,14 @@ export {
 	unreadableGraphAgeDays,
 } from "./store-prune.ts";
 export { summarizeReview } from "./summarize.ts";
-export { type ProbeStage, type Stage, StageTelemetry, TelemetryReader, type Untimed } from "./telemetry.ts";
+export {
+	type ProberRecord,
+	type ProbeStage,
+	type Stage,
+	StageTelemetry,
+	TelemetryReader,
+	type Untimed,
+} from "./telemetry.ts";
 export { TokenUsage, type UsageSummary } from "./token-usage.ts";
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
 export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

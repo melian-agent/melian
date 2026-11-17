@@ -1,0 +1,393 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "e0712b6c8ef7899c705eb435e62e61b0e26513db",
+		"head": "02051d2cf4eb34f4dd166ca44a4eb45d000be673"
+	},
+	"claimsIn": [
+		"packages/state-git/src/owner.ts",
+		"packages/state-git/src/repository.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 9,
+			"endLine": 35,
+			"endColumn": 88,
+			"mutatorName": "MethodExpression",
+			"replacement": "table.every(entry => entry.pid === process.pid && entry.ppid === process.ppid)",
+			"status": "generated",
+			"id": "fd62c4d4558099e836c6ee668a8a0e976f1e87e8696cb86a24386caecb959549",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 20,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e42022f969307e0b950845b9a7a96fb142aeed903f603ebafbedae09dcbf7e31",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 31,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "38d67af5152a127817ae6ec65fb751391deac8ec49ef74eb3757c55dc3358855",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing when the table lists this pid under another parent, as a table from another namespace can"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 31,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "24edf198edb0699dede5e1f88cdf68366592c7bd0918a24c7fe2489652868544",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 31,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "LogicalOperator",
+			"replacement": "entry.pid === process.pid || entry.ppid === process.ppid",
+			"status": "generated",
+			"id": "19faa185a4324fe158e949ffd66b14a6865c22825827f1ea612b92ad619e1bd4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing when the table lists this pid under another parent, as a table from another namespace can"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 31,
+			"endLine": 35,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1889d17ee480687cd02fb5ccf68b1a4b8b39cae5d684659e707c2aa88a2b09df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing when the table lists another child of this process's parent, but not this process"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 31,
+			"endLine": 35,
+			"endColumn": 56,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.pid !== process.pid",
+			"status": "generated",
+			"id": "04a54fe930786a8cec022fc62aa5509d75ac312fe250985a853b3502118a5ca7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing when the table lists another child of this process's parent, but not this process"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 60,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "de7af4ca336536867860b66fe969b14365d5efc6fd5c60e7f26d8675bcf8d631",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing when the table lists this pid under another parent, as a table from another namespace can"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/owner.ts",
+			"line": 35,
+			"column": 60,
+			"endLine": 35,
+			"endColumn": 87,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.ppid !== process.ppid",
+			"status": "generated",
+			"id": "71c5faaa07ab3d08baf7416dac4d996464cc3732f4e044ffef7c33c90bda4538",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 184,
+			"column": 7,
+			"endLine": 184,
+			"endColumn": 26,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "Owner.lists(table)",
+			"status": "generated",
+			"id": "61659bb1b8e1139347b4b3fb66d799d33004430bf4b4d5eb8b528ce9371a9a67",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 184,
+			"column": 7,
+			"endLine": 184,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0ef53c22e40454d580dd9b4029fed00ccc1cb12f0f9369c13deeaa76e9b85e04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 184,
+			"column": 7,
+			"endLine": 184,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "877503a093eaa4578285afd005c8bdc95bfb40c7b54607445dea9e8c5c6f11cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing, says why, and names what it kept, when the process table does not list this process"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 184,
+			"column": 28,
+			"endLine": 187,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "77e6b691221bf4c20deddb594821071b20b5be04e710a3bee24fa1e76968eb1a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"sweeps nothing, says why, and names what it kept, when the process table does not list this process"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 185,
+			"column": 19,
+			"endLine": 185,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d6e02660a2a5dd4eba279f87ae781d887d6541f63023968526fa8424b820abef"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 337,
+			"column": 33,
+			"endLine": 337,
+			"endColumn": 72,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9007504442b06448f51f9fd7cdd625a5407d439d9408df68e9e6fcd6d8ef9d71",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes a stale fetch ref that is a symbolic ref, and leaves the ref it points at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 337,
+			"column": 34,
+			"endLine": 337,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c3f4c30fa16124518cb20add44e66535e085da6513112ff2ca2872a0c2d100b9"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 337,
+			"column": 48,
+			"endLine": 337,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bf3b19cd7353c93544c2ad7fe3b9e295cacf351e7b64806fec6b74ce1b2c5e67"
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 337,
+			"column": 54,
+			"endLine": 337,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b79cb1d1c4f657f326284349e99e81907988c90c493c79afe066e5f56f91c0fe"
+		}
+	],
+	"total": 18,
+	"omitted": 0,
+	"unmutated": []
+}

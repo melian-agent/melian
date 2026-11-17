@@ -46,6 +46,7 @@ export function productionWithExtensions(path: string, extensions: RegExp): bool
 
 export const signalFiles = new Set([
 	"packages/core/src/git.ts",
+	"packages/core/src/process-tree.ts",
 	"packages/pipeline/src/cache-scratch.ts",
 	"packages/pipeline/src/mutation-process.ts",
 	"packages/pipeline/src/probe-process.ts",

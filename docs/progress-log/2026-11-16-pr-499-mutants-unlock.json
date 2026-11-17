@@ -1,0 +1,178 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "335a31cabbfb3424aa919cbf1f24958545a19801",
+    "head": "49b4db03e57e5bf1b55e714081d90c772546fe0e"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/verification.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 322,
+      "column": 19,
+      "endLine": 325,
+      "endColumn": 3,
+      "mutatorName": "MethodExpression",
+      "replacement": "asking",
+      "status": "generated",
+      "id": "c75d93aa4fdadd00216b03cf1f1991690868bfadcf8d26fd6f455f86a4000cc5",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks nothing for the verifier's provider of a candidate it asks nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 324,
+      "column": 3,
+      "endLine": 324,
+      "endColumn": 110,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ab61da9d487ba399ed1c2f9a0f60e4f78d80fef8d7c38731d8bc8fadfeebb511",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks the verifier's provider of a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 324,
+      "column": 18,
+      "endLine": 324,
+      "endColumn": 110,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "20057d6d1c038e69995f1766be55e5f31dd0cbe8725184cd15fedea9014c562c",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks nothing for the verifier's provider of a candidate it asks nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 324,
+      "column": 18,
+      "endLine": 324,
+      "endColumn": 110,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "eebe156be128324dc01d0f1eaa6eb83761986654aac9c5d18b575de8979384a9",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks the verifier's provider of a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 324,
+      "column": 18,
+      "endLine": 324,
+      "endColumn": 110,
+      "mutatorName": "EqualityOperator",
+      "replacement": "boundProbeEvidence(candidateEvidence(candidate, reruns), input.revision.nonce) === undefined",
+      "status": "generated",
+      "id": "d9aff751e5671e52914031b34c4a49e5682c2a3861dd0134a45f20df4482264a",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks the verifier's provider of a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 326,
+      "column": 11,
+      "endLine": 326,
+      "endColumn": 72,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "c06569261e412344318cca27ded18fb8083f267b62777b49af267be749ee8058",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks the verifier's provider of a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 326,
+      "column": 46,
+      "endLine": 326,
+      "endColumn": 71,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "bab5b32a1000d4db040210f4ebb3243677550f5148cec0bac9eb054df74e19c5",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "unlocks the verifier's provider of a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 7,
+  "omitted": 0,
+  "unmutated": []
+}

@@ -81,7 +81,7 @@ type FindingRecord = {
 type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
-type FindingsState = {
+export type FindingsState = {
 	revisions: string[];
 	items: Record<string, FindingRecord>;
 	versions: Record<string, number>;
@@ -160,6 +160,19 @@ export function sightedBy(state: FindingsState, revision: string, source: Findin
 			const line = region?.startLine ?? 1;
 			const endLine = region?.endLine ?? line;
 			return [{ id, ruleId: sighting.ruleId, severity, path, line, endLine, message: sighting.message.text }];
+		});
+}
+
+// Each finding `source` reported at `revision`, in ID order, as it reported it: the lifecycle's status stays out, so a dismissal never changes a shared record's bytes.
+export function producerSightings(state: FindingsState, revision: string, source: FindingSource): StoredFinding[] {
+	const key = producerKey(source);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const sighting = state.items[id]!.sightings[revision]?.[key];
+			if (sighting === undefined) return [];
+			const copy = JSON.parse(JSON.stringify(sighting)) as ProducerFinding;
+			return [{ ...copy, properties: { ...copy.properties, status: "new" } }];
 		});
 }
 
@@ -721,6 +734,70 @@ export async function readFindings(
 				reportedBy,
 			};
 			return [Finding.from(structuredClone({ ...winner, properties }))];
+		});
+}
+
+/** One producer's latest verification of finding `id` at a revision. */
+export type VerificationClaim = { id: string; source: FindingSource; verification: Verification };
+
+/**
+ * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, with the
+ * dismissals the verifier matched left out: a shared record carries no dismissal it does not name.
+ */
+export function verificationClaims(
+	state: FindingsState,
+	revision: string,
+	producers: readonly Producer[],
+): VerificationClaim[] {
+	const counts = selected(producers);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const { sightings, verifications } = state.items[id]!;
+			return Object.entries(sightings[revision] ?? {})
+				.filter(([key, sighting]) => counts(key, sighting))
+				.sort(([a], [b]) => compareText(a, b))
+				.flatMap(([key, sighting]) => {
+					const latest = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
+					if (latest === undefined) return [];
+					const { matches: _, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
+					return [{ id, source: { ...sighting.properties.source }, verification }];
+				});
+		});
+}
+
+/**
+ * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
+ * the sightings `producers` select. Each reads `new`: the sightings carry no lifecycle, so no dismissal reaches them.
+ */
+export function mergeSightings(
+	sightings: readonly StoredFinding[],
+	claims: readonly VerificationClaim[],
+	producers: readonly Producer[],
+): Finding[] {
+	const at = "revision";
+	const items: Record<string, Pick<FindingRecord, "sightings" | "verifications">> = {};
+	for (const sighting of sightings) {
+		const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = sighting.properties;
+		const item = items[properties.id] ?? { sightings: { [at]: {} } };
+		items[properties.id] = item;
+		item.sightings[at]![producerKey(properties.source)] = JSON.parse(JSON.stringify({ ...sighting, properties }));
+	}
+	for (const [index, { id, source, verification }] of claims.entries()) {
+		const item = items[id];
+		if (item === undefined) continue;
+		const verified = item.verifications ?? { [at]: {} };
+		item.verifications = verified;
+		verified[at]![producerKey(source)] = { [String(index)]: JSON.parse(JSON.stringify(verification)) };
+	}
+	const counts = selected(producers);
+	return Object.keys(items)
+		.sort()
+		.flatMap((id) => {
+			const atHead = judgedAt(items[id]!, at, counts);
+			if (Object.keys(atHead).length === 0) return [];
+			const { winner, reportedBy } = adjudicate(atHead, true);
+			return [Finding.from({ ...winner, properties: { ...winner.properties, status: "new", reportedBy } })];
 		});
 }
 

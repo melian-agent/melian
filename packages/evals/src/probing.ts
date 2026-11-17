@@ -300,10 +300,17 @@ export class Miss {
 
 	/**
 	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
-	 * conversation, other than a prober, whose stored coverage holds the miss's file.
+	 * conversation, other than a prober, whose stored coverage holds the miss's file and which saw the defect: its prompt
+	 * showed the file's diff whole, or `read_file` delivered it a line of one of `location`'s ranges, or any line of the
+	 * file for a miss located by file and rule alone.
+	 * The diff has no context lines, so it shows a range's lines only where a head-side hunk of `target`'s diff holds them.
 	 */
-	unscoped(run: Pick<RangeRun, "telemetry">): string | undefined {
-		const looked = run.telemetry.stages.some(
+	async unscoped(
+		run: Pick<RangeRun, "telemetry">,
+		target: Pick<ReviewTarget, "range">,
+		location: MissLocation,
+	): Promise<string | undefined> {
+		const scoped = run.telemetry.stages.filter(
 			(stage) =>
 				stage.name === "melian.lens" &&
 				stage.subject.startsWith(`${probingLens}@`) &&
@@ -312,7 +319,31 @@ export class Miss {
 				stage.coverage !== undefined &&
 				lensCovers(stage.coverage, this.file),
 		);
-		return looked ? undefined : `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
+		if (scoped.length === 0) return `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
+		const ranges = location.by === "file and rule" ? undefined : location.ranges;
+		const { revision } = await Changeset.resolve(this.repo, target.range);
+		const diffShows =
+			ranges === undefined ||
+			revision.files
+				.filter((file) => file.path === this.file)
+				.flatMap((file) => file.hunks)
+				.some(
+					({ newStart, newLines }) =>
+						newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first),
+				);
+		const seen = scoped.some(
+			(stage) =>
+				(diffShows && stage.shown?.includes(this.file)) ||
+				stage.read?.some(
+					(read) =>
+						read.path === this.file &&
+						(ranges === undefined ||
+							read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))),
+				),
+		);
+		return seen
+			? undefined
+			: `the review shows no completed ${probingLens} run that was shown ${this.file} or ${ranges === undefined ? "read it" : `read lines ${ranges.map(([first, last]) => `${first}-${last}`).join(", ")} of it`}`;
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -584,6 +615,11 @@ export interface ProbingReview {
 	readonly sharedProberTier: readonly string[];
 	readonly spend?: string;
 	readonly telemetry?: ReturnType<StageTelemetry["toJSON"]>;
+	/**
+	 * Each prober stage's plan, skip reasons, and probe scripts, files and output, by stage ID. Model and head text,
+	 * which can hold any file `probe.read` allows, so the results file stays local.
+	 */
+	readonly probers?: RangeRun["probers"];
 }
 
 /** What one pass of one combination scored. A score is absent when a review of its corpus had none. */
@@ -772,6 +808,7 @@ export async function measureProbing(
 					sharedProberTier: sharing,
 					spend: run.telemetry.spend(),
 					telemetry: run.telemetry.toJSON(),
+					probers: run.probers,
 				});
 				print(visibleText(`${line}, ${run.telemetry.spend()}`));
 				for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
@@ -779,7 +816,8 @@ export async function measureProbing(
 			};
 			const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
 				attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
-					const ran = error instanceof GoldenRunError ? error.telemetry : undefined;
+					const failure = error instanceof GoldenRunError ? error : undefined;
+					const ran = failure?.telemetry;
 					if (ran !== undefined) telemetry.push(ran);
 					failed.push(name);
 					reviews.push({
@@ -788,7 +826,9 @@ export async function measureProbing(
 						error: error instanceof Error ? error.message : String(error),
 						notes: [],
 						sharedProberTier: [],
-						...(ran === undefined ? {} : { spend: ran.spend(), telemetry: ran.toJSON() }),
+						...(ran === undefined
+							? {}
+							: { spend: ran.spend(), telemetry: ran.toJSON(), probers: failure!.probers }),
 					});
 				});
 			for (const golden of goldens) {
@@ -809,13 +849,13 @@ export async function measureProbing(
 					try {
 						return { run, match: miss.match(run, location) };
 					} catch (error) {
-						throw new GoldenRunError(error, run.telemetry);
+						throw new GoldenRunError(error, run.telemetry, run.probers);
 					}
 				});
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				const unscoped = miss.unscoped(run);
+				const unscoped = await miss.unscoped(run, target, location);
 				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
 				const unadjudicated =
 					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));

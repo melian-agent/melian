@@ -79,6 +79,7 @@ const paid = new StageTelemetry("base..head", [
 		subject: "trust-boundary@1@deep",
 		outcome: "completed",
 		coverage: { scope: "", paths: ["**"], nearer: [] },
+		shown: [".github/workflows/claim.yml", "moved/claim.yml", ".github/root.txt"],
 		timing: "unavailable",
 		reused: false,
 		resumed: false,
@@ -103,6 +104,7 @@ function ran(findings: readonly Finding[], fields: Partial<RangeRun> = {}): Rang
 		verdict: held({ findings }),
 		rendered: "rendered review\n",
 		toolMismatches: [],
+		probers: {},
 		notes: [],
 		tiers: {},
 		...fields,
@@ -287,7 +289,12 @@ describe("a probing golden", { timeout: 120_000 }, () => {
 			kind: "scripted",
 			probes: "unconfined",
 		});
-		expect((run.verdict.ran ?? []).map(({ name }) => name).filter((name) => name.startsWith("lens."))).toEqual([
+		expect(
+			(run.verdict.ran ?? [])
+				.map(({ name }) => name)
+				.filter((name) => name.startsWith("lens."))
+				.sort(),
+		).toEqual([
 			"lens.contracts",
 			"lens.conventions",
 			"lens.correctness",
@@ -856,13 +863,21 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 
 	it("scores each combination by its worst and mean pass, prints each review's notes, and spends every review", async () => {
 		let call = 0;
+		const record = (output: string) => ({
+			"conversation:9": {
+				plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
+				skips: [{ attack: 2, reason: "it needs another machine" }],
+				probes: [{ id: "p1", attack: 1, script: "s", files: [{ path: "n", text: "x" }], output }],
+			},
+		});
 		const using = runners({
 			golden: vi.fn(async (each: Golden) => {
 				call += 1;
-				if (call === 7) throw new GoldenRunError(new Error("provider down"), paid);
+				if (call === 7) throw new GoldenRunError(new Error("provider down"), paid, record("failed"));
 				return {
 					golden: each,
 					...ran(each === lost && call !== 3 ? defect : [], {
+						probers: record(`call ${call}`),
 						notes: [{ reason: "it planned 1 attack and ran 1 probe in 0.3 s", checks: ["lens.trust-boundary"] }],
 						tiers:
 							each === lost
@@ -938,6 +953,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				notes,
 				sharedProberTier: ["lens.conventions", "lens.tests"],
 				...spent,
+				probers: record("call 1"),
 			},
 			{
 				name: clean.name,
@@ -946,6 +962,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				notes,
 				sharedProberTier: ["lens.correctness"],
 				...spent,
+				probers: record("call 2"),
 			},
 		]);
 		expect(results.results[0].mean.recall).toBeCloseTo(2 / 3);
@@ -953,7 +970,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(results.results[1].passes[0]).toEqual({
 			failed: [lost.name],
 			reviews: [
-				{ name: lost.name, kind: "golden", error: "provider down", notes: [], sharedProberTier: [], ...spent },
+				{
+					name: lost.name,
+					kind: "golden",
+					error: "provider down",
+					notes: [],
+					sharedProberTier: [],
+					...spent,
+					probers: record("failed"),
+				},
 				{
 					name: clean.name,
 					kind: "golden",
@@ -961,6 +986,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					notes,
 					sharedProberTier: [],
 					...spent,
+					probers: record("call 8"),
 				},
 			],
 		});
@@ -1063,7 +1089,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				),
 			);
 			expect(lines).toContain("pair: no score, 6 reviews had none, 210 tokens, $15");
-			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())), probers: {} };
 			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
 			const shown = {
 				id: defect[0]!.id,
@@ -1254,6 +1280,258 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("scores a miss only where a trust-boundary run was shown its file or read its lines", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			// Lines wider than the defect's one, so each end of the overlap decides a case of its own.
+			const [start, line] = defect[0]!.lines();
+			const end = line + 3;
+			expect(start).toBeGreaterThan(1);
+			const [stage] = paid.stages;
+			const { shown: _, ...unseen } = stage!;
+			const telemetry = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				new StageTelemetry(
+					"base..head",
+					stages.map((fields) => ({ ...unseen, ...fields })),
+				);
+			const lensRun = (...stages: Partial<(typeof paid.stages)[number]>[]) =>
+				ran(defect, { telemetry: telemetry(...stages) });
+			const read = (path: string, first: number, last: number) => ({
+				read: [{ path, ranges: [[first, last] as [number, number]] }],
+			});
+			const cases: [string, RangeRun, boolean, string][] = [
+				["older", lensRun({}), true, "unadjudicated"],
+				["unshown", lensRun({ shown: [] }), true, "unadjudicated"],
+				["shown another", lensRun({ shown: ["elsewhere.ts"] }), true, "unadjudicated"],
+				["read another", lensRun({ shown: [], ...read("elsewhere.ts", start, end) }), true, "unadjudicated"],
+				["read before", lensRun({ shown: [], ...read(at.file, 1, start - 1) }), true, "unadjudicated"],
+				["read after", lensRun({ shown: [], ...read(at.file, end + 1, end + 9) }), true, "unadjudicated"],
+				[
+					"prober shown",
+					lensRun({ shown: [] }, { role: "prober", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				[
+					"ended shown",
+					lensRun({ shown: [] }, { outcome: "ended", shown: [at.file], usage: undefined }),
+					true,
+					"unadjudicated",
+				],
+				["shown", lensRun({ shown: [at.file] }), true, "found"],
+				["second run shown", lensRun({ shown: [] }, { shown: [at.file], usage: undefined }), true, "found"],
+				[
+					"read another first",
+					lensRun({
+						shown: [],
+						read: [
+							{ path: "elsewhere.ts", ranges: [[start, end]] },
+							{ path: at.file, ranges: [[start, start]] },
+						],
+					}),
+					true,
+					"found",
+				],
+				[
+					"one range inside",
+					lensRun({
+						shown: [],
+						read: [
+							{
+								path: at.file,
+								ranges: [
+									[1, 1],
+									[start, start],
+								],
+							},
+						],
+					}),
+					true,
+					"found",
+				],
+				["read to start", lensRun({ shown: [], ...read(at.file, 1, start) }), true, "found"],
+				["read from end", lensRun({ shown: [], ...read(at.file, end, end + 9) }), true, "found"],
+				[
+					"read, missed",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, start, start) }) }),
+					true,
+					"missed",
+				],
+				["unread, no lines", ran([], { telemetry: telemetry({ shown: [] }) }), false, "unadjudicated"],
+				[
+					"read, no lines",
+					ran([], { telemetry: telemetry({ shown: [], ...read(at.file, end + 1, end + 1) }) }),
+					false,
+					"missed",
+				],
+			];
+			const runs = cases.map(([, run]) => run);
+			const range = vi.fn(async () => runs.shift()!);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, , lined]) => ({
+							name,
+							repo,
+							base,
+							head,
+							...at,
+							...(lined ? { lines: [start, end] } : {}),
+						})),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, run, lined, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or ${lined ? `read lines ${start}-${end} of it` : "read it"}`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("counts a shown file for a miss's lines only where one of its head-side hunks holds them, and never a deletion", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			git(repo, "checkout", "--quiet", "-b", "hunks", "feature");
+			const path = join(repo, at.file);
+			const text = readFileSync(path, "utf8").split("\n");
+			// Head-side hunks at 30, 50-52, and a deletion of line 70, which the head holds as no lines after line 69.
+			text[29] = "# changed 30";
+			for (const line of [49, 50, 51]) text[line] = `# changed ${line + 1}`;
+			text.splice(69, 1);
+			writeFileSync(path, text.join("\n"));
+			// Another file the range adds, whose one hunk holds every line the misses name.
+			writeFileSync(
+				join(repo, "other.txt"),
+				`${Array.from({ length: 100 }, (_, index) => `line ${index + 1}`).join("\n")}\n`,
+			);
+			git(repo, "add", "other.txt");
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--all", "-m", "hunks");
+			const head = git(repo, "rev-parse", "hunks");
+			const shown = ran([], {
+				telemetry: new StageTelemetry("base..head", [{ ...paid.stages[0]!, shown: [at.file] }]),
+			});
+			const cases: [string, [number, number], string][] = [
+				["one-line hunk", [30, 30], "missed"],
+				["before one-line hunk", [29, 29], "unadjudicated"],
+				["after one-line hunk", [31, 31], "unadjudicated"],
+				["hunk's first line", [50, 50], "missed"],
+				["hunk's last line", [52, 52], "missed"],
+				["before hunk", [49, 49], "unadjudicated"],
+				["after hunk", [53, 53], "unadjudicated"],
+				// The deletion's hunk holds no head line, though one counted as a line would end at 68 and start at 69.
+				["deletion", [68, 70], "unadjudicated"],
+			];
+			const range = vi.fn(async () => shown);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(
+						cases.map(([name, missed]) => ({ name, repo, base, head, ...at, lines: missed })),
+					),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, [first, last], said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${first}-${last} of it`
+							: said
+					}, ${shown.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("counts a fix-located miss as seen only where the lens was shown or read a line its fix changes", async () => {
+		const { repo } = buildGoldenRepository(lost);
+		try {
+			const at = { file: defect[0]!.properties.path!, rule: defect[0]!.ruleId };
+			const base = git(repo, "rev-parse", "feature");
+			const commit = (branch: string, from: string, lines: number[]) => {
+				git(repo, "checkout", "--quiet", "-b", branch, from);
+				const path = join(repo, at.file);
+				const text = readFileSync(path, "utf8").split("\n");
+				for (const line of lines) text[line - 1] = `# ${branch} ${line}`;
+				writeFileSync(path, text.join("\n"));
+				git(
+					repo,
+					"-c",
+					"user.name=t",
+					"-c",
+					"user.email=t@example.com",
+					"commit",
+					"--quiet",
+					"--all",
+					"-m",
+					branch,
+				);
+				return git(repo, "rev-parse", branch);
+			};
+			// The range changes line 30 alone; one fix changes 40-42 and 80, one changes 30, and one changes 30 and 80.
+			const head = commit("ranged", base, [30]);
+			commit("apart", head, [40, 41, 42, 80]);
+			commit("inside", head, [30]);
+			commit("both", head, [30, 80]);
+			const [stage] = paid.stages;
+			const lensRun = (fields: Partial<typeof stage>) =>
+				ran([], { telemetry: new StageTelemetry("base..head", [{ ...stage!, shown: [], ...fields }]) });
+			const reading = (first: number, last: number) =>
+				lensRun({ read: [{ path: at.file, ranges: [[first, last]] }] });
+			const cases: [string, string, RangeRun, string][] = [
+				["fix's first line", "apart", reading(40, 40), "missed"],
+				["fix's last line", "apart", reading(42, 42), "missed"],
+				["before fix", "apart", reading(39, 39), "unadjudicated"],
+				["after fix", "apart", reading(43, 43), "unadjudicated"],
+				["fix's other hunk", "apart", reading(80, 80), "missed"],
+				["shown off the fix", "apart", lensRun({ shown: [at.file] }), "unadjudicated"],
+				["shown on the fix", "inside", lensRun({ shown: [at.file] }), "missed"],
+				["shown on one of the fix's hunks", "both", lensRun({ shown: [at.file] }), "missed"],
+			];
+			const range = vi.fn();
+			for (const [, , run] of cases) range.mockResolvedValueOnce(run);
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_MISSES: missesFile(cases.map(([name, fix]) => ({ name, repo, base, head, ...at, fix }))),
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+				},
+				runners({ range }),
+			);
+			for (const [name, fix, run, said] of cases)
+				expect(lines).toContain(
+					`pair pass 1 ${name}: ${
+						said === "unadjudicated"
+							? `unadjudicated, no score: the review shows no completed trust-boundary run that was shown ${at.file} or read lines ${fix === "apart" ? "40-42, 80-80" : "30-30"} of it`
+							: said
+					}, ${run.telemetry.spend()}`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps one corpus's score when only the other's review failed, and records a failure that never reached a review or one it could not score", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -1285,7 +1563,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				MELIAN_EVAL_PROBE_OUT: out,
 			};
 			expect((await measure(settings, using)).status).toBe(1);
-			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())), probers: {} };
 			const scored = { notes: [], sharedProberTier: [], ...spent };
 			const unmatched = { found: false, matched: "file and rule", hits: [], near: [] };
 			const [first, second] = JSON.parse(readFileSync(out, "utf8")).results[0].passes;
