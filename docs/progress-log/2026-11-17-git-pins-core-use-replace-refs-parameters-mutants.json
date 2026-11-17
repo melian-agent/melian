@@ -1,0 +1,113 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "699fc38e18bbc6b4b0822b8588dd80b762d7b775",
+		"head": "a8f456f9638d3c39cbb9c8865a8f449656f75e37"
+	},
+	"claimsIn": [
+		"packages/core/src/git.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 25,
+			"endLine": 82,
+			"endColumn": 99,
+			"mutatorName": "MethodExpression",
+			"replacement": "[env.GIT_CONFIG_PARAMETERS, \"'core.useReplaceRefs=false'\"]",
+			"status": "generated",
+			"id": "438b05c00fc23bc3f5a1327958c827ee17bd2924e2b74db3d211f8499f1d6cf3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs in place of a count git would refuse"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 25,
+			"endLine": 82,
+			"endColumn": 83,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9b9474c1e675ccd9191a2eb38c99a859b985f4e070c0478ed487e41ab8945110",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs after the settings a caller's GIT_CONFIG_PARAMETERS holds, which git reads after the count"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 53,
+			"endLine": 82,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "16b4f6bacfcefc45fb864bf55e78f750851180d12d1e3f4b210579bc28d1cbb6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs after the settings a caller's GIT_CONFIG_PARAMETERS holds, which git reads after the count"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 105,
+			"endLine": 82,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "07e7cb4470b1b0e83cfc7e5d5c481e02722871ab04edd14997b00efb6a1c0afa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs after the settings a caller's GIT_CONFIG_PARAMETERS holds, which git reads after the count"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 4,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/core/src/git.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

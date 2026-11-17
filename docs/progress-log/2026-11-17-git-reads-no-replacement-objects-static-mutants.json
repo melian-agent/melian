@@ -1,0 +1,89 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "32ceb5ab4eba7760333cd27cb60ecacdc08fc1a8",
+		"head": "2fe1af2083ebfb0968cc3b5ec422068fcd1f7819"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/static.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 138,
+			"column": 53,
+			"endLine": 140,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "21a677973a858950f04e9ed8b7e0b85363aa6b85a05468fd8e233aff9353f60a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"checks out the commit an ID names, not a replacement refs/replace puts behind it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 139,
+			"column": 8,
+			"endLine": 139,
+			"endColumn": 153,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "generated",
+			"id": "88480882acb688d813d4aba354845ed22038d47932408b2ffa1affa20af00a4d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"checks out the commit an ID names, not a replacement refs/replace puts behind it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 139,
+			"column": 35,
+			"endLine": 139,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "caba997919dd0591b17a7605820c8267c20975b8efd3d4e2f6158445df5717fd",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the shell runs with inheritEnv false and only PATH, HOME, TMPDIR and LANG, so no GIT_ variable reaches it for the unset to remove"
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		}
+	],
+	"total": 3,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}
