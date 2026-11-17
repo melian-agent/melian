@@ -2983,7 +2983,7 @@
 			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
 		}
 	],
-	"note": "Run 1 enumerated base...dc4ecd9c. Survivors were carried to 8d58c879 by git's line map with their source text checked, and rerun there. `predicate` lists the mutants of the unanswered rule 8d58c879 wrote, at its lines. `answered` lists every mutant of e8374588...b6fded4c, the fixes that let one finding answer each failed attack it rests on and that bound an unsignalled exit, in probing.ts, lens-tools.ts and review.ts, each run against its named test alone at `ranAt`; a claim run at 94ff82a1 is kept only where its source lines are unchanged at b6fded4c. `runner` lists every mutant of 6ee1001b...81a3a186, the fix that reads a probe a real-time signal ended as an unknown ending, each killed one run against its named test alone at 81a3a186.",
+	"note": "Run 1 enumerated base...dc4ecd9c. Survivors were carried to 8d58c879 by git's line map with their source text checked, and rerun there. `predicate` lists the mutants of the unanswered rule 8d58c879 wrote, at its lines. `answered` lists every mutant of e8374588...b6fded4c, the fixes that let one finding answer each failed attack it rests on and that bound an unsignalled exit, in probing.ts, lens-tools.ts and review.ts, each run against its named test alone at `ranAt`; a claim run at 94ff82a1 is kept only where its source lines are unchanged at b6fded4c. `runner` lists every mutant of 6ee1001b...81a3a186, the fix that reads a probe a real-time signal ended as an unknown ending, each killed one run against its named test alone at 81a3a186. `firstProbe` lists every mutant of 92078b98...8fe41818, the fix that rests a finding on the probe that first showed it, each killed by its named test alone at 8fe41818.",
 	"predicate": [
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -4574,5 +4574,86 @@
 			"survivorClasses": [],
 			"ranAt": "81a3a186"
 		}
-	]
+	],
+	"firstProbe": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "012231a2e7a8aeb82d2852ea84f1c9b5b556025d00523c819ab002a2e9acb1fe",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts two failed attacks answered by one finding reported on each of their probes",
+			"survivorClasses": [],
+			"ranAt": "8fe41818"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7feddff8d6cd61cbf92a13ad6c1ee66532f9f575cc7497ad0a9adb67e18a5ede",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts two failed attacks answered by one finding reported on each of their probes",
+			"survivorClasses": [],
+			"ranAt": "8fe41818"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probing!.findings?.[id] !== undefined",
+			"status": "generated",
+			"id": "cc8011e22a35b7a2a8eeaea12d60747372b5295bceb2004bbf3841adaa74966c",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts two failed attacks answered by one finding reported on each of their probes",
+			"survivorClasses": [],
+			"ranAt": "8fe41818"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 30,
+			"mutatorName": "OptionalChaining",
+			"replacement": "probing!.findings[id]",
+			"status": "generated",
+			"id": "5d8007ad99553db8a1686a519b3abd62688d4f58153e21a8b88f095243e218fa",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts two failed attacks answered by one finding reported on each of their probes",
+			"survivorClasses": [],
+			"ranAt": "8fe41818"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 66,
+			"endLine": 1656,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dfd769a02d4ead506caf913091772d857745c5333fcc94b706c23539ae114a48",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > counts two failed attacks answered by one finding reported on each of their probes",
+			"survivorClasses": [],
+			"ranAt": "8fe41818"
+		}
+	],
+	"firstProbeRange": {
+		"base": "92078b989ddb7e6aa3d35536b17ff10271d8459b",
+		"head": "8fe41818f6aaf242b48388ba059d690b49a4deb4"
+	}
 }
