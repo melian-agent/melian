@@ -6,7 +6,9 @@ import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
-		execFile("git", args, { cwd, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+		// A ref under refs/replace puts another object behind an ID, so a commit Melian names could show a different tree.
+		const env = { ...process.env, GIT_NO_REPLACE_OBJECTS: "1" };
+		execFile("git", args, { cwd, env, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
 			if (error === null) done(stdout.trim());
 			else fail(new CliError(`git ${args[0]} failed: ${stderr.trim() || error.message}`));
 		});

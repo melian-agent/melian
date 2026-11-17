@@ -92,6 +92,19 @@ it("uses the created scratch path when canonicalisation fails", { timeout: 60_00
 	).resolves.toBe("done");
 });
 
+it("checks out the commit an ID names, not a replacement refs/replace puts behind it", {
+	timeout: 60_000,
+}, async () => {
+	const original = commit(repo, { "a.ts": "export const side = 'original';\n" });
+	const replacement = commit(repo, { "a.ts": "export const side = 'replacement';\n" });
+	gitIn(repo, "replace", original, replacement);
+	const run = new Run(input("biome", original), context);
+
+	const read = await run.inWorktree(async (root) => readFileSync(join(root, "a.ts"), "utf8"));
+
+	expect(read).toBe("export const side = 'original';\n");
+});
+
 const tsconfig = JSON.stringify({
 	compilerOptions: { strict: true, noEmit: true, target: "ES2022", module: "NodeNext" },
 });

@@ -189,7 +189,7 @@ const claimProbe: ClaimProbe = {
 		writer: { trusted: true, by: "reviewer" },
 		trustWriters: true,
 		read: [],
-		host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.0.0" },
+		host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.0.0" },
 	},
 };
 
