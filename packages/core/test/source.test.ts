@@ -268,9 +268,9 @@ describe.each(sourceKinds)("source reader bounds from %s", (kind) => {
 		let child: ChildProcess | undefined;
 		vi.spyOn(childProcess, "spawn").mockImplementation((command, args, options) => {
 			if (command !== "git" || !args.includes("check-ignore")) return spawn(command, args, options);
-			// Open stdin keeps git alive until the signal, even when the parent is descheduled after spawn.
+			// git() ends git's input once spawn returns, so the signal goes first: until then --stdin keeps git waiting.
 			child = spawn(command, [...args.slice(0, args.indexOf("--")), "--stdin"], options);
-			child.once("spawn", () => expect(child!.kill("SIGTERM")).toBe(true));
+			expect(child.kill("SIGTERM")).toBe(true);
 			return child;
 		});
 		expect(await rejection(reader.isIgnored("docs/rules.md"), SourceError)).toMatchObject({
