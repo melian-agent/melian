@@ -284,8 +284,9 @@ describe("lensRequest", () => {
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: none }).request).not.toHaveProperty("wording");
 	});
 
-	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared.
-	it("keys the trust-boundary lens's probing wording as the table main keyed", () => {
+	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared, and rewritten from
+	// code for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file.
+	it("keys the trust-boundary lens's probing wording as the recorded table", () => {
 		const golden = JSON.parse(
 			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),
 		);

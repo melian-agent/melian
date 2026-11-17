@@ -615,6 +615,11 @@ export interface ProbingReview {
 	readonly sharedProberTier: readonly string[];
 	readonly spend?: string;
 	readonly telemetry?: ReturnType<StageTelemetry["toJSON"]>;
+	/**
+	 * Each prober stage's plan, skip reasons, and probe scripts, files and output, by stage ID. Model and head text,
+	 * which can hold any file `probe.read` allows, so the results file stays local.
+	 */
+	readonly probers?: RangeRun["probers"];
 }
 
 /** What one pass of one combination scored. A score is absent when a review of its corpus had none. */
@@ -803,6 +808,7 @@ export async function measureProbing(
 					sharedProberTier: sharing,
 					spend: run.telemetry.spend(),
 					telemetry: run.telemetry.toJSON(),
+					probers: run.probers,
 				});
 				print(visibleText(`${line}, ${run.telemetry.spend()}`));
 				for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
@@ -810,7 +816,8 @@ export async function measureProbing(
 			};
 			const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
 				attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
-					const ran = error instanceof GoldenRunError ? error.telemetry : undefined;
+					const failure = error instanceof GoldenRunError ? error : undefined;
+					const ran = failure?.telemetry;
 					if (ran !== undefined) telemetry.push(ran);
 					failed.push(name);
 					reviews.push({
@@ -819,7 +826,9 @@ export async function measureProbing(
 						error: error instanceof Error ? error.message : String(error),
 						notes: [],
 						sharedProberTier: [],
-						...(ran === undefined ? {} : { spend: ran.spend(), telemetry: ran.toJSON() }),
+						...(ran === undefined
+							? {}
+							: { spend: ran.spend(), telemetry: ran.toJSON(), probers: failure!.probers }),
 					});
 				});
 			for (const golden of goldens) {
@@ -840,7 +849,7 @@ export async function measureProbing(
 					try {
 						return { run, match: miss.match(run, location) };
 					} catch (error) {
-						throw new GoldenRunError(error, run.telemetry);
+						throw new GoldenRunError(error, run.telemetry, run.probers);
 					}
 				});
 				if (scored === undefined) continue;

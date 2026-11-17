@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { statSync } from "node:fs";
 import { hostname } from "node:os";
 import type { ProcessControl, ProcessEntry } from "@melian-agent/core";
 
@@ -8,10 +9,19 @@ export type Processes = Pick<ProcessControl, "list">;
 // The host's hash, a pid with no leading zero, and the UUID that keeps names apart.
 const pattern = /^([0-9a-f]{16})-([1-9][0-9]{0,9})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// A hash of the host's name keeps a state directory shared with another host, or a container whose processes this
-// table cannot see, from reading that host's live call as gone.
-function thisHost(): string {
-	return createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
+// A process table lists one pid namespace's processes, so the key names the host and, on Linux, that namespace: two
+// containers with one host name and their own namespaces must not read each other's live calls as gone. macOS has no
+// pid namespaces. `undefined` when Linux will not say the namespace, so the caller names what it makes by a UUID alone.
+function thisHost(): string | undefined {
+	let space = "";
+	if (process.platform === "linux")
+		try {
+			const { dev, ino } = statSync("/proc/self/ns/pid");
+			space = `\0${dev}:${ino}`;
+		} catch {
+			return undefined;
+		}
+	return createHash("sha256").update(`${hostname()}${space}`).digest("hex").slice(0, 16);
 }
 
 /** The process that made a leftover, as its name records it. */
@@ -27,7 +37,8 @@ export class Owner {
 	// This process, or `undefined` when `table` does not list it with its own parent, as a table read from another pid
 	// namespace would not, so the caller names what it makes by a UUID alone.
 	static current(table: readonly ProcessEntry[]): Owner | undefined {
-		return Owner.lists(table) ? new Owner(thisHost(), process.pid) : undefined;
+		const host = thisHost();
+		return Owner.lists(table) && host !== undefined ? new Owner(host, process.pid) : undefined;
 	}
 
 	// Whether `table` lists this process with its own parent, so it can say whether this host's pids are gone.
@@ -46,7 +57,7 @@ export class Owner {
 		return `${this.host}-${this.pid}-${randomUUID()}`;
 	}
 
-	// Whether this host made it, so its process table is the one that can say whether the owner is gone.
+	// Whether this host and pid namespace made it, so its process table is the one that can say whether the owner is gone.
 	isHere(): boolean {
 		return this.host === thisHost();
 	}
