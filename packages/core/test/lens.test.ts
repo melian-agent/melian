@@ -1125,8 +1125,8 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 
 	// An eval turns probing on in memory, and asks the loader's own rule whether the lens may probe.
 	it("says why a loaded lens may not probe, as loading a level that set probe would refuse it", async () => {
-		const builtin = (name: string) => builtins.find((lens) => lens.name === name)!;
 		const builtins = await Lens.builtins();
+		const builtin = (name: string) => builtins.find((lens) => lens.name === name)!;
 		expect(builtin("trust-boundary").probeRefusal()).toBeUndefined();
 		expect(builtin("correctness").probeRefusal()).toBeUndefined();
 		expect(builtin("tests").probeRefusal()).toBe(
