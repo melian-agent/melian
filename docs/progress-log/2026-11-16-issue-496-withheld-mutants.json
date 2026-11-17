@@ -38,7 +38,15 @@
 			"status": "generated",
 			"id": "eb868506f01e02b738b5fb5ef51d005adbf72922f114a98e0a61bfe4407a7bf1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code unknownCheck as a failed or skipped check's reason",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code unknownCheck as a failed or skipped check's reason"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -54,7 +62,15 @@
 			"status": "generated",
 			"id": "2ce0bf58957c898be2ddbf334195d826036d34b0f74ef4715254be934436ec6b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code unknownCheck as a failed or skipped check's reason",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code unknownCheck as a failed or skipped check's reason"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -343,7 +359,15 @@
 			"status": "generated",
 			"id": "4f6b0669f2c31e1a8c8906585a90b4b46e8ce2ef654fba039bfd359423fd525e",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a provisional check",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a provisional check"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -359,7 +383,15 @@
 			"status": "generated",
 			"id": "2bd354e996bfad33e771255113c85b16c7b118e8620f1fe2c667e6311bcd17da",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a lens that did not answer, gave up, or failed with a provider's message and caveats",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -375,7 +407,15 @@
 			"status": "generated",
 			"id": "9dc103e240faa8d97ff3dd1c85f23b7db40de4bf8800b012c2b61abfae34e1a1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -391,7 +431,15 @@
 			"status": "generated",
 			"id": "8785cb64d835bdc51fa2729ec2d0d1bc4fecc3900e5162bfe1bf1b95e56b95b1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a lens that did not answer, gave up, or failed with a provider's message and caveats",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -407,7 +455,15 @@
 			"status": "generated",
 			"id": "43e9b0b1a6dac540eae700ea24089a0aaeab597d09ea858682aac3034cd37258",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -423,7 +479,15 @@
 			"status": "generated",
 			"id": "d112496e757ed0b01ea075724778be766422d2ba36a20a7be6caf29f986328fd",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a lens that did not answer, gave up, or failed with a provider's message and caveats",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -439,7 +503,15 @@
 			"status": "generated",
 			"id": "25a14691ef070d6974de9b4b2179fbecc3a4036060f5d961a0b91d3728b3fb8c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -455,7 +527,15 @@
 			"status": "generated",
 			"id": "2a6f3f821be7d05eaa18d614ec839899273956caca436204a86b80a58386e534",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -471,7 +551,15 @@
 			"status": "generated",
 			"id": "d00a0a1e02a38847b2f24596dfe47598b8b6a487e2a2a635f425a6a10673c4fe",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -487,7 +575,15 @@
 			"status": "generated",
 			"id": "c15165846e694934debb225d41829e20922084e1be47a1b34ca490ec802e8892",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a verification whose candidate failed with a provider's message",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a verification whose candidate failed with a provider's message"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -503,7 +599,15 @@
 			"status": "generated",
 			"id": "41c546e19b6ea5d38aa4fb032060efc483d90fe5deb72f2295cc35851fb8b78c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a verification whose candidate failed with a provider's message",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a verification whose candidate failed with a provider's message"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -532,7 +636,15 @@
 			"status": "generated",
 			"id": "69d905c0429d35153a2954f42740501c26b86fc273b0f810e846850e2a01cda1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a verification whose candidate failed with a provider's message",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a verification whose candidate failed with a provider's message"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -548,7 +660,15 @@
 			"status": "generated",
 			"id": "6a044e485ae06587cc5fe1777dca7f797f43e886c9393a7b5392de97142c1eed",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -564,7 +684,15 @@
 			"status": "generated",
 			"id": "13823b0ad571dac999fb3c0fd1a5f662ba6b5562fa7d9862a2e4a297dd7924e9",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -580,7 +708,15 @@
 			"status": "generated",
 			"id": "187766e6116a4cbffcb485bdb3c7360c9d0f6df955382086ce14125ca8d387f9",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > withholds a verifier candidate's reason and a triage failure, and keeps their codes",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"withholds a verifier candidate's reason and a triage failure, and keeps their codes"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -596,7 +732,15 @@
 			"status": "generated",
 			"id": "ee7838ad0bb8271180973504c38aec13814967fa1497f7ec8e0015181284d2f8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > says it withheld a skipped or provisional check's reason, and drops every note",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"says it withheld a skipped or provisional check's reason, and drops every note"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -612,7 +756,15 @@
 			"status": "generated",
 			"id": "a3d034e8bc0a32e5d216ecd445d08f115f35c4e28a1bca58a81d59abe511ae3a",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > says it withheld a skipped or provisional check's reason, and drops every note",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"says it withheld a skipped or provisional check's reason, and drops every note"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -628,7 +780,15 @@
 			"status": "generated",
 			"id": "a44eba39507980edca2c3214bc2c6bfc449cfafaa4035a7ed028c66b28d53ed1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a skipped check",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a skipped check"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -657,7 +817,15 @@
 			"status": "generated",
 			"id": "564fa56e64f79847a8ff1597c4e3aa5e2d90f0684b666ca05345b1bffb2e2fad",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a failed check",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a failed check"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -699,7 +867,15 @@
 			"status": "generated",
 			"id": "6a8d90ea45d7de157c91aab2d13fa4d8b9815aafb7d288cba6089932c86352f6",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code of a check no record holds",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code of a check no record holds"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -715,7 +891,15 @@
 			"status": "generated",
 			"id": "226bcb1661fa7b5112329de7f4fce6f96b395cef65e662d65febcd68d2d02037",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > leaves a lens record's absent reason and error absent",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"leaves a lens record's absent reason and error absent"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -731,7 +915,15 @@
 			"status": "generated",
 			"id": "4f22b29cca95c606bb6e298ad358eca9ee513e49b5ed30725d501d77ed8d3036",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code of a check no record holds",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code of a check no record holds"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -747,7 +939,15 @@
 			"status": "generated",
 			"id": "e2033c07a628eddb887cb81152cb931456bb6fbdbbefc48a2a58cac4b0bdbdea",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -763,7 +963,15 @@
 			"status": "generated",
 			"id": "713e9d07229743cb3cff5b09b0da39afe1bd674e7252067bd16cb8a196d81006",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code of a check no record holds",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code of a check no record holds"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -779,7 +987,15 @@
 			"status": "generated",
 			"id": "a6cb5eaffb28e4d52eb7164fd263468fe9d502744d4d980d82f0ca476787a2b5",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the code of a check no record holds",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the code of a check no record holds"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -795,7 +1011,15 @@
 			"status": "generated",
 			"id": "c9c9df1d3b40a54abb84a884662458ef72b7cac17ac2c4d0c8d894554481231a",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -811,7 +1035,15 @@
 			"status": "generated",
 			"id": "7e5b78b287515c12fb10c739cee16bd8b7121488585438f2dd04edfb538e7e99",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a verification whose candidate failed with a provider's message",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a verification whose candidate failed with a provider's message"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -827,7 +1059,15 @@
 			"status": "generated",
 			"id": "7e0a6446a5b0b61416530f8946d0ad5fcd632ddc45e95446c48e34673bc07852",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a verification whose candidate failed with a provider's message",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a verification whose candidate failed with a provider's message"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -843,7 +1083,15 @@
 			"status": "generated",
 			"id": "df5f45afd56faadfdf7cf70201257aa14949eedf4a56c34153664da4c5a4d5b6",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the routes a lens that gave up tried, and withholds why it gave up",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the routes a lens that gave up tried, and withholds why it gave up"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -859,7 +1107,15 @@
 			"status": "generated",
 			"id": "0e17559d56ff46384e32d83f568d9722126b712210805a8ab77688d262ecac8f",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -875,7 +1131,15 @@
 			"status": "generated",
 			"id": "eb5a1ee18b1d6d8de728369b45db86c57a47a8b31e38920a4765f4f257549c5c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps Melian's own caveats and withholds the rest of a lens's text",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps Melian's own caveats and withholds the rest of a lens's text"
+					]
+				}
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -904,7 +1168,15 @@
 			"status": "generated",
 			"id": "989506b0ddc19113c4970d498c24f1cec5083c5b0f2b9b335af43824a1a3bc56",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a lens that did not answer, gave up, or failed with a provider's message and caveats",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -933,7 +1205,15 @@
 			"status": "generated",
 			"id": "3f50feb62d39c61031aba12859c452a529087c85ee160069e3a2f4184869711c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record holds no text a tool, a provider or the head wrote > as a lens that did not answer, gave up, or failed with a provider's message and caveats",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -962,7 +1242,15 @@
 			"status": "generated",
 			"id": "009e68a66206f94155f8773ae2b7704a71d7dbdd83e9219899e052545ac4f73d",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-withheld.test.ts > an exported record keeps what Melian defines > keeps the routes a lens that gave up tried, and withholds why it gave up",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps the routes a lens that gave up tried, and withholds why it gave up"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]

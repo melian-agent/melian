@@ -258,4 +258,97 @@ describe("melian review of a level that probes", { timeout: 60_000 }, () => {
 		);
 		expect(existsSync(file)).toBe(false);
 	});
+
+	it("prints no plan text, skip reason, probe script, file or output in review --json or telemetry --json", async () => {
+		repo = createRepository();
+		commit(repo, {
+			"src/load.ts": "export const load = (path: string) => path;\n",
+			"melian.yaml":
+				"tiers:\n  full: [lens.trust-boundary]\nlenses:\n  trust-boundary:\n    level: { floor: deep }\n" +
+				["correctness", "contracts", "removed-behaviour", "tests", "conventions"]
+					.map((name) => `  ${name}: {enabled: false}\n`)
+					.join(""),
+			".melian/lenses/trust-boundary/LENS.md":
+				"---\nname: trust-boundary\nextends: trust-boundary\nlevels:\n  deep: { probe: {} }\n---\n",
+		});
+		gitIn(repo, "checkout", "-b", "feature");
+		commit(repo, { "src/load.ts": "export const load = (path: string) => path.trim();\n" });
+		const fake = createFakeModels();
+		const ref = fake.ref();
+		const attack = (n: number) => ({ target: `PLANTEXT ${n}`, reason: "r", passing: "p", failing: "f" });
+		scriptConversations(fake, [
+			{
+				match: planner,
+				replies: [
+					fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [attack(1), attack(2)] })], {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Planned 2 attacks."),
+				],
+			},
+			{
+				match: "You are the prober for the trust-boundary lens",
+				replies: [
+					fauxAssistantMessage(
+						[
+							fauxToolCall("run_probe", {
+								attack: 1,
+								script: '// SCRIPTTEXT\nconsole.log("OUTPUT" + "TEXT");\n',
+								files: [{ path: "note.txt", text: "FILETEXT" }],
+							}),
+						],
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage([fauxToolCall("skip_attack", { attack: 2, reason: "SKIPTEXT" })], {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Reported 0 findings."),
+				],
+			},
+		]);
+		vi.spyOn(modelSetup, "reviewModels").mockImplementation(async (_env, loaded, lenses, options) => ({
+			models: fake.review,
+			plan: ReviewPlan.resolve({
+				config: loaded.config,
+				routes: loaded.routes,
+				model: `${ref.provider}/${ref.modelId}`,
+				...(await planInputs(fake.review)),
+				lenses,
+				checks: options.checks,
+			}),
+			retry: false,
+		}));
+		const open = ReviewHarness.open.bind(ReviewHarness);
+		vi.spyOn(ReviewHarness, "open").mockImplementation((storage, models, options = {}, context) =>
+			open(storage, models, { ...options, probeSandbox: unconfinedSandbox() }, context),
+		);
+		const printed: string[] = [];
+		const io: Io = {
+			cwd: repo,
+			env: {
+				MELIAN_TEST_SCRIPT: "injected",
+				MELIAN_STATE_DIR: join(repo, "state"),
+				XDG_CONFIG_HOME: join(repo, "config"),
+				PI_CODING_AGENT_DIR: join(repo, "pi"),
+			},
+			stdout: (text) => printed.push(text),
+			stderr: () => undefined,
+			color: false,
+		};
+		await main(["review", "main...feature", "--no-walkthrough", "--trust-head", "--json"], io);
+		const reviewed = printed.join("");
+		printed.length = 0;
+		await main(["telemetry", "main...feature", "--json"], io);
+		const telemetry = printed.join("");
+		for (const json of [reviewed, telemetry]) {
+			const prober = JSON.parse(json).telemetry?.stages ?? JSON.parse(json).stages;
+			expect(prober.find((stage: { role?: string }) => stage.role === "prober").probes).toMatchObject({
+				count: 1,
+				attacks: 2,
+				skipped: [2],
+			});
+			for (const text of ["PLANTEXT", "SKIPTEXT", "SCRIPTTEXT", "FILETEXT", "OUTPUTTEXT"])
+				expect(json).not.toContain(text);
+		}
+	});
 });

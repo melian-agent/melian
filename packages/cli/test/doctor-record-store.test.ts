@@ -321,6 +321,19 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("says the sweep stopped listing at its bound", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore, "open").mockResolvedValue({
+			strays: async () => [],
+			sweep: { removed: ["records.git.gone"], kept: [], failed: [], bounded: true },
+			close: async () => {},
+		} as unknown as GitRecordStore);
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toBe(
+			`warn records ${clean}; the sweep stopped listing at its bound of 1000 leftovers, so the state directory may hold more, which a later open lists once fewer are left; ${writersTrusted("origin/main", trusted)}`,
+		);
+	});
+
 	it("says one leftover was left when the deadline ran out", async () => {
 		origin(remote.url);
 		vi.spyOn(GitRecordStore, "open").mockResolvedValue({

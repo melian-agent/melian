@@ -888,3 +888,31 @@ it("omits explicitly undefined capture fields before storing strict JSON", () =>
 	expect(record).not.toHaveProperty("catalogMapped");
 	expect(record).not.toHaveProperty("providerReported");
 });
+
+it.each([
+	["xhigh", "faux/model off (reported xhigh)"],
+	["sk-live-token", "faux/model off (reported unrecognised)"],
+	["", "faux/model off (reported unrecognised)"],
+])("names a provider-reported level %j in run details only from Pi's levels", (reported, models) => {
+	const total = new TokenUsage();
+	total.add("faux/model", structuredClone(fauxAssistantMessage("Done").usage), {
+		requested: "off",
+		source: "observed",
+		sent: ["provider default"],
+		providerReported: reported,
+	});
+	const telemetry = new StageTelemetry("base..head", [
+		{
+			id: "model",
+			task: 1,
+			name: "melian.lens",
+			subject: "lens",
+			outcome: "completed",
+			timing: "unavailable",
+			reused: false,
+			resumed: false,
+			usage: total.toJSON(),
+		},
+	]);
+	expect(telemetry.runDetails().stages.map((stage) => stage.models)).toEqual([[models]]);
+});

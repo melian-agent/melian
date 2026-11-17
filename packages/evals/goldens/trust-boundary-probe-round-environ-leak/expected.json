@@ -8,6 +8,10 @@
       "category": "security",
       "file": "scripts/round.mjs",
       "rule": "secret-exposure",
+      "lines": [
+        104,
+        111
+      ],
       "source": "lens.trust-boundary",
       "cause": "introduced",
       "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, so anyone who can read the pull request reads the login.",
@@ -25,6 +29,10 @@
       "category": "security",
       "file": ".github/workflows/melian-round.yml",
       "rule": "secret-exposure",
+      "lines": [
+        226,
+        239
+      ],
       "source": "lens.trust-boundary",
       "cause": "introduced",
       "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}. static.biome fails, and its error, quoting MELIAN_CODEX_ACCESS_TOKEN, goes into the raw verdict, which the round step writes to $RUNNER_TEMP/public and the job uploads as the run artefact.",
