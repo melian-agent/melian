@@ -113,7 +113,7 @@ export async function configsFor(
 	const paths = [...atPath.keys()].sort();
 	const byPath = paths.map((path) => {
 		const { lensVariants: _, ...policy } = atPath.get(path)!;
-		return [path, policy];
+		return [path, policy] as const;
 	});
 	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
 	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
@@ -134,7 +134,21 @@ export async function configsFor(
 	);
 	const declared = reports.map(({ path, name, scope, entry }) => canonical([path, name, scope ?? null, entry])).sort();
 	const hash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
-	const fingerprint = `${fingerprintVersion}:${hash(canonical([byPath, declared]))}`;
+	// Adjudication reads an alias's rules as a set, in either form, as core's `entryOf` does, so neither their order, a
+	// repeat, nor the form moves the hash.
+	const aliasSets = byPath.map(([path, { ruleAliases, ...rest }]) => [
+		path,
+		{
+			...rest,
+			ruleAliases: Object.fromEntries(
+				Object.entries(ruleAliases).map(([rule, entry]) => {
+					const [rules, distinct] = "rules" in entry ? [entry.rules, entry.distinct === true] : [entry, false];
+					return [rule, { rules: [...new Set(rules)].sort(), distinct }];
+				}),
+			),
+		},
+	]);
+	const fingerprint = `${fingerprintVersion}:${hash(canonical([aliasSets, declared]))}`;
 	// Version 2's recipe, unchanged: plain JSON in file order, and each lens report's default without its name or scope.
 	const versionTwo = `2:${hash(JSON.stringify([byPath, reports.map(({ path, entry }) => JSON.stringify([path, entry])).sort()]))}`;
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;

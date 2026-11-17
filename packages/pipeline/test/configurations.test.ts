@@ -302,6 +302,28 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			);
 		});
 
+		it("does not depend on how a rule alias lists its rules, which adjudication reads as a set", async () => {
+			const aliased = (aliases: string) => commit(repo, { "melian.yaml": lines("ruleAliases:", aliases) });
+			const written = await fingerprintOf(aliased("  { reuse: [repeat, again] }"), [finding()]);
+
+			for (const same of [
+				"  { reuse: [again, repeat] }",
+				"  { reuse: [repeat, again, repeat] }",
+				"  { reuse: { rules: [repeat, again] } }",
+				"  { reuse: { rules: [again, repeat], distinct: false } }",
+			]) {
+				expect(await fingerprintOf(aliased(same), [finding()]), same).toBe(written);
+			}
+			for (const other of [
+				"  { reuse: { rules: [repeat, again], distinct: true } }",
+				"  { reuse: [repeat] }",
+				"  { reuse: [repeat, again, other] }",
+				"  { repeat: [reuse, again] }",
+			]) {
+				expect(await fingerprintOf(aliased(other), [finding()]), other).not.toBe(written);
+			}
+		});
+
 		it("does not depend on the order of the findings, though their entries differ by path", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md":
