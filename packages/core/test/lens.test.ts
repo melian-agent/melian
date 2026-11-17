@@ -1148,6 +1148,21 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(loaded.probeRefusal()).toBeUndefined();
 	});
 
+	it("refuses probing to a loaded lens that takes a built-in's name without extending it, though it does not probe", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary/LENS.md": lensFile(
+				security.map((line) => line.replace("name: security", "name: trust-boundary")),
+			),
+			".melian/lenses/correctness/LENS.md": lensFile(["name: correctness", "extends: correctness"]),
+		});
+		const loaded = await load(["src/index.ts"]);
+		const named = (name: string) => loaded.find((lens) => lens.name === name)!;
+		expect(named("trust-boundary").probeRefusal()).toBe(
+			'"probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in trust-boundary lens\'s name without extending it; give it and every farther trust-boundary lens "extends: trust-boundary"',
+		);
+		expect(named("correctness").probeRefusal()).toBeUndefined();
+	});
+
 	// A lens that takes a built-in's name without extending it has a purpose of its own, which the built-in's probing
 	// wording was not written for.
 	it("refuses a level that probes in a lens that takes a built-in's name without extending the built-in", async () => {
