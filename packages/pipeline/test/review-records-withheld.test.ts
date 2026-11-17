@@ -100,7 +100,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			token,
 		);
 		const producers = [{ check: "static.biome", version: token }];
-		const account = { checks: ["static.biome"], records: [], filled: [], allowSkip: [], producers };
+		const account = { checks: ["static.biome"], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null };
 		expect(bytes(records.account(account))).not.toContain(token);
 		const dismissal = records.dismissal({
 			finding: finding.properties.id,
@@ -239,7 +239,7 @@ describe("an exported record keeps what Melian defines", () => {
 			version: "abc@careful",
 		});
 		const producers = [{ check: "lens.security", version: "abc@careful" }];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }));
 		expect((account.producers as { version: string }[])[0]!.version).toBe("abc@careful");
 	});
 
@@ -252,7 +252,7 @@ describe("an exported record keeps what Melian defines", () => {
 			{ check: "static.biome", version: "v1", ...(first === undefined ? {} : { ids: first }) },
 			{ check: "static.biome", version: "v2", ...(second === undefined ? {} : { ids: second }) },
 		];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }));
 		expect(account.producers).toEqual([{ check: "static.biome", version: withheld, ids }]);
 	});
 
@@ -261,7 +261,7 @@ describe("an exported record keeps what Melian defines", () => {
 			{ check: "lens.security", version: "b@careful" },
 			{ check: "lens.security", version: "a@careful" },
 		];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }));
 		expect(account.producers).toEqual([
 			{ check: "lens.security", version: "a@careful", ids: null },
 			{ check: "lens.security", version: "b@careful", ids: null },
