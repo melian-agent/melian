@@ -47,7 +47,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
-import type { TaskId } from "../src/harness.ts";
+import type { ConversationId, TaskId } from "../src/harness.ts";
 import { continuePrompt } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
@@ -55,6 +55,7 @@ import type * as Probing from "../src/probing.ts";
 import {
 	headTreeLimits,
 	ProbeReruns,
+	ProbingDocument,
 	probeEvidenceBudget,
 	probeEvidenceCutWording,
 	probingHost,
@@ -783,13 +784,14 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				].map((match) => match[1]!),
 			),
 		];
-		const { run } = await review({
+		const { run, changeset } = await review({
 			planner: [call("record_plan", { attacks: [attack, attack] }), fauxAssistantMessage("Planned 2 attacks.")],
 			prober: [
 				call("run_probe", { attack: 1, script: failing }),
 				call("run_probe", { attack: 2, script: failing }),
 				(messages) => call("report_finding", finding(ids(messages)[0]!)),
 				(messages) => call("report_finding", finding(ids(messages)[1]!)),
+				(messages) => call("report_finding", finding(ids(messages)[0]!)),
 				fauxAssistantMessage("Reported 1 finding."),
 				fauxAssistantMessage("Reported 1 finding."),
 			],
@@ -798,6 +800,21 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record(verdict).reason ?? "").not.toContain("left attack");
 		expect(record(verdict)).toMatchObject({ status: "ran" });
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
+		// Each attack once, in the order a finding first answered it, though attack 1's was reported twice.
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const at = Revision.key(changeset.revision);
+		const task = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews[at]!.task;
+		const { outcome } = (await reviewer.getTask(task as TaskId, backgroundContext))!.state as {
+			outcome: { result: Record<string, { probing: { prober: number } }> };
+		};
+		const [lens] = Object.values(outcome.result);
+		const stored = await reviewer.snapshot(
+			ProbingDocument,
+			lens!.probing.prober as ConversationId,
+			backgroundContext,
+		);
+		expect(stored?.answered).toEqual([1, 2]);
 	});
 
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
