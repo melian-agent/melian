@@ -1120,6 +1120,22 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it("refuses a run whose probe deletes the marker its runner left", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{ script: 'import { rmSync } from "node:fs";\nrmSync(new URL("../run/started", import.meta.url));\n' },
+			options(sandbox),
+		);
+		try {
+			await expect(probe.run()).rejects.toMatchObject({
+				code: "sandboxUnavailable",
+				message: "the probe never started: its sandbox exited 0",
+			});
+		} finally {
+			await probe.close();
+		}
+	});
+
 	it("refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started", async () => {
 		let runs = 0;
 		const { sandbox } = passthrough({
