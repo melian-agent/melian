@@ -282,6 +282,11 @@ describe("a shared record's classed fields", () => {
 		["dismissal", "at", "2026-11-15T00:00:00.000+00:00"],
 		["dismissal", "trigger/hash", `${hash("7")}0`],
 		["lens", "check/caveats/0", `${blindCallers}: src/run.ts`],
+		// A lens's source is a hash, `@` and a level; each value has only one of the three wrong.
+		["account", "producers/0/version", `${lensVersion}@careful@quick`],
+		["account", "producers/0/version", "0123456789a@careful"],
+		["account", "producers/0/version", `${lensVersion}@reckless`],
+		["dismissal", "sighting/finding/properties/source/version", `${lensVersion}@reckless`],
 	] as const)("refuses the %s sample's %s at %j", (sample, path, value) => {
 		expect(check(sample, at(samples[sample].payload, path, value))).toBeTypeOf("string");
 	});
