@@ -75,3 +75,14 @@ it("pins core.useReplaceRefs in place of a count git would refuse", () => {
 		).toBe("false\n");
 	}
 });
+
+it("pins core.useReplaceRefs after the settings a caller's GIT_CONFIG_PARAMETERS holds, which git reads after the count", () => {
+	const env = withoutReplacements({
+		...process.env,
+		GIT_CONFIG_COUNT: "0",
+		GIT_CONFIG_PARAMETERS: "'core.useReplaceRefs=true' 'melian.caller=kept'",
+	});
+	const read = (key: string) => execFileSync("git", ["-C", repo, "config", "--get", key], { env, encoding: "utf8" });
+
+	expect([read("core.useReplaceRefs"), read("melian.caller")]).toEqual(["false\n", "kept\n"]);
+});
