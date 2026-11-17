@@ -217,34 +217,49 @@ export type ProbeRecord = {
 };
 
 // A planner's conversation holds the plan it recorded. A prober's holds a copy of the plan it was given, every probe it
-// ran by ID, each attack it skipped with why, and the probe each finding it reported rests on, by finding ID.
+// ran by ID, each attack it skipped with why, the probe each finding it reported rests on, by finding ID, and each attack
+// a finding was reported on one of its probes.
 type ProbingState = {
 	plan?: Attack[];
 	probes?: Record<string, ProbeRecord>;
 	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
 	attempts?: string[];
 	skips?: Record<string, string>;
+	// The latest probe each finding rests on, which its verifier reruns.
 	findings?: Record<string, string>;
+	// Kept apart from `findings`, since two attacks can fail on one defect and so report one finding ID.
+	answered?: number[];
 	// Set in the commit that gives the plan to the prober: the planner may no longer replace it, so all hold one plan.
 	frozen?: true;
 };
 
 // Version 1 was written by a runner that reported a probe a signal ended as exit 128 plus the signal's number, with no
-// signal, so version 2 reads such a result as one that ended with no record of how.
+// signal, so version 2 reads such a result as one that ended with no record of how. Versions 1 and 2 kept only the latest
+// probe of each finding, so version 3 reads the attacks they answered from it.
 export const ProbingDocument = defineDoc<ProbingState>({
 	kind: "melian.probing",
-	version: 2,
+	version: 3,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({}),
-	migrate: (value) => {
+	migrate: (value, fromVersion) => {
 		const state = value as ProbingState;
-		if (state.probes === undefined) return state;
-		const probes = Object.fromEntries(
-			Object.entries(state.probes).map(([id, probe]) => [id, { ...probe, result: unsignalled(probe.result) }]),
-		);
-		return { ...state, probes };
+		const probes =
+			fromVersion === 1 && state.probes !== undefined
+				? Object.fromEntries(
+						Object.entries(state.probes).map(([id, probe]) => [
+							id,
+							{ ...probe, result: unsignalled(probe.result) },
+						]),
+					)
+				: state.probes;
+		const answered = [...new Set(Object.values(state.findings ?? {}).flatMap((id) => probes?.[id]?.attack ?? []))];
+		return {
+			...state,
+			...(probes === undefined ? {} : { probes }),
+			...(answered.length === 0 ? {} : { answered }),
+		};
 	},
 });
 

@@ -1610,8 +1610,8 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		const own = hasSighting(state, id, at, source);
 		// A finding of a probing level rests on a probe this prober ran that failed; read before any write.
 		const probing = args.probe === undefined ? undefined : await tx.doc(ProbingDocument, api.conversationId);
+		const probe = args.probe === undefined ? undefined : probing?.probes?.[args.probe];
 		if (args.probe !== undefined) {
-			const probe = probing?.probes?.[args.probe];
 			if (probe === undefined) throw new Error(`no probe ${args.probe} ran in this conversation`);
 			if (refuted !== undefined) {
 				if (!probeConclusive(probe.result) || probe.result.exitCode !== 0)
@@ -1651,8 +1651,13 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			at,
 			review.files.flatMap((file) => file.hunks.map(provingHunk)),
 		);
-		if (probing !== undefined && args.probe !== undefined)
+		if (probing !== undefined && args.probe !== undefined) {
 			probing.findings = { ...probing.findings, [id]: args.probe };
+			// Checked above: a finding names a probe this prober ran.
+			const { attack } = probe!;
+			const answered = probing.answered ?? [];
+			if (!answered.includes(attack)) probing.answered = [...answered, attack];
+		}
 		return true;
 	}, context);
 	if (recorded === "capped") {

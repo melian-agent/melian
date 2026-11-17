@@ -651,7 +651,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					new Set(probes.filter(keep).map((probe) => probe.attack));
 				const failed = attacksOf((probe) => probeFailed(probe.result));
 				const probed = attacksOf((probe) => probeConclusive(probe.result));
-				const reported = new Set(Object.values(state.findings ?? {}).map((id) => state.probes?.[id]?.attack));
+				const reported = new Set(state.answered);
 				return Array.from({ length: attacks }, (_, index) => index + 1).filter((attack) =>
 					failed.has(attack)
 						? !reported.has(attack)

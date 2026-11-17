@@ -771,6 +771,35 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(verdict.all().map((each) => each.properties.verification?.verdict)).toEqual(["refuted"]);
 	});
 
+	// Two attacks can fail on one defect, and the finding's ID, from its file, lines and rule, is then the same for both.
+	it("counts two failed attacks answered by one finding reported on each of their probes", async () => {
+		const ids = (messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) => [
+			...new Set(
+				[
+					...messages
+						.map(textOf)
+						.join("\n")
+						.matchAll(/probe (p[0-9]+)/g),
+				].map((match) => match[1]!),
+			),
+		];
+		const { run } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack] }), fauxAssistantMessage("Planned 2 attacks.")],
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 2, script: failing }),
+				(messages) => call("report_finding", finding(ids(messages)[0]!)),
+				(messages) => call("report_finding", finding(ids(messages)[1]!)),
+				fauxAssistantMessage("Reported 1 finding."),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict).reason ?? "").not.toContain("left attack");
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
+	});
+
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
 		const { run } = await review({
 			planner: plan,
