@@ -49,7 +49,6 @@ import {
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
-	type VerificationPayload,
 	VerificationState,
 	verificationBudget,
 	visibleText,

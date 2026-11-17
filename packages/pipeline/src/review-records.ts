@@ -1,6 +1,5 @@
 import {
 	type AccountPayload,
-	type CheckErrorCode,
 	type CheckPayload,
 	type CheckRecord,
 	canonicalJson,
