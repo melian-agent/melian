@@ -844,8 +844,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			],
 			prober: [
 				...attacks.map((each) => call("run_probe", { attack: each, script: failing })),
-				...attacks.map((each) => (messages: Parameters<typeof ids>[0]) =>
-					call("report_finding", finding(ids(messages)[each - 1]!)),
+				...attacks.map(
+					(each) => (messages: Parameters<typeof ids>[0]) =>
+						call("report_finding", finding(ids(messages)[each - 1]!)),
 				),
 				// Attack 1 is answered, so this report is a correction, the fifth, and refused.
 				(messages) => call("report_finding", finding(ids(messages)[0]!)),
