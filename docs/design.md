@@ -494,7 +494,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is built in milestone 2: importing and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). [Pull request #72](https://github.com/melian-agent/melian/pull/72) adds adjudication, statistics, the backlog, and export. Calibration measurement is planned for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
 
-Details: [docs/design/evals-and-testing.md](design/evals-and-testing.md). The scoring and comparison forms are in [the evals guideline](guidelines/evals.md#comparisons).
+Details: [docs/design/evals-and-testing.md](design/evals-and-testing.md). The scoring and comparison forms are in [the evals guideline](guidelines/evals.md#comparisons). A golden accepts what the review of record would accept as its defect, whichever lens reports it, as [the parity decision](decisions/2026-11-16-parity-is-with-the-review-of-record.md) records; a golden is never loosened to lift a score.
 
 ### Comparison with external reviewers
 
