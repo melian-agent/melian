@@ -65,6 +65,7 @@ function report() {
 		processes: 1,
 		walk: { "/tree": walkSummary(3), "/usr": walkSummary(5) },
 		sys: walkSummary(2),
+		interfaces: [],
 	};
 }
 
@@ -236,6 +237,15 @@ describe("judge", () => {
 				`the HTTP proxy answered GET api.github.com:443 with ${status}, which the proxy did not mark as its refusal`,
 			]);
 		}
+	});
+
+	it("fails each address the probe's network namespace holds beyond loopback, of either family", () => {
+		const r = report();
+		r.interfaces = ["eth0 10.1.0.4", "eth1 fd00::4"];
+		expect(judge(r, plan(), argv, host())).toEqual([
+			"the probe's network namespace holds eth0 10.1.0.4",
+			"the probe's network namespace holds eth1 fd00::4",
+		]);
 	});
 
 	it("fails a close that came after part of a reply", () => {
@@ -771,6 +781,12 @@ describe("the probe script", () => {
 					`the probe's write to ${written} reached the host`,
 					`a TCP connection to ${target} opened`,
 					"a DNS lookup resolved",
+					...Object.entries(networkInterfaces())
+						.flatMap(([name, addresses]) =>
+							(addresses ?? []).filter((each) => !each.internal).map((each) => `${name} ${each.address}`),
+						)
+						.sort()
+						.map((each) => `the probe's network namespace holds ${each}`),
 					"1 connection reached the host's listener",
 					"1 datagram reached the host's listener",
 					`the HTTP proxy answered CONNECT ${target} with 200`,
@@ -1438,7 +1454,7 @@ describe.runIf(process.platform === "linux" && (availability.available || requir
 		const kinds = lines
 			.map(
 				(line) =>
-					/^(\/sys|token shapes listed|environment|processes visible|tcp|http proxy|socks proxy|ipc|reads|writes|udp|every route tried is shut)\b/.exec(
+					/^(\/sys|token shapes listed|environment|processes visible|tcp|interfaces|http proxy|socks proxy|ipc|reads|writes|udp|every route tried is shut)\b/.exec(
 						line,
 					)?.[1],
 			)
@@ -1449,6 +1465,7 @@ describe.runIf(process.platform === "linux" && (availability.available || requir
 			"environment",
 			"processes visible",
 			"tcp",
+			"interfaces",
 			"http proxy",
 			"socks proxy",
 			"ipc",

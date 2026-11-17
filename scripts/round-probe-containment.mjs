@@ -102,6 +102,7 @@ import { execFileSync } from "node:child_process";
 import { connect } from "node:net";
 import { createSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
+import { networkInterfaces } from "node:os";
 const t = JSON.parse(readFileSync(new URL("./targets.json", import.meta.url), "utf8"));
 const canary = t.canary;
 const shapes = Object.entries(t.shapes).map(([kind, source]) => [kind, new RegExp(source)]);
@@ -164,6 +165,10 @@ report.udp = await new Promise((resolve) => {
 	socket.send("probe", t.udp.port, t.udp.host, (error) => finish(error ? code(error) : "sent"));
 });
 try { await lookup(t.dns); report.dns = "resolved"; } catch (error) { report.dns = code(error); }
+// The sandbox unshares the network namespace, so any address beyond loopback, of either family, is a way out.
+report.interfaces = Object.entries(networkInterfaces())
+	.flatMap(([name, addresses]) => addresses.filter((each) => !each.internal).map((each) => name + " " + each.address))
+	.sort();
 
 // sandbox-runtime marks each refusal it answers itself with an X-Proxy-Error header; an unmarked status could be an
 // upstream's, which means the proxy forwarded the request.
@@ -303,6 +308,7 @@ export const reportFields = Object.freeze([
 	"environment",
 	"environmentCanary",
 	"httpProxy",
+	"interfaces",
 	"ipc",
 	"listings",
 	"processes",
@@ -368,6 +374,7 @@ export function judge(report, plan, argv, host) {
 	for (const [target, outcome] of Object.entries(report.tcp))
 		if (outcome === "connected") failures.push(`a TCP connection to ${target} opened`);
 	if (report.dns === "resolved") failures.push("a DNS lookup resolved");
+	for (const each of report.interfaces) failures.push(`the probe's network namespace holds ${each}`);
 	const { connections, datagrams } = host.listener;
 	if (connections > 0) failures.push(`${plural(connections, "connection")} reached the host's listener`);
 	if (datagrams > 0) failures.push(`${plural(datagrams, "datagram")} reached the host's listener`);
@@ -753,6 +760,7 @@ export async function main(probes = Probe, read = probeRead, interfaces = networ
 		say(`environment: ${report.environment.join(" ")}`);
 		say(`processes visible: ${report.processes}; sudo: ${report.sudo}; dns: ${report.dns}`);
 		say(`tcp: ${JSON.stringify(report.tcp)}`);
+		say(`interfaces: ${JSON.stringify(report.interfaces)}`);
 		say(`http proxy: ${JSON.stringify(report.httpProxy)}`);
 		say(`socks proxy: ${JSON.stringify(report.socksProxy)}`);
 		say(`ipc: ${JSON.stringify(report.ipc)}`);
