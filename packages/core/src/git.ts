@@ -71,18 +71,14 @@ function gitEnvironment(): NodeJS.ProcessEnv {
 /**
  * Returns `env` with git's replacement objects turned off: a ref under refs/replace puts another object behind an ID, so
  * a commit Melian names could show a different tree. Git 2.40 and 2.41 let `core.useReplaceRefs` in a repository's
- * configuration outrank `GIT_NO_REPLACE_OBJECTS`, so the setting is pinned too, after any settings `env` already counts
- * and after any in `GIT_CONFIG_PARAMETERS`, which git reads after the count.
+ * configuration outrank `GIT_NO_REPLACE_OBJECTS`, so the setting is pinned too, in `GIT_CONFIG_PARAMETERS`, which git
+ * reads after every setting `GIT_CONFIG_COUNT` holds. The count is left as `env` has it, for git to read or refuse.
  */
 export function withoutReplacements(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-	const count = /^\d+$/.test(env.GIT_CONFIG_COUNT ?? "") ? Number(env.GIT_CONFIG_COUNT) : 0;
 	return {
 		...env,
 		GIT_NO_REPLACE_OBJECTS: "1",
 		GIT_CONFIG_PARAMETERS: [env.GIT_CONFIG_PARAMETERS, "'core.useReplaceRefs=false'"].filter(Boolean).join(" "),
-		GIT_CONFIG_COUNT: String(count + 1),
-		[`GIT_CONFIG_KEY_${count}`]: "core.useReplaceRefs",
-		[`GIT_CONFIG_VALUE_${count}`]: "false",
 	};
 }
 

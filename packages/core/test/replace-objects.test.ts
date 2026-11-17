@@ -64,15 +64,34 @@ it("pins core.useReplaceRefs after every setting a caller's count holds, and kee
 	]);
 });
 
-it("pins core.useReplaceRefs in place of a count git would refuse", () => {
-	gitIn(repo, "config", "core.useReplaceRefs", "true");
+it("leaves a count git would refuse for git to refuse", () => {
 	for (const count of ["x1", "1x"]) {
 		const env = withoutReplacements({ ...process.env, GIT_CONFIG_COUNT: count });
 
+		expect(env.GIT_CONFIG_COUNT).toBe(count);
 		expect(
-			execFileSync("git", ["-C", repo, "config", "--get", "core.useReplaceRefs"], { env, encoding: "utf8" }),
+			() => execFileSync("git", ["-C", repo, "config", "--get", "core.useReplaceRefs"], { env, stdio: "pipe" }),
 			count,
-		).toBe("false\n");
+		).toThrow(/bogus count in GIT_CONFIG_COUNT/);
+	}
+});
+
+it("keeps the caller's setting under a count git reads with a sign or a leading space", () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	for (const count of ["+1", " 1"]) {
+		const env = withoutReplacements({
+			...process.env,
+			GIT_CONFIG_COUNT: count,
+			GIT_CONFIG_KEY_0: "melian.caller",
+			GIT_CONFIG_VALUE_0: "kept",
+		});
+		const read = (key: string) =>
+			execFileSync("git", ["-C", repo, "config", "--get", key], { env, encoding: "utf8" });
+
+		expect([read("core.useReplaceRefs"), read("melian.caller")], JSON.stringify(count)).toEqual([
+			"false\n",
+			"kept\n",
+		]);
 	}
 });
 
