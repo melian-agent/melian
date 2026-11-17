@@ -2,7 +2,7 @@
 
 Amends: [Restore the design lens clauses that partial supersessions retired](2026-11-08-restore-design-lens-clauses.md), "without loosening the goldens", for what a golden's expectation may accept
 
-Status: built for [issue #511](https://github.com/melian-agent/melian/issues/511). The maintainer ruled on 2026-11-16, in the coordinator's session: "Parity is with the review of record, whichever lens finds the defect." The wording below is the builder's.
+Status: built for [issue #511](https://github.com/melian-agent/melian/issues/511). The maintainer ruled on 2026-11-16, in the coordinator's session: "Parity is about the review of record, irregardless which lens came by it, that's the whole point". The wording below is the builder's.
 
 ## The problem
 
