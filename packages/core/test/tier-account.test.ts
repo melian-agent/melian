@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
 	type CheckRecord,
 	defaultConfig,
@@ -104,6 +104,19 @@ describe("TierAccount", () => {
 			]);
 		});
 
+		it("fills nothing for a lens or a question that already has a record", () => {
+			const held = [...records, ran("decisions.fast"), ran("lens.contracts")];
+			expect(TierAccount.of(config, "full", lenses).filled(held)).toEqual([]);
+		});
+
+		it("fills nothing for a host check of the tier with no record", () => {
+			const missing = records.filter(({ name }) => name !== "static.tsc");
+			expect(TierAccount.of(config, "full", lenses).filled(missing)).toEqual([
+				{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+				{ name: "lens.contracts", status: "skipped", reason: "no paths" },
+			]);
+		});
+
 		it("fills a selected lens that covers no path as no paths", () => {
 			const empty = {
 				loaded: lenses.loaded,
@@ -118,7 +131,10 @@ describe("TierAccount", () => {
 	});
 
 	describe("allowSkip", () => {
-		const account = TierAccount.of(config, "full", lenses);
+		let account: TierAccount;
+		beforeEach(() => {
+			account = TierAccount.of(config, "full", lenses);
+		});
 
 		it("allows the tier's question with no provider and its lens that covers nothing, and no other", () => {
 			expect(account.allowSkip({ records })).toEqual(["decisions.fast", "lens.contracts"]);
@@ -235,6 +251,14 @@ describe("TierAccount", () => {
 			expect(both.allowSkip({ records })).toEqual(["decisions.fast"]);
 		});
 
+		it("allows no skip of a host check whose name ends in a loaded lens's name", () => {
+			const host = TierAccount.of({ ...config, tiers: { ...tiers, full: ["guardrails"] } }, "full", {
+				loaded: ["rails"],
+				selected: [],
+			});
+			expect(host.allowSkip({ records: [] })).toEqual([]);
+		});
+
 		it("allows no skip of a deterministic check of the tier on its own", () => {
 			const host = TierAccount.of(
 				{ ...config, tiers: { ...tiers, full: ["guardrails", "static"] } },
@@ -246,8 +270,17 @@ describe("TierAccount", () => {
 	});
 
 	describe("refusal", () => {
-		const account = TierAccount.of(config, "full", lenses);
-		const facts: RoundFacts = { records: [...records, ...account.filled(records)] };
+		let account: TierAccount;
+		beforeEach(() => {
+			account = TierAccount.of(config, "full", lenses);
+		});
+		const facts: RoundFacts = {
+			records: [
+				...records,
+				{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+				{ name: "lens.contracts", status: "skipped", reason: "no paths" },
+			],
+		};
 		const claim = { checks, allowSkip: ["lens.contracts", "decisions.fast"] };
 
 		it("refuses nothing in the account the tier and the round's records give", () => {
