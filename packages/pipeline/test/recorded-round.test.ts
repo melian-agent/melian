@@ -381,7 +381,7 @@ describe("a round read back from its records", () => {
 		const verdict = await readUnder(reviewed, policy);
 
 		expect(reviewed.verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
 	});
 });
 
@@ -397,7 +397,7 @@ describe("a round decided under another policy", () => {
 		const reviewed = await review(exported(), { policy: worktree });
 		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 		expect(reviewed.verdict.status).toBe("findings");
-		expect((await readUnder(reviewed, worktree)).toJSON()).toEqual(reviewed.verdict.toJSON());
+		expectSharedVerdict((await readUnder(reviewed, worktree)).toJSON(), reviewed.verdict.toJSON());
 	});
 
 	it("reads not reviewed once melian.yaml changes what blocks between the review and the read", async () => {
