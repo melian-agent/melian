@@ -404,7 +404,6 @@ export class Miss {
 			head,
 			range: `${base}...${head}`,
 			writer,
-			sightingsOf: probingCheck,
 			scope: (config, lenses) => ({
 				config: {
 					...config,
@@ -430,9 +429,7 @@ export class Miss {
 	 * than missed.
 	 */
 	match(run: Pick<RangeRun, "verdict" | "sightings">, location: MissLocation): MissMatch {
-		const { sightings } = run;
-		if (sightings === undefined)
-			throw new Error(`${this.name}: its review returned no ${probingCheck} sightings to score`);
+		const sightings = run.sightings.filter((sighting) => sighting.properties.source.check === probingCheck);
 		// An ID excludes lines, so two levels of the lens can sight one ID at different lines with different verdicts.
 		const identity = (id: string, source: FindingSource) => `${id} ${source.version}`;
 		const held = new Map<string, MemberClaim>();
@@ -873,7 +870,7 @@ export async function measureProbing(
 			for (const golden of goldens) {
 				const run = await tried(golden.name, "golden", () => runners.golden(golden, mode));
 				if (run === undefined) continue;
-				const score = scoreGolden(golden, run.findings);
+				const score = scoreGolden(golden, run.findings, run.sightings);
 				scores.push(score);
 				record(
 					run,

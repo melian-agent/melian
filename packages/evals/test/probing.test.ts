@@ -592,9 +592,6 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		const finding = reviewed.findings[0]!;
 		const miss = Miss.load(missesFile([{ ...fields, file: finding.properties.path!, rule: finding.ruleId }]))[0]!;
 		const loose = { by: "file and rule" } as const;
-		expect(() => miss.match({ verdict: held({ findings: [finding] }) }, loose)).toThrow(
-			"m: its review returned no lens.trust-boundary sightings to score",
-		);
 		expect(() => miss.match({ verdict: held({ findings: [] }), sightings: [finding] }, loose)).toThrow(
 			`m: lens.trust-boundary sighted ${finding.id} at ${finding.properties.source.version}, which the verdict holds no claim for`,
 		);
@@ -993,7 +990,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			{
 				name: lost.name,
 				kind: "golden",
-				score: { ...scoreGolden(lost, defect) },
+				score: { ...scoreGolden(lost, defect, defect) },
 				notes,
 				sharedProberTier: ["lens.conventions", "lens.tests"],
 				...spent,
@@ -2154,7 +2151,7 @@ describe("runRange", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("returns trust-boundary's own sightings at the head beside the verdict, and a golden's run returns none", async () => {
+	it("returns each lens check's own sightings at the head beside the verdict, for a range and a golden alike", async () => {
 		const failOpen = golden("trust-boundary-fail-open");
 		const { repo, base } = buildGoldenRepository(failOpen);
 		try {
@@ -2172,23 +2169,14 @@ describe("runRange", { timeout: 60_000 }, () => {
 				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
 			});
 			expect(run.findings.map((finding) => finding.id)).toHaveLength(1);
-			expect(run.sightings!.map((each) => [each.id, each.properties.source.check, each.lines()])).toEqual([
+			expect(run.sightings.map((each) => [each.id, each.properties.source.check, each.lines()])).toEqual([
 				[run.findings[0]!.id, "lens.trust-boundary", [16, 16]],
 			]);
 			expect(miss.match(run, await miss.locate(head)).hits).toHaveLength(1);
-			scriptLenses(fake, lenses, { "trust-boundary": failOpen.script["trust-boundary"]!, verifier: {} });
-			const another = await runRange(
-				{ ...miss.target(ProbeTrust.parse(`${base},${head}`)), sightingsOf: "lens.security" },
-				{
-					kind: "live",
-					models: fake.review,
-					verifierModel: `${provider}/plan`,
-					probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
-				},
-			);
-			expect(another.findings).toHaveLength(1);
-			expect(another.sightings).toEqual([]);
-			expect(await runGolden(failOpen, { kind: "scripted" })).not.toHaveProperty("sightings");
+			const scripted = await runGolden(failOpen, { kind: "scripted" });
+			expect(scripted.sightings.map((each) => [each.properties.source.check, each.lines()])).toEqual([
+				["lens.trust-boundary", [16, 16]],
+			]);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
