@@ -1585,7 +1585,8 @@ describe("the melian round workflow", () => {
 		const linux = check.jobs.check.steps;
 		const proof = linux.findIndex((step) => step.run === containment);
 		expect(linux[proof]?.if).toBe("matrix.node == 24");
-		expect(linux[proof]?.env).toBeUndefined();
+		// CI proves the change's own policy: the commit checked out, which github.sha names for every event it runs on.
+		expect(linux[proof]?.env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: actions("github.sha") });
 		expect(linux.findIndex((step) => step.name === "Let probes run under bubblewrap")).toBeLessThan(proof);
 		expect(linux.findIndex((step) => step.run === "npm ci --ignore-scripts")).toBeLessThan(proof);
 	});
