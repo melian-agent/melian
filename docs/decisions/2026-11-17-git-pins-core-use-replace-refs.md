@@ -14,7 +14,7 @@ Example: on git 2.41, a clone holds `refs/replace/C` pointing at `L`, whose `mel
 
 Each of the four places that set the variable also sets `core.useReplaceRefs=false` on git's command line, which outranks every configuration file on every version.
 
-- Core's `gitEnvironment` and the CLI's `git` call core's new `withoutReplacements`. It adds the setting through `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>`, after any settings the caller's count already holds, so the CLI keeps a caller's own. Core removes the caller's count with the other repository-local variables first, so its pin is the only one.
+- Core's `gitEnvironment` and the CLI's `git` call core's new `withoutReplacements`. It adds the setting through `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>`, after any settings the caller's count already holds, so the CLI keeps a caller's own. It also appends `'core.useReplaceRefs=false'` to `GIT_CONFIG_PARAMETERS`, the variable `git -c` writes, after the caller's entries: git reads that variable after the count, so an inherited `'core.useReplaceRefs=true'` there would otherwise win. Codex's review of [pull request #542](https://github.com/melian-agent/melian/pull/542) found that. Core removes the caller's count with the other repository-local variables first, so its pin is the only one.
 - Store prune's `git` removes every `GIT_` variable, then calls `withoutReplacements`.
 - The static checks' shell `git` unsets the count and already passes `-c` options, so it passes `-c core.useReplaceRefs=false`.
 
