@@ -22,7 +22,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
-import { configsFor, fingerprintVersion } from "./configurations.ts";
+import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
@@ -262,22 +262,15 @@ export const AdjudicationTask = defineTask<
 				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
 				// The input names the policy the review read. A working tree can change before this phase runs, as after a
 				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input. A
-				// commit's policy cannot change, so a fingerprint an older computation made decides again under this one, by
-				// the maintainer's ruling of 2026-11-17 on issue #502. A fingerprint with no version stays refused, by the
-				// ruling of 2026-10-24 that retired it, and so does a later version, which this build cannot compute. Only a
-				// full object ID fixes the commit: a branch or an abbreviated ID can name another commit by now.
+				// fingerprint version 2 made is compared with version 2's recipe, when a full object ID fixes the commit, by
+				// the maintainer's ruling of 2026-11-17 on issue #502; a branch or an abbreviated ID can name another commit by
+				// now. Every other stored fingerprint, the unversioned one the ruling of 2026-10-24 retired included, is
+				// compared with the current one.
 				const { resolutionPolicy } = task.input;
-				const version = Number(resolutionPolicy?.match(/^(\d+):/)?.[1]);
-				const olderComputation =
-					policy?.kind === "revision" &&
-					/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit) &&
-					version < fingerprintVersion;
-				if (
-					policies !== undefined &&
-					resolutionPolicy !== undefined &&
-					!olderComputation &&
-					policies.fingerprint !== resolutionPolicy
-				) {
+				const fixedCommit = policy?.kind === "revision" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit);
+				const computed =
+					fixedCommit && resolutionPolicy?.startsWith("2:") ? policies?.versionTwo : policies?.fingerprint;
+				if (policies !== undefined && resolutionPolicy !== undefined && computed !== resolutionPolicy) {
 					throw new ConfigError(
 						"invalidValue",
 						repoRoot,
