@@ -1,4 +1,4 @@
-# Issue #496: a check's tool version leaves the machine only as a version
+# [Issue #496](https://github.com/melian-agent/melian/issues/496): a check's tool version leaves the machine only as a version
 
 The record classes' inventory found a static check's `version` unclassed: `staticToolVersion` reads it from the tool's installed `package.json`, which the head's install wrote. `ReviewRecords` now exports it only when `valid` from `semver` returns it unchanged, or when it is Melian's `unavailable`, and as the fixed withheld sentence otherwise. `semver` 7.8.5, already in the lockfile, is now a pinned dependency of the pipeline, with `@types/semver` 7.8.0 for the root's type checking.
 

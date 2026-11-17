@@ -25,13 +25,16 @@
 			"status": "generated",
 			"id": "e849d264313fa8e00df96789c57f3d3ff2c17e458f8bbb2c855b120373918437",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > never sends a prober on a tier of its own to a fallback outside that tier's accept list",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"never sends a prober on a tier of its own to a fallback outside that tier's accept list"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -44,13 +47,16 @@
 			"status": "generated",
 			"id": "a3a84b2b3e2b3769fb102385ea4cee8e72b1ab35bbe8f34de71d9c2fc21854b8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -63,13 +69,16 @@
 			"status": "generated",
 			"id": "e3463ff605ef0f817775021a0caceab4266efef4509438f906ab050234cd9d1f",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -82,13 +91,16 @@
 			"status": "generated",
 			"id": "65e4ee2686e42d21576022d6679b145d95073bfdb52a79db6112b65029ecc519",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -101,13 +113,16 @@
 			"status": "generated",
 			"id": "f51e395d490e2e80baf201096d2ddf59d15c5bc7524d0b0572fe03beea500922",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > runs a clean change and attaches to the same check task after a model override",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"runs a clean change and attaches to the same check task after a model override"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -120,13 +135,16 @@
 			"status": "generated",
 			"id": "8d6cd0762b22d179ccc308bccb0d2c3b1ae396f82e386005d4509323da16b233",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > runs a clean change and attaches to the same check task after a model override",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"runs a clean change and attaches to the same check task after a model override"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -139,13 +157,16 @@
 			"status": "generated",
 			"id": "d95b095a94cd2881759403d7ae3d8e00d9d05c5428c6d5ac2c20b97fb19e4058",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -158,13 +179,16 @@
 			"status": "generated",
 			"id": "bf9977a0aeb40b8036a239a993b9db304bcc15317b48997107603f66b08edb7b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > under no request never matches the key of a run under one",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"under no request never matches the key of a run under one"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -177,13 +201,16 @@
 			"status": "generated",
 			"id": "7e2c1a10893d905cbb8a2e57f73196b885bc752bdfddaed7cb13bce6f99eaee8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -196,13 +223,16 @@
 			"status": "generated",
 			"id": "3fa9c57302c8df0a190d8f80352c87c25b8372e88e63f4cfc1c6ef6cdaf2aa22",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > refuses a raw harness without records even when it has an environment",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"refuses a raw harness without records even when it has an environment"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -215,13 +245,16 @@
 			"status": "generated",
 			"id": "9f4c2cc9ada07852f591a33ee31b7a2a0f64b489082aef0df8c5af1baecf3763",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -234,13 +267,16 @@
 			"status": "generated",
 			"id": "1bce38dcaddf60a00e6358f09ead23c75055a15d2f45bb501b0349fa34f3c942",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -253,13 +289,16 @@
 			"status": "generated",
 			"id": "9708eb648ec58d04b19f7008e502db77ce2d8e393efa3e3895666dfc3f36ecfb",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -272,13 +311,16 @@
 			"status": "generated",
 			"id": "21f6641d77c76c0f41a2fdb2b9bb81d89baf180324de30fa2c3b243c8b52dbc2",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > keys each exported check record on the full request of the run it started",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"keys each exported check record on the full request of the run it started"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -291,13 +333,16 @@
 			"status": "generated",
 			"id": "113fd79f4303525b4ffd322a6e031e994f5567acecd91bd717eec8b5b7e049ac",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -310,13 +355,16 @@
 			"status": "generated",
 			"id": "699e33a6ca126eb5f5d26ec8cfaaa42c9aea4f7af993c3b7187ee11bc95f17ee",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > keys each exported check record on the full request of the run it started",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"keys each exported check record on the full request of the run it started"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -329,13 +377,16 @@
 			"status": "generated",
 			"id": "12c22b16df2c089c93ac034bae1c1e584ed99091fb7db05502ccdf3667778fbf",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > supplied records bypass checks even without policy",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"supplied records bypass checks even without policy"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -348,13 +399,16 @@
 			"status": "generated",
 			"id": "d45ce1a34e0747cf84c5c8acb2d6806b126b8829897fd50871df74a0e8cb8e30",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > supplied records bypass checks even without policy",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"supplied records bypass checks even without policy"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -367,13 +421,16 @@
 			"status": "generated",
 			"id": "27a23571466502022327a2b7b86b24cf0bd268fdc0a69994b69643c5685dce60",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > supplied records bypass checks even without policy",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"supplied records bypass checks even without policy"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -386,13 +443,16 @@
 			"status": "generated",
 			"id": "60799b703eba8ae7809a2bcf14279389f2dc90bfbe8ad3c19eaeae6189697f6e",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > supplied records bypass checks even without policy",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"supplied records bypass checks even without policy"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -405,13 +465,16 @@
 			"status": "generated",
 			"id": "12907ff802c0292b6ef3fac1c864db0916bf9161d65232dddbf8fd0291ff1161",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > keys each exported check record on the full request of the run it started",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"keys each exported check record on the full request of the run it started"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -424,13 +487,16 @@
 			"status": "generated",
 			"id": "5cd2f7b36d1ec3acc07e7a286b1282a620f0d9911edbf5036ed0ac6cdf468d4c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > differs for two runs whose requests differ past the identity's prefix",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"differs for two runs whose requests differ past the identity's prefix"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -443,13 +509,16 @@
 			"status": "generated",
 			"id": "777ce2a547065c3df7a1e862992edc3ca97a57fa30fd72d4c2df9745f17daefb",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -462,13 +531,16 @@
 			"status": "generated",
 			"id": "395b6b4a1a013b885821b47a4cf2724c64a75a2e1ba83f2e1249e8fb8f467cea",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > is the same for two runs of one request that differ only in their task",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -481,13 +553,16 @@
 			"status": "generated",
 			"id": "da8e67781b56ef52672c96947b409fb9d90912e9eb40cff0acd38a9fc3684549",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/checks.test.ts > runChecks feeding reviewChangeset > passes a clean change under the default fast tier and counts a static finding once the head adds one; applied with parentheses, (run?.records && supplied) ?? [], since the unparenthesised form does not parse",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/checks.test.ts",
+					"path": [
+						"runChecks feeding reviewChangeset",
+						"passes a clean change under the default fast tier and counts a static finding once the head adds one; applied with parentheses, (run?.records && supplied) ?? [], since the unparenthesised form does not parse"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -500,13 +575,16 @@
 			"status": "generated",
 			"id": "2e52d06436976283fefe8ac4c14b0d0cae255ff41c044269f61679c9093cd7f1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > under no request never matches the key of a run under one",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"under no request never matches the key of a run under one"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -519,13 +597,16 @@
 			"status": "generated",
 			"id": "a9ac68be949604bd797d993c937d4f6b0f6ad96532d928bab25f8e068a69a941",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-checks.test.ts > review drives checks > an environment-less harness leaves missing records not reviewed",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-checks.test.ts",
+					"path": [
+						"review drives checks",
+						"an environment-less harness leaves missing records not reviewed"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -538,13 +619,16 @@
 			"status": "generated",
 			"id": "49f242e73d49887b04b895500090e58e6bdd88caebb2951ea5eaf8c67bea549e",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > under no request never matches the key of a run under one",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"under no request never matches the key of a run under one"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -557,13 +641,16 @@
 			"status": "generated",
 			"id": "9de85e6ae87197f0ccd75520840b451e19dcfe7f02e8f2e85bb357c04ce16c6a",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > differs for two runs whose requests differ past the identity's prefix",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"differs for two runs whose requests differ past the identity's prefix"
+					]
+				}
+			},
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/pipeline/src/review.ts",
@@ -576,13 +663,16 @@
 			"status": "generated",
 			"id": "2fc967197521cd81049b532c0e2db1984093ec0f81e588a8aeb7210403b15b3e",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts > a check record's key > under no request never matches the key of a run under one",
-			"survivorClasses": [],
-			"run": {
-				"head": "59193e7e",
-				"result": "killed",
-				"tests": 1
-			}
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"under no request never matches the key of a run under one"
+					]
+				}
+			},
+			"survivorClasses": []
 		}
 	],
 	"total": 30,
