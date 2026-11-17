@@ -317,6 +317,23 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			expect(await fingerprintOf(sha, [second, first, third])).toBe(forward);
 		});
 
+		it("keeps version 2's recipe independent of the order of the findings, as main's build wrote it", async () => {
+			const sha = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: silent }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			const source = { check: "lens.cleanup", version: await variantVersion(sha) };
+			const first = finding({ source });
+			const second = finding({ source, file: "services/payments/src/other.ts" });
+			const third = finding({ source: { check: "lens.cleanup", version: "other" }, file: "docs/guide.md" });
+			const versionTwo = async (findings: Finding[]) =>
+				(await configsFor(repo, { kind: "revision", commit: sha }, findings)).versionTwo;
+			const forward = await versionTwo([first, second, third]);
+			expect(forward).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(await versionTwo([third, second, first])).toBe(forward);
+			expect(await versionTwo([second, first, third])).toBe(forward);
+		});
+
 		it("changes when two reports swap the variants they carry between paths", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md": lensFile(
