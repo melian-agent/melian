@@ -52,7 +52,8 @@ describe("a probe main recorded as exit 137 with no signal", () => {
 	});
 });
 
-// Bubblewrap reports a signal n as exit 128 + n, and n is at least 1, so exit 128 is the probe's own exit.
+// Bubblewrap reports a signal n as exit 128 + n, and n is 1 to 64, the most Linux has, so exits 128 and 193 to 255 are
+// the probe's own.
 describe("reading a version-1 probe result", () => {
 	const result = (exitCode: number | null, signal: string | null = null) => ({
 		exitCode,
@@ -67,12 +68,15 @@ describe("reading a version-1 probe result", () => {
 		[result(128), result(128)],
 		[result(129), result(null)],
 		[result(137), result(null)],
+		[result(192), result(null)],
+		[result(193), result(193)],
+		[result(255), result(255)],
 		[result(137, "SIGKILL"), result(137, "SIGKILL")],
 		[result(null, "SIGKILL"), result(null, "SIGKILL")],
 		[result(null), result(null)],
 	];
 
-	it("reads an exit past 128 with no signal as an ending with no record of how, in the prober's record", () => {
+	it("reads an exit from 129 to 192 with no signal as an ending with no record of how, in the prober's record", () => {
 		const migrate = ProbingDocument.definition.migrate!;
 		const probe = { attack: 1, script: "s", files: [], milliseconds: 1 };
 		for (const [stored, read] of cases)

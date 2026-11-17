@@ -248,8 +248,9 @@ export const ProbingDocument = defineDoc<ProbingState>({
 	},
 });
 
+// Bubblewrap reported a signal n as exit 128 + n, and Linux numbers its signals up to 64.
 function unsignalled(result: StoredProbeResult): StoredProbeResult {
-	return result.exitCode !== null && result.exitCode > 128 && result.signal === null
+	return result.exitCode !== null && result.exitCode > 128 && result.exitCode <= 128 + 64 && result.signal === null
 		? { ...result, exitCode: null }
 		: result;
 }
