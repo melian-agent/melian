@@ -112,6 +112,14 @@ export class ProbingCombination implements ProbingRoute {
 			if (refused !== undefined)
 				throw new Error(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
 		}
+		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
+		const governed = lenses
+			.filter(
+				(lens) =>
+					this.lenses.includes(lens.name) ||
+					Object.values(lens.levels).some((settings) => settings?.probe !== undefined),
+			)
+			.map(({ name }) => name);
 		// Each route keeps its tier's reasoning level, so a pair runs as it would ship.
 		const route = (model: string, tier: LensTier) => {
 			const thinking = config.models[tier]?.thinking;
@@ -122,7 +130,7 @@ export class ProbingCombination implements ProbingRoute {
 			lenses: {
 				...config.lenses,
 				...Object.fromEntries(
-					this.lenses.map((name) => {
+					governed.map((name) => {
 						const own = Object.hasOwn(config.lenses, name) ? config.lenses[name] : undefined;
 						return [name, { ...own, route: route(this.planner, "heavy") }];
 					}),
@@ -134,11 +142,12 @@ export class ProbingCombination implements ProbingRoute {
 					: { ...config.models, [this.proberTier]: route(this.prober, this.proberTier) },
 		};
 		const routedLenses = lenses.map((lens) => {
-			if (!this.lenses.includes(lens.name)) return lens;
+			if (!governed.includes(lens.name)) return lens;
+			const named = this.lenses.includes(lens.name);
 			const levels = Object.fromEntries(
 				Object.entries(lens.levels).map(([level, settings]) => {
-					// No committed level probes until this measurement picks its routes, so `deep` is the level measured.
-					const probing = settings.probe ?? (level === "deep" ? {} : undefined);
+					// A named lens's `deep` probes even where its lens declares no probe, since `deep` is the level measured.
+					const probing = settings.probe ?? (named && level === "deep" ? {} : undefined);
 					if (probing === undefined) return [level, settings];
 					const { probe: _, ...rest } = settings;
 					return [

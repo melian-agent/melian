@@ -256,11 +256,35 @@ describe("ProbingCombination", () => {
 		const others = (lensSet: readonly Lens[]) =>
 			lensSet.filter((lens) => lens.name !== "trust-boundary" && lens.name !== "correctness");
 		expect(others(routed.lenses)).toEqual(others(loaded));
-		const alone = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(config, loaded);
-		expect(alone.config.lenses["trust-boundary"]).toEqual({ level: { floor: "deep" } });
-		expect(alone.lenses.find((lens) => lens.name === "trust-boundary")).toEqual(
-			loaded.find((lens) => lens.name === "trust-boundary"),
-		);
+	});
+
+	it("holds every lens whose level probes to the combination, named or not, and gives only a named lens a probe", async () => {
+		const loaded = (await lenses()).map((lens) => {
+			if (lens.name !== "conventions") return lens;
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: { prober: "light" } } },
+			});
+		});
+		const probes = (routed: { lenses: readonly Lens[] }, name: string) => {
+			const lens = routed.lenses.find((each) => each.name === name)!;
+			return (["quick", "careful", "deep"] as const).map((level) => lens.level(level).probe);
+		};
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(config, loaded);
+		expect(pair.config.lenses["trust-boundary"]).toEqual({
+			level: { floor: "deep" },
+			route: { model: "a/plan", thinking: "high" },
+		});
+		expect(probes(pair, "trust-boundary")).toEqual([undefined, undefined, { prober: "medium" }]);
+		expect(pair.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
+		expect(probes(pair, "conventions")).toEqual([undefined, { prober: "medium" }, undefined]);
+		expect(probes(pair, "correctness")).toEqual([undefined, undefined, { prober: "medium" }]);
+		const off = ProbingCombination.parse("off=a/plan", "medium", ["correctness"]).routed(config, loaded);
+		for (const name of ["trust-boundary", "conventions", "correctness"])
+			expect(probes(off, name), name).toEqual([undefined, undefined, undefined]);
+		expect(off.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
+		expect(off.config.lenses.design).toBeUndefined();
+		expect(off.lenses.find((lens) => lens.name === "design")).toBe(loaded.find((lens) => lens.name === "design"));
 	});
 
 	it("refuses a lens core would not let probe, and one the policy does not load, naming each", async () => {
