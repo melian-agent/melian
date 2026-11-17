@@ -559,8 +559,9 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
 	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
 	// runs have no request key, so no later task copies them, and it copies none. Version 8 answers an attack only with a
-	// skip or a probe that showed something, and lists the skipped attacks in the outcome's `probing.skipped`, which an
-	// older task stored as a count; an older task's input and checkpoint are unchanged.
+	// skip or a probe that showed something, or, once a probe of it failed, with a finding on such a probe, and lists the
+	// skipped attacks in the outcome's `probing.skipped`, which an older task stored as a count; an older task's input and
+	// checkpoint are unchanged.
 	version: 8,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
