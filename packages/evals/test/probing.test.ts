@@ -1877,6 +1877,73 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("reviews a miss with the base's full tier in whole mode, and with trust-boundary alone in lens mode, in the tier or not", async () => {
+		const { repo, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const commit = (message: string) =>
+				git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message);
+			// A base with its own policy, and a head on it that changes the miss's file.
+			const tiered = (branch: string, policy: string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, head);
+				writeFileSync(join(repo, "melian.yaml"), policy);
+				git(repo, "add", "--all");
+				commit(branch);
+				const base = git(repo, "rev-parse", "HEAD");
+				writeFileSync(
+					join(repo, "src/scan.ts"),
+					`${readFileSync(join(repo, "src/scan.ts"), "utf8")}// ${branch}\n`,
+				);
+				git(repo, "add", "--all");
+				commit(`${branch} head`);
+				return { base, head: git(repo, "rev-parse", "HEAD") };
+			};
+			const measured = async (range: { base: string; head: string }, review: string, rule: string) => {
+				const using = runners();
+				const { status, errors } = await measure(
+					{
+						...env,
+						MELIAN_EVAL_MISS_REVIEW: review,
+						MELIAN_EVAL_MISSES: missesFile([
+							{ name: "m", repo, ...range, file: "src/scan.ts", rule, lines: [16, 16] },
+						]),
+						MELIAN_EVAL_PROBE_SET: "misses",
+						MELIAN_EVAL_PROBE_PASSES: "1",
+						MELIAN_EVAL_PROBE_TRUST: `${range.base},${range.head}`,
+					},
+					using,
+				);
+				return { status, errors, reviews: vi.mocked(using.range).mock.calls.length };
+			};
+			// Reviewed and unscored, since the fake review shows no lens the file.
+			const accepted = { status: 1, errors: [], reviews: 1 };
+			const refused = (reason: string) => ({
+				status: 2,
+				errors: [`The misses file cannot be scored: m: ${reason}`],
+				reviews: 0,
+			});
+			const undeclared = (rule: string) =>
+				refused(`${rule} is not a rule any lens in the base's full tier that reviews src/scan.ts declares`);
+			const correctness = tiered("correctness", "tiers:\n  full: [lens.correctness]\n");
+			expect(await measured(correctness, "lens", "fail-open")).toEqual(accepted);
+			expect(await measured(correctness, "whole", "fail-open")).toEqual(undeclared("fail-open"));
+			expect(await measured(correctness, "whole", "wrong-result")).toEqual(accepted);
+			const boundary = tiered("boundary", "tiers:\n  full: [lens.trust-boundary]\n");
+			expect(await measured(boundary, "lens", "wrong-result")).toEqual(undeclared("wrong-result"));
+			const uncovered = tiered(
+				"uncovered",
+				'tiers:\n  full: [lens.trust-boundary]\nlenses:\n  trust-boundary:\n    paths: ["**", "!src/scan.ts"]\n',
+			);
+			expect(await measured(uncovered, "whole", "fail-open")).toEqual(
+				refused("the base's policy does not let a lens in the base's full tier review src/scan.ts"),
+			);
+			expect(await measured(uncovered, "lens", "fail-open")).toEqual(
+				refused("the base's policy does not let the trust-boundary lens review src/scan.ts"),
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("accepts a miss on a file the head renamed only when the base's policy lets trust-boundary review its old path, as the review does", async () => {
 		const { repo } = buildGoldenRepository(lost);
 		try {
