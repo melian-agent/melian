@@ -110,7 +110,7 @@
     }
   ],
   "instrumented": {
-    "note": "git.ts sends signals, so the enumerator lists it as unmutated. These are the instrumenter's mutants on the changed line, run with real git under the ruling of 2026-11-16 on a bare ChildProcess.kill(); grep finds no process.kill or signal name in the file.",
+    "note": "git.ts sends signals, so the enumerator lists it as unmutated. These are the instrumenter's mutants on the changed line, run with real git under the ruling of 2026-11-16 on a bare ChildProcess.kill(); grep finds no process.kill or signal name in the file. static.ts is on the enumerator's signal list; its two mutants on the changed line change only the git command string, touch no pid or signal code, and ran in a cloud container against a test that spawns only git.",
     "mutants": [
       {
         "file": "packages/core/src/git.ts",
@@ -134,6 +134,32 @@
         "replacement": "\"\"",
         "claim": "equivalent",
         "evidence": "git disables replacement refs whenever GIT_NO_REPLACE_OBJECTS is present; an empty value or 0 reads the original commit, checked on git 2.43",
+        "survivorClasses": [
+          "seeded-default"
+        ]
+      },
+      {
+        "file": "packages/pipeline/src/static.ts",
+        "line": 139,
+        "column": 8,
+        "endLine": 139,
+        "endColumn": 153,
+        "mutatorName": "StringLiteral",
+        "replacement": "``",
+        "claim": "killed",
+        "evidence": "packages/pipeline/test/static.test.ts > checks out the commit an ID names, not a replacement refs/replace puts behind it",
+        "survivorClasses": []
+      },
+      {
+        "file": "packages/pipeline/src/static.ts",
+        "line": 139,
+        "column": 35,
+        "endLine": 139,
+        "endColumn": 38,
+        "mutatorName": "StringLiteral",
+        "replacement": "\"\"",
+        "claim": "equivalent",
+        "evidence": "the shell runs with inheritEnv false and only PATH, HOME, TMPDIR and LANG, so no GIT_ variable reaches it for the unset to remove",
         "survivorClasses": [
           "seeded-default"
         ]
