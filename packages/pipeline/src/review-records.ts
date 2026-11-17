@@ -27,6 +27,7 @@ import {
 	type Walkthrough,
 	type WalkthroughPayload,
 } from "@melian-agent/core";
+import { valid } from "semver";
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
@@ -117,6 +118,16 @@ const codes: ReadonlySet<string> = new Set([
 	"withheld",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
+// A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
+// form of at most 64 characters, or Melian's `unavailable`, leaves the machine. A lens's version is Melian's own.
+const toolVersion = (version: string | undefined): string | null =>
+	version === undefined
+		? null
+		: version === "unavailable" || (version.length <= 64 && valid(version) === version)
+			? version
+			: withheld;
+const sharedVersion = ({ check, version }: FindingSource): string | null =>
+	check.startsWith("lens.") ? orNull(version) : toolVersion(version);
 const caveat = (text: string): string =>
 	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? text : withheld;
 const byId = (a: StoredFinding, b: StoredFinding): number =>
@@ -191,7 +202,7 @@ export class ReviewRecords {
 				.sort((a, b) => compare(claimOrder(a), claimOrder(b)))
 				.map(({ id, source, verification }) => ({
 					id,
-					source: { check: source.check, version: source.version ?? null },
+					source: { check: source.check, version: sharedVersion(source) },
 					verification,
 				})),
 			dismissals: [...facts.dismissals].sort((a, b) => compare(a.finding, b.finding)),
@@ -272,15 +283,19 @@ export class ReviewRecords {
 		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
-		const producers = [
-			...new Map(
-				facts.producers.map((producer) => {
-					const version = orNull(producer.version);
-					const ids = producer.ids === undefined ? null : [...new Set(producer.ids)].sort(compare);
-					return [`${producer.check}@${version ?? ""}`, { check: producer.check, version, ids }] as const;
-				}),
-			).values(),
-		].sort(
+		// Two versions withheld alike name one producer, whose findings are both producers' findings.
+		const united = new Map<string, { check: string; version: string | null; ids: string[] | null }>();
+		for (const producer of facts.producers) {
+			const version = sharedVersion(producer);
+			const key = `${producer.check}@${version ?? ""}`;
+			const earlier = united.get(key);
+			const ids =
+				producer.ids === undefined || earlier?.ids === null
+					? null
+					: [...new Set([...(earlier?.ids ?? []), ...producer.ids])].sort(compare);
+			united.set(key, { check: producer.check, version, ids });
+		}
+		const producers = [...united.values()].sort(
 			(a, b) =>
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
@@ -347,7 +362,7 @@ export class ReviewRecords {
 			severity: facts.severity,
 			sighting: {
 				revision: facts.sighting.revision,
-				finding: sighting(facts.sighting.finding) as unknown as RecordJson,
+				finding: shareable(sighting(facts.sighting.finding)) as unknown as RecordJson,
 			},
 			head: this.head,
 			rounds: [...new Set(facts.rounds)].sort(),
@@ -404,7 +419,7 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].map(sighting).sort(byId) as unknown as RecordJson[];
+	return [...sightings].map((finding) => shareable(sighting(finding))).sort(byId) as unknown as RecordJson[];
 }
 
 // A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome
@@ -446,6 +461,17 @@ function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
 	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
 }
 
+function shareable(finding: StoredFinding): StoredFinding {
+	const { source } = finding.properties;
+	const version = sharedVersion(source);
+	return version === orNull(source.version)
+		? finding
+		: {
+				...finding,
+				properties: { ...finding.properties, source: { check: source.check, version: version ?? undefined } },
+			};
+}
+
 function snapshot(each: EnolaSnapshot): RecordJson {
 	return {
 		commit: each.commit,
@@ -469,7 +495,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "ran",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				snapshots: result.snapshots === undefined ? null : (result.snapshots.map(snapshot) as never),
@@ -478,7 +504,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "provisional",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				reason: shared(result.reason),

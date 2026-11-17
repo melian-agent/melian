@@ -9,8 +9,10 @@ import {
 	RunDetails,
 	type RunStage,
 	type StoredRunDetails,
+	thinkingLevelSchema,
 	visibleText,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -186,7 +188,7 @@ function runModels(stage: Stage): string[] {
 				const reported =
 					providerReported === undefined || providerReported === requested
 						? ""
-						: ` (reported ${providerReported})`;
+						: ` (reported ${Value.Check(thinkingLevelSchema, providerReported) ? providerReported : "unrecognised"})`;
 				return `${model}${level}${reported}`;
 			}),
 		),
