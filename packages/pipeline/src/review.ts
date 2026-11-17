@@ -32,12 +32,12 @@ import {
 	type ModelReference,
 	type ModelRoute,
 	ModelRoutingError,
-	mutationSkipHasLeave,
 	parseModelReference,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
+	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
 	type ScrutinyLevel,
@@ -46,6 +46,7 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
+	TierAccount,
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
@@ -2142,75 +2143,29 @@ function verificationOutcome(outcome: VerificationResult[string]): VerificationP
 	return { status: outcome.status, reason: outcome.reason };
 }
 
-// Records for the lenses and decision questions the tier names; the lens step owns `lens.*` and `decisions.*`, so a
-// record of either from elsewhere, such as a check runner that skips them, gives way. Every other check's record comes
-// from `supplied`; adjudication calls one with none a check that never started. `lenses` holds the lens step's own
-// records, and `skippable` the lenses whose skip it allows. The producers are the sources whose findings the review
-// counts: each lens at the level of the run that stands for it.
-function account(
-	checks: readonly string[],
-	settled: readonly SettledLens[],
-	lenses: {
-		readonly records: readonly CheckRecord[];
-		readonly skippable: readonly string[];
-		// The decider that answered triage, when one did.
-		readonly triagedBy?: string;
-	},
-	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
-): { readonly manifest: Manifest; readonly producers: Producer[] } {
-	const { config } = options;
-	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way. The plan's `failed` record of
-	// a lens it refused at the level triage chose is the lens step's own, in `lenses.records`, beside the record of a
-	// variant in another folder that ran, so a refused lens never reads as one no lens is named for.
-	const supplied = (options.checks ?? []).filter(
+// The host's records of the checks the tier names. The lens step owns `lens.*` and `decisions.*`, so the host's
+// records of them give way. The plan's `failed` record of a lens it refused at the level triage chose is the lens
+// step's own, beside the record of a variant in another folder that ran, so a refused lens never reads as one no lens
+// is named for.
+function suppliedChecks(options: Pick<ReviewOptions, "checks">): CheckRecord[] {
+	return (options.checks ?? []).filter(
 		(check) => !check.name.startsWith("decisions.") && !check.name.startsWith("lens."),
 	);
-	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
-	for (const name of lenses.skippable) manifest.allowSkip(name);
-	// Mutation testing is advisory, so a change it has nothing to mutate in, or is too big or slow to mutate, or may not
-	// run on, passes with the reason recorded. Any other skip of it still leaves the review not reviewed, and so does a
-	// failed record, since the manifest lets only a skip pass.
-	for (const check of supplied) {
-		if (check.name === "static.mutation" && mutationSkipHasLeave(check.cause)) {
-			manifest.allowSkip(check.name);
-		}
-	}
-	const recorded = new Set(manifest.records().map((check) => check.name));
-	const { provider } = config.decisions;
-	for (const name of checks) {
-		if (recorded.has(name)) continue;
-		if (name.startsWith("lens.")) {
-			const lens = name.slice("lens.".length);
-			const settings = Object.hasOwn(config.lenses, lens) ? config.lenses[lens] : undefined;
-			if (!options.lenses.some((each) => each.name === lens)) {
-				manifest.record({ name, status: "failed", reason: `no lens is named ${lens}` });
-			} else if (settings?.enabled === false) {
-				manifest.record({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
-			} else {
-				// Nothing it covers changed, so there was nothing for it to review: a change of excluded paths alone passes
-				// on its deterministic checks.
-				manifest.record({ name, status: "skipped", reason: "no paths" });
-				manifest.allowSkip(name);
-			}
-		} else if (name.startsWith("decisions.")) {
-			if (provider === undefined) {
-				// The design lets the fast tier run without decision questions when no provider is configured.
-				const triaged = lenses.triagedBy === undefined ? "" : `; triage ran on ${lenses.triagedBy}`;
-				manifest.record({ name, status: "skipped", reason: `no decision provider is configured${triaged}` });
-				manifest.allowSkip(name);
-			} else {
-				// A configured provider asks for the questions, and Melian cannot ask them yet, so the review fails closed
-				// with the reason rather than with no record.
-				const reason = `decisions.provider is ${provider}, and Melian has no adapter for a decision provider yet`;
-				manifest.record({ name, status: "skipped", reason });
-			}
-		}
-	}
+}
+
+// The sources whose findings the review counts: each lens at the level of the run that stands for it, and every other
+// check the tier names or the host recorded, at the tool version its record names.
+function producersOf(
+	checks: readonly string[],
+	settled: readonly SettledLens[],
+	options: Pick<ReviewOptions, "checks">,
+): Producer[] {
+	const supplied = suppliedChecks(options);
 	const versions = new Map(supplied.map((check) => [check.name, check.version]));
 	const others = [...new Set([...checks, ...supplied.map((check) => check.name)])].filter(
 		(name) => !name.startsWith("lens."),
 	);
-	const producers: Producer[] = [
+	return [
 		...settled.flatMap(({ run, kept }) => [
 			lensSource(run.name, run.version, run.level),
 			...(kept === undefined ? [] : [kept]),
@@ -2220,10 +2175,22 @@ function account(
 			return version === undefined ? { check } : { check, version };
 		}),
 	];
-	return {
-		manifest: new Manifest(checks, inManifestOrder(checks, manifest.records()), manifest.skippable()),
-		producers,
-	};
+}
+
+// The round's account: a record for every check the tier names, the host's beside the lens step's `records`, with
+// `tierAccount` filling each one no record holds and deciding which skips let the review pass. Adjudication calls a
+// check with no record one that never started.
+function account(
+	tierAccount: TierAccount,
+	records: readonly CheckRecord[],
+	triage: RoundFacts["triage"],
+	triagedBy: string | undefined,
+	options: Pick<ReviewOptions, "checks">,
+): Manifest {
+	const held = [...suppliedChecks(options), ...records];
+	const all = [...held, ...tierAccount.filled(held, triagedBy)];
+	const { checks } = tierAccount;
+	return new Manifest(checks, inManifestOrder(checks, all), tierAccount.allowSkip({ records: all, triage }));
 }
 
 // The band each selected lens's level must lie in, per selection, so two folder variants of one name keep their own:
@@ -2500,6 +2467,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	});
 	spans.step("bands");
 	const bands = await bandsOf(covering, options);
+	const tierAccount = TierAccount.of(config, tier, {
+		loaded: options.lenses.map((lens) => lens.name),
+		selected: covering.map(({ lens, covers }) => ({ name: lens.name, covers, band: bands.get(lens)! })),
+	});
 	spans.step("routes");
 	const { plan } = request;
 	const levelRoutes = new Map(
@@ -3094,7 +3065,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.map((lens) => stored.get(lens.key) ?? lens)
 						.filter((first) => ended[first.key] !== undefined)
 						.map((first) => settle(first, ended, rule));
-					const { producers } = account(manifest, settledEnded, { records: [], skippable: [] }, options);
+					const producers = producersOf(manifest, settledEnded, options);
 					const { candidates } = await candidatesFor(producers, ended, runs.lenses);
 					// startWave keeps only the candidates no wave already stands for.
 					const started =
@@ -3420,22 +3391,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
-	const { manifest: accounted, producers } = account(
-		manifest,
-		settled,
-		{
-			records,
-			skippable: skipped.map((name) => `lens.${name}`),
-			...(triaged.decision === undefined
-				? {}
-				: {
-						triagedBy: triaged.decision.decider.startsWith("llm-fallback")
-							? "the LLM fallback"
-							: triaged.decision.decider,
-					}),
-		},
+	const accounted = account(
+		tierAccount,
+		records,
+		triaged.decision === undefined ? undefined : { answers: triaged.decision.answers, inputCut: triageInput.cut },
+		triaged.decision === undefined
+			? undefined
+			: triaged.decision.decider.startsWith("llm-fallback")
+				? "the LLM fallback"
+				: triaged.decision.decider,
 		options,
 	);
+	const producers = producersOf(manifest, settled, options);
 	await (await harness.root(context)).commit(
 		(tx) =>
 			reopenDismissals(
