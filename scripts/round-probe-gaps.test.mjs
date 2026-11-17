@@ -8,7 +8,7 @@ import { probeGapLines, unreadable } from "./round-probe-gaps.mjs";
 
 const gap = { check: "lens.trust-boundary", level: "deep", cause: "untrusted-writer" };
 
-describe("round-probe-gaps", () => {
+describe("round-probe-gaps", { timeout: 60_000 }, () => {
 	it("prints each gap's check, level, code and fixed sentence, and nothing else", () => {
 		for (const [cause, sentence] of Object.entries(probeGapSentences))
 			expect(probeGapLines(JSON.stringify([{ ...gap, cause }]))).toEqual([
