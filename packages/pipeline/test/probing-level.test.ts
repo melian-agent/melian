@@ -2575,7 +2575,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		try {
 			const { run } = await review({ planner: plan, prober: probing(failing) });
 			const { reason } = record((await run).verdict);
-			expect(reason).toContain("ran 1 probe in under 0.1 s");
+			expect(reason).toMatch(/ran 1 probe in under 0\.1 s$/);
 			expect(reason).not.toContain("0.0 s");
 		} finally {
 			vi.useRealTimers();
