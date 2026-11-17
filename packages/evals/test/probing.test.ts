@@ -229,6 +229,26 @@ describe("ProbingCombination", () => {
 		expect(light.config.models.medium).toEqual(config.models.medium);
 	});
 
+	it("makes every level probe only in the lenses a miss's mode probes: trust-boundary in lens mode, the named lenses in whole mode", async () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		try {
+			const loaded = await Lens.load(repo, { kind: "revision", commit: base }, ["src/a.ts"]);
+			const miss = Miss.load(
+				missesFile([{ name: "m", repo, base, head: "feature", file: "src/a.ts", rule: "fail-open" }]),
+			)[0]!;
+			const trust = ProbeTrust.parse(sha);
+			const probing = (review: "lens" | "whole", probeLenses?: readonly string[]) =>
+				miss.target(trust, review, probeLenses).scope!(config, loaded)
+					.lenses.filter((lens) => lens.level("careful").probe !== undefined)
+					.map(({ name }) => name);
+			expect(probing("lens", ["correctness"])).toEqual(["trust-boundary"]);
+			expect(probing("whole", ["correctness"])).toEqual(["correctness"]);
+			expect(probing("whole")).toEqual(["trust-boundary"]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("probes trust-boundary's deep level when its lens declares no probe there", async () => {
 		const loaded = (await lenses()).map((lens) => {
 			if (lens.name !== "trust-boundary") return lens;
@@ -2009,9 +2029,9 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		try {
 			const file = defect[0]!.properties.path!;
 			const rule = defect[0]!.ruleId;
-			const sized = (branch: string, bytes: number) => {
+			const sized = (branch: string, bytes: number, first = "") => {
 				git(repo, "checkout", "--quiet", "-b", branch, "feature");
-				writeFileSync(join(repo, file), `${"x".repeat(bytes - 1)}\n`);
+				writeFileSync(join(repo, file), `${first}${"x".repeat(bytes - first.length - 1)}\n`);
 				git(
 					repo,
 					"-c",
@@ -2026,12 +2046,12 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				);
 				return git(repo, "rev-parse", "HEAD");
 			};
-			const run = (name: string, head: string) => {
+			const run = (name: string, head: string, rules: object = { rule }) => {
 				const using = runners();
 				const result = measure(
 					{
 						...env,
-						MELIAN_EVAL_MISSES: missesFile([{ name, repo, base, head, file, rule }]),
+						MELIAN_EVAL_MISSES: missesFile([{ name, repo, base, head, file, ...rules }]),
 						MELIAN_EVAL_PROBE_SET: "misses",
 						MELIAN_EVAL_PROBE_PASSES: "1",
 						MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
@@ -2054,6 +2074,13 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			});
 			expect(refused.using.models).not.toHaveBeenCalled();
 			expect(refused.using.range).not.toHaveBeenCalled();
+			// A miss with no lines is scored on what a lens reads, here the one whole line before the cut.
+			const cutAfterALine = run("cut", sized("cut", revisionLimits.fileBytes + 1, "short\n"));
+			expect(await cutAfterALine.result).toMatchObject({ status: 0, errors: [] });
+			expect(cutAfterALine.using.range).toHaveBeenCalledTimes(1);
+			const ruleless = run("ruleless", atBound, { lines: [1, 1] });
+			expect(await ruleless.result).toMatchObject({ status: 0, errors: [] });
+			expect(ruleless.using.range).toHaveBeenCalledTimes(1);
 			git(repo, "checkout", "--quiet", "-b", "linked", "feature");
 			rmSync(join(repo, file));
 			symlinkSync("elsewhere", join(repo, file));
