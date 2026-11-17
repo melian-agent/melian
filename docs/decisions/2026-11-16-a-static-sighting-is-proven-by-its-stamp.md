@@ -2,7 +2,7 @@
 
 Amends: [A shared static finding carries no tool's text](2026-11-16-shared-static-findings-carry-no-tool-text.md), how a check run proves its sightings, and a static dismissal
 
-Status: the coordinator's answer of 2026-11-16 on [issue #528](https://github.com/melian-agent/melian/issues/528), on approach. It is not a maintainer's ruling. Whether a caller that writes the store by kind is outside the guarantee goes to the maintainer.
+Status: the coordinator's answer of 2026-11-16 on [issue #528](https://github.com/melian-agent/melian/issues/528), on approach. The maintainer ruled on 2026-11-17, in the coordinator's session, that this decision names the two limits below and that this issue fixes neither.
 
 ## Problem
 
@@ -20,7 +20,10 @@ Example: a caller runs the checks, then writes an older build's Biome sighting, 
 - `dismissFinding` keeps the stamp the winning sighting's check had when it was dismissed, as `dismissedSighting.run`. A later run's stamp does not change it. `ReviewRecords.dismissal` shares a static finding's dismissal only when `StaticProof` shows the request under that key asks for code that stores no tool text, and refuses it with `DismissError` `unprovenRun` otherwise. The dismissal's payload does not carry the key.
 - The in-process brand on `CheckRun`, and the request it carried, are gone. A run handed in still must name the review's base, head and tier, or the review refuses it with `foreignCheckRun`.
 
-The guarantee covers Melian's own writers and exported functions. A caller that writes the findings document by kind, through Pi Durable's documents or a transaction of its own, can write a stamp beside any sightings, and is outside it.
+The guarantee covers Melian's own writers and exported functions. Two limits stand outside it, and this decision fixes neither:
+
+- A forged request and key. A caller can store a request of its own making in the checks document, under the key it hashes to, and stamp that key. The store proves only that the request hashes to its key and asks for code that stores no tool text, not that a run of Melian's made it.
+- A caller holding a storage transaction. A caller that writes the findings document by kind, through Pi Durable's documents or a transaction of its own, can write a stamp beside any sightings.
 
 `packages/pipeline/test/findings-check-stamp.test.ts` gives each writer a test where it alone deletes the stamp, and shows a run with no findings stamps, a later run restamps, and a dismissal keeps its own. `packages/pipeline/test/review-records-unproven-run.test.ts` shares a proven run's records, and withholds Biome's record for a missing stamp, another run's stamp, a request the store never kept, an edited stored request, and an older build's request, while tsc's record, with no sightings, is shared. `packages/pipeline/test/review-records-planted-sighting.test.ts` withholds Biome's record when the run handed in names another request the store keeps, which covers a caller pairing one run's records with another request and a request that shares a run's 16-character task key. `packages/pipeline/test/static-proof.test.ts` proves nothing for a root with no checks document, or for a stored request canonical JSON refuses.
 
