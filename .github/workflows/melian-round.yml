@@ -279,6 +279,8 @@ jobs:
       # unreviewed, and the report posts that no round ran.
       - name: Prove a probe cannot reach the round's secrets
         working-directory: melian
+        env:
+          MELIAN_PROBE_POLICY_COMMIT: ${{ needs.gate.outputs.base }}
         run: |
           if ! node --conditions=@melian-agent/source scripts/round-probe-containment.mjs; then
             echo "::error::a probe on this runner reached what the round would hold, so the round does not run"

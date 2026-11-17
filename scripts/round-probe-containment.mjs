@@ -675,9 +675,15 @@ export async function main(probes = Probe, read = probeRead, interfaces = networ
 	}
 	const checkout = realpathSync(process.cwd());
 	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
+	// The round's probes run under the pull request's base policy, so the step proves that commit's probe.read.
+	const base = process.env.MELIAN_PROBE_POLICY_COMMIT;
+	if (!/^[0-9a-f]{40}$/.test(base ?? "")) {
+		say(`the round named no base commit whose probe.read to prove: ${JSON.stringify(base)}`);
+		return 1;
+	}
 	let allowed;
 	try {
-		allowed = [...(await read(checkout, commit))];
+		allowed = [...(await read(checkout, base))];
 	} catch (error) {
 		say(`the policy's probe.read could not be read: ${error.message}`);
 		return 1;

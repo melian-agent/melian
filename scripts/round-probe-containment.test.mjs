@@ -1165,9 +1165,9 @@ describe("main", () => {
 		};
 	}
 
-	async function mainWith(probes, read = async () => ["node_modules"], interfaces = networkInterfaces()) {
+	async function mainWith(probes, read = async () => ["node_modules"], interfaces = networkInterfaces(), base = head) {
 		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
-		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", ...loginNames].map((name) => [name, process.env[name]]));
+		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", "MELIAN_PROBE_POLICY_COMMIT", ...loginNames].map((name) => [name, process.env[name]]));
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		const segments = () => spawnSync("ipcs", ["-m"], { encoding: "utf8" }).stdout;
 		const before = { segments: segments(), fds: readdirSync("/proc/self/fd").length };
@@ -1176,6 +1176,8 @@ describe("main", () => {
 			mkdirSync(join(root, "temp"));
 			process.env.HOME = join(root, "home");
 			process.env.RUNNER_TEMP = join(root, "temp");
+			if (base === null) delete process.env.MELIAN_PROBE_POLICY_COMMIT;
+			else process.env.MELIAN_PROBE_POLICY_COMMIT = base;
 			const opened = probes(root);
 			const open = opened.open;
 			let options;
@@ -1220,8 +1222,9 @@ describe("main", () => {
 	);
 
 	it.runIf(process.platform === "linux")(
-		"hands the probe the policy's probe.read, as read at the checkout's HEAD",
+		"hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
 		async () => {
+			const base = "b".repeat(40);
 			const asked = [];
 			const result = await mainWith(
 				(root) => stoppedProbes(root, true),
@@ -1229,11 +1232,39 @@ describe("main", () => {
 					asked.push([checkout, commit]);
 					return ["node_modules", "extra"];
 				},
+				undefined,
+				base,
 			);
-			expect(asked).toEqual([[process.cwd(), head]]);
+			expect(asked).toEqual([[process.cwd(), base]]);
 			expect(result.head).toEqual({ checkout: process.cwd(), commit: head, read: ["node_modules", "extra"] });
 		},
 	);
+
+	it.runIf(process.platform === "linux").each([
+		["names none", null, "undefined"],
+		["names one past a commit's length", "b".repeat(41), JSON.stringify("b".repeat(41))],
+		["names a branch", "main", '"main"'],
+	])("fails, and reads no policy, when the round %s as its base", async (_, base, shown) => {
+		const asked = [];
+		const result = await mainWith(
+			(root) => stoppedProbes(root, true),
+			async (...given) => {
+				asked.push(given);
+				return ["node_modules"];
+			},
+			undefined,
+			base,
+		);
+		expect(asked).toEqual([]);
+		expect(result).toEqual({
+			code: 1,
+			logs: [[`the round named no base commit whose probe.read to prove: ${shown}`]],
+			left: [],
+			segmentsKept: true,
+			fdsKept: true,
+			head: undefined,
+		});
+	});
 
 	it.runIf(process.platform === "linux")(
 		"fails, escaped and before it plants anything, when the policy cannot be read",
@@ -1445,6 +1476,10 @@ describe.runIf(process.platform === "linux" && (availability.available || requir
 			{
 				cwd: join(import.meta.dirname, ".."),
 				encoding: "utf8",
+				env: {
+					...process.env,
+					MELIAN_PROBE_POLICY_COMMIT: spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim(),
+				},
 				timeout: 540_000,
 			},
 		);

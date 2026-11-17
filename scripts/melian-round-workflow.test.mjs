@@ -1513,12 +1513,13 @@ describe("the melian round workflow", () => {
 		expect([install < sandbox, sandbox < proof, proof < moved, moved < secret]).toEqual([true, true, true, true]);
 		expect(round[sandbox].run).toContain("sudo apt-get install -y -qq bubblewrap socat ripgrep");
 		expect(round[sandbox].run).toContain("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0");
+		expect(round[sandbox].env).toBeUndefined();
 		for (const step of [round[sandbox], round[proof]]) {
-			expect(step.env, step.name).toBeUndefined();
 			expect(JSON.stringify(step), step.name).not.toMatch(/secrets\.|github\.token|TOKEN/);
 		}
 		expect(round[proof]["working-directory"]).toBe("melian");
 		expect(round[proof].run).toContain(`if ! ${containment}; then`);
+		expect(round[proof].env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: "${{ needs.gate.outputs.base }}" });
 	});
 
 	it("ends the round unreviewed when a probe reaches what the round would hold, and carries on when none does", () => {
