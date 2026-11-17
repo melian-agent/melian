@@ -268,14 +268,16 @@ export const AdjudicationTask = defineTask<
 				// compared with the current one.
 				const { resolutionPolicy } = task.input;
 				const fixedCommit = policy?.kind === "revision" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit);
-				const computed =
-					fixedCommit && resolutionPolicy?.startsWith("2:") ? policies?.versionTwo : policies?.fingerprint;
-				if (policies !== undefined && resolutionPolicy !== undefined && computed !== resolutionPolicy) {
-					throw new ConfigError(
-						"invalidValue",
-						repoRoot,
-						"the resolution policy changed since the review read it, so its verdict would be decided under another",
-					);
+				if (policies !== undefined && resolutionPolicy !== undefined) {
+					const computed =
+						fixedCommit && resolutionPolicy.startsWith("2:") ? policies.versionTwo : policies.fingerprint;
+					if (computed !== resolutionPolicy) {
+						throw new ConfigError(
+							"invalidValue",
+							repoRoot,
+							"the resolution policy changed since the review read it, so its verdict would be decided under another",
+						);
+					}
 				}
 				verdict = new Adjudication({
 					findings,
