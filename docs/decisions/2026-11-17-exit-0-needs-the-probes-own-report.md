@@ -17,4 +17,4 @@ Choice:
 
 What it gives up: a probe could write 0 to the pipe itself and then kill itself with a real-time signal, and read as exit 0. That gives it nothing it could not get by exiting 0. As before, a probe could forge the record on file descriptor 3 by another route, such as through `/proc` on Linux.
 
-Measured: signals 34 and 64, a probe that skips its handler, and a child left holding the pipe, under bubblewrap on Linux in a cloud container on 2026-11-17, beside the endings the amended decision lists. Real-time signals are Linux's, so those two cases skip on macOS.
+Measured: signals 34 and 64, a probe that skips its handler, and a child left holding the pipe, under bubblewrap on Linux in a cloud container on 2026-11-17, beside the endings the amended decision lists. Real-time signals are Linux's, so those two cases are defined on Linux alone.
