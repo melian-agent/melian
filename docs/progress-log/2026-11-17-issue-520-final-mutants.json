@@ -765,7 +765,7 @@
 					"file": "packages/state-git/test/sweep.test.ts",
 					"path": [
 						"the sweep when the store opens",
-						"removes what a process that has exited left, and keeps the hint ref"
+						"sweeps in name order whatever order the directory lists its entries"
 					]
 				}
 			},

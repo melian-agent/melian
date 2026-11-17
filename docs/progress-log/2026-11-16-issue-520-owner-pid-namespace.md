@@ -23,3 +23,5 @@ The final proof is in `2026-11-17-issue-520-final-mutants.json`. It was enumerat
 - One is equivalent: `uid !== undefined` forced to `true`. `lstat` always reports a numeric owner, so the comparison it guards is false without it.
 
 The only source change between 2a75491c and 18e79709 moves a comment. So each run carries to 18e79709 by git's zero-context line map, with the mutated text checked unchanged.
+
+The review of record at 16f8e0e0 found that one claim's test killed its mutant only by luck. That mutant drops the sort of a listing that stopped before the bound, at `repository.ts:115:17`. Its named test failed mutated on 3 runs of 4, because the order of its two leftovers depends on their random names. The claim now names "sweeps in name order whatever order the directory lists its entries", which reverses the listing. Run alone, it passed unmutated 3 times of 3 and failed mutated 3 times of 3. The same review showed that Linux hands out pid namespace inodes in sequence and reuses them, so the documents now say that containers started alike on two machines can share an owner key too.
