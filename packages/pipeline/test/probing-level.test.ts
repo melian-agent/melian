@@ -1238,7 +1238,11 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 		expect(await reader.proberRecord(prober!)).toEqual({
 			plan: [1, 2, 3, 4].map(spread),
-			skips: [{ attack: 4, reason: "it needs another machine" }],
+			// The record is the audit trail, so it keeps a skip whose attack was later probed, which the stage counts as probed.
+			skips: [
+				{ attack: 2, reason: "it needs the network" },
+				{ attack: 4, reason: "it needs another machine" },
+			],
 			probes: [
 				text(runs[0]!.id, 2, passing, [], "held\n"),
 				text(runs[1]!.id, 1, failing, [note], "LEAK\n"),
