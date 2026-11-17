@@ -104,6 +104,7 @@ function ran(findings: readonly Finding[], fields: Partial<RangeRun> = {}): Rang
 		verdict: held({ findings }),
 		rendered: "rendered review\n",
 		toolMismatches: [],
+		probers: {},
 		notes: [],
 		tiers: {},
 		...fields,
@@ -857,13 +858,21 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 
 	it("scores each combination by its worst and mean pass, prints each review's notes, and spends every review", async () => {
 		let call = 0;
+		const record = (output: string) => ({
+			"conversation:9": {
+				plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
+				skips: [{ attack: 2, reason: "it needs another machine" }],
+				probes: [{ id: "p1", attack: 1, script: "s", files: [{ path: "n", text: "x" }], output }],
+			},
+		});
 		const using = runners({
 			golden: vi.fn(async (each: Golden) => {
 				call += 1;
-				if (call === 7) throw new GoldenRunError(new Error("provider down"), paid);
+				if (call === 7) throw new GoldenRunError(new Error("provider down"), paid, record("failed"));
 				return {
 					golden: each,
 					...ran(each === lost && call !== 3 ? defect : [], {
+						probers: record(`call ${call}`),
 						notes: [{ reason: "it planned 1 attack and ran 1 probe in 0.3 s", checks: ["lens.trust-boundary"] }],
 						tiers:
 							each === lost
@@ -939,6 +948,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				notes,
 				sharedProberTier: ["lens.conventions", "lens.tests"],
 				...spent,
+				probers: record("call 1"),
 			},
 			{
 				name: clean.name,
@@ -947,6 +957,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				notes,
 				sharedProberTier: ["lens.correctness"],
 				...spent,
+				probers: record("call 2"),
 			},
 		]);
 		expect(results.results[0].mean.recall).toBeCloseTo(2 / 3);
@@ -954,7 +965,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(results.results[1].passes[0]).toEqual({
 			failed: [lost.name],
 			reviews: [
-				{ name: lost.name, kind: "golden", error: "provider down", notes: [], sharedProberTier: [], ...spent },
+				{
+					name: lost.name,
+					kind: "golden",
+					error: "provider down",
+					notes: [],
+					sharedProberTier: [],
+					...spent,
+					probers: record("failed"),
+				},
 				{
 					name: clean.name,
 					kind: "golden",
@@ -962,6 +981,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 					notes,
 					sharedProberTier: [],
 					...spent,
+					probers: record("call 8"),
 				},
 			],
 		});
@@ -1064,7 +1084,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				),
 			);
 			expect(lines).toContain("pair: no score, 6 reviews had none, 210 tokens, $15");
-			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())), probers: {} };
 			const review = { kind: "miss", notes: [], sharedProberTier: [], ...spent };
 			const shown = {
 				id: defect[0]!.id,
@@ -1538,7 +1558,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				MELIAN_EVAL_PROBE_OUT: out,
 			};
 			expect((await measure(settings, using)).status).toBe(1);
-			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())) };
+			const spent = { spend: paid.spend(), telemetry: JSON.parse(JSON.stringify(paid.toJSON())), probers: {} };
 			const scored = { notes: [], sharedProberTier: [], ...spent };
 			const unmatched = { found: false, matched: "file and rule", hits: [], near: [] };
 			const [first, second] = JSON.parse(readFileSync(out, "utf8")).results[0].passes;

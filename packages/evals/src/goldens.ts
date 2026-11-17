@@ -31,6 +31,7 @@ import {
 	configsFor,
 	createMemoryStorage,
 	openReviewHarness,
+	type ProberRecord,
 	type ReviewModels,
 	readFindings,
 	reviewChangeset,
@@ -348,6 +349,8 @@ export interface ReviewTarget {
 /** A range's review: the findings, the terminal rendering an author would see, and what each lens ran on. */
 export interface RangeRun {
 	readonly telemetry: StageTelemetry;
+	/** Each prober stage's record, by stage ID: model and head text that telemetry leaves out, for a local results file. */
+	readonly probers: Readonly<Record<string, ProberRecord>>;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
@@ -409,6 +412,20 @@ async function guardrailFindings(
 }
 
 // One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
+async function detached(
+	storage: ReturnType<typeof createMemoryStorage>,
+	revision: string,
+): Promise<{ telemetry: StageTelemetry; probers: Record<string, ProberRecord> }> {
+	const reader = TelemetryReader.open(storage);
+	const telemetry = await reader.read(revision);
+	const probers: Record<string, ProberRecord> = {};
+	for (const stage of telemetry.stages) {
+		const record = await reader.proberRecord(stage);
+		if (record !== undefined) probers[stage.id] = record;
+	}
+	return { telemetry, probers };
+}
+
 export async function sightingsAt(
 	reader: Parameters<typeof readFindings>[0],
 	root: Parameters<typeof readFindings>[1],
@@ -545,10 +562,11 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			notes: reviewed.verdict.lensNotes(),
 			tiers: tiersRun(reviewed.verdict.ran ?? [], lenses, config),
 			verdict: reviewed.verdict,
-			telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
+			...(await detached(storage, Revision.key(changeset.revision))),
 		};
 	} catch (error) {
-		throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
+		const { telemetry, probers } = await detached(storage, Revision.key(changeset.revision));
+		throw new GoldenRunError(error, telemetry, probers);
 	} finally {
 		await reviewHarness.close(backgroundContext);
 	}

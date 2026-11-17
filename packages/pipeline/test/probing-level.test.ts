@@ -979,7 +979,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(prober).not.toHaveProperty("shown");
 	});
 
-	it("shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry", async () => {
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry, and its text in its record alone", async () => {
 		const spread = (n: number) => ({ ...attack, target: `${attack.target} ${n}` });
 		const long = 'console.log("x".repeat(20_000));\nprocess.exit(1);\n';
 		const note = { path: "note.txt", text: "beside the probe" };
@@ -996,15 +996,10 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			],
 		});
 		await run;
-		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const reader = TelemetryReader.open(storage);
+		const telemetry = await reader.read(Revision.key(changeset.revision));
 		const prober = telemetry.stages.find((stage) => stage.role === "prober");
-		const ran = (
-			attack: number,
-			ended: string,
-			exitCode: number,
-			text: { script: string; files: { path: string; text: string }[]; output: string },
-			truncated = false,
-		) => ({
+		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
 			id: expect.stringMatching(/^p[0-9]+$/),
 			attack,
 			ended,
@@ -1013,25 +1008,38 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			timedOut: false,
 			truncated,
 			milliseconds: expect.any(Number),
-			...text,
 		});
 		expect(prober!.probes).toEqual({
 			count: 3,
 			milliseconds: expect.any(Number),
 			limit: 30_000,
 			attacks: 4,
-			plan: [1, 2, 3, 4].map(spread),
 			skipped: [4],
-			skips: [{ attack: 4, reason: "it needs another machine" }],
-			runs: [
-				ran(2, "passed", 0, { script: passing, files: [], output: "held\n" }),
-				ran(1, "failed", 1, { script: failing, files: [note], output: "LEAK\n" }),
-				ran(3, "inconclusive", 1, { script: long, files: [], output: "x".repeat(16 * 1024) }, true),
-			],
+			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
 		});
 		const { runs, milliseconds } = prober!.probes!;
 		expect(runs.every((probe) => probe.milliseconds > 0)).toBe(true);
 		expect(milliseconds).toBe(runs.reduce((sum, probe) => sum + probe.milliseconds, 0));
+		const text = (id: string, attack: number, script: string, files: (typeof note)[], output: string) => ({
+			id,
+			attack,
+			script,
+			files,
+			output,
+		});
+		expect(await reader.proberRecord(prober!)).toEqual({
+			plan: [1, 2, 3, 4].map(spread),
+			skips: [{ attack: 4, reason: "it needs another machine" }],
+			probes: [
+				text(runs[0]!.id, 2, passing, [], "held\n"),
+				text(runs[1]!.id, 1, failing, [note], "LEAK\n"),
+				text(runs[2]!.id, 3, long, [], "x".repeat(16 * 1024)),
+			],
+		});
+		const planner = telemetry.stages.find((stage) => stage.role === "planner");
+		expect(planner).toBeDefined();
+		expect(await reader.proberRecord(planner!)).toBeUndefined();
+		expect(await reader.proberRecord({ ...prober!, conversation: undefined })).toBeUndefined();
 	});
 
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {

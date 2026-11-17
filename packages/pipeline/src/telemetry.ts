@@ -138,18 +138,15 @@ export type Stage = {
 	/** For a lens, the head lines of each changed file that `read_file` delivered to it, as first and last line of each run. */
 	read?: { path: string; ranges: [number, number][] }[];
 	/**
-	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the plan it was given and the
-	 * attacks it skipped, with why; and each probe's text and how it ended. The text is the model's and the head's, held
-	 * to the probing limits the tools enforce, so a reader shows it as data.
+	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the attacks in the plan it was
+	 * given and the ones it skipped; and how each probe ended.
 	 */
 	probes?: {
 		count: number;
 		milliseconds: number;
 		limit: number;
 		attacks: number;
-		plan: Attack[];
 		skipped: number[];
-		skips: { attack: number; reason: string }[];
 		runs: ProbeStage[];
 	};
 };
@@ -167,9 +164,16 @@ export type ProbeStage = {
 	timedOut: boolean;
 	truncated: boolean;
 	milliseconds: number;
-	script: string;
-	files: { path: string; text: string }[];
-	output: string;
+};
+
+/**
+ * A prober's own record: the plan it was given, each attack it skipped with the model's reason, and each probe's
+ * script, files and output. Model and head text, so it is never telemetry; a caller that keeps it keeps it local.
+ */
+export type ProberRecord = {
+	plan: Attack[];
+	skips: { attack: number; reason: string }[];
+	probes: { id: string; attack: number; script: string; files: { path: string; text: string }[]; output: string }[];
 };
 
 // The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
@@ -528,6 +532,30 @@ export class TelemetryReader {
 	/** The caller owns and closes storage. */
 	static open(storage: Storage): TelemetryReader {
 		return new TelemetryReader(storage);
+	}
+
+	/**
+	 * The {@link ProberRecord} behind a prober's stage, or nothing for any other stage. Telemetry leaves this text out,
+	 * as the telemetry decision requires.
+	 */
+	async proberRecord(stage: Stage, context: Context = backgroundContext): Promise<ProberRecord | undefined> {
+		if (stage.role !== "prober" || stage.conversation === undefined) return undefined;
+		// A stage stores its conversation as the plain number JSON can hold.
+		const scope = { kind: "conversation", conversationId: stage.conversation as ConversationId } as const;
+		const probed = await this.document(ProbingDocument, scope, context);
+		if (probed?.plan === undefined) return undefined;
+		const probes = Object.entries(probed.probes ?? {});
+		return {
+			plan: structuredClone(probed.plan),
+			skips: unprobedSkips(probed.skips, probes).map(([attack, reason]) => ({ attack, reason })),
+			probes: probes.map(([id, { attack, script, files, result }]) => ({
+				id,
+				attack,
+				script,
+				files: structuredClone(files),
+				output: result.output,
+			})),
+		};
 	}
 
 	/** The frozen run for exactly this storage-local round, absent from older rounds. */
@@ -945,25 +973,26 @@ export class TelemetryError extends Error {
 	readonly code = "unreadable";
 }
 
-// A prober's stage: its probes and their text, the plan it was given, and the attacks it skipped with why.
+// Integer keys list in ascending order. An attack skipped and then probed was probed.
+function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): [number, string][] {
+	return Object.entries(skips ?? {})
+		.map(([attack, reason]): [number, string] => [Number(attack), reason])
+		.filter(([attack]) => !probes.some(([, probe]) => probe.attack === attack));
+}
+
+// A prober's stage: its probes and how each ended, the size of the plan it was given, and the attacks it skipped.
 function proberStage(
 	probed: { plan?: Attack[]; skips?: Record<string, string> },
 	probes: [string, ProbeRecord][],
 	limit: number,
 ): NonNullable<Stage["probes"]> {
-	// Integer keys list in ascending order. An attack skipped and then probed was probed.
-	const skips = Object.entries(probed.skips ?? {})
-		.map(([attack, reason]): [number, string] => [Number(attack), reason])
-		.filter(([attack]) => !probes.some(([, probe]) => probe.attack === attack));
 	return {
 		count: probes.length,
 		milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
 		limit,
 		attacks: probed.plan!.length,
-		plan: structuredClone(probed.plan!),
-		skipped: skips.map(([attack]) => attack),
-		skips: skips.map(([attack, reason]) => ({ attack, reason })),
-		runs: probes.map(([probeId, { attack, script, files, result, milliseconds }]) => ({
+		skipped: unprobedSkips(probed.skips, probes).map(([attack]) => attack),
+		runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
 			id: probeId,
 			attack,
 			ended: probeFailed(result) ? "failed" : probeConclusive(result) ? "passed" : "inconclusive",
@@ -972,9 +1001,6 @@ function proberStage(
 			timedOut: result.timedOut,
 			truncated: result.truncated,
 			milliseconds,
-			script,
-			files: structuredClone(files),
-			output: result.output,
 		})),
 	};
 }
