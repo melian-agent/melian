@@ -27,6 +27,7 @@ import {
 	RecordedRound,
 	ReviewError,
 	type ReviewHarness,
+	ROOT_CONVERSATION_ID,
 	recordDismissal,
 	reviewChangeset,
 	type Storage,
@@ -1187,21 +1188,25 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(prober).not.toHaveProperty("shown");
 	});
 
-	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry, and its text in its record alone", async () => {
+		const spread = (n: number) => ({ ...attack, target: `${attack.target} ${n}` });
+		const long = 'console.log("x".repeat(20_000));\nprocess.exit(1);\n';
+		const note = { path: "note.txt", text: "beside the probe" };
 		const { run, changeset } = await review({
-			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			planner: [call("record_plan", { attacks: [1, 2, 3, 4].map(spread) }), plan[1]!],
 			prober: [
 				// An attack skipped and then probed was probed, as the run's own record counts it.
 				call("skip_attack", { attack: 2, reason: "it needs the network" }),
 				call("run_probe", { attack: 2, script: passing }),
-				call("run_probe", { attack: 1, script: failing }),
-				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
-				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				call("run_probe", { attack: 1, script: failing, files: [note] }),
+				call("run_probe", { attack: 3, script: long }),
+				call("skip_attack", { attack: 4, reason: "it needs another machine" }),
 				fauxAssistantMessage("Done."),
 			],
 		});
 		await run;
-		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const reader = TelemetryReader.open(storage);
+		const telemetry = await reader.read(Revision.key(changeset.revision));
 		const prober = telemetry.stages.find((stage) => stage.role === "prober");
 		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
 			id: expect.stringMatching(/^p[0-9]+$/),
@@ -1221,6 +1226,31 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			skipped: [4],
 			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
 		});
+		const { runs, milliseconds } = prober!.probes!;
+		expect(runs.every((probe) => probe.milliseconds > 0)).toBe(true);
+		expect(milliseconds).toBe(runs.reduce((sum, probe) => sum + probe.milliseconds, 0));
+		const text = (id: string, attack: number, script: string, files: (typeof note)[], output: string) => ({
+			id,
+			attack,
+			script,
+			files,
+			output,
+		});
+		expect(await reader.proberRecord(prober!)).toEqual({
+			plan: [1, 2, 3, 4].map(spread),
+			skips: [{ attack: 4, reason: "it needs another machine" }],
+			probes: [
+				text(runs[0]!.id, 2, passing, [], "held\n"),
+				text(runs[1]!.id, 1, failing, [note], "LEAK\n"),
+				text(runs[2]!.id, 3, long, [], "x".repeat(16 * 1024)),
+			],
+		});
+		const planner = telemetry.stages.find((stage) => stage.role === "planner");
+		expect(planner).toBeDefined();
+		expect(await reader.proberRecord(planner!)).toBeUndefined();
+		expect(await reader.proberRecord({ ...prober!, conversation: undefined })).toBeUndefined();
+		// A prober that ended before its plan was copied in has no probing record at all.
+		expect(await reader.proberRecord({ ...prober!, conversation: ROOT_CONVERSATION_ID })).toBeUndefined();
 	});
 
 	it("runs a claim's probe again once, a repeat review reuses both, and one under another writer probes afresh", async () => {
@@ -3794,10 +3824,11 @@ async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, 
 	return shown;
 }
 
-// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
-// trust-boundary lens's planner and prober must still be shown what they were shown then.
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, and rewritten
+// by its test for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file. Any other
+// change to what the trust-boundary lens's planner and prober are shown fails it.
 describe("the trust-boundary lens's probing turns", () => {
-	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+	it("are what the golden records, byte for byte, through an escalation, a plan and both reminders", async () => {
 		const shown = await probingTurns(escalating(createFakeModels()), prober);
 		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
 	});
