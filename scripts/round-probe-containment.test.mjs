@@ -588,10 +588,13 @@ describe("the probe script", () => {
 			const listener = await Listener.open("127.0.0.1");
 			const http = createServer((socket) => socket.once("data", () => socket.end("HTTP/1.1 200 OK\r\n\r\n")));
 			const socks = createServer((socket) => {
-				let replies = 0;
-				socket.on("data", () =>
-					socket.write(Buffer.from(replies++ === 0 ? [5, 0] : [5, 0, 0, 1, 0, 0, 0, 0, 0, 0])),
-				);
+				// It asks for a username and password, then lets the request through, so the script must go on after it logs in.
+				const replies = [
+					[5, 2],
+					[1, 0],
+					[5, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+				];
+				socket.on("data", () => socket.write(Buffer.from(replies.shift() ?? [])));
 			});
 			const holder = spawn(process.execPath, ["-e", "setTimeout(() => {}, 120_000)", secret], {
 				env: { PATH: process.env.PATH, MELIAN_HELD: secret },
@@ -627,7 +630,7 @@ describe("the probe script", () => {
 						PATH: `${bin}:${process.env.PATH}`,
 						MELIAN_LEAKED: secret,
 						HTTP_PROXY: `http://127.0.0.1:${http.address().port}`,
-						ALL_PROXY: `socks5h://127.0.0.1:${socks.address().port}`,
+						ALL_PROXY: `socks5h://melian:open@127.0.0.1:${socks.address().port}`,
 					},
 					stdio: ["ignore", "pipe", "inherit"],
 				});
