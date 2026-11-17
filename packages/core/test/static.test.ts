@@ -382,6 +382,7 @@ describe("staticFindings", () => {
 				],
 			}),
 			{ root: repo, version: "0.4.27" },
+			new Set(["intent-unmet"]),
 		);
 	}
 
@@ -445,6 +446,7 @@ describe("staticFindings", () => {
 				],
 			}),
 			{ root: repo, version: "0.4.40" },
+			new Set(["complexity-outliers"]),
 		);
 		const none: ToolLog = { ...result, runs: [{ ...result.runs[0]!, results: [] }] };
 		const { findings } = await staticFindings({
@@ -537,6 +539,7 @@ describe("staticFindings", () => {
 					],
 				}),
 				{ root: repo, version: "0.4.27" },
+				new Set(),
 			);
 		const report = await staticFindings({
 			repoRoot: repo,
@@ -560,8 +563,8 @@ describe("staticFindings", () => {
 	});
 
 	it("still reports another Enola rule on lines the change did not edit", async () => {
-		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspot")).toEqual({
-			findings: [["enola/hotspot", "introduced"]],
+		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspots")).toEqual({
+			findings: [["enola/hotspots", "introduced"]],
 			notes: [],
 		});
 	});
@@ -626,6 +629,7 @@ describe("staticFindings", () => {
 					],
 				}),
 				{ root: repo, version: "0.4.40" },
+				new Set(["complexity-outliers"]),
 			);
 		const report = (log: ToolLog) =>
 			staticFindings({
@@ -674,6 +678,7 @@ describe("staticFindings", () => {
 					],
 				}),
 				{ root: repo, version: "0.4.40" },
+				new Set(["complexity-outliers"]),
 			);
 		const none: ToolLog = { ...at(), runs: [{ ...at().runs[0]!, results: [] }] };
 		const introduced = async (endLine?: number) =>

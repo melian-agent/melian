@@ -1,0 +1,129 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ca863417a16860f5131113d2a9eb4a954dd9cc56",
+		"head": "7a8efcc76ed9afd58820fda41a0af0be1890e920"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 400,
+			"column": 5,
+			"endLine": 400,
+			"endColumn": 33,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "check.startsWith(\"static.\")",
+			"status": "generated",
+			"id": "ffc07be4dd0703dfae8dffd2c5bc84569d0c4cebc2a320bc51a0d9430d0f4dd6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's message on a located finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 400,
+			"column": 5,
+			"endLine": 400,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e54a3556ba8a08fc3892e2f9bde61112259d78c453981a862932bd5115adccb4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's message on a located finding"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 400,
+			"column": 5,
+			"endLine": 400,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5709013ac57ace387beb24d1acc12ea689649af44dc3b9fdf293c1b043727a0b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record keeps what a static finding shares",
+						"keeps a lens's finding as it is"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 400,
+			"column": 6,
+			"endLine": 400,
+			"endColumn": 33,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "4048e6872ac9e4315a03c98865bb341d24468a7cbf82e8635ae67332830ab885",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as Enola's message on a located finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 400,
+			"column": 23,
+			"endLine": 400,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "591898def3aae1f80998db81335502973932b300855bf58d7f82eefe521a15a1"
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

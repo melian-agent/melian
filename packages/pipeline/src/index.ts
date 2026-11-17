@@ -100,6 +100,7 @@ export {
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
+export { withheld } from "./review-records.ts";
 export {
 	runStaticTool,
 	type StaticRun,

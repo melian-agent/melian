@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { isChangesetId } from "@melian-agent/core";
+import { isChangesetId, withoutReplacements } from "@melian-agent/core";
 import { running, scratchName } from "./cache-scratch.ts";
 import { GraphCache } from "./graph-cache.ts";
 
@@ -156,8 +156,9 @@ export class StorePrune {
 				`Melian's state directory at ${root} is a link, and prune does not follow a linked state directory. Set MELIAN_STATE_DIR to a directory of your choice, move the files the link points to into the state directory melian doctor then names, and run prune again`,
 			);
 		const now = options.now ?? Date.now();
-		const env = Object.fromEntries(
-			Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_")),
+		// A ref under refs/replace would resolve a live commit to another tree, and prune would remove the live tree's graph.
+		const env = withoutReplacements(
+			Object.fromEntries(Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_"))),
 		);
 		const { heads, live } = await worktrees(repoRoot, env);
 		const trees = await liveTrees(repoRoot, env, heads);
