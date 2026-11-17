@@ -29,8 +29,8 @@ import {
 	openSqliteStorage,
 } from "../src/harness.ts";
 import { createFakeModels } from "../src/testing.ts";
-import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 import { replaceRefsProbe } from "./fixtures/replace-refs.ts";
+import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 const day = 86_400_000;
 const digest = "e".repeat(64);
