@@ -9,12 +9,16 @@ import { checkExpected, fetchedPullRequest, gitHubFor, parseTarget } from "./tar
 /**
  * Adds the records a pull request's round left in a directory store to the clone's `melian/state`, checked whole by
  * `RelayBatch`. The changeset, revision and whether the head is a fork come from GitHub's answer for the pull request,
- * never from the batch.
+ * never from the batch. With `check`, it checks the batch the same way and writes nothing.
  */
 export async function relayRecords(
 	io: Io,
 	argument: string,
-	options: { readonly from: string; readonly expect: { readonly base: string; readonly head: string } },
+	options: {
+		readonly from: string;
+		readonly expect: { readonly base: string; readonly head: string };
+		readonly check?: boolean;
+	},
 ): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") throw new CliError(`records relay takes a pull request such as "#12"`);
@@ -31,6 +35,12 @@ export async function relayRecords(
 		revision: Revision.key(changeset.revision),
 		fork,
 	});
+	if (options.check === true) {
+		io.stdout(
+			`melian: the relay would add ${batch.records.length} records of pull request #${target.number} to melian/state\n`,
+		);
+		return 0;
+	}
 	const remote = await git(repoRoot, ["remote", "get-url", "origin"]);
 	let store: GitRecordStore | undefined;
 	try {

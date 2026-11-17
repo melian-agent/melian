@@ -90,7 +90,7 @@ async function pullRequest(options: { policy?: string; permission?: string; fork
 		},
 		color: false,
 	};
-	const relay = (artefact: string, expect: { base: string; head: string } = changeset.revision) =>
+	const relay = (artefact: string, expect: { base: string; head: string } = changeset.revision, ...extra: string[]) =>
 		main(
 			[
 				"records",
@@ -102,6 +102,7 @@ async function pullRequest(options: { policy?: string; permission?: string; fork
 				expect.base,
 				"--expect-head",
 				expect.head,
+				...extra,
 			],
 			io,
 		);
@@ -135,6 +136,22 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 		expect(await relay(await artefact(check, round))).toBe(0);
 		expect(onState()?.sort()).toEqual([check.path, round.path].sort());
 		expect(out()).toBe("melian: relayed 2 records of pull request #7 to melian/state\n");
+	});
+
+	it("checks a writer's batch with --check and writes nothing", async () => {
+		const { check, round, relay, onState, out } = await pullRequest();
+		expect(await relay(await artefact(check, round), undefined, "--check")).toBe(0);
+		expect(onState()).toBeUndefined();
+		expect(out()).toBe("melian: the relay would add 2 records of pull request #7 to melian/state\n");
+	});
+
+	it("refuses with --check what the relay refuses", async () => {
+		const { round, relay, onState, err } = await pullRequest();
+		expect(await relay(await artefact(round), undefined, "--check")).toBe(1);
+		expect(onState()).toBeUndefined();
+		expect(err()).toBe(
+			`melian: melian records relay refused the batch: ${round.id}.json is a round that reads a record the batch does not hold\n`,
+		);
 	});
 
 	it("refuses a fork's round, and melian/state is never created", async () => {
@@ -189,6 +206,7 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 			"takes one --from",
 		],
 		[["records", "relay", "#7", "--from", "dir:x"], "takes --expect-base and --expect-head"],
+		[["review", "#7", "--check"], "--check is only available for records relay"],
 	])("refuses %j as usage", async (args, said) => {
 		let stderr = "";
 		const code = await main(args, {

@@ -45,9 +45,10 @@ Commands:
   findings <range|#pr> --records dir:<path>
                          Decide each round a record store holds at the target's revision from its records alone,
                          under the base's policy, when that policy sets trust.writers: true.
-  records relay <#pr> --from dir:<path> --expect-base <sha> --expect-head <sha>
+  records relay <#pr> --from dir:<path> --expect-base <sha> --expect-head <sha> [--check]
                          Add the records a round of the pull request left in a directory store to melian/state,
-                         refusing the whole batch unless the head's job may hand over every record in it.
+                         refusing the whole batch unless the head's job may hand over every record in it. --check
+                         checks the batch the same way and writes nothing.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -184,6 +185,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
 				records: { type: "string" },
+				check: { type: "boolean", default: false },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -240,6 +242,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
+		if (name !== "records" && values.check) throw new UsageError("--check is only available for records relay");
 		if (name !== "review" && name !== "records" && (expectBase !== undefined || expectHead !== undefined))
 			throw new UsageError("--expect-base and --expect-head are only available for review and records relay");
 		if ((expectBase === undefined) !== (expectHead === undefined))
@@ -314,7 +317,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					throw new UsageError(
 						"records relay takes --expect-base and --expect-head, the base and head its round reviewed",
 					);
-				return await relayRecords(scoped, target, { from, expect: expected });
+				return await relayRecords(scoped, target, { from, expect: expected, check: values.check });
 			}
 			case "status":
 				if (one(rest, name, "subcommand") !== "merge-group") throw new UsageError("status takes merge-group");
