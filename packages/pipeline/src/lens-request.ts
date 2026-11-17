@@ -26,6 +26,10 @@ export type LensRequestRun = {
 	readonly probe?: { readonly probesAs?: string; readonly [field: string]: unknown };
 };
 
+// Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, and whether
+// that is the checkout's install or Melian's; `unavailable` when neither resolves.
+export type MutantLister = { readonly version: string; readonly source: "checkout" | "melian" } | "unavailable";
+
 /** What a lens run is asked, before it is keyed. */
 export type LensRequestInput<Run extends LensRequestRun> = {
 	/**
@@ -45,6 +49,8 @@ export type LensRequestInput<Run extends LensRequestRun> = {
 	 * of the nonce render alike, and a change of source or trust can leave the text as it was.
 	 */
 	readonly standards: unknown;
+	/** The instrumenter, required for a run offered `list_mutants`, whose list it decides, and keyed only for one. */
+	readonly mutants?: MutantLister;
 };
 
 type ToolSpec = {
@@ -69,6 +75,7 @@ type LensRequestBody = {
 	escalation?: { next: string } | { cap: string };
 	wording?: Readonly<Record<string, string>>;
 	standards: RecordJson;
+	mutants?: MutantLister;
 };
 
 // What a tool shows a lens: its name, description and schema, and the limits on what it takes and returns.
@@ -85,10 +92,11 @@ const specOf = ({ name, description, parameters, outputLimits, argumentBytes }: 
  * Durable and pi-ai releases that render and send it, the injection policy that renders ahead of its instructions with
  * the name of the section that tags it, each tool its planner and prober are offered by name, description and
  * schema, the wording a failover sends, the revision's base and head, `escalateAt`, the escalation by its next run's
- * key, the probing wording of its own lens for a run that probes and the shared lines for one that escalates, and the
- * standards it quotes as their source gave them. Best-effort context stays out, as rule 5 of the shared record decision
- * says: the caller section, and the Enola graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under
- * the review's own nonce with its caller section.
+ * key, the probing wording of its own lens for a run that probes and the shared lines for one that escalates, the
+ * standards it quotes as their source gave them, and, for a run offered `list_mutants`, the instrumenter that answers
+ * it. Best-effort context stays out, as rule 5 of the shared record decision says: the caller section, and the Enola
+ * graph its tools read. The lens task reads `unkeyed.bestEffort`, the run under the review's own nonce with its caller
+ * section.
  */
 export function lensRequest<Run extends LensRequestRun>(
 	input: LensRequestInput<Run>,
@@ -96,6 +104,8 @@ export function lensRequest<Run extends LensRequestRun>(
 	const keyed = input.run(identityNonce, false);
 	const read = keyed.tools.map((tool) => lensListedTools[tool]);
 	const probes = keyed.probe !== undefined;
+	const lists = keyed.tools.includes("list_mutants");
+	if (lists && input.mutants === undefined) throw new Error("a run offered list_mutants needs its instrumenter keyed");
 	return KeyedRequest.of(
 		"lens",
 		{
@@ -124,6 +134,7 @@ export function lensRequest<Run extends LensRequestRun>(
 					? { wording: probingWording }
 					: {}),
 			standards: requestJson(input.standards),
+			...(lists ? { mutants: input.mutants! } : {}),
 		},
 		{ nonce: input.nonce, bestEffort: input.run(input.nonce, true) },
 	);

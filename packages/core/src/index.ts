@@ -268,6 +268,7 @@ export {
 	lensFrontMatterSchema,
 	lensGraphToolNames,
 	lensLimits,
+	lensMutationToolNames,
 	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,

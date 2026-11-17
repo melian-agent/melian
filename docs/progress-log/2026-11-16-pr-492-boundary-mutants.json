@@ -1,0 +1,63 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "bdd93b9f6026b25b6d198b4e52f3b65ad7a74ba6",
+    "head": "64b0362020073d065fabd1ea23461edd9a646ec3"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/lens-tools.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 923,
+      "column": 12,
+      "endLine": 923,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2ebfea3fd5e987e8b56bfb24017acbd3ce975d1d2f2a9c030c94e0c790da7da8"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 960,
+      "column": 7,
+      "endLine": 960,
+      "endColumn": 135,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fd04bb65fe16c92c131cc023290a68b455293f1946aea8512062153e5afa323b"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 969,
+      "column": 6,
+      "endLine": 969,
+      "endColumn": 120,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a3cde49c6d2abb3dc139bddb72744e387876985b6b86b117f49bdf9d3e184e6c"
+    }
+  ],
+  "total": 3,
+  "omitted": 0,
+  "unmutated": []
+}

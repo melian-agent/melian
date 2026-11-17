@@ -1,0 +1,169 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "e5648b2ed302a917daedcfa938987c53cd5a21a5",
+    "head": "b88901153dcec137e387e330a4e6dce733b7561a"
+  },
+  "claimsIn": [
+    "packages/core/src/git.ts",
+    "packages/cli/src/repository.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 10,
+      "column": 14,
+      "endLine": 10,
+      "endColumn": 61,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "cecbf78de6bc2fbe9a3e23f19af8e94c90d7de9fe4a56c0995517aa608bcad01",
+      "claim": "killed",
+      "evidence": "packages/cli/test/repository.test.ts > git > shows a commit's own file though refs/replace puts another commit behind its ID",
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 10,
+      "column": 56,
+      "endLine": 10,
+      "endColumn": 59,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "da6aa8528a497fcce3689644febca20bbcffc433157a705fd5eccc2ff5735fa4"
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 11,
+      "column": 11,
+      "endLine": 11,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6c13cd8ed0a19edb1193686b26332f1080798661398185c4439341addad5076f"
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 11,
+      "column": 24,
+      "endLine": 11,
+      "endColumn": 65,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5911734d56b08fb65a4f5f9872fa7dfbe586f615fb9e064b5a7c73c37cf92b8a",
+      "claim": "killed",
+      "evidence": "packages/cli/test/repository.test.ts > git > shows a commit's own file though refs/replace puts another commit behind its ID",
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 11,
+      "column": 47,
+      "endLine": 11,
+      "endColumn": 63,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 * 1024 / 1024",
+      "status": "generated",
+      "id": "33c6c5d14a26918ef2786378e20aaf215ad1653d8ed37932aa0aafb7ef85fa0e",
+      "claim": "killed",
+      "evidence": "packages/cli/test/repository.test.ts > git > shows a commit's own file though refs/replace puts another commit behind its ID",
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 11,
+      "column": 47,
+      "endLine": 11,
+      "endColumn": 56,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 / 1024",
+      "status": "generated",
+      "id": "25fa9c2cb42cb64c48ade846ea32c66a37b793f8af8dd58d7790b1d343e441a5",
+      "claim": "killed",
+      "evidence": "packages/cli/test/repository.test.ts > git > shows a commit's own file though refs/replace puts another commit behind its ID",
+      "survivorClasses": []
+    }
+  ],
+  "total": 6,
+  "omitted": 0,
+  "unmutated": [
+    {
+      "file": "packages/core/src/git.ts",
+      "reason": "it sends process signals, and a mutant there could signal a process outside the run"
+    }
+  ],
+  "instrumented": {
+    "note": "git.ts sends signals, so the enumerator lists it as unmutated. These are the instrumenter's mutants on the changed line, run with real git under the ruling of 2026-11-16 on a bare ChildProcess.kill(); grep finds no process.kill or signal name in the file. static.ts is on the enumerator's signal list; its two mutants on the changed line change only the git command string, touch no pid or signal code, and ran in a cloud container against a test that spawns only git.",
+    "mutants": [
+      {
+        "file": "packages/core/src/git.ts",
+        "line": 69,
+        "column": 8,
+        "endLine": 69,
+        "endColumn": 47,
+        "mutatorName": "ObjectLiteral",
+        "replacement": "{}",
+        "claim": "killed",
+        "evidence": "packages/core/test/replace-objects.test.ts > shows a commit's own file through git, not its replacement's",
+        "survivorClasses": []
+      },
+      {
+        "file": "packages/core/src/git.ts",
+        "line": 69,
+        "column": 42,
+        "endLine": 69,
+        "endColumn": 45,
+        "mutatorName": "StringLiteral",
+        "replacement": "\"\"",
+        "claim": "equivalent",
+        "evidence": "git disables replacement refs whenever GIT_NO_REPLACE_OBJECTS is present; an empty value or 0 reads the original commit, checked on git 2.43",
+        "survivorClasses": [
+          "seeded-default"
+        ]
+      },
+      {
+        "file": "packages/pipeline/src/static.ts",
+        "line": 139,
+        "column": 8,
+        "endLine": 139,
+        "endColumn": 153,
+        "mutatorName": "StringLiteral",
+        "replacement": "``",
+        "claim": "killed",
+        "evidence": "packages/pipeline/test/static.test.ts > checks out the commit an ID names, not a replacement refs/replace puts behind it",
+        "survivorClasses": []
+      },
+      {
+        "file": "packages/pipeline/src/static.ts",
+        "line": 139,
+        "column": 35,
+        "endLine": 139,
+        "endColumn": 38,
+        "mutatorName": "StringLiteral",
+        "replacement": "\"\"",
+        "claim": "equivalent",
+        "evidence": "the shell runs with inheritEnv false and only PATH, HOME, TMPDIR and LANG, so no GIT_ variable reaches it for the unset to remove",
+        "survivorClasses": [
+          "seeded-default"
+        ]
+      }
+    ]
+  }
+}

@@ -42,6 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
+import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
 
 const correctness = "You are the correctness reviewer";
 const verifierMarker = "Melian adversarial verifier";
@@ -201,11 +202,12 @@ function unexported(reviewed: Reviewed): string[] {
 		.filter((name) => !decided.has(name));
 }
 
-// Asks the same of the reader as of the host, for one end state: the whole verdict, and a record for every check.
+// Asks the same of the reader as of the host, for one end state: the whole verdict, but the text a record withholds, and a
+// record for every check.
 async function decidesAsTheHost(scenario: Scenario): Promise<Verdict> {
 	const reviewed = await review(exported(), scenario);
 	expect(unexported(reviewed)).toEqual([]);
-	expect((await read(reviewed)).toJSON()).toEqual(reviewed.verdict.toJSON());
+	expectSharedVerdict((await read(reviewed)).toJSON(), reviewed.verdict.toJSON());
 	return reviewed.verdict;
 }
 

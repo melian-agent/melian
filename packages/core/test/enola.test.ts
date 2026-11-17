@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { CheckError, EnolaPolicy, normaliseEnolaSarif, staticSeverity } from "@melian-agent/core";
@@ -32,7 +33,7 @@ describe("Enola policy and reports", () => {
 	});
 	it("retains the typed SARIF refusal and its exact diagnostic", () => {
 		try {
-			normaliseEnolaSarif("{}", { root: "/repo", version: "0.4.27" });
+			normaliseEnolaSarif("{}", { root: "/repo", version: "0.4.27" }, new Set());
 			throw new Error("accepted invalid report");
 		} catch (error) {
 			expect(error).toMatchObject({
@@ -119,6 +120,7 @@ describe("Enola policy and reports", () => {
 				],
 			}),
 			{ root: "/repo", version: "0.4.27" },
+			new Set(["constraints/core-layer"]),
 		);
 		expect(log.runs[0].tool.driver).toEqual({ name: "enola", version: "0.4.27" });
 		expect(log.runs[0].results.map((r) => r.locations[0]?.physicalLocation.artifactLocation.uri)).toEqual([
@@ -130,8 +132,102 @@ describe("Enola policy and reports", () => {
 		expect(staticSeverity("enola", "enola/layer", "note", {})).toBe("nit");
 		expect(staticSeverity("enola", "enola/layer", "warning", { "enola/layer": "P1" })).toBe("P1");
 	});
+	it("reads the rule IDs the policy's constraint and intent files declare, and no other file's", () => {
+		const policy = EnolaPolicy.from([
+			{
+				path: "enola/constraints/a.yaml",
+				text: "rules:\n  - id: b-rule\n  - id: a-rule\n  - id: ''\n  - id: 3\n  - x\n  - ~\n",
+			},
+			{ path: "enola/constraints/b.yaml", text: "rules:\n  - id: a-rule\n" },
+			{ path: "enola/constraints/c.yaml", text: "rules: { id: map-rule }\n" },
+			{ path: "enola/constraints/d.yaml", text: "rules: [\n" },
+			{ path: "enola/constraints/e.yaml", text: "" },
+			{ path: "enola/constraints/f.yaml", text: "rules:\n  - id: *missing\n" },
+			{ path: "enola-intent.yaml", text: "rules:\n  - id: intent-rule\n" },
+			{ path: "enola.yaml", text: "rules:\n  - id: config-rule\n" },
+			{ path: ".enola/suppressions.yaml", text: "rules:\n  - id: suppressed-rule\n" },
+		]);
+		expect(policy.toJSON().rules).toEqual(["a-rule", "b-rule", "intent-rule"]);
+	});
+	it("keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message", () => {
+		const log = normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{
+						results: [
+							{ ruleId: "core-layer", level: "error", message: { text: "Layer crossed" } },
+							{ ruleId: "core-layer-x", level: "error", message: { text: "Layer crossed" } },
+							{ ruleId: "core-layer-y", level: "error" },
+						],
+					},
+				],
+			}),
+			{ root: "/repo", version: "0.4.27" },
+			new Set(["core-layer"]),
+		);
+		expect(log.runs[0].results.map((r) => [r.ruleId, r.message.text])).toEqual([
+			["core-layer", "Layer crossed"],
+			[
+				`rule-${createHash("sha256").update("core-layer-x").digest("hex").slice(0, 16)}`,
+				'Enola reported the rule "core-layer-x", which its policy does not declare: Layer crossed',
+			],
+			[
+				`rule-${createHash("sha256").update("core-layer-y").digest("hex").slice(0, 16)}`,
+				'Enola reported the rule "core-layer-y", which its policy does not declare: ',
+			],
+		]);
+	});
+	it("keeps the rule of each check Enola builds in, which no policy declares", () => {
+		// The checks `enola help check` lists for the pinned 0.4.40.
+		const builtins = [
+			"cycles",
+			"layers",
+			"crossrepo",
+			"coverage",
+			"unused-routes",
+			"messaging-coverage",
+			"god-class",
+			"hotspots",
+			"dependency-depth",
+			"exported-surface",
+			"complexity-outliers",
+			"intent",
+			"constraints",
+			"domain",
+			"query-loops",
+			"entry-points",
+			"dead-methods",
+			"vendored-candidates",
+			"import-closure",
+			"package-metrics",
+			"dead-code",
+			"performance",
+			"packwerk",
+		];
+		const log = normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{
+						results: [...builtins, "god-classes"].map((ruleId) => ({
+							ruleId,
+							level: "warning",
+							message: { text: "Large" },
+						})),
+					},
+				],
+			}),
+			{ root: "/repo", version: "0.4.40" },
+			new Set(),
+		);
+		expect(log.runs[0].results.map((r) => r.ruleId)).toEqual([
+			...builtins,
+			`rule-${createHash("sha256").update("god-classes").digest("hex").slice(0, 16)}`,
+		]);
+	});
 	it.each(["", "{}", '{"version":"2.1.0","runs":[{"results":[{}]}]}'])("fails unreadable SARIF closed", (text) => {
-		expect(() => normaliseEnolaSarif(text, { root: "/repo", version: "0.4.27" })).toThrow();
+		expect(() => normaliseEnolaSarif(text, { root: "/repo", version: "0.4.27" }, new Set())).toThrow();
 	});
 });
 

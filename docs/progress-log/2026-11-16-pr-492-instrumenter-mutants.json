@@ -1,0 +1,493 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "8bde6b0a770c1a999cbc65bb65c1ec97e6fcc01e",
+    "head": "cd3f57d0084523fb282a26d9683d2ddb68a012cd"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/lens-request.ts",
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 101,
+      "column": 36,
+      "endLine": 101,
+      "endColumn": 50,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a94426683a9ddb865f2aed4ad910e0c315f820c36986ab121c08828d323fbf29"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 5,
+      "endLine": 102,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e54c1003ebc6f7434f169e2c7dcf6443ff3038a401f3ff8bcbb7a8e9381654d9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "leaves a run not offered list_mutants keyed as before, byte for byte"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 5,
+      "endLine": 102,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fca2980107f29a02677b6833d5810b6ee5177e7c793c47ab680adfc38b6e4a19",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "refuses to key a run offered list_mutants without the instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 5,
+      "endLine": 102,
+      "endColumn": 41,
+      "mutatorName": "LogicalOperator",
+      "replacement": "lists || input.mutants === undefined",
+      "status": "generated",
+      "id": "ef02b3a8396d8130b9f7edd8e32b14b2f4f28942a05eca2fa9b27897a2e09aad",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "leaves a run not offered list_mutants keyed as before, byte for byte"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 14,
+      "endLine": 102,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0ac08ef86bbde32c22eeaf5f068931a946b26dfee632bc04a791cb036a858586",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "keys its version and source, and every other input, for a run offered list_mutants"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 14,
+      "endLine": 102,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "input.mutants !== undefined",
+      "status": "generated",
+      "id": "fced8aadf805a993a847c9b5469abd0974accc7472d2d5542ead46f2b1f8416a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "keys its version and source, and every other input, for a run offered list_mutants"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 43,
+      "endLine": 102,
+      "endColumn": 118,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "1d799ee4f2dd299051a7c6197482dceeccce24d483ec2511b65280b30b296dfe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "refuses to key a run offered list_mutants without the instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 102,
+      "column": 59,
+      "endLine": 102,
+      "endColumn": 116,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c4fce070705be13991d0e238e8d00b75c236ae5593ffe67377bfb716a7163e39"
+    },
+    {
+      "file": "packages/pipeline/src/lens-request.ts",
+      "line": 129,
+      "column": 15,
+      "endLine": 129,
+      "endColumn": 42,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a64270e9eb30c2847741a7df4d8cd8682ac4a0b89a64ed7e061ce2253f2114ca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "the instrumenter that answers list_mutants",
+            "keys an instrumenter that cannot be found apart from every one that can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2470,
+      "column": 22,
+      "endLine": 2477,
+      "endColumn": 4,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4db446f7376685fd0131138ff71ddd94061ddb49ef7942414e39d95aad57b0b0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2471,
+      "column": 3,
+      "endLine": 2477,
+      "endColumn": 3,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "lister &&= TypeScriptMutationAdapter.open(repoRoot).then((adapter): MutantLister => ({\n  version: adapter.identity.toolVersion,\n  source: adapter.source\n}), (error: unknown): MutantLister => {\n  if (error instanceof MutationEnumerationError && error.code === \"instrumenter\") return \"unavailable\";\n  throw error;\n})",
+      "status": "generated",
+      "id": "30c4fd0717bcd4941ffa74432f7ae5bfa34c52d920840c54919104b54a2de2db",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2472,
+      "column": 3,
+      "endLine": 2472,
+      "endColumn": 97,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "762afc5e02b3a6b63a08eba90cfbc82db03a9acfdbdb06308deab3dde792e32e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2472,
+      "column": 31,
+      "endLine": 2472,
+      "endColumn": 96,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e633f4e5d9f7ceadc1cbe2c81b3542a5e5dbc264ab8f7244d20b85a38222d5ea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2473,
+      "column": 37,
+      "endLine": 2476,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c53decd6c4eb119cd48a9f06e3deefa44467112e2464305c969255b363489832",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "keys an instrumenter that cannot be found as unavailable, apart from one that can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 8,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fb9f32def3561d11b9121572a5292e769e32e249998b60125749cbbba65cd2e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "fails the review on any other failure to resolve the instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 8,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a6a70c116936963fa5904bbb299aca5e8d91e49d6a01d82648373a0a6fd8f35e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "keys an instrumenter that cannot be found as unavailable, apart from one that can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 8,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "LogicalOperator",
+      "replacement": "error instanceof MutationEnumerationError || error.code === \"instrumenter\"",
+      "status": "generated",
+      "id": "c098294a2665873aa252c23c33dbd778cfe7cef830c402165499ae9655c4db63",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "fails the review on any other failure to resolve the instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 53,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7f3974549b6affdb0eba36aeae1713e22b7ff0158a187e4d76d72382409f77cf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "fails the review on any other failure to resolve the instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 53,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "EqualityOperator",
+      "replacement": "error.code !== \"instrumenter\"",
+      "status": "generated",
+      "id": "af21aae592ba94e4b83c88d491d74de9243a079f7474a3ad088f457396ef7ce1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "keys an instrumenter that cannot be found as unavailable, apart from one that can"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 68,
+      "endLine": 2474,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f7db96c20713a11b3b01999d9bfc8250da8fb775255fe8e3a38406af3940fe8e"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2474,
+      "column": 91,
+      "endLine": 2474,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3439332f66c166be42bc4548778b36624cd0a558107fd799169d94c2785a90af"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2716,
+      "column": 28,
+      "endLine": 2716,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8ad7659e5269c4dfce490fb253207a0fe000538d9bee6b85e88da6ac93cc6d5a"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2716,
+      "column": 46,
+      "endLine": 2716,
+      "endColumn": 79,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4a0df400521ef862bcf2c26762e1d12719a76653f0cfc5ef5395a375263823b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 23,
+  "omitted": 0,
+  "unmutated": []
+}

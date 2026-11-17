@@ -67,6 +67,7 @@ import { createReviewRegistry, probeRerunTask } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { injectionPolicy } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
+import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
 
 // The evidence budget a test may lower, so one claim's least rendering passes it; every other test keeps the real one.
 const evidenceBudget = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
@@ -599,7 +600,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const recorded = RecordedRound.of(stored, round, () => true);
 		expect(recorded.refusal()).toBeUndefined();
 		const read = await recorded.verdict({ revision: changeset.revision, config, repoRoot: repo, policy });
-		expect(read.toJSON()).toEqual(verdict.toJSON());
+		expectSharedVerdict(read.toJSON(), verdict.toJSON());
 	});
 
 	it.each([
