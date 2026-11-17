@@ -164,6 +164,16 @@ it("keeps an old graph whose tree is a branch tip, a remote-tracking ref, or a d
 	for (const key of [branch, remoteGraph, worktreeGraph]) expect(await exists(`graphs/${key}`)).toBe(true);
 });
 
+it("keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it", async () => {
+	const live = gitIn(repo, "rev-parse", "HEAD");
+	const key = await graph(tree(live), 30 * day);
+	const replacement = commit(repo, { "r.ts": "export const r = 1;\n" });
+	gitIn(repo, "reset", "--quiet", "--hard", live);
+	gitIn(repo, "replace", live, replacement);
+	expect((await plan()).entries).toEqual([]);
+	expect(await exists(`graphs/${key}`)).toBe(true);
+});
+
 it("does not count a commit held only under refs/melian/pull/ as live", async () => {
 	const pulled = commit(repo, { "p.ts": "export const p = 1;\n" });
 	gitIn(repo, "update-ref", "refs/melian/pull/7/head", pulled);
