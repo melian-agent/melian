@@ -46,9 +46,9 @@ Every fact the rule needs has a place in a shared record's schema or in the base
 | The level floor | configuration, not a record | the base's `lenses.<name>.level` for each covered path |
 | Which lenses cover the change | the caller's selection from the diff | the paths each covers |
 
-A missing or unreadable fact makes the account not match; it never allows a skip. With no triage record, no lens skips by triage.
+A missing or unreadable fact makes the account not match; it never allows a skip. With no triage record, no lens skips by triage. A mutation record with no cause allows no skip. A selected lens with no record gets none filled in, so it reads as never started.
 
-No round exports a triage record yet: `ReviewRecords.triage` has the schema, and no production code calls it, so a round's export holds its counted records and its account alone. Until a round exports one, a reader that checks an account from shared records has no triage record, and refuses an account that allows a triage skip. That fails closed: a round whose lens triage skipped reads, on another machine, as not matching its account. [Issue #554](https://github.com/melian-agent/melian/issues/554) exports the record. A mutation record with no cause allows no skip. A selected lens with no record gets none filled in, so it reads as never started.
+No round exports a triage record yet: `ReviewRecords.triage` has the schema, and no production code calls it, so a round's export holds its counted records and its account alone. Until a round exports one, a reader that checks an account from shared records has no triage record, and refuses an account that allows a triage skip. That fails closed: a round whose lens triage skipped reads, on another machine, as not matching its account. [Issue #554](https://github.com/melian-agent/melian/issues/554) exports the record.
 
 The default floor depends on whether the host trusts the head and whether triage's decider is calibrated: `careful` for an untrusted head and an uncalibrated decider, `quick` otherwise. Neither is ever `skip`. So the head's trust and the decider's calibration never decide a skip, and only a configured floor of `skip` does. A test in `tier-account-review.test.ts` holds this for all four combinations.
 
