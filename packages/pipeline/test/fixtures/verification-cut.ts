@@ -30,7 +30,7 @@ const probe = (id: string, script: string): ClaimProbe => ({
 		writer: { trusted: true, by: "reviewer" },
 		trustWriters: true,
 		read: [],
-		host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
+		host: { platform: "linux", sandbox: "unconfined", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" },
 	},
 	plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
 	probe: {

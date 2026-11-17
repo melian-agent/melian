@@ -44,7 +44,7 @@ const sample = {
 				trustWriters: true,
 				timeout: 30,
 				read: ["/usr/lib"],
-				host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.1.0" },
+				host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.1.0" },
 			},
 			onLevelTier: true,
 		},
