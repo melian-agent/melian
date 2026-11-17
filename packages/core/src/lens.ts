@@ -409,6 +409,19 @@ function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
 	return { tier: own.tier ?? base?.tier, budget: declaredBudget(own.budget, base?.budget), levels };
 }
 
+// Why a level of a lens whose `extends` chain reaches the built-in `origin` may not probe, or nothing when it may.
+function probeRefusal(origin: string | undefined): string | undefined {
+	if (origin === undefined || !lensProbingWording.has(origin)) {
+		const worded = [...lensProbingWording.keys()];
+		return `"probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`;
+	}
+	// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
+	// would leave the lens clean.
+	if (origin === "tests")
+		return `"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`;
+	return undefined;
+}
+
 // Each field a level leaves out comes from the top level, then from Melian's default. `careful` always exists, and is
 // resolved first, so a lens with no tier anywhere is refused for its top-level `tier`.
 function resolveLevels(file: string, name: string, declared: Declared, ancestry: Ancestry): LensLevels {
@@ -436,25 +449,13 @@ function resolveLevels(file: string, name: string, declared: Declared, ancestry:
 				{ field: `levels.${level}.probe`, lens: name, level },
 			);
 		}
-		if (probe !== undefined && (origin === undefined || !lensProbingWording.has(origin))) {
-			const worded = [...lensProbingWording.keys()];
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
-		// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
-		// would leave the lens clean.
-		if (probe !== undefined && origin === "tests") {
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
+		const refused = probe === undefined ? undefined : probeRefusal(origin);
+		if (refused !== undefined)
+			throw new LensError("missingField", file, `${file}: lens ${name}, level ${level}: ${refused}`, {
+				field: `levels.${level}.probe`,
+				lens: name,
+				level,
+			});
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
@@ -943,6 +944,16 @@ export class Lens {
 			lens: this.name,
 			level,
 		});
+	}
+
+	/**
+	 * Why a level of this lens may not probe, as loading a level that set `probe` would refuse it, or nothing when it may:
+	 * for a run that turns probing on in memory. A loaded lens names the built-in its `extends` chain reaches only once
+	 * it probes, so a lens that does not probe yet is judged by its own name, and one that takes a built-in's name
+	 * without extending it is not told apart.
+	 */
+	probeRefusal(): string | undefined {
+		return probeRefusal(this.probesAs ?? this.name);
 	}
 
 	/** The levels the lens runs at, from `quick` to `deep`: always `careful`, and `quick` and `deep` where it declares them. */

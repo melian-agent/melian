@@ -52,24 +52,33 @@ const probingCheck = `lens.${probingLens}`;
 export const probingGoldenPrefix = "trust-boundary-probe-";
 
 /**
- * One combination a probing measurement runs: a planner's model on `trust-boundary`'s own route and a prober's on
- * `proberTier`, or, without a prober, the level without probes on the planner's model.
+ * One combination a probing measurement runs: a planner's model on the own route of each lens in `lenses` and a
+ * prober's on `proberTier`, or, without a prober, the level without probes on the planner's model.
  */
 export class ProbingCombination implements ProbingRoute {
 	readonly label: string;
 	readonly planner: string;
 	readonly prober: string | undefined;
 	readonly proberTier: LensTier;
+	/** The lenses whose levels the combination rewrites in memory, never in the committed policy. */
+	readonly lenses: readonly string[];
 
-	private constructor(label: string, planner: string, prober: string | undefined, proberTier: LensTier) {
+	private constructor(
+		label: string,
+		planner: string,
+		prober: string | undefined,
+		proberTier: LensTier,
+		lenses: readonly string[],
+	) {
 		this.label = label;
 		this.planner = planner;
 		this.prober = prober;
 		this.proberTier = proberTier;
+		this.lenses = lenses;
 	}
 
-	/** Parses `label=planner>prober`, or `label=model` for the level without probes. */
-	static parse(entry: string, proberTier: LensTier): ProbingCombination {
+	/** Parses `label=planner>prober`, or `label=model` for the level without probes, for each of `lenses`. */
+	static parse(entry: string, proberTier: LensTier, lenses: readonly string[] = [probingLens]): ProbingCombination {
 		const match = /^([a-z0-9][a-z0-9-]*)\s*=(.+)$/.exec(entry.trim());
 		if (match === null)
 			throw new Error(
@@ -84,7 +93,7 @@ export class ProbingCombination implements ProbingRoute {
 			const { provider, modelId } = parseModelReference(model, probingLens, `MELIAN_EVAL_PROBE_ROUTES ${match[1]}`);
 			return `${provider}/${modelId}`;
 		});
-		return new ProbingCombination(match[1]!, planner!, prober, proberTier);
+		return new ProbingCombination(match[1]!, planner!, prober, proberTier, lenses);
 	}
 
 	get probes(): boolean {
@@ -92,7 +101,16 @@ export class ProbingCombination implements ProbingRoute {
 	}
 
 	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
-		const own = Object.hasOwn(config.lenses, probingLens) ? config.lenses[probingLens] : undefined;
+		for (const name of this.lenses) {
+			const lens = lenses.find((each) => each.name === name);
+			if (lens === undefined)
+				throw new Error(
+					`MELIAN_EVAL_PROBE_LENSES names ${visibleText(name)}, which the base's policy does not load`,
+				);
+			const refused = lens.probeRefusal();
+			if (refused !== undefined)
+				throw new Error(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
+		}
 		// Each route keeps its tier's reasoning level, so a pair runs as it would ship.
 		const route = (model: string, tier: LensTier) => {
 			const thinking = config.models[tier]?.thinking;
@@ -100,14 +118,22 @@ export class ProbingCombination implements ProbingRoute {
 		};
 		const routedConfig: MelianConfig = {
 			...config,
-			lenses: { ...config.lenses, [probingLens]: { ...own, route: route(this.planner, "heavy") } },
+			lenses: {
+				...config.lenses,
+				...Object.fromEntries(
+					this.lenses.map((name) => {
+						const own = Object.hasOwn(config.lenses, name) ? config.lenses[name] : undefined;
+						return [name, { ...own, route: route(this.planner, "heavy") }];
+					}),
+				),
+			},
 			models:
 				this.prober === undefined
 					? config.models
 					: { ...config.models, [this.proberTier]: route(this.prober, this.proberTier) },
 		};
 		const routedLenses = lenses.map((lens) => {
-			if (lens.name !== probingLens) return lens;
+			if (!this.lenses.includes(lens.name)) return lens;
 			const levels = Object.fromEntries(
 				Object.entries(lens.levels).map(([level, settings]) => {
 					// No committed level probes until this measurement picks its routes, so `deep` is the level measured.
@@ -501,6 +527,7 @@ export type ProbingSet = "goldens" | "misses" | "all";
 /** A probing measurement's settings, parsed from the environment as `live.ts` parses its own. */
 export class ProbingSettings {
 	readonly combinations: readonly ProbingCombination[];
+	readonly probeLenses: readonly string[];
 	readonly passes: number;
 	readonly set: ProbingSet;
 	readonly thinking: EvalThinking;
@@ -513,6 +540,7 @@ export class ProbingSettings {
 
 	private constructor(fields: {
 		combinations: readonly ProbingCombination[];
+		probeLenses: readonly string[];
 		passes: number;
 		set: ProbingSet;
 		thinking: EvalThinking;
@@ -524,6 +552,7 @@ export class ProbingSettings {
 		out: string | undefined;
 	}) {
 		this.combinations = fields.combinations;
+		this.probeLenses = fields.probeLenses;
 		this.passes = fields.passes;
 		this.set = fields.set;
 		this.thinking = fields.thinking;
@@ -543,10 +572,17 @@ export class ProbingSettings {
 			throw new Error(
 				`MELIAN_EVAL_PROBER_TIER must be light, medium or heavy, not ${visibleText(JSON.stringify(tier))}`,
 			);
+		const probeLenses = (env.MELIAN_EVAL_PROBE_LENSES || probingLens)
+			.split(",")
+			.map((name) => name.trim())
+			.filter((name) => name !== "");
+		if (probeLenses.length === 0) throw new Error("MELIAN_EVAL_PROBE_LENSES names no lens");
+		const twice = probeLenses.find((name, index) => probeLenses.indexOf(name) !== index);
+		if (twice !== undefined) throw new Error(`MELIAN_EVAL_PROBE_LENSES repeats ${visibleText(twice)}`);
 		const combinations = (env.MELIAN_EVAL_PROBE_ROUTES ?? "")
 			.split(";")
 			.filter((entry) => entry.trim() !== "")
-			.map((entry) => ProbingCombination.parse(entry, tier));
+			.map((entry) => ProbingCombination.parse(entry, tier, probeLenses));
 		if (combinations.length === 0) throw new Error("MELIAN_EVAL_PROBE_ROUTES names no combination");
 		const labels = combinations.map(({ label }) => label);
 		const repeated = labels.find((label, index) => labels.indexOf(label) !== index);
@@ -567,6 +603,7 @@ export class ProbingSettings {
 		if (model !== undefined) parseModelReference(model, "every tier", "MELIAN_EVAL_MODEL");
 		return new ProbingSettings({
 			combinations,
+			probeLenses,
 			passes,
 			set,
 			thinking,
@@ -797,7 +834,9 @@ export async function measureProbing(
 				const sharing = Object.entries(run.tiers)
 					.filter(
 						([check, tier]) =>
-							combination.prober !== undefined && check !== probingCheck && tier === combination.proberTier,
+							combination.prober !== undefined &&
+							!combination.lenses.some((name) => check === `lens.${name}`) &&
+							tier === combination.proberTier,
 					)
 					.map(([check]) => check)
 					.sort();

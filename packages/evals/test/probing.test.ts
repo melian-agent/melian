@@ -241,6 +241,43 @@ describe("ProbingCombination", () => {
 		});
 	});
 
+	it("probes each lens the run names, on the same routes, and leaves the rest as they loaded", async () => {
+		const loaded = await lenses();
+		const both = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "correctness"]);
+		const routed = both.routed(config, loaded);
+		expect(routed.config.lenses.correctness).toEqual({ route: { model: "a/plan", thinking: "high" } });
+		expect(routed.config.lenses["trust-boundary"]).toEqual({
+			level: { floor: "deep" },
+			route: { model: "a/plan", thinking: "high" },
+		});
+		const correctness = routed.lenses.find((lens) => lens.name === "correctness")!;
+		expect(correctness.level("deep").probe).toEqual({ prober: "medium" });
+		expect(correctness.level("careful").probe).toBeUndefined();
+		const others = (lensSet: readonly Lens[]) =>
+			lensSet.filter((lens) => lens.name !== "trust-boundary" && lens.name !== "correctness");
+		expect(others(routed.lenses)).toEqual(others(loaded));
+		const alone = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(config, loaded);
+		expect(alone.config.lenses["trust-boundary"]).toEqual({ level: { floor: "deep" } });
+		expect(alone.lenses.find((lens) => lens.name === "trust-boundary")).toEqual(
+			loaded.find((lens) => lens.name === "trust-boundary"),
+		);
+	});
+
+	it("refuses a lens core would not let probe, and one the policy does not load, naming each", async () => {
+		const loaded = await lenses();
+		expect(() =>
+			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(config, loaded),
+		).toThrow(
+			'MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
+		);
+		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded)).toThrow(
+			/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/,
+		);
+		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["nowhere"]).routed(config, loaded)).toThrow(
+			"MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load",
+		);
+	});
+
 	it("drops every probe for the level without probes, and leaves the tiers as they were", async () => {
 		const routed = ProbingCombination.parse("off=a/plan", "medium").routed(
 			{ ...config, lenses: {}, models: { medium: { model: "m/medium" } } },
@@ -824,6 +861,11 @@ describe("ProbingSettings", () => {
 			"light",
 		);
 		expect(ProbingSettings.parse(env).combinations[0]!.proberTier).toBe("medium");
+		expect(ProbingSettings.parse(env).probeLenses).toEqual(["trust-boundary"]);
+		expect(ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: "" }).probeLenses).toEqual(["trust-boundary"]);
+		const named = ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary " });
+		expect(named.probeLenses).toEqual(["correctness", "trust-boundary"]);
+		expect(named.combinations[0]!.lenses).toEqual(["correctness", "trust-boundary"]);
 		expect(
 			ProbingSettings.parse({
 				...env,
@@ -839,6 +881,8 @@ describe("ProbingSettings", () => {
 		[{ MELIAN_EVAL_PROBE_ROUTES: "" }, /names no combination/],
 		[{ MELIAN_EVAL_PROBE_ROUTES: "a=x/y;a=x/z" }, /repeats the label a/],
 		[{ MELIAN_EVAL_PROBER_TIER: "verifier" }, /MELIAN_EVAL_PROBER_TIER must be light, medium or heavy/],
+		[{ MELIAN_EVAL_PROBE_LENSES: "correctness,correctness" }, /MELIAN_EVAL_PROBE_LENSES repeats correctness/],
+		[{ MELIAN_EVAL_PROBE_LENSES: " , " }, /MELIAN_EVAL_PROBE_LENSES names no lens/],
 		[{ MELIAN_EVAL_VERIFIER_MODEL: "" }, /MELIAN_EVAL_VERIFIER_MODEL/],
 		[{ MELIAN_EVAL_MODEL: "nomodel" }, /MELIAN_EVAL_MODEL/],
 		[{ MELIAN_EVAL_PROBE_SET: "misses" }, /MELIAN_EVAL_PROBE_SET=misses needs MELIAN_EVAL_MISSES/],
