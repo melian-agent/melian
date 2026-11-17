@@ -30,6 +30,7 @@ import {
 } from "../src/harness.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
+import { replaceRefsProbe } from "./fixtures/replace-refs.ts";
 
 const day = 86_400_000;
 const digest = "e".repeat(64);
@@ -162,6 +163,20 @@ it("keeps an old graph whose tree is a branch tip, a remote-tracking ref, or a d
 	const worktreeGraph = await graph(tree(detached), 30 * day);
 	expect((await plan()).entries).toEqual([]);
 	for (const key of [branch, remoteGraph, worktreeGraph]) expect(await exists(`graphs/${key}`)).toBe(true);
+});
+
+it("reads live trees with core.useReplaceRefs as false though the repository's configuration turns it on", async () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	const probe = replaceRefsProbe();
+	try {
+		await plan({ env: { ...process.env, PATH: `${probe.bin}:${process.env.PATH}` } });
+		const answers = probe.answers();
+
+		expect(answers.length).toBeGreaterThan(0);
+		expect(new Set(answers)).toEqual(new Set(["false"]));
+	} finally {
+		await rm(probe.bin, { recursive: true, force: true });
+	}
 });
 
 it("keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it", async () => {

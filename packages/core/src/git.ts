@@ -65,8 +65,23 @@ const repositoryLocalVariables = [
 function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 	for (const name of repositoryLocalVariables) delete env[name];
-	// A ref under refs/replace puts another object behind an ID, so a commit Melian names could show a different tree.
-	return { ...env, GIT_NO_REPLACE_OBJECTS: "1" };
+	return withoutReplacements(env);
+}
+
+/**
+ * Returns `env` with git's replacement objects turned off: a ref under refs/replace puts another object behind an ID, so
+ * a commit Melian names could show a different tree. Git 2.40 and 2.41 let `core.useReplaceRefs` in a repository's
+ * configuration outrank `GIT_NO_REPLACE_OBJECTS`, so the setting is pinned too, after any settings `env` already counts.
+ */
+export function withoutReplacements(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	const count = /^\d+$/.test(env.GIT_CONFIG_COUNT ?? "") ? Number(env.GIT_CONFIG_COUNT) : 0;
+	return {
+		...env,
+		GIT_NO_REPLACE_OBJECTS: "1",
+		GIT_CONFIG_COUNT: String(count + 1),
+		[`GIT_CONFIG_KEY_${count}`]: "core.useReplaceRefs",
+		[`GIT_CONFIG_VALUE_${count}`]: "false",
+	};
 }
 
 /** Runs Git in cwd with repository-local environment variables removed, and resolves with its exit code and output. */

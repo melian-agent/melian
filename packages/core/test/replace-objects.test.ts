@@ -35,3 +35,12 @@ it("shows a commit's own file through git, not its replacement's", async () => {
 
 	expect(stdout).toBe(lines("resolution:", "  P2: block"));
 });
+
+// Git 2.40 and 2.41 let this setting outrank GIT_NO_REPLACE_OBJECTS, and Melian accepts both.
+it("reads core.useReplaceRefs as false though the repository's configuration turns it on", async () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+
+	const { stdout } = await git(repo, ["config", "--get", "core.useReplaceRefs"]);
+
+	expect(stdout).toBe("false\n");
+});
