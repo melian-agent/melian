@@ -11,12 +11,12 @@ import { backgroundContext, createNodeExecutionEnv } from "./harness.ts";
 import { linkDependencies } from "./link-dependencies.ts";
 import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
-// The runner the sandbox executes imports the watchdog, then the probe's own module, both statically: a module's imports
-// evaluate in order, so the watchdog is armed before the probe runs. The watchdog exits the probe at `deadline`
-// milliseconds even if nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes leaves at
-// its own exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
+// The runner the sandbox executes imports the watchdog statically, then the probe's own module, so the watchdog is armed
+// before the probe runs. The watchdog exits the probe at `deadline` milliseconds even if nothing outside the sandbox
+// stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a probe that hangs keeps the
+// event loop alive until the timer fires and exits 124.
 function runnerSource(): string {
-	return `import "./${watchdogName}";\nimport "./${scriptName}";\n`;
+	return `import "./${watchdogName}";\n// Dynamic, so a probe that fails to link fails after the watchdog's start marker, as the probe's own failure.\nawait import("./${scriptName}");\n`;
 }
 
 // The watchdog also leaves a marker, before the probe is imported, that Probe.run reads back: a sandbox or Node that

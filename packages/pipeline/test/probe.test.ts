@@ -238,7 +238,9 @@ describe("Probe.open", () => {
 		// armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and
 		// is unref'd, so a probe that finishes keeps its own exit code.
 		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
-		expect(runner).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
+		expect(runner).toBe(
+			'import "./watchdog.mjs";\n// Dynamic, so a probe that fails to link fails after the watchdog\'s start marker, as the probe\'s own failure.\nawait import("./probe.mjs");\n',
+		);
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
 		expect(watchdog).toMatch(
 			/^import \{ writeFileSync \} from "node:fs";\nsetTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\nwriteFileSync\(new URL\("\.\.\/run\/started", import\.meta\.url\), ""\);\n$/,
@@ -1131,6 +1133,21 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 				code: "sandboxUnavailable",
 				message: "the probe never started: its sandbox exited 0",
 			});
+		} finally {
+			await probe.close();
+		}
+	});
+
+	it.each([
+		["imports a module that is not there", 'import "./missing.mjs";\n', "ERR_MODULE_NOT_FOUND"],
+		["does not parse", "const = 1;\n", "SyntaxError"],
+	])("reads a probe that %s as its own failure, after its runner started", async (_, script, error) => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script }, options(sandbox));
+		try {
+			const result = await probe.run();
+			expect([result.exitCode, result.timedOut, result.truncated]).toEqual([1, false, false]);
+			expect(result.output).toContain(error);
 		} finally {
 			await probe.close();
 		}
