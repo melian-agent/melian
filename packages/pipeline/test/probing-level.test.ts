@@ -795,7 +795,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				call("run_probe", { attack: 2, script: failing }),
 				(messages) => call("report_finding", finding(ids(messages)[0]!)),
 				(messages) => call("report_finding", finding(ids(messages)[1]!)),
-				(messages) => call("report_finding", finding(ids(messages)[0]!)),
+				(messages) => call("report_finding", finding(ids(messages)[1]!)),
 				fauxAssistantMessage("Reported 1 finding."),
 				fauxAssistantMessage("Reported 1 finding."),
 			],
@@ -804,7 +804,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record(verdict).reason ?? "").not.toContain("left attack");
 		expect(record(verdict)).toMatchObject({ status: "ran" });
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
-		// Each attack once, in the order a finding first answered it, though attack 1's was reported twice.
+		// Each attack once, in the order a finding first answered it, though attack 2's was reported twice.
 		const reviewer = harness!.harness;
 		const root = await reviewer.root(backgroundContext);
 		const at = Revision.key(changeset.revision);
@@ -819,6 +819,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			backgroundContext,
 		);
 		expect(stored?.answered).toEqual([1, 2]);
+		// The finding rests on the probe that first showed the defect, which its verifier runs again.
+		const [first] = Object.keys(stored?.probes ?? {});
+		expect(stored?.findings).toEqual({ [verdict.counted()[0]!.id]: first });
 	});
 
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {

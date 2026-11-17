@@ -15,6 +15,7 @@ Choice:
 - The builder chose these:
   - One finding resting on any failed probe of an attack answers it, since several probes of one attack usually show one defect.
   - The reminder and the lens record each use one sentence for both kinds of unanswered attack, "no finding on a probe that failed, nor a probe that passed or a skip", so the lens task's stored outcome keeps its shape.
-  - `report_finding` already records which probe each finding rests on, in the prober's `ProbingDocument`, so the rule reads that record and adds no stored field.
+  - `report_finding` records, in the prober's `ProbingDocument`, each attack a finding answered, in `answered`. Two attacks that fail on one defect report one finding ID, so the finding answers both.
+  - A finding rests on the probe that first showed it, and its verifier runs that probe again, as main does for every finding: one finding, one probe. A later report of the same ID on another probe answers that probe's attack and leaves the stored probe alone. Keeping every probe a finding rests on, and showing each to the verifier, is [issue #545](https://github.com/melian-agent/melian/issues/545).
 
 What it gives up: a probe that fails for a reason other than the defect, such as a typo in the probe, now costs the prober a finding or its lens. The prober can still run another probe, but no later probe answers the attack once one has failed. The tests lens gains most: a test that already failed before the change now has to be reported, where before it could be skipped.

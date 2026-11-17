@@ -1652,7 +1652,8 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			review.files.flatMap((file) => file.hunks.map(provingHunk)),
 		);
 		if (probe !== undefined) {
-			probing!.findings = { ...probing!.findings, [id]: args.probe! };
+			// A finding rests on the probe that first showed it; issue #545 would keep every one.
+			if (probing!.findings?.[id] === undefined) probing!.findings = { ...probing!.findings, [id]: args.probe! };
 			const answered = probing!.answered ?? [];
 			if (!answered.includes(probe.attack)) probing!.answered = [...answered, probe.attack];
 		}
