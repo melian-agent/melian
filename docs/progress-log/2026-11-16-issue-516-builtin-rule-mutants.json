@@ -1,0 +1,419 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "39bf795bcc8d300e3583ce661d91b27f3e221927",
+		"head": "30aec44068d55b717cdf93ee23fbcbaea5602e20"
+	},
+	"claimsIn": [
+		"packages/core/src/enola.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 136,
+			"column": 29,
+			"endLine": 160,
+			"endColumn": 1,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "70b2589169fcf7d73fefbbafe635ec538348db1721b6c1a797ffda5d5749973d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps the rule of each check Enola builds in, which no policy declares"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 137,
+			"column": 1,
+			"endLine": 137,
+			"endColumn": 9,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e40b13f6e644f399f47a30bf925bb11b7961f309733e784fb2526a09a9fdadc0"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 138,
+			"column": 1,
+			"endLine": 138,
+			"endColumn": 9,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9bcbd8fc2f2cf23f04d599c69fcb474f4d7cd95240002ce7a3cc71d1ab64f5b2"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 139,
+			"column": 1,
+			"endLine": 139,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "202b2601dd2a1bbe2cf80edfac0992acd0ae544419cee374bc70131243a81616"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 140,
+			"column": 1,
+			"endLine": 140,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d067e2700201c7cb346813a6d5310d646343ce6c0af4d6b106f7228950dc1203"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 141,
+			"column": 1,
+			"endLine": 141,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "92efd6355acb7822272b420a47b395e26a1012d7c9b3ac06378aa8e756dbfbf5"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 142,
+			"column": 1,
+			"endLine": 142,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "36c2a188a88125cb9b5bc0f689ae9f466de9d27c0a41374a3634e2fdc3bf5724"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 143,
+			"column": 1,
+			"endLine": 143,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3a617a2494b5a4584aee49482d3c17908b207bee236a531ef15235797bd6440e"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 144,
+			"column": 1,
+			"endLine": 144,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "826b70d9b40bb4d28c8fa71d96c48908d18b2098f2ba7b2bd7e98a77f289c410"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 145,
+			"column": 1,
+			"endLine": 145,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d0c56ee0631a4dd1d985cdbfa6b641531eef4afbee15d983f5fb88bffa61bfe9"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 146,
+			"column": 1,
+			"endLine": 146,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "acce11a12341dd701938935797dd20d858cff293c6f5eb8cf2ef8f15f6981aac"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 147,
+			"column": 1,
+			"endLine": 147,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fbb3579e9a20dc6bac01d9f8043a264e1f379c90ee66695bcded51abd4bd718a"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 148,
+			"column": 1,
+			"endLine": 148,
+			"endColumn": 9,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2060a9da09e33f1a3b5c308d73a8d74c2cfc3fa0f2e2da6f6a8d43e335a2d997"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 149,
+			"column": 1,
+			"endLine": 149,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4a6f66c078d80323e126faa59279d8eadf7e59ff342064f107bbf3d3e66bc2e3"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 150,
+			"column": 1,
+			"endLine": 150,
+			"endColumn": 9,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f45f892e0ed637d8ba015bc53ea938ba0a0e6121fed88168cd03aa24b87213ed"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 151,
+			"column": 1,
+			"endLine": 151,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7262625b187d9882d5732df44f832a0b70cad614b11aa19b8701f18f77e74cc5"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 152,
+			"column": 1,
+			"endLine": 152,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e97eb9c5bd12ba6fd8c919070092f91e27090a39072fa566b83e2e25fef2585f"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 153,
+			"column": 1,
+			"endLine": 153,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8348d237983df7fe8b06e158674da373a1c29aa8bb75ee7852a3bf43274cd426"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 154,
+			"column": 1,
+			"endLine": 154,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2c0524c4bfe007a24b888ca7d550867474ec620b4b033a44089d759f2b74883e"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 155,
+			"column": 1,
+			"endLine": 155,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8270337ca31e940d3b3c89dc5c0ab4349d62395c44bb616ee8dedd12656054f7"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 156,
+			"column": 1,
+			"endLine": 156,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c436a17135864518a85f4fe57b78ff0539be4d45b636853c08a6e404bde6d3ae"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 157,
+			"column": 1,
+			"endLine": 157,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85bf07bfe5f532072fdd4edd98af8247ba9d7eff8d8e2acebd14bd9f3cff47d6"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 158,
+			"column": 1,
+			"endLine": 158,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dd14c0199f8fb6dbfaf1aebd596a7a2bd655a12270b5dde78199fd45bea46df9"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 159,
+			"column": 1,
+			"endLine": 159,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1a211b7974ef6b51d13e60869675310e8fc1ebb512b5c51f74bb1dc5fc01f143"
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 186,
+			"column": 20,
+			"endLine": 186,
+			"endColumn": 79,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "59873a5c7570648e1463ad21627899c05a380a568093fb44cbabe48508db9ee5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 186,
+			"column": 20,
+			"endLine": 186,
+			"endColumn": 79,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "017f6e2a78d544b5bb4ae7cd4bef2d65c6bb6452d9c1b2319fee852d3807c510",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/enola.ts",
+			"line": 186,
+			"column": 20,
+			"endLine": 186,
+			"endColumn": 79,
+			"mutatorName": "LogicalOperator",
+			"replacement": "builtinRules.has(result.ruleId) && rules.has(result.ruleId)",
+			"status": "generated",
+			"id": "2d940c5a1024832ef333f400e006f23d9c024b43a644ce331bf46adf561e393f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/enola.test.ts",
+					"path": [
+						"Enola policy and reports",
+						"keeps a declared rule and hashes any other, keeping the rule Enola wrote only in the message"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		}
+	],
+	"total": 27,
+	"omitted": 0,
+	"unmutated": []
+}
