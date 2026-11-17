@@ -1,4 +1,4 @@
-# Issue #496: the record classes name a dismissal's dismisser and reason
+# [Issue #496](https://github.com/melian-agent/melian/issues/496): the record classes name a dismissal's dismisser and reason
 
 Melian's round on [pull request #524](https://github.com/melian-agent/melian/pull/524) found two gaps in the outside-text decision's wording, with no behaviour behind either.
 

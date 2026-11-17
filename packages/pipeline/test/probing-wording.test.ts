@@ -19,6 +19,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { recordPlan, reportFinding, runProbe, skipAttack, verifierInjectionPolicy } from "../src/lens-tools.ts";
+import { probingWording } from "../src/probing.ts";
 import { injectionPolicy } from "../src/untrusted.ts";
 import { verifierInstructions } from "../src/verification-instructions.ts";
 import { baseAndHead } from "./fixtures/repo.ts";
@@ -323,6 +324,17 @@ describe("the tests lens at a level that probes", () => {
 				"the tests lens has no probing wording of its own, so it cannot probe",
 			);
 		});
+	});
+
+	it("tells a planner and a prober to stand in only for what the sandbox cannot hold, and the prober to say which", () => {
+		const standIns = "such as a CI runner, an upload service, the network or a real login";
+		expect(probingWording.plannerRole).toContain(standIns);
+		expect(probingWording.plannerRole).toContain("name the stand-ins it needs");
+		expect(probingWording.probesAnswer).toContain(standIns);
+		expect(probingWording.probesAnswer).toContain(
+			"Print which steps ran and which were stood in for, and say the same in a finding's failure scenario.",
+		);
+		expect(probingWording.probesAnswer).not.toMatch(/needs the network|a credential/);
 	});
 
 	it("offers a planner and a prober tools whose descriptions name no boundary", () => {
