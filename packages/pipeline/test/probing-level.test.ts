@@ -3884,6 +3884,34 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
 	});
 
+	it("fails a level that answered one attack while every probe of another showed nothing", async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 2, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 2 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		const failed = await settled(run);
+		expect([heads, failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			2,
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
 	it("fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does", async () => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(
