@@ -23,6 +23,7 @@ import {
 	type ProbeSandbox,
 	ReviewError,
 	type ReviewHarness,
+	ROOT_CONVERSATION_ID,
 	recordDismissal,
 	reviewChangeset,
 	type Storage,
@@ -1040,6 +1041,8 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(planner).toBeDefined();
 		expect(await reader.proberRecord(planner!)).toBeUndefined();
 		expect(await reader.proberRecord({ ...prober!, conversation: undefined })).toBeUndefined();
+		// A prober that ended before its plan was copied in has no probing record at all.
+		expect(await reader.proberRecord({ ...prober!, conversation: ROOT_CONVERSATION_ID })).toBeUndefined();
 	});
 
 	it("runs a claim's probe again once, and a repeat review probes and runs it again afresh", async () => {
