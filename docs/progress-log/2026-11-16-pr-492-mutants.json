@@ -1,0 +1,4336 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "4f24e46d83256b5a6bc3cb5b22d987ac937aa6b8",
+    "head": "4478ab4a5cb2c5701e66e2453a123291ac10839b"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/mutant-listing.ts",
+    "packages/pipeline/src/lens-tools.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 116,
+      "column": 5,
+      "endLine": 116,
+      "endColumn": 72,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "a3c25a7f3ae71881aa94d6c1adc2082cbdc4ecdcafa5442b8eb1ace542c1e1a5"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 116,
+      "column": 77,
+      "endLine": 116,
+      "endColumn": 105,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "fe0083b7846b1ae288fe5ce94892c06b8a773e6492ccdcf4871ec245c053491c"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 881,
+      "column": 78,
+      "endLine": 894,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fb3b2b4083758f018a74cfe2ae25e5b9a1ce47361eb005aa21b833d37b9d76cf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 882,
+      "column": 16,
+      "endLine": 882,
+      "endColumn": 59,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "fbd4ac57a39e9d84f4fac27cf5ac2bf8582d50bdb31f2b9be920242cba02542b",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates again for a review of another head"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 882,
+      "column": 65,
+      "endLine": 882,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "01875e9065db4cc872cabcf9cd8c7a574df69bafacd10d4053e6bd9cabee36fc"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 883,
+      "column": 21,
+      "endLine": 883,
+      "endColumn": 35,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "6a615d0938d3e530ef068d4a031a938e991d2ffa871ec2ec23cbc76aea9666c2",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates again for a review of another head"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 883,
+      "column": 41,
+      "endLine": 883,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "63544d4a3531daafa6dcaaaa5bc2155487081db9b8056bfebcc938925d60172e"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 883,
+      "column": 60,
+      "endLine": 893,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "56f7a0deafbc0704d57e90d87835ad45dad1c140545b1c85feb87ee0f825092f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 886,
+      "column": 53,
+      "endLine": 889,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "30ddb2bcb761bf0b6f716e944fa75b40f2e274e65bc3348b51f5591cdcdd8f0d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 887,
+      "column": 58,
+      "endLine": 887,
+      "endColumn": 98,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2bf25e1b8278dd4771e236f324396ecd86972c36ad29be4ee50dc1bf184fd34f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 887,
+      "column": 101,
+      "endLine": 889,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "318c30554a9af7641cf2af06911d1b1a64efd92d63e7d655611030eb1d7327a7",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "MutationEnumeration.open defaults its policy to the changeset's base, and the two-dot range Revision.key writes makes that base review.base itself, so dropping the options picks the same policy"
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 888,
+      "column": 12,
+      "endLine": 888,
+      "endColumn": 53,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ebc074d8a2242847fb04981651cdba51f87829e0f2fdc70d08fc093933cdae38",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 888,
+      "column": 20,
+      "endLine": 888,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0b7eab966287a1def1906f883ab82a82bf57c9ce04a5e42324f08e01ec15fd97"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 891,
+      "column": 44,
+      "endLine": 891,
+      "endColumn": 76,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "45295007ae10fa61c723e6e728f86ef56f5981dd32e0415c777c983f4ac3921b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates each file of a review once, however many calls page through it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 891,
+      "column": 51,
+      "endLine": 891,
+      "endColumn": 55,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4c04adf8ddd9b5936c88852cc2ffc27e03f1ba6dc08e4f5c2a2e57797c08d211",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates each file of a review once, however many calls page through it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 891,
+      "column": 68,
+      "endLine": 891,
+      "endColumn": 74,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "97a4a575b1ab013406f3cb049a2f6a1fad5314cd0705984d2aa99645fa3b6da1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates each file of a review once, however many calls page through it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 896,
+      "column": 66,
+      "endLine": 903,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "207f7d1671c1506fe1f282f777a4cfb01ed4821f7072085943cae2cd8b718ce6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 16,
+      "endLine": 898,
+      "endColumn": 38,
+      "mutatorName": "MethodExpression",
+      "replacement": "review.files.find(file => file.path === path)?.hunks ?? []",
+      "status": "generated",
+      "id": "031c1be83e3fd00c5356f8615ceb54bebf32923c3031c75d50ed211c70e11071",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "names each changed range, a one-line change as one number and a deletion as none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 17,
+      "endLine": 897,
+      "endColumn": 77,
+      "mutatorName": "LogicalOperator",
+      "replacement": "review.files.find(file => file.path === path)?.hunks && []",
+      "status": "generated",
+      "id": "4086ed658dfcc17e98319873d9eeb523eb658349fb29018a1a6c882792d5f37e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 17,
+      "endLine": 897,
+      "endColumn": 71,
+      "mutatorName": "OptionalChaining",
+      "replacement": "review.files.find(file => file.path === path).hunks",
+      "status": "generated",
+      "id": "4ec5de48fa81d4a4cf1fb6a350be11d5c593fd345c17a92a48f4340deb8988de",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "changedRanges runs only after execute found this file in review.files by the same path test, so the find never misses and `?.` never short-circuits"
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 35,
+      "endLine": 897,
+      "endColumn": 63,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "e4f8b943e8484998c1c632dbef54a17f5187384c91b2e36bb0d7854191daffbe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 45,
+      "endLine": 897,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fb1627fc93842e496c76bed7c5abcad33e7e669b79604b97c5f7d0cd26fe7b36",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "names each changed range, a one-line change as one number and a deletion as none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 45,
+      "endLine": 897,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "15cd9ccfd81e19d8ee51694cd19979445ce8080df1533d3a97075d9741e72409",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 45,
+      "endLine": 897,
+      "endColumn": 63,
+      "mutatorName": "EqualityOperator",
+      "replacement": "file.path !== path",
+      "status": "generated",
+      "id": "32df42d239d9cfdf67e28aab68c6079d337c6da7ccae3f0e89d84d74a9a0315c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 897,
+      "column": 75,
+      "endLine": 897,
+      "endColumn": 77,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "e5707a3496a4a2e6ad9dd0ddd351e29d895587858dbe68272c3900f1043cefab",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "the `?? []` fallback is unreachable: changedRanges runs only after execute found this file in review.files by the same path test, so `hunks` is always present"
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 898,
+      "column": 10,
+      "endLine": 898,
+      "endColumn": 37,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4c6810a5adaa103a67b02f506d2c0512e7ff384363c1d9cd45ebec5679d930e2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 898,
+      "column": 20,
+      "endLine": 898,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d0ecfecc659e4ab30af9042f42d7e8a20ea0d98ff738470b06bd80004c705767",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "names each changed range, a one-line change as one number and a deletion as none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 898,
+      "column": 20,
+      "endLine": 898,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a07e56ca891742e4e7689f6e58791701083eb6302021dacecaa6b666b0aff0a1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 898,
+      "column": 20,
+      "endLine": 898,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "hunk.newLines >= 0",
+      "status": "generated",
+      "id": "af59e8cb53e1de57babdea7ba612cedc8ada6f8f2a4ae5ff44a506b0327d2501",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "names each changed range, a one-line change as one number and a deletion as none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 898,
+      "column": 20,
+      "endLine": 898,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "hunk.newLines <= 0",
+      "status": "generated",
+      "id": "913d1ea7abc76589a701c587f2c9d143c538c91020268d2ff376ce88709fc41a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 899,
+      "column": 7,
+      "endLine": 900,
+      "endColumn": 101,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a409b1769d8422d05ec8fbe9db0e184393b72fad5d89aacf308460ab9bd3c6c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 3,
+      "endLine": 900,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c4e31096ab752806b25848ddea2a52ca157e11ce2dfc23301a2bec39541c5525",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 3,
+      "endLine": 900,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1e0180c6ac1baea7c64e02e1823e8f317b21024d0c462ceef6fea2455ac9bd14",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "names each changed range, a one-line change as one number and a deletion as none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 3,
+      "endLine": 900,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "hunk.newLines !== 1",
+      "status": "generated",
+      "id": "17b1676895f2ff6161fab4737bcc45a5769e2e268a75b101f03a164660de0a6d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 25,
+      "endLine": 900,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "168bc907f15c9dcdb4c8fd4544f1f9eee86dbd18b42511839d71ad0e579d4985"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 46,
+      "endLine": 900,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0afc7e1aa06a9d431d315ed2ad8ad6e253d366b7427bb4dfb7349f40dbab4b1d"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 66,
+      "endLine": 900,
+      "endColumn": 99,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "hunk.newStart + hunk.newLines + 1",
+      "status": "generated",
+      "id": "bde65ea85ce43db1c733788d449619d9214d7c968697b68116af6f1c3b8b08fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 900,
+      "column": 66,
+      "endLine": 900,
+      "endColumn": 95,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "hunk.newStart - hunk.newLines",
+      "status": "generated",
+      "id": "0585bc54cdced0e16bd7406f9ac737646bb7401c701712acd527ca6098631cd9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 902,
+      "column": 8,
+      "endLine": 902,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c4d35c812b33e3aa61b3cf93b6f6fc7dd37d502121e753a54352720f0e38eb10",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 902,
+      "column": 8,
+      "endLine": 902,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a0052efd9eb38f721c6d2e5cc5cd9749633099773079196b65db034caf22e5a1",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says the change alters no line of a file it only deletes lines from"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 902,
+      "column": 8,
+      "endLine": 902,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "ranges.length !== 0",
+      "status": "generated",
+      "id": "90b69d54fef521f57dfc18b0d9cecbcbf4c2da8b31a098cb73afe6e615212099",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 902,
+      "column": 30,
+      "endLine": 902,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f56da39882a66d88151097cd28c715244a0effcfd7883646934c9c9bef9af9d3"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 902,
+      "column": 51,
+      "endLine": 902,
+      "endColumn": 55,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9cca9de29918e71810b97ccff97804070594f46bae95a6517bfa959844ba0ddc"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 905,
+      "column": 35,
+      "endLine": 978,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3fee185d0bbf2b73e6e4db07e8cc072787b328a22a34aa0cc755c78bddbb1bcc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "puts its cap in the description that keys a lens request"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 906,
+      "column": 7,
+      "endLine": 906,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "844b0c7faa1d8664f62b67f2c75ca1de68257d33869e007e716f5d72730989c3"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 907,
+      "column": 14,
+      "endLine": 907,
+      "endColumn": 550,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ecd1e33a91060f6c74adba3bd29f69ad70a8136a9b4b836c6a7a47355b0f95f9"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 908,
+      "column": 25,
+      "endLine": 914,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1f5dbc9650b7e08c05f40726137fe33c7315303cd5d6915346d1eefcf800b59e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an empty path and a line below 1 before it runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 909,
+      "column": 20,
+      "endLine": 909,
+      "endColumn": 102,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bc52856aca2cf45ec5b2a79c5c0554e52c9243d3f551ba8ca62b919db69ad02d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an empty path and a line below 1 before it runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 909,
+      "column": 49,
+      "endLine": 909,
+      "endColumn": 100,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "98b16a658de08d7479bb62ef7a7a6527fa0b51611db20badcb9a7f1eac386a87"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 910,
+      "column": 40,
+      "endLine": 910,
+      "endColumn": 109,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6b55c25807cc2198ced504916d60b6051098a9f38889de1bcda9b0fee087102f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an empty path and a line below 1 before it runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 910,
+      "column": 67,
+      "endLine": 910,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "079a08d61f7d235b55a33e523c2ae84763522eef4939b2a34f1ae4c5c08e4979"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 912,
+      "column": 16,
+      "endLine": 912,
+      "endColumn": 92,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fdfbe9e2d4c39bc9905ffd0166ca616cb1c98e595e2995f32c1d8e37118cc38b",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an empty path and a line below 1 before it runs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 912,
+      "column": 43,
+      "endLine": 912,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "49acaf9b1df5449a054c267337bf5c805565c2016c52b1e2c37d52292f96c553"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 915,
+      "column": 9,
+      "endLine": 915,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "42f5b4661a0ddc6f41a2b902757023606c073a4e171e9b1bf6c646a455c1d7d0"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 917,
+      "column": 10,
+      "endLine": 977,
+      "endColumn": 4,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "289f339e77b9836c361ea9812cd1c0b34de6da5eff9dfe9837983810b7f74ad7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 918,
+      "column": 25,
+      "endLine": 918,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fbeacc433e55a30b454e4729781bfa2908f822ffcf78a9c9803a1b28fbcebe53"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 918,
+      "column": 59,
+      "endLine": 977,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "52d85ed187b744cd77973076487f4210f91ceed1f4a9c6399f8109db0d6f3b1d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 919,
+      "column": 17,
+      "endLine": 919,
+      "endColumn": 36,
+      "mutatorName": "LogicalOperator",
+      "replacement": "args.startLine && 1",
+      "status": "generated",
+      "id": "c47b1ebfca9fe91396211d2915d43966988023a0ac610ce46375cea1ed285d61",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 920,
+      "column": 15,
+      "endLine": 920,
+      "endColumn": 54,
+      "mutatorName": "LogicalOperator",
+      "replacement": "args.endLine && Number.MAX_SAFE_INTEGER",
+      "status": "generated",
+      "id": "d98a8fbe27a7d8a459bbe4854ff91f4af49919109bb92915d5db95a7d1a69b44",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 7,
+      "endLine": 921,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9f02674f78d8ef3b77343ff55b5b6031416e2e05ea1ca80f69626d924dc8be45",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 7,
+      "endLine": 921,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "90d78ad4ea3dfec485cb5bd3c93ae9713050746970f02b52587cc06d33242c49",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an end line before the start line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 7,
+      "endLine": 921,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "end <= start",
+      "status": "generated",
+      "id": "9a247694206fb787d638c51627c3ad4cf2bad09772f558741dddbb70c1ec5ea4",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "heads a window with the lines it covers, a one-line window included"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 7,
+      "endLine": 921,
+      "endColumn": 18,
+      "mutatorName": "EqualityOperator",
+      "replacement": "end >= start",
+      "status": "generated",
+      "id": "4247b50764b7875020ff50d43bf1dbca4d46132b20332f8522fd4d0e584c899e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 20,
+      "endLine": 921,
+      "endColumn": 83,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "aa39664f7dcc8338facc7bfe091b498eee8a9e7d7d1890a631dbe1193c9e7e7a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "refuses an end line before the start line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 921,
+      "column": 36,
+      "endLine": 921,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "270dd4a1b49f9ff9f64fa47029cd415d35df828e125d5d13e25be65eacfdf634"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 923,
+      "column": 16,
+      "endLine": 926,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "bf9614e1d4f1bb0fd76a815560818a252d190a99e6849e90a88d85f2e77b4bf8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 923,
+      "column": 34,
+      "endLine": 926,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "19aad493fe3571d13899ca6c711f18b0f98ff522f8e398f18e7d717829e24b5e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 924,
+      "column": 12,
+      "endLine": 924,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4cb667fa77d762f0eb05fe75fb106810951ddcb123da39f8a0ff8abd34f41220"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 925,
+      "column": 13,
+      "endLine": 925,
+      "endColumn": 41,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e98f1f1a83308b518c7fe956a830786867bd776c82907d3d6a6f722348c6ac8a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 925,
+      "column": 24,
+      "endLine": 925,
+      "endColumn": 26,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "ae135bc4c7935c360c421a23a02f068093a94cf8f8dfa5e3e63abe3771ffe17d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 927,
+      "column": 37,
+      "endLine": 927,
+      "endColumn": 70,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "38127e069d85e66c1425129aa0aa8ba9be191e1abcc6b87e6069021d86892fc4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 927,
+      "column": 47,
+      "endLine": 927,
+      "endColumn": 70,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cb9c0d75a02fb4e0ed8224ac8efd6b54810ce6154b29e8771178010467aa8c73",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 927,
+      "column": 47,
+      "endLine": 927,
+      "endColumn": 70,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "056755d12e20b6a39310e584ddc83c2f9cd9ea22492983306a64d97788e872b4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 927,
+      "column": 47,
+      "endLine": 927,
+      "endColumn": 70,
+      "mutatorName": "EqualityOperator",
+      "replacement": "file.path !== args.path",
+      "status": "generated",
+      "id": "3573750de2bc70f3517f2a1021259a979b14666c7e4f37aea13cca0100d9fb30",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 7,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "456d093d60f665f4e12193c46571d972d14cb11d561857fecfc8eaee133634b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 7,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "81e105609e67e250a28a3e3b3abf49dbef855e93756de27be2164f7ec5e3de89",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 7,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "LogicalOperator",
+      "replacement": "changed === undefined && changed.status === \"deleted\"",
+      "status": "generated",
+      "id": "4a160f8197ab3f9e54ca7bfeeb357b6d433631b094264d459d12a3d880180ecf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 7,
+      "endLine": 928,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "29778fd9451dd6321577b000b3e8b2bdbfa0ab59ac029200786de7b516ad5e93",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/untouched.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 7,
+      "endLine": 928,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "changed !== undefined",
+      "status": "generated",
+      "id": "4f229a7c250b8fceed0005b7dbb80422cf920ccdb0f796acdfaa109e7e063359",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 32,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "eb8c28af613b84c538f4ef73d9345828e53081bc41f4819404350f55ae427122",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in a file the change deletes"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 32,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "EqualityOperator",
+      "replacement": "changed.status !== \"deleted\"",
+      "status": "generated",
+      "id": "6017844224f79b2c5bc57fd8b38f232f447901a6e43f7258eb19e14639bda686",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 928,
+      "column": 51,
+      "endLine": 928,
+      "endColumn": 60,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "12f0f7f7c98be1545b7659d02f092a8c55bc2c39f1ffef098d8d7886baf08790"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 930,
+      "column": 5,
+      "endLine": 930,
+      "endColumn": 105,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9c7a1d4e1085f52a8529aa367d7f7028c053fe19f631f1964f955e85175e2558"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 932,
+      "column": 7,
+      "endLine": 932,
+      "endColumn": 29,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "enumerable(args.path)",
+      "status": "generated",
+      "id": "72afa8745f8a73d3b36fd9d3124d5838fe1b03a87e85b5c74df65c64388429cf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 932,
+      "column": 7,
+      "endLine": 932,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "90022f8f450e4cc846262d86f4bef639bbe345fb50ea0c3845d996c288959c8d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 932,
+      "column": 7,
+      "endLine": 932,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "31e5a13da61683a51bc910da3dae92048b18012d35e706ba99ada8a2c386e470",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/value.test.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 934,
+      "column": 5,
+      "endLine": 934,
+      "endColumn": 182,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "42ed8204d3cf5c1da490d38adaa76bdf367cd421d53c5a2db21ec60c601401ee"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 937,
+      "column": 7,
+      "endLine": 937,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6bb97ceaa09fcffe3c00c0e33ecf28418e69b1aef5239b258f20933d133bc5ee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 937,
+      "column": 7,
+      "endLine": 937,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7bedccda12aa671fa9f2306244bfcaec42a7d3e54f1dffe0f445f9dd779a5d44",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/a,b.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 937,
+      "column": 7,
+      "endLine": 937,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "listing.unmutated === undefined",
+      "status": "generated",
+      "id": "a489d2e15de2efb3b50797f0354df1abb739c7fe7aa021293dbd452504c32efd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 937,
+      "column": 52,
+      "endLine": 937,
+      "endColumn": 88,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fcb005cd630ec23f20dc9058995d7a433047db86c5824409da53a152ad942028"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 938,
+      "column": 17,
+      "endLine": 938,
+      "endColumn": 43,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2e0bf3327078308d56193d67727a0546d3cda308612327b88a9b827601a90b48",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 938,
+      "column": 17,
+      "endLine": 938,
+      "endColumn": 43,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bcf0c618d58faac8c18fe27aaa279cfd94940765850b20545512fbcde84a3c20",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "heads a window with the lines it covers, a one-line window included"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 938,
+      "column": 17,
+      "endLine": 938,
+      "endColumn": 43,
+      "mutatorName": "EqualityOperator",
+      "replacement": "args.endLine !== undefined",
+      "status": "generated",
+      "id": "82512eca9ee7f6f478b233f404165b1e3e1f545d6b918e7388fef99f9cc9c900",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 938,
+      "column": 46,
+      "endLine": 938,
+      "endColumn": 66,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "14887fdddaac49894694f22a9d497fbca1155a88db26bffa2940665dfb2a449d"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 938,
+      "column": 69,
+      "endLine": 938,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2180f51f7ed86fd5c6ab2735a1c4b39f8bf22e1c2f7d4fd9b535ec12cc5de7b4"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 940,
+      "column": 17,
+      "endLine": 950,
+      "endColumn": 41,
+      "mutatorName": "MethodExpression",
+      "replacement": "[window.excluded > 0 ? `[${window.excluded} more the base's mutation configuration excludes are left out]` : undefined, window.more?.cutLine !== undefined ? `[line ${window.more.cutLine} holds more than ${maxListedMutants} mutants; the rest of it are not shown]` : undefined, window.more !== undefined ? `[${window.more.count} more mutants not shown; call again with startLine ${window.more.startLine}]` : undefined]",
+      "status": "generated",
+      "id": "85af5393974789d9c02c773a1b55be64b70bb26bca689a1694160a663636ed1f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 940,
+      "column": 17,
+      "endLine": 950,
+      "endColumn": 4,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "87d9f3908aae004c02bdf36b1a008d82557b35f7c7f052dc660863eda85635bc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 941,
+      "column": 4,
+      "endLine": 941,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "47fe484afbae04a9d4e8d9750215c155c0dfa16c1133eebb8b4c706f9e10c960",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 941,
+      "column": 4,
+      "endLine": 941,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f705505d2a5a8ef90c2463525e8a111e922225f26770e3495b123b6673aa8fcd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 941,
+      "column": 4,
+      "endLine": 941,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "window.excluded >= 0",
+      "status": "generated",
+      "id": "d9481ef734dc3663ec68fa1f824910301b8052a133b8df0e86be1086a006de7b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 941,
+      "column": 4,
+      "endLine": 941,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "window.excluded <= 0",
+      "status": "generated",
+      "id": "e6299254e2db091acd213b12f0a4199ee0d6f646a5880d562676c1b332cc9b59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 942,
+      "column": 7,
+      "endLine": 942,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "46e2a15a7630822369135b583124f288de8f3e290abe64ca6e0205dbd4af3788"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 944,
+      "column": 4,
+      "endLine": 944,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d2bc444f2a1c858860e406ca22d961b8aa99699838a6b0856c7845c78614a4ba",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 944,
+      "column": 4,
+      "endLine": 944,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8b809168b16892e4305e542c691cdf7fd828e002f531a64528851cb8faa93f81",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 944,
+      "column": 4,
+      "endLine": 944,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "window.more?.cutLine === undefined",
+      "status": "generated",
+      "id": "34a713c30ea31e9f375061dc269b77cf5b57559ec2ea6c6d5ae34e3093a9550d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 944,
+      "column": 4,
+      "endLine": 944,
+      "endColumn": 24,
+      "mutatorName": "OptionalChaining",
+      "replacement": "window.more.cutLine",
+      "status": "generated",
+      "id": "e4fb5a30c8f6691a34f88cc7a21054f1f097850ae7f7bcc3abe3c4007916f4e9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 945,
+      "column": 7,
+      "endLine": 945,
+      "endColumn": 112,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "548643478ae93759025185e1b6810eebdb4580d72717599a57677912431099be"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 947,
+      "column": 4,
+      "endLine": 947,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f3f8d6dd0696c31d240466bd4ea291569a58a777adba82877f800c9fedeb19ad",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 947,
+      "column": 4,
+      "endLine": 947,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "49f4da94c503415e284a16bc6fa0b6318b68fe046e6c43c89eb7d2e19946b047",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 947,
+      "column": 4,
+      "endLine": 947,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "window.more === undefined",
+      "status": "generated",
+      "id": "0f8707f7ea97a90c556072d6b3558f3d75584e43bc9e4ba94402400324247331",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 948,
+      "column": 7,
+      "endLine": 948,
+      "endColumn": 106,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dee63f565fc439763508925c44269c80e5959a634efee6a0024090c323875ab3"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 950,
+      "column": 12,
+      "endLine": 950,
+      "endColumn": 40,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "98c4114280099400baa90594ae935133d2197817b48e0bc7cb46447c16ed0a15",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 950,
+      "column": 22,
+      "endLine": 950,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "55bbddbfa9f85fe77d24e79f0a61af361d0254901743074321fa6d457449286e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 950,
+      "column": 22,
+      "endLine": 950,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f33f74a065f1f03430bcbc13bcd8cbeac538b25db3a9e74fac5b11f213bbd58c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 950,
+      "column": 22,
+      "endLine": 950,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "note === undefined",
+      "status": "generated",
+      "id": "bc75ed0234b66b8eb5b01401b649dfd43b745c7640375050d68512c999aefcac",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 952,
+      "column": 19,
+      "endLine": 956,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d0282d357e812f7b54b3a744a771903f97a558996ab82a1e878e5a56d4b48ba5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 953,
+      "column": 32,
+      "endLine": 953,
+      "endColumn": 47,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "3233aa597e879f620ffda5a6ac154a08e836f06c835d338ac3d9441c1cbf1332",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 955,
+      "column": 22,
+      "endLine": 955,
+      "endColumn": 43,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1db2b905c44674fe43f4e4a38f7ab127491c86f18070d4cd53dea1e8a73a7df6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 957,
+      "column": 7,
+      "endLine": 957,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8250f53fc6a05b55d54363756cfbea335664b0d15521fd2ae6262f25178a1e0b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 957,
+      "column": 7,
+      "endLine": 957,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9b567f2fd2184e848b9e1dc2ed6af6e71db54377a699e8dc0c414250b031f38f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 957,
+      "column": 7,
+      "endLine": 957,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "window.mutants.length !== 0",
+      "status": "generated",
+      "id": "09b510725dba8c636aefb0517ce099c2814919a99a2e8701742bd601dee2e741",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 958,
+      "column": 11,
+      "endLine": 966,
+      "endColumn": 5,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6fba5eea7d750e445ea9f20c9a0edd9ce4c15b1d914921e5066d72c2cb76ef22",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 960,
+      "column": 6,
+      "endLine": 963,
+      "endColumn": 7,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "9d9504c16436c9f719a4253990d089706e661143b488d1d1191844411e5567d6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 961,
+      "column": 7,
+      "endLine": 961,
+      "endColumn": 122,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5e5093b2e0daffc26bfd5de194d8c1491cf798a3f88032a4adb375b9d7305506"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 963,
+      "column": 13,
+      "endLine": 963,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1e9f8699e16d8c314038b13c5f5228db2399e0807263ef4727380a067ea47fed"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 967,
+      "column": 10,
+      "endLine": 976,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d35e745477176eaa9b9f7d3124bf6c12f742e43e84f23cef11f90fe828ce393c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 968,
+      "column": 48,
+      "endLine": 973,
+      "endColumn": 17,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4454fcea833baa53fdf2613db34bdfb4b66cc9a2dd4aa436e016f572733c786e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 969,
+      "column": 5,
+      "endLine": 973,
+      "endColumn": 6,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "77c10c94097f39ef3e60704e5656ddc6fb135fd03a2723df7be7975dc5cd0f8e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 970,
+      "column": 6,
+      "endLine": 970,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fe5cf7bb9bff78063f853b8224f7ed00219f66ffa4b50f53d8ba84055fb5f00a"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 971,
+      "column": 21,
+      "endLine": 971,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "87ec87bbaa3dc7cbbeadd1fc8399fe8d542e28d22bb470aed7d63cbcd38c5e2a"
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 973,
+      "column": 12,
+      "endLine": 973,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "42f7e5c8d16f35a4d26fb41aea0e24499cb38caeffd205307bcadb43940be297"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 23,
+      "column": 88,
+      "endLine": 27,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9ff0ad8e34b5a656b9049db2b6f30af509e9053da15274d44ab233f870511c5c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 29,
+      "column": 72,
+      "endLine": 34,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "be98fdd660b3ba4c728bf96048f4b84c3e16f3bde8445456837ef7755aa27f34",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 30,
+      "column": 15,
+      "endLine": 32,
+      "endColumn": 58,
+      "mutatorName": "MethodExpression",
+      "replacement": "inventory.mutants.filter(row => row.file === file)",
+      "status": "generated",
+      "id": "a310e23d6b8d60c62e4d06435f026196fc9745ca4964541b60f4902e436f2f70",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 30,
+      "column": 15,
+      "endLine": 31,
+      "endColumn": 38,
+      "mutatorName": "MethodExpression",
+      "replacement": "inventory.mutants",
+      "status": "generated",
+      "id": "8996d07cad3e479f6137438c936008ce4f08e46a95ba49b1eaa9f7d6dedb2119",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 31,
+      "column": 11,
+      "endLine": 31,
+      "endColumn": 37,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1def8c5e4a3a9b6ce0fd02d08d1fac46a71ad141b0eb1ffd9cac7b868bdac5ef",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 31,
+      "column": 20,
+      "endLine": 31,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3d1c350131bdeb525657fe1471fd0b6b89ac783b0177068b785941874b588402",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 31,
+      "column": 20,
+      "endLine": 31,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c15e53bb97d05b48ac16a47ccf24b9f49f6a64157a8e3aeeb3e6afb65055719f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 31,
+      "column": 20,
+      "endLine": 31,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.file !== file",
+      "status": "generated",
+      "id": "6ed6dade9684406918e9a44dd7bcba067c641bcd668174ba1632d50a7d4e8a02",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 9,
+      "endLine": 32,
+      "endColumn": 57,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "adb61a4d7bc670391c9df5bcedbc21b56e1aef4ddbb43814449fc8f6de4d2282",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 19,
+      "endLine": 32,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "532368982b8de7862b090130df235a252bac9b6611d0a8018c4dea36dfd46e73",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 19,
+      "endLine": 32,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "726de2e3d825a6212e649955c28d98cac6ec1f97a5e1620dfaed1fa7d4b7930e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 19,
+      "endLine": 32,
+      "endColumn": 57,
+      "mutatorName": "LogicalOperator",
+      "replacement": "a.line - b.line && a.column - b.column",
+      "status": "generated",
+      "id": "b6b128bd1f8bf50c28c7d40570b2a5a2c739a15457ea4cc121139662d8698a1d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 19,
+      "endLine": 32,
+      "endColumn": 34,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "a.line + b.line",
+      "status": "generated",
+      "id": "96210dc1bf7c934a5e854a89ada39038923aa358cda3fdcb860aaf0fb38bdc06",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 32,
+      "column": 38,
+      "endLine": 32,
+      "endColumn": 57,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "a.column + b.column",
+      "status": "generated",
+      "id": "a945bbb60e575b1b4a91f64d84d3f9403a888ce25b25466f28758246c3ba49a7",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 33,
+      "column": 39,
+      "endLine": 33,
+      "endColumn": 101,
+      "mutatorName": "OptionalChaining",
+      "replacement": "inventory.unmutated.find(each => each.file === file).reason",
+      "status": "generated",
+      "id": "7ba27e0a37b9a803e01b7bb4ed5407409a869dfa8ba56fd55703a4b8d9d37849",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 33,
+      "column": 64,
+      "endLine": 33,
+      "endColumn": 92,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "cd36eb2a1b0091198e2db2e195994ad16c2985a1d19a3b0ba48842d1839d4e84",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/a,b.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 33,
+      "column": 74,
+      "endLine": 33,
+      "endColumn": 92,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ac8aa191c9aa72a917c40412268a95a424925fdf046b396dc42a76f4b6688449",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "keeps one file's rows of a whole inventory, in line and column order, and that file's reason"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 33,
+      "column": 74,
+      "endLine": 33,
+      "endColumn": 92,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3f202ff05f9c54a8915e2533970593018910f156f0838d7253c1cffd2f316572",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/a,b.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 33,
+      "column": 74,
+      "endLine": 33,
+      "endColumn": 92,
+      "mutatorName": "EqualityOperator",
+      "replacement": "each.file !== file",
+      "status": "generated",
+      "id": "d06b4e876fe015da4adf252467b61b51fd99410209aef092cf56dd3139a2ef0e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/a,b.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 36,
+      "column": 37,
+      "endLine": 38,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e919236cc36dbdd2f382af2aba6c9a0d8e2f718f1bf16e67941d95b67d327270",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists no mutants in src/a,b.ts, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 41,
+      "column": 58,
+      "endLine": 55,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "dc1002b76c538f3d555d64654bac21fceef7a04986dbcf7325ddc98b3792d68c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 18,
+      "endLine": 42,
+      "endColumn": 90,
+      "mutatorName": "MethodExpression",
+      "replacement": "this.#rows",
+      "status": "generated",
+      "id": "96b3ceb971287644424c24460d7c2b18061aabaf7aca7309edc2b334b74a8aba",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 36,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "673a99ab14626d67b90941649ba85232d8ef9c8622351b7b1d5edfb46424d20c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3a7d04aab67e1898760ee6c9821e6423ec3be7e5f69f966c9bb7c50a84fec25d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bc50d88e816f9da1f0401e5961ea39029be8a4546dd0246cbc9d5673f7ec3976",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "LogicalOperator",
+      "replacement": "row.line >= startLine || row.line <= endLine",
+      "status": "generated",
+      "id": "11513ca655ecc3612f9f2e91b9709b19d222727f5d91ac23c22cb500052d4a13",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b7788bfba5733eb3bf8e95eb1274f2230d279f43be97d4a27085e18fe33fb451",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 66,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line > startLine",
+      "status": "generated",
+      "id": "21b0c8b92617205a1eedf52018028f37694143ddb9668af5b037c39c81248d57",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 45,
+      "endLine": 42,
+      "endColumn": 66,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line < startLine",
+      "status": "generated",
+      "id": "1a7e1678c8507620a591bf056312595ac61dd2bc2078e909ace82f753062d4a8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 70,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5bb3f6349b716afe6cd3910514ffefaee8da2beeb8a5f0cdeddb7282a048529c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 70,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line < endLine",
+      "status": "generated",
+      "id": "ee0798566dbb636ccbfd4428d00d8cebbc393b1f5a09ebfc5d39d3e18b564462",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "heads a window with the lines it covers, a one-line window included"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 42,
+      "column": 70,
+      "endLine": 42,
+      "endColumn": 89,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line > endLine",
+      "status": "generated",
+      "id": "9163487555134b900e8c8126abe8d34fea9e20f2863f48b75f5659f8d9709457",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "says which lines changed when the range asked for holds none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 17,
+      "endLine": 43,
+      "endColumn": 68,
+      "mutatorName": "MethodExpression",
+      "replacement": "inRange",
+      "status": "generated",
+      "id": "3bb491d10faf2262ce52dedbd108bc887d15b9760a89bd5443c063c8da7babd6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 32,
+      "endLine": 43,
+      "endColumn": 67,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "8b3222651a3e493c55aae633c502dd1bf39a84cdb3c15637b545f233fb159098",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 41,
+      "endLine": 43,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a118b54b4f8b1b0e13822715ec485068bcbdf63294730260bcbcc16a85e79879",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 41,
+      "endLine": 43,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "dd74841f081a9c4867d2cd983161da2ff4546b53543534649d916b4c34a69b92",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 41,
+      "endLine": 43,
+      "endColumn": 67,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.ignoredBy === \"config\"",
+      "status": "generated",
+      "id": "b9b96197687d6aea9b2ea348b1c13f68ecc2b8b9099828c40a3a60db158d7ab2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 43,
+      "column": 59,
+      "endLine": 43,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "793c4da48d40571820c0cc78c61e7a9a5404cf3c75a91b04b536b163373568a2"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 44,
+      "column": 19,
+      "endLine": 44,
+      "endColumn": 49,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "inRange.length + listed.length",
+      "status": "generated",
+      "id": "204c88c21219af6a8e01cfdec6e7b4edfc27c89ed75840ede522b31843c9fee0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 45,
+      "column": 6,
+      "endLine": 45,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "717a34229f561a44e879f81ce5b8e9c4526f71804064d99857a97e1808f40452",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 45,
+      "column": 6,
+      "endLine": 45,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ca9fc9be7d28dd47744972f6e1acce9e7eccb00d7ad286d9b79d20d3b00db86a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 45,
+      "column": 6,
+      "endLine": 45,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "listed.length < maxListedMutants",
+      "status": "generated",
+      "id": "9622a3c666729528fb2b523b0eb7d807f055a6bb97cc4333347e0c922a00bd0f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 200 mutants on as many lines with undefined left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 45,
+      "column": 6,
+      "endLine": 45,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "listed.length > maxListedMutants",
+      "status": "generated",
+      "id": "30687ea46634aa15564c76472abd1ef0ee95e2277e6f1baf420f0fef72e5fbcd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 45,
+      "column": 48,
+      "endLine": 45,
+      "endColumn": 77,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3f4894f0ecf676f8a734d0106e57acaea08a1af118b55a5f31a9d1e4933c7ece",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 16,
+      "endLine": 47,
+      "endColumn": 55,
+      "mutatorName": "MethodExpression",
+      "replacement": "listed",
+      "status": "generated",
+      "id": "66b919c3217fa94e4fc948b891fa9b341940d645382f712722094002901616a6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 30,
+      "endLine": 47,
+      "endColumn": 54,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "2c27d6d13e22bea98f9b68c927401627a79f6844c6ad429784ca7e3b176008f3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 39,
+      "endLine": 47,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cb58fc25d3b3ad5480357825ee29b74fb92867d7964858946cf34ae9d2bc04fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 39,
+      "endLine": 47,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7e4797ce1e85e8d55bdeb9473ac25ba38aed028d26ccf8930d865717f6e07130",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 39,
+      "endLine": 47,
+      "endColumn": 54,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line <= next",
+      "status": "generated",
+      "id": "084f31734bfc266b356d280d5298b4b76be7d5ff0049574cb5a11000f8ba59d3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 47,
+      "column": 39,
+      "endLine": 47,
+      "endColumn": 54,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.line >= next",
+      "status": "generated",
+      "id": "bae58f05cbeb4dfed1aa5f293f5bd0a09ec99767506b86bfc9ce85d7a65a3bde",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 16,
+      "endLine": 48,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "940da848604fe416ec207e9e2b488057f733fb0cba4d1301036250e0b1e41afc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 16,
+      "endLine": 48,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b74cf1e7db84253e9da37e6443f081cd06728180c400e38e439ad91b327810a3",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "pages at a line boundary when the cap falls inside a line, so the next call repeats none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 16,
+      "endLine": 48,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length >= 0",
+      "status": "generated",
+      "id": "db9e57ee21f05ea6f12b8eacdd94253a02a0df528821e91a050f293e0099fbab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 16,
+      "endLine": 48,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length <= 0",
+      "status": "generated",
+      "id": "f5c8b3d389709fc169acbdf346c3d0091402acb608feccc7d935f365f8498037",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 48,
+      "column": 43,
+      "endLine": 48,
+      "endColumn": 76,
+      "mutatorName": "MethodExpression",
+      "replacement": "listed",
+      "status": "generated",
+      "id": "230b6545a2fa4e7255dd08a69018090ee8650a627e549b2d04f4b2d090d9776c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 49,
+      "column": 16,
+      "endLine": 49,
+      "endColumn": 44,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "listed.length + shown.length",
+      "status": "generated",
+      "id": "515769eebae085eb5000748f30202cca02f5f75f76e3222a3bd4cfc22e513c11",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 50,
+      "column": 9,
+      "endLine": 54,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "69cdc782f8d62f57eca6fa01815170022ede0f9501e9d95f53cfcbd0eb71c8a5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 9,
+      "endLine": 53,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "38735a154f67ee967127ff22c3f02d5aa67246bce5bb4049e2bd91ef6ed4e73b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 9,
+      "endLine": 53,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e7a04aa1527067918add3ecffa9a0b6bfa3becd111da5f246025e8fabf6783b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 9,
+      "endLine": 53,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length >= 0",
+      "status": "generated",
+      "id": "f4ba44ce3321ef1a2bedfe081c6c52870c84b5410d7deb5b5b0cb3d0de85a38b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 9,
+      "endLine": 53,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "whole.length <= 0",
+      "status": "generated",
+      "id": "f98740492645b1811fbb2cf41a9801ff88bd0af075db642d091456c66dccfe44",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 28,
+      "endLine": 53,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6612553a8bf28d175958b714caebf7cf61f59e020b021d8d7b2e66f9ea86e03d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "lists 201 mutants on as many lines with { count: 1, startLine: 201 } left for the next call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 57,
+      "endLine": 53,
+      "endColumn": 102,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3167280dc59cce23ec419b461e16244be4f9e87a1f3bf06c10e5ec2ac0ee46c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 53,
+      "column": 77,
+      "endLine": 53,
+      "endColumn": 85,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "next - 1",
+      "status": "generated",
+      "id": "cb57bbf35cb638fd7c2d0fdc23bb8f41dcf2e84650e71a4f3bd815bde5f62b76",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "cuts inside a line that holds more than the cap, and asks for the rest from the next line"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 58,
+      "column": 49,
+      "endLine": 64,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7994d00481d8aae8e92b001a275b3a31d7f9982399efd1e6a15f01275451ed1b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 2,
+      "endLine": 61,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "bdb9def1bf653c937604c39cf33071149922f504ecf33c91d8094960a8d1632e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 2,
+      "endLine": 61,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2ed8e3f9dd775b8961208960ff6131fcdd7e0a57b26b1bd30cd8cee733df9525",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 2,
+      "endLine": 61,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "escaped.length >= maxReplacementChars",
+      "status": "generated",
+      "id": "77f406819e926a80069fc0cd0f02207171164b9bda74a60eccf52be70e0a80c0",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 2,
+      "endLine": 61,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "escaped.length <= maxReplacementChars",
+      "status": "generated",
+      "id": "fc82a8e25ff5dba54b0d3598afef91a7087eeaa2ec6ff5e4e0372df6d0e3e532",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 41,
+      "endLine": 61,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2d53cd94fdeda5e1429d8e45f384e61333217b21660d9622bda878b3fe2fe555"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 61,
+      "column": 44,
+      "endLine": 61,
+      "endColumn": 81,
+      "mutatorName": "MethodExpression",
+      "replacement": "escaped",
+      "status": "generated",
+      "id": "e7eca9eb3321c2f86ffb40a26c3f2320dff5d60e24ee824150cc57c804a87751",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 14,
+      "endLine": 62,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6b8d39bb59b056a36dc65c6623b80994a5a7bff3bbd74d55a53e354c2b896bd6",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 14,
+      "endLine": 62,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "01952595cb19b485eadcd0f33a024ff0161e63e457c5c32660d928f485c91726",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 14,
+      "endLine": 62,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "row.ignoredBy !== \"comment\"",
+      "status": "generated",
+      "id": "c5a18555ef7040524c5f5803661bb3a43a390027d0a47ad9aee22c1624774d12",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "describes a mutant by its place, mutator and quoted replacement, cut past the bound"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 32,
+      "endLine": 62,
+      "endColumn": 41,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "825c8a8d6feb37e87c1bd8efb37622fa52b832dddc99d9981760658ed198945e"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 44,
+      "endLine": 62,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0c2262be1eac1df3c38bd65bec3b9b214d3d7afe1acf710460eb80afc4d8373b"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 62,
+      "column": 84,
+      "endLine": 62,
+      "endColumn": 86,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "df66685ea85abfea3bf67e889cc215ec6d62aae4afcdc1f2dae0bfcc5fbf8c8d"
+    },
+    {
+      "file": "packages/pipeline/src/mutant-listing.ts",
+      "line": 63,
+      "column": 8,
+      "endLine": 63,
+      "endColumn": 124,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "db5186078598b3e0f283cb713a2aec9bc11a4f4f80bfd4a0b721ac08c51db740"
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 329,
+      "column": 50,
+      "endLine": 331,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fac2e80e0eeab751a542f1556b4adc4f4718c1679efa28b271a5fc883eed11d6"
+    }
+  ],
+  "total": 211,
+  "omitted": 0,
+  "unmutated": []
+}
