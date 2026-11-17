@@ -1167,7 +1167,9 @@ describe("main", () => {
 
 	async function mainWith(probes, read = async () => ["node_modules"], interfaces = networkInterfaces(), base = head) {
 		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
-		const saved = Object.fromEntries(["HOME", "RUNNER_TEMP", "MELIAN_PROBE_POLICY_COMMIT", ...loginNames].map((name) => [name, process.env[name]]));
+		const saved = Object.fromEntries(
+			["HOME", "RUNNER_TEMP", "MELIAN_PROBE_POLICY_COMMIT", ...loginNames].map((name) => [name, process.env[name]]),
+		);
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		const segments = () => spawnSync("ipcs", ["-m"], { encoding: "utf8" }).stdout;
 		const before = { segments: segments(), fds: readdirSync("/proc/self/fd").length };

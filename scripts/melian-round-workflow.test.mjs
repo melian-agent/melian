@@ -1519,7 +1519,7 @@ describe("the melian round workflow", () => {
 		}
 		expect(round[proof]["working-directory"]).toBe("melian");
 		expect(round[proof].run).toContain(`if ! ${containment}; then`);
-		expect(round[proof].env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: "${{ needs.gate.outputs.base }}" });
+		expect(round[proof].env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: actions("needs.gate.outputs.base") });
 	});
 
 	it("ends the round unreviewed when a probe reaches what the round would hold, and carries on when none does", () => {
