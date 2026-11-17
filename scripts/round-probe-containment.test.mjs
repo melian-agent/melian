@@ -470,7 +470,9 @@ describe("the probe script", () => {
 		const port = shut.address().port;
 		await new Promise((resolve) => shut.close(resolve));
 		const proxy = createServer((socket) =>
-			socket.once("data", (request) => socket.end(request.toString("latin1").startsWith("CONNECT") ? "HTTP/1.1 200" : "")),
+			socket.once("data", (request) =>
+				socket.end(request.toString("latin1").startsWith("CONNECT") ? "HTTP/1.1 200" : ""),
+			),
 		);
 		try {
 			await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
