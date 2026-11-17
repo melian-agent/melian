@@ -28,12 +28,14 @@ import {
 	verifierInjectionPolicy,
 } from "./lens-tools.ts";
 import {
+	boundProbeEvidence,
 	type ClaimProbe,
-	type EvidenceWording,
 	evidenceWordingOf,
+	type ProbeEvidence,
 	ProbeReruns,
 	type ProbeRun,
 	probeClaimKey,
+	probeEvidenceBudget,
 	probeFailed,
 	probingWording,
 	renderProbeEvidence,
@@ -139,8 +141,6 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					if (task.input.reused?.[candidate.key] !== undefined) continue;
-					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
-					children[candidate.key] = child.id;
 					const probed = (claim: { id: string; source: { check: string; version?: string } }) => {
 						const probe = candidate.probes?.[probeClaimKey(claim)];
 						return probe === undefined ? undefined : { probe, again: reruns[rerunKey(claim, probe)] };
@@ -171,21 +171,21 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						};
 					});
 					const dismissed = (candidate.dismissed ?? []).map(({ id }, index) => ({ label: `d${index + 1}`, id }));
+					const instructions = verifierPrompt(
+						candidate,
+						claims,
+						dismissed,
+						candidateEvidence(candidate, reruns),
+						task.input.revision.nonce,
+					);
+					// A candidate with no conversation is one whose evidence no verifier may be shown; it ends unasked.
+					if (instructions === undefined) continue;
+					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
+					children[candidate.key] = child.id;
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
-						instructions: verifierPrompt(
-							candidate,
-							claims,
-							dismissed,
-							claims.flatMap(({ label, id, source }) => {
-								const probe = probed({ id, source });
-								return probe === undefined
-									? []
-									: [{ label, wording: evidenceWordingOf(probe.probe.probesAs ?? lensOf(source)), ...probe }];
-							}),
-							task.input.revision.nonce,
-						),
+						instructions,
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
 					});
@@ -214,7 +214,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 			const started = task.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
 			const result: VerificationResult = { ...task.input.reused };
 			const run = async (candidate: VerificationCandidate): Promise<Outcome> => {
-				const id = started.children[candidate.key]!;
+				const id = started.children[candidate.key];
+				if (id === undefined) return { status: "unanswered", reason: unshown(candidate) };
 				const child = (await runtime.conversation(id, context))!;
 				for (let attempt = started.attempts[candidate.key] ?? 0; ; attempt++) {
 					if (await replaced(runtime, task.input, runtime.taskId, context))
@@ -317,7 +318,12 @@ export async function startVerification(
 	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))!.runs[Revision.key(input.revision)] ?? {};
 	const { key } = verificationRequest(input, reruns);
 	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
-	const providers = asking.flatMap((candidate) => candidate.route.map((model) => model.provider));
+	// A candidate whose evidence no verifier may be shown is asked nothing, so its route needs no credential.
+	const providers = asking
+		.filter(
+			(candidate) => boundProbeEvidence(candidateEvidence(candidate, reruns), input.revision.nonce) !== undefined,
+		)
+		.flatMap((candidate) => candidate.route.map((model) => model.provider));
 	// The task the read below found to attach to without unlocking. The commit acts on that alone: any other outcome
 	// writes nothing, and the commit runs again with every asking candidate's route unlocked, since another review can
 	// commit between the read and the commit.
@@ -453,14 +459,11 @@ function verifierPrompt(
 	{ decisionsAtBase, designAtBase }: Pick<VerificationCandidate, "decisionsAtBase" | "designAtBase">,
 	claims: readonly { label: string; id: string; severity: Severity | undefined }[],
 	dismissed: readonly { label: string; id: string }[],
-	evidence: readonly {
-		label: string;
-		wording: EvidenceWording;
-		probe: Omit<ClaimProbe, "environment">;
-		again: ProbeRun | undefined;
-	}[],
+	evidence: readonly ProbeEvidence[],
 	nonce: string,
-): string {
+): string | undefined {
+	const bound = boundProbeEvidence(evidence, nonce);
+	if (bound === undefined) return undefined;
 	return [
 		verifierInstructions,
 		...(decisionsAtBase === undefined
@@ -474,8 +477,50 @@ function verifierPrompt(
 				]),
 		...claims.map(({ label, id, severity }) => claimLine(label, id, severity)),
 		...dismissed.map(({ label, id }) => dismissedLine(label, id)),
-		...evidence.map(({ label, wording, probe, again }) => renderProbeEvidence(wording, label, probe, again, nonce)),
+		...bound,
 	].join("\n\n");
+}
+
+// The probe evidence a candidate's verifier is shown, a block for each probing claim, labelled as its claim's line is.
+function candidateEvidence(candidate: VerificationCandidate, reruns: Record<string, ProbeRun>): ProbeEvidence[] {
+	return candidate.state.claims.flatMap((claim, index) => {
+		const probe = candidate.probes?.[probeClaimKey(claim)];
+		return probe === undefined
+			? []
+			: [
+					{
+						label: `c${index + 1}`,
+						wording: evidenceWordingOf(probe.probesAs ?? lensOf(claim.source)),
+						probe,
+						again: reruns[rerunKey(claim, probe)],
+					},
+				];
+	});
+}
+
+// What a cut candidate's verifier is shown, or why it is asked nothing; nothing for evidence that fits, which its probes
+// and the reruns already key. It cuts under the review's nonce, as the prompt does, since quoting replaces the nonce in
+// the head's text and so changes its size, and then names the boundary by the key's fixed nonce.
+function cutEvidence(
+	candidate: VerificationCandidate,
+	reruns: Record<string, ProbeRun>,
+	nonce: string,
+): string | undefined {
+	const evidence = candidateEvidence(candidate, reruns);
+	const shown = boundProbeEvidence(evidence, nonce);
+	if (shown === undefined) return unshown(candidate);
+	const whole = evidence.map(({ label, wording, probe, again }) =>
+		renderProbeEvidence(wording, label, probe, again, nonce),
+	);
+	if (shown.join("\n\n") === whole.join("\n\n")) return undefined;
+	return shown.join("\n\n").replaceAll(`untrusted-${nonce}`, `untrusted-${identityNonce}`);
+}
+
+function unshown(candidate: VerificationCandidate): string {
+	const probing = candidate.state.claims.filter(
+		(claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined,
+	).length;
+	return `Melian did not ask the verifier: the probe evidence of the candidate's ${probing} probing claim${probing === 1 ? "" : "s"} passes the ${probeEvidenceBudget} bytes a verifier is shown even with every part cut, so judge fewer claims of one defect together or raise the budget`;
 }
 
 function verifierInput(claims: readonly unknown[], dismissed: readonly unknown[], nonce: string): string {
@@ -544,7 +589,7 @@ function verifierText(): unknown {
 				},
 			],
 			nonce,
-		),
+		)!,
 		wording,
 		planRow: probingWording.planRow,
 		input: verifierInput(["<claim>"], ["<dismissed>"], nonce),
@@ -569,7 +614,8 @@ export function waveVersion(version: string): string {
  * A verification task's request, keyed by its input less the root and checkout, which name the host, the revision's
  * nonce, which is drawn afresh on every review, and the outcomes it reuses. It holds each candidate by its identity, the
  * fixed text the verifier is given beyond its version, `judges`, the own judgement of a probe of each lens whose claims
- * carry probe evidence, and `reruns`, the probe reruns this review read, which the verifier is shown.
+ * carry probe evidence, `cuts`, the probe evidence each candidate cut to fit is shown, or why it is asked nothing, and
+ * `reruns`, the probe reruns this review read, which the verifier is shown.
  */
 export function verificationRequest(
 	{
@@ -589,6 +635,12 @@ export function verificationRequest(
 			.filter((claim) => candidate.probes?.[probeClaimKey(claim)] !== undefined)
 			.map((claim) => candidate.probes![probeClaimKey(claim)]!.probesAs ?? lensOf(claim.source)),
 	);
+	const cuts = Object.fromEntries(
+		candidates.flatMap((candidate) => {
+			const cut = cutEvidence(candidate, reruns, nonce);
+			return cut === undefined ? [] : [[candidate.key, cut]];
+		}),
+	);
 	return KeyedRequest.of(
 		"verification",
 		requestJson({
@@ -599,6 +651,8 @@ export function verificationRequest(
 			...(judged.length === 0
 				? {}
 				: { judges: Object.fromEntries(judged.map((lens) => [lens, evidenceWordingOf(lens).judge])) }),
+			// A request with no cut candidate keeps the key it had before cuts.
+			...(Object.keys(cuts).length === 0 ? {} : { cuts }),
 			reruns,
 		}),
 		{ nonce },

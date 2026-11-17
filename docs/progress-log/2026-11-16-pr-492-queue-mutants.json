@@ -1,0 +1,264 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "71f273507c8b78c9a7c93fea18685b307eaaa7ea",
+		"head": "31d1e4ee7bd90bbb2f09f88f69fc1ff47243ccf8"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-tools.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 888,
+			"column": 21,
+			"endLine": 888,
+			"endColumn": 35,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4792487c05b0ba0f45ade3fe578d18b7b75a684b8dfec8a5121e498b821e0f48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates again for another review of the same head, which may resolve another instrumenter"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 888,
+			"column": 41,
+			"endLine": 888,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ee7a92b683facd637fcc7ea635a3578b09d3ddc3b89d0ad62502b13566401206"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 889,
+			"column": 32,
+			"endLine": 889,
+			"endColumn": 69,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c8aacd27983d78339ce879f14f4bff3d3d359be68a122a01b8285192a7b26843",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 895,
+			"column": 100,
+			"endLine": 905,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a720469a821ccbf18d9d42299c4c416c134f7e42d212b190caede215cd99c90a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 898,
+			"column": 52,
+			"endLine": 901,
+			"endColumn": 4,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "88ffab1dc2f099c95e919262b755818c2777866133171952e1955550a86fdc03",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 899,
+			"column": 57,
+			"endLine": 899,
+			"endColumn": 97,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "74c7a94e1196fbc3ded0a6cb54af3e32a71c8b18f9aa38183f6658f3f4af7dfe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"runs one enumeration worker at a time, across parallel calls and concurrent reviews"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 899,
+			"column": 100,
+			"endLine": 901,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a0283536781382789cc7df03dddb8ded9069b8c8fa15222f91cd7325c3dbd6cc",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "MutationEnumeration.open defaults its policy to the changeset's base, and the two-dot range Revision.key writes makes that base review.base itself, so dropping the options picks the same policy"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 900,
+			"column": 11,
+			"endLine": 900,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d87827c3e199e274e5518fe4060feda8ada55cbf786a5271e7fd2eead52226bc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"returns the rows melian mutants list gives for the file, less those the base's configuration excludes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 900,
+			"column": 19,
+			"endLine": 900,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5d6e561c815fa046a1a187702af765114d294dcfefd5b72c4644bfaab76fd054"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 903,
+			"column": 43,
+			"endLine": 903,
+			"endColumn": 75,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ab9fa55f7d6e16d5592d184475a35ba772f5bc010ad5c776c24fe8c68f3c583b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 903,
+			"column": 50,
+			"endLine": 903,
+			"endColumn": 54,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0b0192011356557c0a173b31a9a3b1fc4a4d380bb4017e82d19c4ab8dbf104dd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 903,
+			"column": 67,
+			"endLine": 903,
+			"endColumn": 73,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "6958b721d4687e69c0fc5af6fb4d32675099768b60ec484c57f301e2f24b9182",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/list-mutants.test.ts",
+					"path": [
+						"list_mutants",
+						"enumerates each file of a review once, however many calls page through it"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 12,
+	"omitted": 0,
+	"unmutated": []
+}
