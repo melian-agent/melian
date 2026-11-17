@@ -376,7 +376,9 @@ export function judge(report, plan, argv, host) {
 		if (attempt === "missing") continue;
 		if (/^[23]\d\d( refused)?$/.test(status)) failures.push(`the HTTP proxy answered ${attempt} with ${status}`);
 		else if (/^\d\d\d$/.test(status))
-			failures.push(`the HTTP proxy answered ${attempt} with ${status}, which the proxy did not mark as its refusal`);
+			failures.push(
+				`the HTTP proxy answered ${attempt} with ${status}, which the proxy did not mark as its refusal`,
+			);
 		// A refusal must come from the proxy, a marked status or a close after connecting, or the attempt never reached it.
 		else if (!/^(\d\d\d refused|closed)$/.test(status))
 			failures.push(`the HTTP proxy never answered ${attempt}: ${status}`);
