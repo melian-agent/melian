@@ -68,7 +68,27 @@ export interface MutationAdapter {
 		excludedMutations: readonly string[],
 		limit?: number,
 		deadline?: number,
+		gate?: MutationGate,
 	): Promise<MutationBatch>;
+}
+
+/** Runs an enumeration worker's spawn and wait, so a caller can queue workers. */
+export type MutationGate = <T>(worker: () => Promise<T>) => Promise<T>;
+
+// Resolves once the gate gives this call its turn, with the function that ends the turn and waits for the gate to let go.
+function turnOf(gate: MutationGate): Promise<() => Promise<void>> {
+	return new Promise((entered, refused) => {
+		const turn: Promise<void> = gate(
+			() =>
+				new Promise<void>((leave) =>
+					entered(async () => {
+						leave();
+						await turn;
+					}),
+				),
+		);
+		turn.catch(refused);
+	});
 }
 
 /** Failure to enumerate committed source, distinct from a failed mutation test. */
@@ -142,6 +162,7 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		excludedMutations: readonly string[],
 		limit = Number.MAX_SAFE_INTEGER,
 		deadline = performance.now() + 120_000,
+		gate: MutationGate = (worker) => worker(),
 	): Promise<MutationBatch> {
 		const boundedDeadline = Math.min(deadline, performance.now() + 120_000);
 		remainingTime(deadline);
@@ -158,6 +179,7 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		}
 		const scratch = await mkdtemp(join(tmpdir(), `melian-enumerate-${process.pid}-`));
 		let batch: MutationBatch;
+		let leave = async () => {};
 		try {
 			// Babel stops .babelrc discovery at the nearest package boundary.
 			await writeFile(join(scratch, "package.json"), "{}");
@@ -217,6 +239,7 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 			}
 			append(`],"limit":${limit}}`);
 			const input = parts.join("");
+			leave = await turnOf(gate);
 			const timeout = remainingTime(boundedDeadline);
 			const output = await new Promise<string>((resolve, reject) => {
 				const child = execFile(
@@ -260,6 +283,7 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 				child.stdin!.on("error", () => {});
 				child.stdin!.end(input);
 			});
+			await leave();
 			remainingTime(boundedDeadline);
 			try {
 				const { mutants, total } = JSON.parse(output) as {
@@ -317,6 +341,7 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 				throw new MutationEnumerationError("instrumenter", "enumeration returned invalid worker output");
 			}
 		} finally {
+			await leave();
 			await rm(scratch, { recursive: true, force: true });
 		}
 		remainingTime(boundedDeadline);
@@ -325,6 +350,11 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 }
 
 const javascript = /\.[cm]?[jt]sx?$/;
+
+export function enumerable(path: string): boolean {
+	return productionWithExtensions(path, javascript);
+}
+
 export function inside(root: string, path: string): boolean {
 	const distance = relative(root, path);
 	return distance !== ".." && !distance.startsWith(`..${sep}`) && !isAbsolute(distance);
@@ -421,12 +451,22 @@ export class MutationEnumeration {
 	/**
 	 * Lists the mutants of the range's changed lines. `claimsIn` records the files whose rows owe a claim and lists every
 	 * file still; `limitedTo` lists only its files, for reading, and the inventory can never be sampled. A file the range
-	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants.
+	 * does not change is refused by name, so a misspelt one never reads as a file with no mutants. `deadline`, a
+	 * `performance.now()` time, ends it sooner than its own 120 seconds. `gate` holds the enumeration worker's spawn
+	 * and wait, and nothing else: every read, the scratch directory and its removal are outside it.
 	 */
 	async list(
-		options: { limit?: number; all?: boolean; claimsIn?: readonly string[]; limitedTo?: readonly string[] } = {},
+		options: {
+			limit?: number;
+			all?: boolean;
+			claimsIn?: readonly string[];
+			limitedTo?: readonly string[];
+			deadline?: number;
+			gate?: MutationGate;
+		} = {},
 	): Promise<MutationInventory<MutationInventoryV2>> {
-		const deadline = performance.now() + 120_000;
+		const deadline = Math.min(options.deadline ?? Number.POSITIVE_INFINITY, performance.now() + 120_000);
+		remainingTime(deadline);
 		const limit = options.all ? Number.MAX_SAFE_INTEGER : (options.limit ?? 200);
 		if (!Number.isSafeInteger(limit) || limit < 0)
 			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
@@ -519,7 +559,9 @@ export class MutationEnumeration {
 		const adapter = files.length === 0 ? undefined : await TypeScriptMutationAdapter.open(repoRoot);
 		remainingTime(deadline);
 		const { mutants: rows, total } =
-			adapter === undefined ? { mutants: [], total: 0 } : await adapter.enumerate(files, excluded, limit, deadline);
+			adapter === undefined
+				? { mutants: [], total: 0 }
+				: await adapter.enumerate(files, excluded, limit, deadline, options.gate);
 		remainingTime(deadline);
 		const inventory = MutationInventory.create({
 			range: {

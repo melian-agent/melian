@@ -1,0 +1,138 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "4c0edcc6706ac746fe31a4741658fc040af7d9dc",
+		"head": "cdea711fe8bec402d0287e48931ff7fec5c8cca3"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/store-prune.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 160,
+			"column": 14,
+			"endLine": 163,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b1df3461dc2d1e3d2a88fd018de108ee0c7bcff62745cdf75990a9fbd473c701",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it",
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 25,
+			"endLine": 161,
+			"endColumn": 112,
+			"mutatorName": "MethodExpression",
+			"replacement": "Object.entries(options.env ?? process.env)",
+			"status": "generated",
+			"id": "e7b9b84375e9f1e645d738b05f1178e6fee291e37d997006daf6f9b8f782e3e7",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 40,
+			"endLine": 161,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "options.env && process.env",
+			"status": "generated",
+			"id": "3c9d41f12903c4510deaf8f4ffe74d0695c1095e85747239e7e213ad9a8a0065",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > refuses with the reason git could not start when no git is on the path it was given",
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 75,
+			"endLine": 161,
+			"endColumn": 111,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "8662cf28ca211a36ea4f270a283afda5a07415b8c0537b13271a8f65e0805fb2",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > refuses with the reason git could not start when no git is on the path it was given",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 87,
+			"endLine": 161,
+			"endColumn": 111,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "name.startsWith(\"GIT_\")",
+			"status": "generated",
+			"id": "ae7249aafd8a50c9a070e4c3ee08e3b3717211764e8b10c613e28501aadb4c5d",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 88,
+			"endLine": 161,
+			"endColumn": 111,
+			"mutatorName": "MethodExpression",
+			"replacement": "name.endsWith(\"GIT_\")",
+			"status": "generated",
+			"id": "8e0200c4dec117aba8a8dc2bf9a29e96fd37630507effcdb0a1fdbb685df69ca",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 104,
+			"endLine": 161,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "350e1f02700d4da055779b6b53209e30e94c51d5ba6a935f29e0495b6b51ab9a"
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 162,
+			"column": 27,
+			"endLine": 162,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7966ae9a9d1ba10ba67adbed2774a5a4fd97b1ef7b335ab3a0a082859b3d8a57"
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -1,0 +1,740 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "dd2fa4a32c40e0b01bdad9905b589379aca9288a",
+    "head": "c0e9ed2856412c4b30afc1537f4a98f96af96adb"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/verification.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 480,
+      "column": 112,
+      "endLine": 485,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "67275b6ed15c1de31aaa2f6a5eeaa3301287f6ee9b524fbb370f766baaa1a25e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 481,
+      "column": 57,
+      "endLine": 484,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "81396779f20b0a8beba43bc415176b72f58e0eb1b771a43c01c87a48b39be25b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 482,
+      "column": 16,
+      "endLine": 482,
+      "endColumn": 56,
+      "mutatorName": "OptionalChaining",
+      "replacement": "candidate.probes[probeClaimKey(claim)]",
+      "status": "generated",
+      "id": "d16c16fd3c430d43f99737dceda925da6e8fcacea861fa41f8f6d73eb328286a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 9,
+      "endLine": 483,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "172d504984a5db7e8851ad3fcd352f1622603f666d0876e579e9bc0bebdcb028",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 9,
+      "endLine": 483,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "610f1f75f735fc16616065f81eeaca018ee128d637870e4c168be6b975ed0db0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 9,
+      "endLine": 483,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe !== undefined",
+      "status": "generated",
+      "id": "32dde4ee337da81baa478eb4f6719e220d8f8d60e8ddb54ca552b1d80676a9ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 31,
+      "endLine": 483,
+      "endColumn": 33,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "555ec7a581142423525e3a9d17bc20b2c35ec3fc7aea1cb7ae82f772c55ca943",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 36,
+      "endLine": 483,
+      "endColumn": 110,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "9c671153192714bc5d4c3ea1605ad9e8a3e49b3e3c4457170e9e5da0958b85fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 37,
+      "endLine": 483,
+      "endColumn": 109,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "271afff206f5deef56fd7676ed9ecb625c0c64eb7e6ed7e3af85e64d39ed29c8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 46,
+      "endLine": 483,
+      "endColumn": 61,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "00a6d4f60ce5f41e492b8002bc7fc65f8cdbf05ff0ec2bac20ea9cefda920e8b"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 483,
+      "column": 50,
+      "endLine": 483,
+      "endColumn": 59,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "38864e6152f875470854070aeefb46cb14fb1658612455b1e814e0d3a510b8ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 494,
+      "column": 22,
+      "endLine": 501,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "de6726bbc4463f8855c45202f5f4c0e9382c46aee936c210c629ebf56a7ea876",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 497,
+      "column": 5,
+      "endLine": 497,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8a27a12d0d6669f52a19014c5a8080b621f491de92db218c57428e47cc226f0d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 497,
+      "column": 5,
+      "endLine": 497,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "16aa2a937ad693be56ce8ed382848ba14d4262edcbf1783068f9b17f1dedb1a0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a candidate no cut fits by why it is asked nothing, the same under every cut that refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 497,
+      "column": 5,
+      "endLine": 497,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "shown !== undefined",
+      "status": "generated",
+      "id": "fd3ab5b4b7004c8da53fbd8cb9b803c6b286e3bfa6c4475a44e4f15f4d841944",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 498,
+      "column": 28,
+      "endLine": 498,
+      "endColumn": 104,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "9fe5cf7b24f2bab5686847d91bf25f6c1a428076bc8fe695ce1df704b9648108",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 499,
+      "column": 5,
+      "endLine": 499,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9251c4a59a24dfa9ce376a47e187c510ef52f603c0422e18e4b684126d30b1cb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 499,
+      "column": 5,
+      "endLine": 499,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "efc6bed0fc4fe66deb95face4815bec9c013e87e4cb5782960c786e2440c2f90",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 499,
+      "column": 5,
+      "endLine": 499,
+      "endColumn": 46,
+      "mutatorName": "EqualityOperator",
+      "replacement": "shown.join(\"\\n\\n\") !== whole.join(\"\\n\\n\")",
+      "status": "generated",
+      "id": "e6f9ca38298692c7e15cf317d2c29753f75771911d2667e7e99e6f25a31e6095",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 499,
+      "column": 16,
+      "endLine": 499,
+      "endColumn": 22,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "115623c2a387112842d9e79033f2836a1d2aaf0c87b8790c48de4707e0d3e5a2"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 499,
+      "column": 39,
+      "endLine": 499,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "283d438574984a1638ac4d81885efc79c851bb25a703f73b3c4f9c4c1bcc8bd4"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 500,
+      "column": 19,
+      "endLine": 500,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6e693c513937ea9a6222370bfd52ebe12cfdd59d79076f5b4f2d77af83c97eeb"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 500,
+      "column": 38,
+      "endLine": 500,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2e9fe3d18202027c542f355df79f60775f8cf5c161ec5bd11f57d49b30654100"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 500,
+      "column": 60,
+      "endLine": 500,
+      "endColumn": 88,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "445e38244c55034f0de367eee4904f18923715e832fe2d4d384347ebcfb09dd7"
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 604,
+      "column": 36,
+      "endLine": 607,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d407b67c4f70a41118429bb45b2e9a5d57387643c7fb71273568a4e38ad13448",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 10,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "072a182ea5e40a7c33fee5a52ff3b16d95a3d7d9bde8e591dfa584774d01936b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 10,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5d4a98b6482529b5cfad4c39ec315cd8d14e8e7814afada8c642ef20be63c3db",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 10,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "cut !== undefined",
+      "status": "generated",
+      "id": "877604282b1677ac0e00b31ac9f463a50900bfde71f43c8616d9c428d913f39b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 30,
+      "endLine": 606,
+      "endColumn": 32,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "d88a90271979d66e9dbe64e8db0482489eb010a32847253b7166170b88cc7f78",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 35,
+      "endLine": 606,
+      "endColumn": 57,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "24c656849d00c5a4eff434b5b650634bf1df4eb835ff0c8f788a3901b723e176",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 606,
+      "column": 36,
+      "endLine": 606,
+      "endColumn": 56,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "42256dfd8ff118e52584cbf6abe39922805cd1ce6c49c72ae50f80ccfa49c9ad",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 617,
+      "column": 7,
+      "endLine": 617,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "31806aa8ea0c590ffa71e0eef1bd0480801143ab5db5243b4e40e3ca7e0cf15f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 617,
+      "column": 7,
+      "endLine": 617,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6d3c281ee2309304c4e359cb46ea2465dc6a795398d8eec7c18f6520fd99535a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 617,
+      "column": 7,
+      "endLine": 617,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Object.keys(cuts).length !== 0",
+      "status": "generated",
+      "id": "c443693c877fcdc14f0ff877fff1123417b1fd2188fd08557e51b06a27e06797",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys a request with no probe evidence, and one whose evidence fits, as main did before cuts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/verification.ts",
+      "line": 617,
+      "column": 45,
+      "endLine": 617,
+      "endColumn": 53,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c32d20988cdbe29958083bbbfa79b605ca9aea9c9a56bbafdcdd46222bf677b7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/verification-request-cut.test.ts",
+          "path": [
+            "verificationRequest's cut of probe evidence",
+            "keys the evidence a cut candidate's verifier is shown, and no cut for a candidate whose evidence fits"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 35,
+  "omitted": 0,
+  "unmutated": []
+}

@@ -122,6 +122,22 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(plan).toBeDefined();
 	});
 
+	it("hands the review its walkthrough, so a review that exports records can wait for it", async () => {
+		const written = Promise.resolve();
+		vi.spyOn(pipeline, "summarizeReview").mockReturnValue(written);
+		const handed: unknown[] = [];
+		const actual = pipeline.reviewChangeset;
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			handed.push(request.lensesStarted?.(), request.lensesStarted?.());
+			return actual(request);
+		});
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+		expect(handed).toEqual([written, written]);
+		expect(handed[0]).toBe(written);
+	});
+
 	it("times the wait for the walkthrough in no preparation step", async () => {
 		const reviewed = gate();
 		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {

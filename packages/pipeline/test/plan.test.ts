@@ -224,16 +224,16 @@ describe("reviewChangeset with a plan", () => {
 		const lineage = { model: backup, wanted: heavy, by: "melian.local.yaml", outside: true };
 		expect(review.verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([
 			{
-				name: "lens.contracts",
-				version: lenses.find(({ name }) => name === "contracts")!.version,
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
 				status: "failed",
 				level: "careful",
 				reason,
 				lineage,
 			},
 			{
-				name: "lens.correctness",
-				version: lenses.find(({ name }) => name === "correctness")!.version,
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "failed",
 				level: "careful",
 				reason,
@@ -266,15 +266,15 @@ describe("reviewChangeset with a plan", () => {
 			"none of nowhere/opus, which models.heavy accepts, has credentials, and models.heavy.unavailable is fail";
 		expect(review.verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([
 			{
-				name: "lens.contracts",
-				version: lenses.find(({ name }) => name === "contracts")!.version,
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
 				status: "failed",
 				level: "careful",
 				reason,
 			},
 			{
-				name: "lens.correctness",
-				version: lenses.find(({ name }) => name === "correctness")!.version,
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "failed",
 				level: "careful",
 				reason,
