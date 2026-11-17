@@ -974,6 +974,20 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		defect = (await runGolden(lost, { kind: "scripted", probes: "unconfined" })).findings;
 	});
 
+	it("exits 2 at the first review for a probe lens core refuses, or one the golden's policy does not load", async () => {
+		for (const [named, refusal] of [
+			["tests", /^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/],
+			["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
+		] as const) {
+			const using = runners({ goldens: () => [lost], golden: vi.fn(runGolden) });
+			const { status, lines, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_LENSES: named }, using);
+			expect(errors, named).toEqual([expect.stringMatching(refusal)]);
+			expect(status, named).toBe(2);
+			expect(using.golden, named).toHaveBeenCalledTimes(1);
+			expect(lines, named).toEqual(["pair: planner a/plan, prober b/probe on the medium tier"]);
+		}
+	});
+
 	it("scores each combination by its worst and mean pass, prints each review's notes, and spends every review", async () => {
 		let call = 0;
 		const record = (output: string) => ({

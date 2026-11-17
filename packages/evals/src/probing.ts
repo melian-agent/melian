@@ -45,6 +45,9 @@ import { EvalThinking } from "./thinking.ts";
 type Print = (line: string) => void;
 
 const probingLens = "trust-boundary";
+
+/** A probe lens a review's policy refuses, which ends the run with exit 2 rather than leaving the review unscored. */
+class ProbeLensRefusal extends Error {}
 // What the lens's reader refuses in a file a lens could otherwise read, so no finding can cite it.
 const unreadable: readonly RevisionErrorCode[] = ["notFound", "notAFile", "symlink", "binary"];
 const probingCheck = `lens.${probingLens}`;
@@ -105,12 +108,12 @@ export class ProbingCombination implements ProbingRoute {
 		for (const name of this.lenses) {
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined)
-				throw new Error(
+				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${visibleText(name)}, which the base's policy does not load`,
 				);
 			const refused = lens.probeRefusal();
 			if (refused !== undefined)
-				throw new Error(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
+				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
 		}
 		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
 		const governed = lenses
@@ -906,182 +909,189 @@ export async function measureProbing(
 	}
 	const models = await runners.models();
 	const results: ProbingCombinationResult[] = [];
-	for (const combination of settings.combinations) {
-		const mode = settings.mode(models, combination);
-		print(
-			visibleText(
-				combination.prober === undefined
-					? `${combination.label}: ${combination.planner}, without probes`
-					: `${combination.label}: planner ${combination.planner}, prober ${combination.prober} on the ${combination.proberTier} tier`,
-			),
-		);
-		const telemetry: StageTelemetry[] = [];
-		const shared = new Set<string>();
-		const passes: ProbingPass[] = [];
-		const summarised = (): ProbingCombinationResult => ({
-			combination: combination.toJSON(),
-			passes: [...passes],
-			...(passes.length === settings.passes && passes.every((pass) => pass.failed.length === 0)
-				? {
-						worst: summary(passes, (values) => Math.min(...values)),
-						mean: summary(passes, (values) => values.reduce((sum, value) => sum + value, 0) / values.length),
-					}
-				: {}),
-			spend: new StageTelemetry(
-				combination.label,
-				telemetry.flatMap(({ stages }) => stages),
-			).spend(),
-			sharedProberTier: [...shared].sort(),
-		});
-		for (let pass = 1; pass <= settings.passes; pass += 1) {
-			const failed: string[] = [];
-			const scores = [];
-			const reviews: ProbingReview[] = [];
-			const record = (
-				run: RangeRun,
-				line: string,
-				review: Pick<
-					ProbingReview,
-					| "name"
-					| "kind"
-					| "score"
-					| "found"
-					| "matched"
-					| "hits"
-					| "near"
-					| "hunks"
-					| "foundBy"
-					| "probedBy"
-					| "unseen"
-				>,
-			) => {
-				telemetry.push(run.telemetry);
-				const sharing = Object.entries(run.tiers)
-					.filter(
-						([check, tier]) =>
-							combination.prober !== undefined &&
-							!combination.lenses.some((name) => check === `lens.${name}`) &&
-							tier === combination.proberTier,
-					)
-					.map(([check]) => check)
-					.sort();
-				for (const check of sharing) shared.add(check);
-				reviews.push({
-					...review,
-					notes: run.notes,
-					sharedProberTier: sharing,
-					spend: run.telemetry.spend(),
-					telemetry: run.telemetry.toJSON(),
-					probers: run.probers,
-				});
-				print(visibleText(`${line}, ${run.telemetry.spend()}`));
-				for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
-				for (const shown of shownOutput(run.rendered, env)) print(shown);
-			};
-			const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
-				attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
-					const failure = error instanceof GoldenRunError ? error : undefined;
-					const ran = failure?.telemetry;
-					if (ran !== undefined) telemetry.push(ran);
-					failed.push(name);
-					reviews.push({
-						name,
-						kind,
-						error: error instanceof Error ? error.message : String(error),
-						notes: [],
-						sharedProberTier: [],
-						...(ran === undefined
-							? {}
-							: { spend: ran.spend(), telemetry: ran.toJSON(), probers: failure!.probers }),
-					});
-				});
-			for (const golden of goldens) {
-				const run = await tried(golden.name, "golden", () => runners.golden(golden, mode));
-				if (run === undefined) continue;
-				const score = scoreGolden(golden, run.findings, run.sightings);
-				scores.push(score);
-				record(
-					run,
-					`${combination.label} pass ${pass} ${golden.name}: precision ${fixed(score.precision)}, recall ${fixed(score.recall)} (${score.reported} reported, ${score.expected} expected)`,
-					{ name: golden.name, kind: "golden", score },
-				);
-			}
-			let found = 0;
-			for (const { miss, target, location, lenses } of misses) {
-				const scored = await tried(miss.name, "miss", async () => {
-					const run = await runners.range(target, mode);
-					try {
-						return { run, match: miss.match(run, location, settings.missReview) };
-					} catch (error) {
-						throw new GoldenRunError(error, run.telemetry, run.probers);
-					}
-				});
-				if (scored === undefined) continue;
-				const { run, match } = scored;
-				const hit = match.hits.length > 0;
-				const unseen = await miss.unscoped(run, target, location, lenses);
-				const unscoped = unseen === undefined ? undefined : miss.unseenReason(unseen, location);
-				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
-				const unadjudicated =
-					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
-				if (unadjudicated) failed.push(miss.name);
-				else if (hit) found += 1;
-				const span = (ranges: readonly (readonly [number, number])[]) =>
-					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
-				const overlapped = ({ hunks, hits }: Extract<MissMatch, { matched: "fix hunks" }>) => {
-					const overlaps = hunks.filter((hunk) => hits.some((each) => each.hunks.includes(hunk)));
-					return overlaps.length === 0 ? "none of them" : span(overlaps);
-				};
-				const said = !unadjudicated
-					? hit
-						? "found"
-						: "missed"
-					: unscoped !== undefined
-						? `unadjudicated, no score: ${unscoped}`
-						: match.matched === "fix hunks"
-							? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
-							: "unadjudicated, no score: matched by file and rule alone";
-				const foundBy = new Map(match.hits.map(({ sightedBy }) => [JSON.stringify(sightedBy), sightedBy]));
-				const probedBy = run.telemetry.stages
-					.filter((stage) => stage.role === "prober" && stage.outcome === "completed")
-					.map((stage) => stage.subject.slice(0, stage.subject.indexOf("@")));
-				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
-					name: miss.name,
-					kind: "miss",
-					...(unadjudicated ? {} : { found: hit }),
-					...match,
-					...(hit && !unadjudicated ? { foundBy: [...foundBy.values()] } : {}),
-					probedBy: [...new Set(probedBy)].sort(),
-					...(unseen === undefined ? {} : { unseen }),
-				});
-			}
-			passes.push({
-				...(goldens.length === 0 || failed.some((name) => goldens.some((golden) => golden.name === name))
-					? {}
-					: { goldens: scoreCorpus(scores) }),
-				...(misses.length === 0 || failed.some((name) => misses.some(({ miss }) => miss.name === name))
-					? {}
-					: { misses: { found, total: misses.length } }),
-				failed,
-				reviews,
-			});
-			save(false, [...results, summarised()]);
-		}
-		const result = summarised();
-		results.push(result);
-		print(
-			visibleText(
-				result.worst === undefined || result.mean === undefined
-					? `${combination.label}: no score, ${passes.flatMap((pass) => pass.failed).length} reviews had none, ${result.spend}`
-					: `${combination.label}: ${rendered("worst", result.worst)}; ${rendered("mean", result.mean)}; ${result.spend}`,
-			),
-		);
-		if (combination.prober !== undefined)
+	try {
+		for (const combination of settings.combinations) {
+			const mode = settings.mode(models, combination);
 			print(
 				visibleText(
-					`${combination.label}: other lens checks on the prober's ${combination.proberTier} tier: ${result.sharedProberTier.join(", ") || "none"}`,
+					combination.prober === undefined
+						? `${combination.label}: ${combination.planner}, without probes`
+						: `${combination.label}: planner ${combination.planner}, prober ${combination.prober} on the ${combination.proberTier} tier`,
 				),
 			);
+			const telemetry: StageTelemetry[] = [];
+			const shared = new Set<string>();
+			const passes: ProbingPass[] = [];
+			const summarised = (): ProbingCombinationResult => ({
+				combination: combination.toJSON(),
+				passes: [...passes],
+				...(passes.length === settings.passes && passes.every((pass) => pass.failed.length === 0)
+					? {
+							worst: summary(passes, (values) => Math.min(...values)),
+							mean: summary(passes, (values) => values.reduce((sum, value) => sum + value, 0) / values.length),
+						}
+					: {}),
+				spend: new StageTelemetry(
+					combination.label,
+					telemetry.flatMap(({ stages }) => stages),
+				).spend(),
+				sharedProberTier: [...shared].sort(),
+			});
+			for (let pass = 1; pass <= settings.passes; pass += 1) {
+				const failed: string[] = [];
+				const scores = [];
+				const reviews: ProbingReview[] = [];
+				const record = (
+					run: RangeRun,
+					line: string,
+					review: Pick<
+						ProbingReview,
+						| "name"
+						| "kind"
+						| "score"
+						| "found"
+						| "matched"
+						| "hits"
+						| "near"
+						| "hunks"
+						| "foundBy"
+						| "probedBy"
+						| "unseen"
+					>,
+				) => {
+					telemetry.push(run.telemetry);
+					const sharing = Object.entries(run.tiers)
+						.filter(
+							([check, tier]) =>
+								combination.prober !== undefined &&
+								!combination.lenses.some((name) => check === `lens.${name}`) &&
+								tier === combination.proberTier,
+						)
+						.map(([check]) => check)
+						.sort();
+					for (const check of sharing) shared.add(check);
+					reviews.push({
+						...review,
+						notes: run.notes,
+						sharedProberTier: sharing,
+						spend: run.telemetry.spend(),
+						telemetry: run.telemetry.toJSON(),
+						probers: run.probers,
+					});
+					print(visibleText(`${line}, ${run.telemetry.spend()}`));
+					for (const { reason, checks } of run.notes) print(visibleText(`    ${checks.join(", ")}: ${reason}`));
+					for (const shown of shownOutput(run.rendered, env)) print(shown);
+				};
+				const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
+					attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
+						if (error instanceof ProbeLensRefusal) throw error;
+						const failure = error instanceof GoldenRunError ? error : undefined;
+						const ran = failure?.telemetry;
+						if (ran !== undefined) telemetry.push(ran);
+						failed.push(name);
+						reviews.push({
+							name,
+							kind,
+							error: error instanceof Error ? error.message : String(error),
+							notes: [],
+							sharedProberTier: [],
+							...(ran === undefined
+								? {}
+								: { spend: ran.spend(), telemetry: ran.toJSON(), probers: failure!.probers }),
+						});
+					});
+				for (const golden of goldens) {
+					const run = await tried(golden.name, "golden", () => runners.golden(golden, mode));
+					if (run === undefined) continue;
+					const score = scoreGolden(golden, run.findings, run.sightings);
+					scores.push(score);
+					record(
+						run,
+						`${combination.label} pass ${pass} ${golden.name}: precision ${fixed(score.precision)}, recall ${fixed(score.recall)} (${score.reported} reported, ${score.expected} expected)`,
+						{ name: golden.name, kind: "golden", score },
+					);
+				}
+				let found = 0;
+				for (const { miss, target, location, lenses } of misses) {
+					const scored = await tried(miss.name, "miss", async () => {
+						const run = await runners.range(target, mode);
+						try {
+							return { run, match: miss.match(run, location, settings.missReview) };
+						} catch (error) {
+							throw new GoldenRunError(error, run.telemetry, run.probers);
+						}
+					});
+					if (scored === undefined) continue;
+					const { run, match } = scored;
+					const hit = match.hits.length > 0;
+					const unseen = await miss.unscoped(run, target, location, lenses);
+					const unscoped = unseen === undefined ? undefined : miss.unseenReason(unseen, location);
+					// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
+					const unadjudicated =
+						unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
+					if (unadjudicated) failed.push(miss.name);
+					else if (hit) found += 1;
+					const span = (ranges: readonly (readonly [number, number])[]) =>
+						ranges.map(([first, last]) => `${first}-${last}`).join(", ");
+					const overlapped = ({ hunks, hits }: Extract<MissMatch, { matched: "fix hunks" }>) => {
+						const overlaps = hunks.filter((hunk) => hits.some((each) => each.hunks.includes(hunk)));
+						return overlaps.length === 0 ? "none of them" : span(overlaps);
+					};
+					const said = !unadjudicated
+						? hit
+							? "found"
+							: "missed"
+						: unscoped !== undefined
+							? `unadjudicated, no score: ${unscoped}`
+							: match.matched === "fix hunks"
+								? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
+								: "unadjudicated, no score: matched by file and rule alone";
+					const foundBy = new Map(match.hits.map(({ sightedBy }) => [JSON.stringify(sightedBy), sightedBy]));
+					const probedBy = run.telemetry.stages
+						.filter((stage) => stage.role === "prober" && stage.outcome === "completed")
+						.map((stage) => stage.subject.slice(0, stage.subject.indexOf("@")));
+					record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
+						name: miss.name,
+						kind: "miss",
+						...(unadjudicated ? {} : { found: hit }),
+						...match,
+						...(hit && !unadjudicated ? { foundBy: [...foundBy.values()] } : {}),
+						probedBy: [...new Set(probedBy)].sort(),
+						...(unseen === undefined ? {} : { unseen }),
+					});
+				}
+				passes.push({
+					...(goldens.length === 0 || failed.some((name) => goldens.some((golden) => golden.name === name))
+						? {}
+						: { goldens: scoreCorpus(scores) }),
+					...(misses.length === 0 || failed.some((name) => misses.some(({ miss }) => miss.name === name))
+						? {}
+						: { misses: { found, total: misses.length } }),
+					failed,
+					reviews,
+				});
+				save(false, [...results, summarised()]);
+			}
+			const result = summarised();
+			results.push(result);
+			print(
+				visibleText(
+					result.worst === undefined || result.mean === undefined
+						? `${combination.label}: no score, ${passes.flatMap((pass) => pass.failed).length} reviews had none, ${result.spend}`
+						: `${combination.label}: ${rendered("worst", result.worst)}; ${rendered("mean", result.mean)}; ${result.spend}`,
+				),
+			);
+			if (combination.prober !== undefined)
+				print(
+					visibleText(
+						`${combination.label}: other lens checks on the prober's ${combination.proberTier} tier: ${result.sharedProberTier.join(", ") || "none"}`,
+					),
+				);
+		}
+	} catch (error) {
+		if (!(error instanceof ProbeLensRefusal)) throw error;
+		printError(visibleText(error.message));
+		return 2;
 	}
 	save(true, results);
 	return results.every((result) => result.worst !== undefined) ? 0 : 1;
