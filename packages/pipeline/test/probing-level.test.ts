@@ -824,6 +824,42 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(stored?.findings).toEqual({ [verdict.counted()[0]!.id]: first });
 	});
 
+	// One finding reported again is a correction, and corrections are capped; one that answers a new attack is not.
+	it("answers five failed attacks with one finding reported on each of their probes", async () => {
+		const ids = (messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) => [
+			...new Set(
+				[
+					...messages
+						.map(textOf)
+						.join("\n")
+						.matchAll(/probe (p[0-9]+)/g),
+				].map((match) => match[1]!),
+			),
+		];
+		const attacks = [1, 2, 3, 4, 5];
+		const { run, requests } = await review({
+			planner: [
+				call("record_plan", { attacks: attacks.map(() => attack) }),
+				fauxAssistantMessage("Planned 5 attacks."),
+			],
+			prober: [
+				...attacks.map((each) => call("run_probe", { attack: each, script: failing })),
+				...attacks.map((each) => (messages: Parameters<typeof ids>[0]) =>
+					call("report_finding", finding(ids(messages)[each - 1]!)),
+				),
+				// Attack 1 is answered, so this report is a correction, the fifth, and refused.
+				(messages) => call("report_finding", finding(ids(messages)[0]!)),
+				fauxAssistantMessage("Reported 1 finding."),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict).reason ?? "").not.toContain("left attack");
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
+		expect(textOf(requests[prober]![11]!.at(-1)!)).toMatch(/^\[not recorded: this lens has corrected finding/);
+	});
+
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
 		const { run } = await review({
 			planner: plan,

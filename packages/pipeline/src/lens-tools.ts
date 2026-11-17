@@ -1630,11 +1630,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			document.spend.capped = lens.budget;
 			return "capped";
 		}
-		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
+		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped. A report
+		// that answers an attack no finding has is no correction: the plan bounds those, and without it the attack ends
+		// the lens unanswered.
+		const answers = probe !== undefined && refuted === undefined && !probing!.answered?.includes(probe.attack);
 		document.spend.reports ??= {};
 		const calls = document.spend.reports[id] ?? [];
 		if (!calls.includes(api.taskId)) {
-			if (calls.length > maxCorrections) return false;
+			if (calls.length > maxCorrections && !answers) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
 		// A refutation stores no sighting: the lens says the finding an earlier run reported, by the ID it was given, is
