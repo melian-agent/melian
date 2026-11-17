@@ -15,7 +15,7 @@ The list was established by asking Enola what it reads policy from, not by readi
 - An exemption attaches to a `use_recipe` entry under `enola/constraints/`, already in the list.
 - Melian writes the configuration Enola reads, from the base's `enola.yaml` or `mcp-arch.yaml`, so a head's copy of either never reaches it.
 
-The list is not every file that steers Enola. Its packwerk check reads `packwerk.yml` and each package's `package.yml` from the head, so a head can turn that check off by editing them, as the review of record on [pull request #534](https://github.com/melian-agent/melian/pull/534) showed. Whether those files raise a policy notice, or come from the base, is with the maintainer. Until then they are read from the head, as before.
+The list is not every file that steers Enola. Its packwerk check reads `packwerk.yml` and each package's `package.yml` from the head, so a head can turn that check off by editing them, as the review of record on [pull request #534](https://github.com/melian-agent/melian/pull/534) showed. They are read from the head, as before. The maintainer ruled on 2026-11-17, in the coordinator's session, that they get a follow-up, [issue #538](https://github.com/melian-agent/melian/issues/538).
 
 Raise the list with the pin. A later Enola that reads policy from a new place needs it added, and the test that reads every listed path from the base updated with it.
 
