@@ -655,6 +655,24 @@ describe("the sweep's bound", { timeout: 60_000 }, () => {
 		expect({ ...sweep, removed: [...sweep.removed].sort() }).toEqual({ removed: all.sort(), kept: [], failed: [] });
 	});
 
+	it("sweeps in name order what it listed before the bound, whatever order the directory lists its entries", async () => {
+		plantIndexes(sweepBound + 1);
+		const all = indexes().sort();
+		const restore = listing((_path, held) => held.sort().reverse());
+		try {
+			const sweep = await open();
+			expect(indexes()).toEqual([all[0]]);
+			expect(sweep).toEqual({
+				removed: all.slice(1).map((entry) => `records.git/${entry}`),
+				kept: [],
+				failed: [],
+				bounded: true,
+			});
+		} finally {
+			restore();
+		}
+	});
+
 	it(`lists ${sweepBound} of ${sweepBound + 1} leftovers in one directory, and says it stopped at the bound`, async () => {
 		plantIndexes(sweepBound + 1);
 		const all = indexes();
