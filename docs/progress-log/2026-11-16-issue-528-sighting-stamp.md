@@ -10,7 +10,7 @@ The second done-when item, a reader on another host reading a shared dismissal a
 
 `packages/pipeline/test/fixtures/stored-checks-v4/run.json` was recorded by the base's own code, and `check-stamp-reopen.test.ts` reopens it from SQLite and resumes the base's check and checks tasks under today's versions.
 
-[Pull request #524](https://github.com/melian-agent/melian/pull/524) and [pull request #530](https://github.com/melian-agent/melian/pull/530) conflict in meaning once both are merged: two tests in `review-records-static-text.test.ts` used the tool version `1`, which #530's semver rule withholds. This branch changes it to `1.0.0`.
+The branch merges [pull request #524](https://github.com/melian-agent/melian/pull/524), on `main` as e5648b2e, and [pull request #530](https://github.com/melian-agent/melian/pull/530)'s head a3dcaeb4. A check record and a dismissal apply #524's rewrite of a static finding's text, then #530's version rule. Two of #530's tests in `review-records-withheld.test.ts` changed in the merge. Its dismissal test now hands in a proof, which this branch requires for a static dismissal. Its test of a sighting with no version now asserts the source the export keeps, because #524 rewrites the finding's text. An earlier commit changed the tool version `1` to `1.0.0` in `review-records-static-text.test.ts`; it was reverted, since those tests pass unchanged on #530's head.
 
 Files that guard trust or durability: `packages/pipeline/src/findings.ts`, `checks.ts`, `static-proof.ts`, `review.ts` and `review-records.ts`.
 
