@@ -22,7 +22,7 @@ One sweep lists at most 1,000 leftovers, `sweepBound`, across the state director
 
 A pid means something only inside the namespace whose table is read. The device and inode are what the kernel gives to tell one namespace from another, and reading them costs one `stat`. A failed read gives a key the sweep can never match, so a mistake costs disk, never a live call's index.
 
-One limit stays. Every Linux kernel gives its first pid namespace the same inode, so two separate machines with one host name and a shared state directory still read as one. Melian does not support sharing a state directory across hosts.
+One limit stays. Every Linux kernel gives its first pid namespace the same inode, and hands out the rest in sequence, reusing one once its namespace ends. So two separate machines with one host name and a shared state directory can still read as one, in their first namespaces or in containers started alike. Melian does not support sharing a state directory across hosts.
 
 Leftovers that an earlier build named on Linux, after the host's name alone, no longer match this host and are kept and named by `melian doctor`. That build was on `main` only from [pull request #519](https://github.com/melian-agent/melian/pull/519)'s merge until this change, so few exist, and a person removes any by hand.
 
