@@ -1,0 +1,43 @@
+{
+  "commit": "c6db71ed",
+  "base": "327377b3d8d0b25e379768e1239f0c98af03a32d",
+  "head": "c1e0ec8a0d1afbbaa82f0f8139fffa532d506783",
+  "revision": "327377b3d8d0b25e379768e1239f0c98af03a32d..c1e0ec8a0d1afbbaa82f0f8139fffa532d506783",
+  "lensTask": {
+    "id": 9,
+    "version": 8,
+    "result": {
+      "trust-boundary@24aa8e2540b4@deep": {
+        "status": "done",
+        "model": "faux/faux-1",
+        "usage": {
+          "models": [
+            "faux/faux-1"
+          ],
+          "tokens": 35672,
+          "cost": 0
+        },
+        "probing": {
+          "prober": 28,
+          "model": "faux/faux-1",
+          "attacks": 2,
+          "probes": 1,
+          "milliseconds": 75,
+          "skipped": [
+            2
+          ],
+          "unanswered": []
+        },
+        "conversation": 10,
+        "prober": 28
+      }
+    }
+  },
+  "record": {
+    "name": "lens.trust-boundary",
+    "status": "ran",
+    "level": "deep",
+    "reason": "it planned 2 attacks and ran 1 probe in 0.1 s, and skipped attack 2",
+    "version": "24aa8e2540b4"
+  }
+}
