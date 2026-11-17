@@ -283,11 +283,11 @@ describe("an exported record keeps what a static finding shares", () => {
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
 		const lens: StoredFinding[] = stored.map((finding) => ({
 			...finding,
-			properties: { ...finding.properties, source: { check: "lens.correctness", version: "1@careful" } },
+			properties: { ...finding.properties, source: { check: "lens.correctness", version: "0123456789ab@careful" } },
 		}));
 		const run = {
 			name: "correctness",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 			request: "d".repeat(64),
 			probe: false,

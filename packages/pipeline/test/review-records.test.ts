@@ -6,7 +6,7 @@ const base = "a".repeat(40);
 const head = "b".repeat(40);
 const changeset = "c".repeat(64);
 const request = "d".repeat(64);
-const lensRun = { name: "security", version: "abc", level: "careful", request, probe: false } as const;
+const lensRun = { name: "security", version: "0123456789ab", level: "careful", request, probe: false } as const;
 
 function finding(check: string, version: string | undefined, rule: string): StoredFinding {
 	return Finding.create({
@@ -27,8 +27,8 @@ const records = () => ReviewRecords.of(changeset, { base, head });
 
 describe("ReviewRecords", () => {
 	it("writes a lens run's record that its kind's check accepts, with its findings in ID order", () => {
-		const first = finding("lens.security", "abc@careful", "one");
-		const second = finding("lens.security", "abc@careful", "two");
+		const first = finding("lens.security", "0123456789ab@careful", "one");
+		const second = finding("lens.security", "0123456789ab@careful", "two");
 		const [low, high] = first.properties.id < second.properties.id ? [first, second] : [second, first];
 		const record = records().lens(
 			lensRun,
@@ -45,7 +45,7 @@ describe("ReviewRecords", () => {
 			payload: {
 				v: 1,
 				name: "security",
-				version: "abc",
+				version: "0123456789ab",
 				level: "careful",
 				probe: false,
 				outcome: {
@@ -64,14 +64,14 @@ describe("ReviewRecords", () => {
 	});
 
 	it("gives the same bytes and ID when a record is built twice", () => {
-		const sighting = finding("lens.security", "abc@careful", "one");
+		const sighting = finding("lens.security", "0123456789ab@careful", "one");
 		const build = () => records().lens(lensRun, { status: "unanswered", reason: "no reply" }, [sighting]);
 		expect(build().bytes).toBe(build().bytes);
 		expect(build().id).toBe(build().id);
 	});
 
 	it("refuses a lens record holding another producer's finding", () => {
-		const other = finding("lens.design", "abc@careful", "one");
+		const other = finding("lens.design", "0123456789ab@careful", "one");
 		expect(() => records().lens(lensRun, { status: "unanswered", reason: "no reply" }, [other])).toThrow(RecordError);
 	});
 
@@ -89,7 +89,7 @@ describe("ReviewRecords", () => {
 	});
 
 	it("writes a dismissal with no revision, its rounds sorted once each", () => {
-		const sighting = finding("lens.security", "abc@careful", "one");
+		const sighting = finding("lens.security", "0123456789ab@careful", "one");
 		const rounds = ["2".repeat(64), "1".repeat(64), "2".repeat(64)];
 		const record = records().dismissal({
 			finding: sighting.properties.id,
@@ -99,7 +99,7 @@ describe("ReviewRecords", () => {
 			severity: "P1",
 			sighting: { revision: `${base}..${head}`, finding: sighting },
 			rounds,
-			trigger: { hash: "h", proof: [] },
+			trigger: { hash: "a".repeat(64), proof: [] },
 		});
 		const json = record.toJSON();
 		expect(json.revision).toBeUndefined();
@@ -119,7 +119,7 @@ describe("ReviewRecords", () => {
 			rounds: "id",
 			trigger: "id",
 		};
-		const sighting = finding("lens.security", "abc@careful", "one");
+		const sighting = finding("lens.security", "0123456789ab@careful", "one");
 		const record = records().dismissal({
 			finding: sighting.properties.id,
 			by: "writer-name-7c1d",
@@ -128,7 +128,7 @@ describe("ReviewRecords", () => {
 			severity: "P1",
 			sighting: { revision: `${base}..${head}`, finding: sighting },
 			rounds: [],
-			trigger: { hash: "h", proof: [{ file: "src/a.ts", hash: "f" }] },
+			trigger: { hash: "a".repeat(64), proof: [{ file: "src/a.ts", hash: "f".repeat(64) }] },
 		});
 		const { by, reason, ...rest } = record.toJSON().payload as Record<string, unknown>;
 		expect([by, reason]).toEqual(["writer-name-7c1d", "writer-reason-7c1d"]);
@@ -185,8 +185,8 @@ describe("ReviewRecords", () => {
 			allowSkip: ["lens.design", "decisions.triage", "lens.design"],
 			producers: [
 				{ check: "static.biome", version: "2.0.0" },
-				{ check: "lens.security", version: "abc@quick", ids: kept },
-				{ check: "lens.security", version: "abc@careful" },
+				{ check: "lens.security", version: "0123456789ab@quick", ids: kept },
+				{ check: "lens.security", version: "0123456789ab@careful" },
 				{ check: "guardrails" },
 				{ check: "static.biome", version: "2.0.0" },
 			],
@@ -227,8 +227,8 @@ describe("ReviewRecords", () => {
 			allowSkip: ["decisions.triage", "lens.design"],
 			producers: [
 				{ check: "guardrails", version: null, ids: null },
-				{ check: "lens.security", version: "abc@careful", ids: null },
-				{ check: "lens.security", version: "abc@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
+				{ check: "lens.security", version: "0123456789ab@careful", ids: null },
+				{ check: "lens.security", version: "0123456789ab@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
 				{ check: "static.biome", version: "2.0.0", ids: null },
 			],
 		});

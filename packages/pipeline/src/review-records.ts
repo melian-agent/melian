@@ -7,12 +7,17 @@ import {
 	type DismissalPayload,
 	type EnolaSnapshot,
 	type FindingSource,
+	hashPattern,
+	isToolVersion,
 	KeyedRequest,
 	type LensPayload,
 	type NamedRecord,
+	objectIdPattern,
 	type RecordJson,
 	Revision,
 	type RunStage,
+	receiptPattern,
+	recordCodes,
 	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
@@ -20,14 +25,15 @@ import {
 	type StoredDecision,
 	type StoredFinding,
 	type StoredRunDetails,
+	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
 	type Verification,
 	type VerificationPayload,
 	type Walkthrough,
 	type WalkthroughPayload,
+	withheld,
 } from "@melian-agent/core";
-import { valid } from "semver";
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
@@ -63,11 +69,19 @@ export type LensRunIdentity = {
 	readonly probe: boolean;
 };
 
+type Outcome = VerificationPayload["outcomes"][number]["outcome"];
+/** A candidate's outcome as the verifier ended it, its reason not yet withheld. */
+export type VerificationOutcome = Outcome extends infer Each
+	? Each extends { reason: unknown }
+		? Omit<Each, "reason"> & { reason: string }
+		: Each
+	: never;
+
 /** A verification's claims, the dismissals its verifier was shown, and each candidate's outcome, as its record holds them. */
 export type VerificationFacts = {
 	readonly claims: readonly { id: string; source: FindingSource; verification: Verification }[];
 	readonly dismissals: readonly { finding: string; record: string }[];
-	readonly outcomes: VerificationPayload["outcomes"];
+	readonly outcomes: readonly { candidate: string; outcome: VerificationOutcome }[];
 	// The verifier's check as the review decided it, or none while its run has not ended.
 	readonly check?: CheckRecord;
 };
@@ -87,49 +101,20 @@ export type DismissalFacts = {
 const micros = (dollars: number): number => Math.round(dollars * 1_000_000);
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 
-/** What an exported record says in place of text a tool, a provider or the head's code may have written. */
-export const withheld = "Melian shares none of this text, which the reviewing host's store and terminal hold";
+export { withheld };
 
-// The codes a record may carry as they are: a check error's, a task outcome's, and the account's own.
-const codes: ReadonlySet<string> = new Set([
-	...([
-		"unknownCheck",
-		"unknownTier",
-		"tierCycle",
-		"unknownConversation",
-		"notCompleted",
-		"noEnvironment",
-		"worktreeFailed",
-		"toolMissing",
-		"toolFailed",
-		"timeout",
-		"aborted",
-		"nothingToCheck",
-		"outputTooLarge",
-		"invalidOutput",
-		"unreadable",
-		"tooLarge",
-	] satisfies CheckErrorCode[]),
-	"failed",
-	"orphaned",
-	"faulted",
-	"no record",
-	"unexpected",
-	"withheld",
-]);
-const shared = (text: string): string => (codes.has(text) ? text : withheld);
-// A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
-// form of at most 64 characters, or Melian's `unavailable`, leaves the machine. A lens's version is Melian's own.
+const codes: ReadonlySet<string> = new Set(recordCodes);
+const shared = <T extends string>(text: string): T => (codes.has(text) ? text : withheld) as T;
+// A tool's version comes from its installed manifest, which the head can write, so only one core's `isToolVersion`
+// takes leaves the machine. A lens's version and the verifier's are Melian's own.
 const toolVersion = (version: string | undefined): string | null =>
-	version === undefined
-		? null
-		: version === "unavailable" || (version.length <= 64 && valid(version) === version)
-			? version
-			: withheld;
+	version === undefined ? null : isToolVersion(version) ? version : withheld;
 const sharedVersion = ({ check, version }: FindingSource): string | null =>
-	check.startsWith("lens.") ? orNull(version) : toolVersion(version);
-const caveat = (text: string): string =>
-	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? text : withheld;
+	check.startsWith("lens.") || check === "verifier" ? orNull(version) : toolVersion(version);
+const hashed = new RegExp(hashPattern);
+const coverageId = (id: string | undefined): string | null => (id !== undefined && hashed.test(id) ? id : null);
+const caveat = (text: string): typeof blindCallers | typeof lightTriage | typeof withheld =>
+	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? lightTriage : withheld;
 const byId = (a: StoredFinding, b: StoredFinding): number =>
 	a.properties.id < b.properties.id ? -1 : a.properties.id > b.properties.id ? 1 : 0;
 
@@ -162,7 +147,7 @@ export class ReviewRecords {
 	 */
 	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
 		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
-		if (result.status === "ran" && result.snapshots?.some((each) => !hashed(each))) {
+		if (result.status === "ran" && result.snapshots?.some((each) => !minted(each))) {
 			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
 			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
 		}
@@ -210,7 +195,7 @@ export class ReviewRecords {
 				.sort((a, b) => compare(a.candidate, b.candidate))
 				.map(({ candidate, outcome }) => ({
 					candidate,
-					outcome: "reason" in outcome ? { ...outcome, reason: shared(outcome.reason) } : outcome,
+					outcome: ("reason" in outcome ? { ...outcome, reason: shared(outcome.reason) } : outcome) as Outcome,
 				})),
 			check: facts.check === undefined ? null : (decided(facts.check) as DecidedCheck),
 		};
@@ -435,7 +420,7 @@ function sighting(finding: StoredFinding): StoredFinding {
 	};
 }
 
-// Melian checks only these three fields of Enola's receipt; the rest is Enola's text.
+// Melian checks only these three fields of Enola's receipt, in the form core's schema takes; the rest is Enola's text.
 function receipt(text: string): string {
 	let parsed: { format_version?: unknown; snapshot_id?: unknown; enola_version?: unknown };
 	try {
@@ -444,21 +429,19 @@ function receipt(text: string): string {
 		return withheld;
 	}
 	const { format_version, snapshot_id, enola_version } = parsed ?? {};
-	if (
-		format_version !== 1 ||
-		typeof snapshot_id !== "string" ||
-		!/^sha256:[a-f0-9]{64}$/.test(snapshot_id) ||
-		typeof enola_version !== "string" ||
-		!/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)
-	)
-		return withheld;
-	return JSON.stringify({ format_version, snapshot_id, enola_version });
+	const kept = JSON.stringify({ format_version, snapshot_id, enola_version });
+	return new RegExp(receiptPattern).test(kept) ? kept : withheld;
 }
 
-// Melian computes each of a snapshot's identities as a SHA-256 hash, so anything else in one is text it did not write.
-function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
+// Melian computes each of a snapshot's identities as a SHA-256 hash, and its commit is a git object ID, so anything else
+// in one is text Melian did not write.
+function minted({ commit, snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
 	const ids = [cacheKey, coverage?.graph, coverage?.review, coverage?.test].filter((id) => id !== undefined);
-	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
+	return (
+		new RegExp(objectIdPattern).test(commit) &&
+		new RegExp(snapshotIdPattern).test(snapshotId) &&
+		ids.every((id) => hashed.test(id))
+	);
 }
 
 function shareable(finding: StoredFinding): StoredFinding {
@@ -515,7 +498,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "failed",
-				reason: codes.has(result.reason) ? result.reason : "unexpected",
+				reason: codes.has(result.reason) ? (result.reason as (typeof recordCodes)[number]) : "unexpected",
 				error: withheld,
 			};
 	}
@@ -528,7 +511,7 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 		status: record.status,
 		reason: record.reason === undefined ? null : shared(record.reason),
 		error: record.error === undefined ? null : shared(record.error),
-		version: orNull(record.version),
+		version: sharedVersion({ check: record.name, version: record.version }),
 		level: orNull(record.level),
 		budgetEnded:
 			budgetEnded === undefined
@@ -543,7 +526,11 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 		coverage:
 			coverage === undefined
 				? null
-				: { graph: orNull(coverage.graph), review: orNull(coverage.review), test: orNull(coverage.test) },
+				: {
+						graph: coverageId(coverage.graph),
+						review: coverageId(coverage.review),
+						test: coverageId(coverage.test),
+					},
 		lineage:
 			lineage === undefined
 				? null

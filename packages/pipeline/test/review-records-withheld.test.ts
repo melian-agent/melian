@@ -10,7 +10,13 @@ const records = ReviewRecords.of("c".repeat(64), { base: "a".repeat(40), head: "
 const bytes = (record: SharedRecord) => JSON.stringify(record.toJSON());
 const payload = (record: SharedRecord) => record.toJSON().payload as Record<string, unknown>;
 
-const run = { name: "correctness", version: "1", level: "careful", request: "d".repeat(64), probe: false } as const;
+const run = {
+	name: "correctness",
+	version: "0123456789ab",
+	level: "careful",
+	request: "d".repeat(64),
+	probe: false,
+} as const;
 const decided = (record: CheckRecord) => ({
 	reason: null,
 	error: null,
@@ -67,7 +73,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 	it("as a lens that did not answer, gave up, or failed with a provider's message and caveats", () => {
 		const check: CheckRecord = {
 			name: "lens.correctness",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 			status: "failed",
 			reason: token,
@@ -111,7 +117,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			// A static finding's dismissal is not shared at all, so a guardrail's carries the version here.
 			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
 			rounds: [],
-			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
+			trigger: { hash: "a".repeat(64), proof: [{ file: "src/run.ts", hash: "f".repeat(64) }] },
 		});
 		expect(bytes(dismissal)).not.toContain(token);
 	});
@@ -230,16 +236,16 @@ describe("an exported record keeps what Melian defines", () => {
 	});
 
 	it("keeps a lens's own version where a finding's source names it", () => {
-		const finding = sighting("abc@careful", "lens.security");
+		const finding = sighting("0123456789ab@careful", "lens.security");
 		const claims = [{ id: finding.properties.id, source: finding.properties.source, verification: verdict }];
 		const record = records.verification("f".repeat(64), { claims, dismissals: [], outcomes: [] });
 		expect((payload(record).claims as { source: unknown }[])[0]!.source).toEqual({
 			check: "lens.security",
-			version: "abc@careful",
+			version: "0123456789ab@careful",
 		});
-		const producers = [{ check: "lens.security", version: "abc@careful" }];
+		const producers = [{ check: "lens.security", version: "0123456789ab@careful" }];
 		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
-		expect((account.producers as { version: string }[])[0]!.version).toBe("abc@careful");
+		expect((account.producers as { version: string }[])[0]!.version).toBe("0123456789ab@careful");
 	});
 
 	it.each([
@@ -257,13 +263,13 @@ describe("an exported record keeps what Melian defines", () => {
 
 	it("keeps apart two producers of one check whose versions it keeps", () => {
 		const producers = [
-			{ check: "lens.security", version: "b@careful" },
-			{ check: "lens.security", version: "a@careful" },
+			{ check: "lens.security", version: "bbbbbbbbbbbb@careful" },
+			{ check: "lens.security", version: "aaaaaaaaaaaa@careful" },
 		];
 		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
 		expect(account.producers).toEqual([
-			{ check: "lens.security", version: "a@careful", ids: null },
-			{ check: "lens.security", version: "b@careful", ids: null },
+			{ check: "lens.security", version: "aaaaaaaaaaaa@careful", ids: null },
+			{ check: "lens.security", version: "bbbbbbbbbbbb@careful", ids: null },
 		]);
 	});
 
@@ -309,7 +315,7 @@ describe("an exported record keeps what Melian defines", () => {
 	it("keeps Melian's own caveats and withholds the rest of a lens's text", () => {
 		const check: CheckRecord = {
 			name: "lens.correctness",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 			status: "failed",
 			reason: token,
@@ -321,7 +327,7 @@ describe("an exported record keeps what Melian defines", () => {
 		expect(payload(record).check).toEqual(
 			decided({
 				name: "lens.correctness",
-				version: "1",
+				version: "0123456789ab",
 				level: "careful",
 				status: "failed",
 				reason: withheld,
@@ -363,11 +369,11 @@ describe("an exported record keeps what Melian defines", () => {
 		const record = records.lens(run, { status: "done" }, [], {
 			name: "lens.correctness",
 			status: "ran",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 		});
 		expect(payload(record).check).toEqual(
-			decided({ name: "lens.correctness", status: "ran", version: "1", level: "careful" }),
+			decided({ name: "lens.correctness", status: "ran", version: "0123456789ab", level: "careful" }),
 		);
 	});
 });
