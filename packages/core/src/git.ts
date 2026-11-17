@@ -65,7 +65,8 @@ const repositoryLocalVariables = [
 function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 	for (const name of repositoryLocalVariables) delete env[name];
-	return env;
+	// A ref under refs/replace puts another object behind an ID, so a commit Melian names could show a different tree.
+	return { ...env, GIT_NO_REPLACE_OBJECTS: "1" };
 }
 
 /** Runs Git in cwd with repository-local environment variables removed, and resolves with its exit code and output. */

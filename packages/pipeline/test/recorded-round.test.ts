@@ -45,6 +45,7 @@ import { provingHunk, reviewFiles } from "../src/lens-tools.ts";
 import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
+import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
 
 const correctness = "You are the correctness reviewer";
 const verifierMarker = "Melian adversarial verifier";
@@ -201,11 +202,12 @@ function unexported(reviewed: Reviewed): string[] {
 		.filter((name) => !decided.has(name));
 }
 
-// Asks the same of the reader as of the host, for one end state: the whole verdict, and a record for every check.
+// Asks the same of the reader as of the host, for one end state: the whole verdict, but the text a record withholds, and a
+// record for every check.
 async function decidesAsTheHost(scenario: Scenario): Promise<Verdict> {
 	const reviewed = await review(exported(), scenario);
 	expect(unexported(reviewed)).toEqual([]);
-	expect((await read(reviewed)).toJSON()).toEqual(reviewed.verdict.toJSON());
+	expectSharedVerdict((await read(reviewed)).toJSON(), reviewed.verdict.toJSON());
 	return reviewed.verdict;
 }
 
@@ -379,7 +381,7 @@ describe("a round read back from its records", () => {
 		const verdict = await readUnder(reviewed, policy);
 
 		expect(reviewed.verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
 	});
 });
 
@@ -419,7 +421,7 @@ describe("a round read with the dismissals shared beside it", () => {
 		// The host's round ran no verifier, so its records hold no claim of the first round's verification.
 		const unverified = (each: Verdict) =>
 			JSON.parse(JSON.stringify(each.toJSON(), (key, value) => (key === "verification" ? undefined : value)));
-		expect(unverified(verdict)).toEqual(unverified(reviewed.verdict));
+		expectSharedVerdict(unverified(verdict), unverified(reviewed.verdict));
 		expect(standingOf(verdict)).toEqual([
 			[id, "dismissed", { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" }],
 		]);
@@ -568,7 +570,7 @@ describe("a round decided under another policy", () => {
 		const reviewed = await review(exported(), { policy: worktree });
 		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
 		expect(reviewed.verdict.status).toBe("findings");
-		expect((await readUnder(reviewed, worktree)).toJSON()).toEqual(reviewed.verdict.toJSON());
+		expectSharedVerdict((await readUnder(reviewed, worktree)).toJSON(), reviewed.verdict.toJSON());
 	});
 
 	it("reads not reviewed once melian.yaml changes what blocks between the review and the read", async () => {
@@ -606,7 +608,7 @@ describe("a round decided under another policy", () => {
 			...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
 			...(given.policy === undefined ? {} : { policy: given.policy }),
 		});
-		expect(verdict.toJSON()).toEqual(reviewed.verdict.toJSON());
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
 	});
 
 	it("reads not reviewed when the review read no policy source and the reader reads one", async () => {

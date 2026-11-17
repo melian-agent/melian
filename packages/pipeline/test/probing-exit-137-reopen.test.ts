@@ -45,6 +45,8 @@ describe("a probe main recorded as exit 137 with no signal", () => {
 		const probing = await reviewer.snapshot(ProbingDocument, run!.probing.prober as ConversationId, context);
 		const probes = Object.values(probing?.probes ?? {});
 		expect(probes.map(({ result }) => result)).toEqual([ended]);
+		// Main's prober reported a finding on attack 1's probe, which version 3 reads as answering attack 1.
+		expect(probing?.answered).toEqual([1]);
 		const root = await reviewer.root(context);
 		const reruns = Object.values((await reviewer.snapshot(ProbeReruns, root.id, context))!.runs[recorded.revision]!);
 		expect(reruns).toEqual([{ result: ended, milliseconds: expect.any(Number) }]);
@@ -52,7 +54,8 @@ describe("a probe main recorded as exit 137 with no signal", () => {
 	});
 });
 
-// Bubblewrap reports a signal n as exit 128 + n, and n is at least 1, so exit 128 is the probe's own exit.
+// Bubblewrap reports a signal n as exit 128 + n, and n is 1 to 64, the most Linux has, so exits 128 and 193 to 255 are
+// the probe's own.
 describe("reading a version-1 probe result", () => {
 	const result = (exitCode: number | null, signal: string | null = null) => ({
 		exitCode,
@@ -67,12 +70,15 @@ describe("reading a version-1 probe result", () => {
 		[result(128), result(128)],
 		[result(129), result(null)],
 		[result(137), result(null)],
+		[result(192), result(null)],
+		[result(193), result(193)],
+		[result(255), result(255)],
 		[result(137, "SIGKILL"), result(137, "SIGKILL")],
 		[result(null, "SIGKILL"), result(null, "SIGKILL")],
 		[result(null), result(null)],
 	];
 
-	it("reads an exit past 128 with no signal as an ending with no record of how, in the prober's record", () => {
+	it("reads an exit from 129 to 192 with no signal as an ending with no record of how, in the prober's record", () => {
 		const migrate = ProbingDocument.definition.migrate!;
 		const probe = { attack: 1, script: "s", files: [], milliseconds: 1 };
 		for (const [stored, read] of cases)
@@ -83,11 +89,50 @@ describe("reading a version-1 probe result", () => {
 		expect(migrate({ plan: [] }, 1)).toEqual({ plan: [] });
 	});
 
+	it("leaves a version-2 result as it was, since version 2 records a signal apart", () => {
+		const migrate = ProbingDocument.definition.migrate!;
+		const probe = { attack: 1, script: "s", files: [], milliseconds: 1 };
+		for (const [stored] of cases)
+			expect(migrate({ plan: [], probes: { p1: { ...probe, result: stored } } }, 2)).toEqual({
+				plan: [],
+				probes: { p1: { ...probe, result: stored } },
+			});
+	});
 	it("reads the same in the review's reruns, and keeps a refused rerun", () => {
 		const migrate = ProbeReruns.definition.migrate!;
 		for (const [stored, read] of cases)
 			expect(
 				migrate({ runs: { r: { k: { result: stored, milliseconds: 1 }, n: { refused: "no sandbox" } } } }, 1),
 			).toEqual({ runs: { r: { k: { result: read, milliseconds: 1 }, n: { refused: "no sandbox" } } } });
+	});
+});
+
+// Versions 1 and 2 kept only the latest probe of each finding, so a finding reported again on another attack's probe
+// forgot the first; version 3 keeps the attacks a finding answered apart.
+describe("reading the attacks an older prober's findings answered", () => {
+	const probe = (attack: number) => ({
+		attack,
+		script: "s",
+		files: [],
+		result: { exitCode: 1, signal: null, output: "", truncated: false, timedOut: false },
+		milliseconds: 1,
+	});
+	const probes = { p1: probe(1), p2: probe(2), p3: probe(2), p4: probe(3) };
+
+	it("reads each attack a stored finding rests on, once, at either version", () => {
+		const migrate = ProbingDocument.definition.migrate!;
+		for (const version of [1, 2])
+			expect(migrate({ probes, findings: { a: "p1", b: "p2", c: "p3" } }, version)).toStrictEqual({
+				probes,
+				findings: { a: "p1", b: "p2", c: "p3" },
+				answered: [1, 2],
+			});
+	});
+
+	it("reads no attack answered where no finding names a probe that ran", () => {
+		const migrate = ProbingDocument.definition.migrate!;
+		expect(migrate({ probes, findings: { a: "p9" } }, 2)).toStrictEqual({ probes, findings: { a: "p9" } });
+		expect(migrate({ probes }, 2)).toStrictEqual({ probes });
+		expect(migrate({ findings: { a: "p1" } }, 2)).toStrictEqual({ findings: { a: "p1" } });
 	});
 });

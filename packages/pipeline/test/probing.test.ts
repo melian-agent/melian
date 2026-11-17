@@ -140,6 +140,7 @@ describe("a head's bound", () => {
 	it.each([
 		["platform", { platform: "elsewhere" }],
 		["sandbox", { sandbox: "another" }],
+		["sandbox release", { sandboxVersion: "0.0.1" }],
 		["CPU architecture", { arch: "elsewhere" }],
 		["Node version", { node: "0.0.1" }],
 	])(
@@ -158,11 +159,13 @@ describe("a head's bound", () => {
 		},
 	);
 
-	it("names the host a probe runs on by its sandbox, and the architecture and version of this process's Node", () => {
+	it("names the host a probe runs on by its sandbox, the installed sandbox-runtime, and this process's Node", () => {
 		const sandbox = unconfinedSandbox();
+		const pins = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).dependencies;
 		expect(probingHost(sandbox)).toEqual({
 			platform: sandbox.platform,
 			sandbox: sandbox.kind,
+			sandboxVersion: pins["@anthropic-ai/sandbox-runtime"],
 			arch: process.arch,
 			node: process.versions.node,
 		});
@@ -396,8 +399,12 @@ describe("the plan as a prober and a verifier read it", () => {
 	});
 
 	it("names the attacks a prober left unanswered", () => {
-		expect(answerPrompt([2])).toMatch(/^Attack 2 has no probe that showed anything, nor a skip\./);
-		expect(answerPrompt([1, 3])).toMatch(/^Attacks 1, 3 have no probe that showed anything, nor a skip\./);
+		expect(answerPrompt([2])).toMatch(
+			/^Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
+		expect(answerPrompt([1, 3])).toMatch(
+			/^Attacks 1, 3 have no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
 	});
 
 	it("keys a claim by its finding and its producer, an absent version as empty", () => {
@@ -697,6 +704,7 @@ describe("the fixed wording each role reads", () => {
 			runHeadProbe: "runs a probe and says why its cleanup failed",
 			probeEvidenceRenderings: "renders the probe evidence over fixed samples for the verifier's version",
 			openHeadProbe: "opens a probe on the head and says why it cannot",
+			sandboxVersion: "names the package whose installed release the probing host holds",
 		};
 		const path = fileURLToPath(new URL("../src/probing.ts", import.meta.url));
 		const program = HeadProgram.open(new Map([["probing.ts", readFileSync(path, "utf8")]]));

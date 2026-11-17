@@ -36,8 +36,14 @@ export const lensToolNames = ["read_file", "search", "list_files"] as const;
 /** The read-only tools over the head's Enola graph, which a lens gets only by listing them in `tools`. */
 export const lensGraphToolNames = ["graph_definitions", "graph_references", "graph_impact", "graph_callees"] as const;
 
+/** The read-only tool that lists the mutants on a change's lines, which a lens gets only by listing it in `tools`. */
+export const lensMutationToolNames = ["list_mutants"] as const;
+
 /** A read-only tool a lens may be offered. */
-export type LensToolName = (typeof lensToolNames)[number] | (typeof lensGraphToolNames)[number];
+export type LensToolName =
+	| (typeof lensToolNames)[number]
+	| (typeof lensGraphToolNames)[number]
+	| (typeof lensMutationToolNames)[number];
 
 /**
  * The JSON Schema of a {@link LensRule}. An ID is lower-case letters, digits, dots, and hyphens; the `melian/` prefix
@@ -106,7 +112,11 @@ export const lensFrontMatterSchema = Type.Object(
 		description: Type.Optional(text),
 		tier: Type.Optional(lensTierSchema),
 		tools: Type.Optional(
-			Type.Array(Type.Union([...lensToolNames, ...lensGraphToolNames].map((tool) => Type.Literal(tool)))),
+			Type.Array(
+				Type.Union(
+					[...lensToolNames, ...lensGraphToolNames, ...lensMutationToolNames].map((tool) => Type.Literal(tool)),
+				),
+			),
 		),
 		severities: Type.Optional(Type.Array(severitySchema, { minItems: 1 })),
 		rules: Type.Optional(Type.Array(lensRuleSchema, { minItems: 1 })),

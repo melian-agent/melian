@@ -80,6 +80,37 @@ describe.skipIf(!availability.available && !required)(
 			expect([probeConclusive(result), probeFailed(result)]).toEqual([false, false]);
 		});
 
+		// Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0.
+		it.skipIf(process.platform !== "linux").each([34, 64])(
+			"reads a probe that signal %s ended as an ending with no record of how",
+			async (signal) => {
+				const result = await probed(`process.kill(process.pid, ${signal});\nsetInterval(() => {}, 1000);\n`);
+				expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
+				expect([probeConclusive(result), probeFailed(result)]).toEqual([false, false]);
+			},
+		);
+
+		// The child inherits the probe's fd 4, so the runner sees no end of it until the child exits.
+		it("records an unknown ending without waiting for a child the probe left holding its exit pipe", async () => {
+			const started = Date.now();
+			const result = await probed(
+				[
+					'import { spawn } from "node:child_process";',
+					'spawn("sleep", ["8"], { stdio: ["ignore", "ignore", "ignore", "ignore", 4] }).unref();',
+					"process.reallyExit(0);",
+					"",
+				].join("\n"),
+				{ timeout: 20_000 },
+			);
+			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
+			expect(Date.now() - started).toBeLessThan(6_000);
+		});
+
+		it("reads a probe that leaves exit 0 without its exit handler as an ending with no record of how", async () => {
+			const result = await probed("process.reallyExit(0);\n");
+			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
+		});
+
 		it("reads a probe that exits 125 as one that could not test, which shows nothing", async () => {
 			const result = await probed("process.exit(125);\n");
 			expect(ending(result)).toEqual({ exitCode: 125, signal: null, timedOut: false, truncated: false });

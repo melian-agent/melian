@@ -9,6 +9,7 @@ import {
 } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
+import { installedVersion } from "./installed-version.ts";
 import {
 	type CleanupOutcome,
 	Probe,
@@ -36,9 +37,9 @@ export const probingWording = Object.freeze({
 	planRow:
 		"{number}. {target}\n   Why: {reason}\n   A passing probe shows: {passing}\n   A failing probe shows: {failing}",
 	unansweredOne:
-		"Attack {attacks} has no probe that showed anything, nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
+		"Attack {attacks} has no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
 	unansweredMany:
-		"Attacks {attacks} have no probe that showed anything, nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
+		"Attacks {attacks} have no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
 	plannerHeading: "## Your role at this level: the attack planner",
 	plannerRole:
 		"This level runs probes. You plan; another reviewer, the prober, receives your plan alone, writes a probe for each attack and runs it against the head. You write no probe and run nothing. At this level you report no finding but an injection attempt: the prober reports what its probes show.",
@@ -217,39 +218,55 @@ export type ProbeRecord = {
 };
 
 // A planner's conversation holds the plan it recorded. A prober's holds a copy of the plan it was given, every probe it
-// ran by ID, each attack it skipped with why, and the probe each finding it reported rests on, by finding ID.
+// ran by ID, each attack it skipped with why, the probe each finding it reported rests on, by finding ID, and each attack
+// a finding was reported on one of its probes.
 type ProbingState = {
 	plan?: Attack[];
 	probes?: Record<string, ProbeRecord>;
 	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
 	attempts?: string[];
 	skips?: Record<string, string>;
+	// The latest probe each finding rests on, which its verifier reruns.
 	findings?: Record<string, string>;
+	// Kept apart from `findings`, since two attacks can fail on one defect and so report one finding ID.
+	answered?: number[];
 	// Set in the commit that gives the plan to the prober: the planner may no longer replace it, so all hold one plan.
 	frozen?: true;
 };
 
 // Version 1 was written by a runner that reported a probe a signal ended as exit 128 plus the signal's number, with no
-// signal, so version 2 reads such a result as one that ended with no record of how.
+// signal, so version 2 reads such a result as one that ended with no record of how. Versions 1 and 2 kept only the latest
+// probe of each finding, so version 3 reads the attacks they answered from it.
 export const ProbingDocument = defineDoc<ProbingState>({
 	kind: "melian.probing",
-	version: 2,
+	version: 3,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({}),
-	migrate: (value) => {
+	migrate: (value, fromVersion) => {
 		const state = value as ProbingState;
-		if (state.probes === undefined) return state;
-		const probes = Object.fromEntries(
-			Object.entries(state.probes).map(([id, probe]) => [id, { ...probe, result: unsignalled(probe.result) }]),
-		);
-		return { ...state, probes };
+		const probes =
+			fromVersion === 1 && state.probes !== undefined
+				? Object.fromEntries(
+						Object.entries(state.probes).map(([id, probe]) => [
+							id,
+							{ ...probe, result: unsignalled(probe.result) },
+						]),
+					)
+				: state.probes;
+		const answered = [...new Set(Object.values(state.findings ?? {}).flatMap((id) => probes?.[id]?.attack ?? []))];
+		return {
+			...state,
+			...(probes === undefined ? {} : { probes }),
+			...(answered.length === 0 ? {} : { answered }),
+		};
 	},
 });
 
+// Bubblewrap reported a signal n as exit 128 + n, and Linux numbers its signals up to 64.
 function unsignalled(result: StoredProbeResult): StoredProbeResult {
-	return result.exitCode !== null && result.exitCode > 128 && result.signal === null
+	return result.exitCode !== null && result.exitCode > 128 && result.exitCode <= 128 + 64 && result.signal === null
 		? { ...result, exitCode: null }
 		: result;
 }
@@ -285,17 +302,44 @@ export type ProbingEnvironment = {
 };
 
 /**
- * The host a probe's result holds on: the sandbox's platform and kind, and the CPU architecture and version of the Node
- * that runs it. A probing run's key holds it whole, so a run on another host, or under another Node, runs again.
+ * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, and the CPU
+ * architecture and version of the Node that runs it. A probing run's key holds it whole, so a run on another host, under
+ * another Node, or under another release of the sandbox, runs again.
  */
-export type ProbingHost = { platform: ProbeSandbox["platform"]; sandbox: string; arch: string; node: string };
+export type ProbingHost = {
+	platform: ProbeSandbox["platform"];
+	sandbox: string;
+	sandboxVersion: string;
+	arch: string;
+	node: string;
+};
+
+// sandbox-runtime confines every probe a review runs; a test's own sandbox reports the installed release too.
+const sandboxVersion = installedVersion("@anthropic-ai/sandbox-runtime", import.meta.url);
 
 /** The host a probe runs on under `sandbox`. */
 export function probingHost(sandbox: ProbeSandbox): ProbingHost {
 	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
-	// it confines. Case folding is left out: a finished probing run is never reused, so nothing matches on it.
+	// it confines. Case folding is left out: a review reuses a probing run only from its own store, on its own host.
 	const { arch, node } = hostFacts();
-	return { platform: sandbox.platform, sandbox: sandbox.kind, arch, node };
+	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node };
+}
+
+/** The probes a prober's conversation tried, by the ID each run_probe call took, and the result of each that ran. */
+export type ProbesTried = {
+	readonly attempts?: readonly string[];
+	readonly probes?: Readonly<Record<string, { readonly result: StoredProbeResult }>>;
+};
+
+/**
+ * Whether every probe a prober tried ended conclusively, by {@link probeConclusive}: one the sandbox refused left no
+ * result, and one that timed out, was cut or was ended by a signal says nothing.
+ */
+export function probesConclusive(tried: ProbesTried | undefined): boolean {
+	return (tried?.attempts ?? []).every((id) => {
+		const probe = tried?.probes?.[id];
+		return probe !== undefined && probeConclusive(probe.result);
+	});
 }
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
@@ -812,7 +856,7 @@ export function probeEvidenceRenderings(): string {
 			writer: { trusted: true, by: "reviewer" },
 			trustWriters: true,
 			read: ["node_modules"],
-			host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
+			host: { platform: "linux", sandbox: "unconfined", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" },
 		},
 		plan: [attack, { ...attack, target: "second" }],
 		probe: {

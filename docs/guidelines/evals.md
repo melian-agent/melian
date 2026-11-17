@@ -79,6 +79,32 @@ MELIAN_EVAL_LIVE=1 OPENAI_API_KEY=invalid MELIAN_EVAL_MODEL=openai/gpt-5.5 MELIA
 
 Run it again with `MELIAN_EVAL_FALLBACK=anthropic/claude-sonnet-5-5`, which runs the fallback at `low`, and read each spend line's tool calls, tokens and cost.
 
+## A lens tool's before and after
+
+A change that gives a lens a new tool is measured at two commits of Melian, the one before it and the one that adds it, with one model route for both. [Issue #241](https://github.com/melian-agent/melian/issues/241) gave the `tests` lens `list_mutants`, and these commands measure it. Each commit runs from a worktree of its own, so its build and its lens files are that commit's. Set `before` and `after` to the two commits and `model` to the route, then repeat the block for each.
+
+```bash
+commit=$before; tree=../melian-worktrees/measure-$commit
+git worktree add --detach "$tree" "$commit" && (cd "$tree" && npm ci)
+for golden in $(ls "$tree/packages/evals/goldens" | grep '^tests-'); do
+  for pass in 1 2 3; do
+    (cd "$tree" && MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=$model MELIAN_EVAL_GOLDEN=$golden MELIAN_EVAL_SHOW=1 \
+      npm run eval:live --workspace @melian-agent/evals) > "measure-$commit-$golden-$pass.txt" 2>&1
+  done
+done
+```
+
+Score the `tests-` goldens as one corpus, from the counts on each score line, as [Scoring](#scoring) says, and report the worst and the mean of the three passes at each commit.
+
+The real misses are past ranges that another reviewer found test gaps or surviving mutants in. They are read by hand, not scored. Review one range with only the `tests` lens, at one commit of Melian, and keep the output in a file. In the worktree for that commit, an uncommitted `melian.local.yaml` names the lens alone, and a state directory of its own keeps one run from reusing another's lens run:
+
+```bash
+printf 'tiers:\n  fast: [lens.tests]\n  standard: [lens.tests]\n  full: [lens.tests]\n' > "$tree/melian.local.yaml"
+(cd "$tree" && MELIAN_STATE_DIR="$(mktemp -d)" NODE_USE_ENV_PROXY=1 node packages/cli/bin/melian.js review "$range" --model "$model" --json) > "range-$commit.json" 2>&1
+```
+
+`$range` is the past change as `<base>...<head>`, both commits in the clone. Remove `melian.local.yaml` before the worktree is used for anything else, and the worktree once both commits are read.
+
 ## A level that probes
 
 A golden for a level that probes scripts two conversations. Its lens's own name, such as `trust-boundary`, scripts the planner, whose instructions hold the lens's body. `trust-boundary/prober` scripts the prober, whose instructions do not. A call argument `{{probe}}` stands for the last probe ID a tool result named, since no script knows a probe's ID before the run. The runner runs every golden on the reviewer's word, since it builds the golden's repository itself, so a level that probes probes. That word only lets the head's code run inside whichever sandbox the harness holds, because `runGolden` runs the lenses alone and no static check. If `runGolden` ever runs a static check, which runs a trusted head's code unconfined, that stops being true, and the head's trust must then come from the caller, as the sandbox does. A scripted run of the committed corpus passes `probes: "unconfined"`, and only then does the runner give the harness `unconfinedSandbox`, since those probes are the corpus's own reviewed scripts. Without it, a scripted run probes under the host's sandbox-runtime, so a corpus loaded from anywhere else never runs its probes unconfined. A live mode has no such field: a live run's probes are a model's. The probing goldens are named `trust-boundary-probe-*`. Each `melian.golden.yaml` carries Melian's full tier, as every lens golden does, and holds `trust-boundary` at `deep`. A live run so scores the whole review, the other lenses' findings included, as the bar in [Two modes](#two-modes) requires. Their scripts answer every other lens with no finding. No shipped level probes until the measurement picks the routes, so each golden's `.melian/lenses/trust-boundary/LENS.golden.md` gives `deep` its probe. Each defect golden has a clean twin whose head is the fix as `main` holds it. The same scripted probe passes there, so `report_finding` refuses the finding and the review is clean. A defect golden's head is its clean twin with only the measured defect put back, never the real commit before the fix, by the maintainer's ruling of 2026-11-09. Problem: a real pre-fix commit can hold other defects, of the same file and rule, that the fix also removed. Scoring matches file and rule, so a live run could find one of those and score the golden as found. Example: #274's `claim.yml` at `fcb25afa` also lacked the timeline-lag guard its fix added, a second `fail-open` in the same file. So the twins differ in the measured defect alone, and a synthetic golden, such as the tsc stand-in, follows the same rule.

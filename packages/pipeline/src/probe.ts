@@ -13,33 +13,54 @@ import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
 // The runner the sandbox executes is the probe's parent. It writes how the probe's own process ended to fd 3, because a
 // sandbox reports a child a signal killed as exit 128+n: bubblewrap read SIGKILL as 137, and a probe can exit 137 itself.
-// The probe inherits fd 3 and could write there too, which gives it no ending it could not produce by ending that way.
-// The record starts on a line of its own, so stray bytes before it cannot join it. The parent signals nothing.
+// The probe never holds fd 3. The record starts on a line of its own, so stray bytes before it cannot join it. The
+// parent signals nothing.
+// Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0 with no signal.
+// So the runner records exit 0 only when the probe's own exit handler, which no signal runs, said 0 on fd 4; otherwise
+// it records an ending with no record of how. A probe that writes 0 there itself gains no ending it could not exit with.
 function runnerSource(): string {
 	return [
 		`import { spawn } from "node:child_process";`,
 		`import { writeSync } from "node:fs";`,
 		`import { fileURLToPath } from "node:url";`,
-		`const probe = spawn(process.execPath, [fileURLToPath(new URL("./${mainName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit"] });`,
+		`const probe = spawn(process.execPath, [fileURLToPath(new URL("./${mainName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
+		`const exited = probe.stdio[4];`,
+		`let said = "";`,
+		`exited.setEncoding("utf8").on("data", (chunk) => { said += chunk; }).on("error", () => {});`,
 		`probe.once("error", () => { process.exitCode = 127; });`,
 		`probe.once("exit", (code, signal) => {`,
-		`\ttry { writeSync(3, \`\\n\${JSON.stringify({ code, signal })}\\n\`); } catch {}`,
-		`\tprocess.exitCode = code ?? 1;`,
+		`\tconst known = () => signal !== null || code !== 0 || said === "0\\n";`,
+		`\tlet written = false;`,
+		`\tconst record = () => {`,
+		`\t\tif (written) return;`,
+		`\t\twritten = true;`,
+		`\t\texited.destroy();`,
+		`\t\ttry { writeSync(3, \`\\n\${JSON.stringify(known() ? { code, signal } : { code: null, signal: null })}\\n\`); } catch {}`,
+		`\t\tprocess.exitCode = code ?? 1;`,
+		`\t};`,
+		`\tif (known() || exited.readableEnded) return record();`,
+		`\texited.once("end", record);`,
+		`\tsetTimeout(record, 1000);`,
 		`});`,
 		"",
 	].join("\n");
 }
 
 // The probe's own process imports the watchdog, then the probe's module, both statically: a module's imports evaluate in
-// order, so the watchdog is armed before the probe runs. The watchdog exits the probe at `deadline` milliseconds even if
-// nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a
-// probe that hangs keeps the event loop alive until the timer fires and exits 124.
+// order, so the watchdog is armed, and its exit handler set, before the probe runs. The watchdog exits the probe at
+// `deadline` milliseconds even if nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes
+// leaves at its own exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
 function mainSource(): string {
 	return `import "./${watchdogName}";\nimport "./${scriptName}";\n`;
 }
 
 function watchdogSource(deadline: number): string {
-	return `setTimeout(() => process.exit(124), ${deadline}).unref();\n`;
+	return [
+		`import { writeSync } from "node:fs";`,
+		`process.on("exit", (code) => { try { writeSync(4, \`\${code}\\n\`); } catch {} });`,
+		`setTimeout(() => process.exit(124), ${deadline}).unref();`,
+		"",
+	].join("\n");
 }
 
 // The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer

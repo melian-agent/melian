@@ -688,7 +688,7 @@ A quicker look at this change reported the findings below, and you were brought 
 cd185a20c365e248 P1 path-traversal at src/load.ts:3-3: load reads any path
 </untrusted-NONCE>
 --- user ---
-Attack 2 has no probe that showed anything, nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.
+Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.
 
 === prober request 5 ===
 --- system ---
@@ -764,4 +764,4 @@ A quicker look at this change reported the findings below, and you were brought 
 cd185a20c365e248 P1 path-traversal at src/load.ts:3-3: load reads any path
 </untrusted-NONCE>
 --- user ---
-Attack 2 has no probe that showed anything, nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.
+Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.

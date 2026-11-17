@@ -210,7 +210,7 @@ export class EnolaRun {
 			);
 		const text = await this.#run.readOutput(report);
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");
-		const log = normaliseEnolaSarif(text, { root, version: this.#version });
+		const log = normaliseEnolaSarif(text, { root, version: this.#version }, new Set(this.#policy.toJSON().rules));
 		const kept = log.runs.reduce((count, run) => count + run.results.length, 0);
 		if (kept < countedResults(text))
 			throw this.#run.fail("invalidOutput", "Enola check reported results Melian cannot place in the repository");

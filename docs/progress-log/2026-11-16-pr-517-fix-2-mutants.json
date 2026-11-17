@@ -1,0 +1,2222 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "1e3cf02ce8a80e8033a9fe964af9d901e1282ea4",
+		"head": "5794dc34de70b34bffbd327ac8fd3c1f88b0ac8a"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-reuse.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "63cf439b04a2a3b44214d85122edf29954c45ee1e783e69344e7d4cd739200ca",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 49,
+			"column": 6,
+			"endLine": 49,
+			"endColumn": 31,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stands(earlier, outcome)",
+			"status": "generated",
+			"id": "f1c7f8442ace720452817a9b66f9f6b690a68e2012b0e91af25555afd422473e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 49,
+			"column": 6,
+			"endLine": 49,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d62ac2f390c2e23612abd0bdc2f40eb3cabfdc880b50a948f4ac316ab030d8c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 49,
+			"column": 6,
+			"endLine": 49,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "32f493784a42f7681cf8f92f51887ab3ea0bfa564db652d6b0e093f6f830b25e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 50,
+			"column": 33,
+			"endLine": 50,
+			"endColumn": 54,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d0efe9c4c38c68144bff0524e07da7fe56c1cdbd3521ae6330699b2a980050e2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 50,
+			"column": 34,
+			"endLine": 50,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "91c98fd5f61de5f5d416bf991cb646fd61a2ea96988bab672596506a97ca938e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4e364f754be0b19336275f587df79f364f9e737b6d4d2c66ce2fa99f15ca08d9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a9ce0e9c689bf883a9af040507995ef34ac291de689d40d1cbb6b8e2f74d621e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 82,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(next === undefined || next.key !== to) && !stands(next, previous.result[to])",
+			"status": "generated",
+			"id": "05cc8096354e2a8975d525356332376704d5029bec7a856a092f92d13d404cbb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c2ad64e8a21e0b4e9c7b74775ed7434403af77a3b301f5a1d92123534b431476",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a quick run that escalated to a run other than the one it names"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "next === undefined && next.key !== to",
+			"status": "generated",
+			"id": "76dada35dee5a7b4ac4777034b9164de0aa8781a60ea4f27bb39381752d93e33",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a quick run that escalated to a run other than the one it names"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e402d59cc3744ed1353f1ddfa2b4e7389bd1caca405dc429d7c091d2014dd28a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a quick run that escalated to a run other than the one it names"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 7,
+			"endLine": 54,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "next !== undefined",
+			"status": "generated",
+			"id": "a356fba2f3902c8bd286125e4e044c1e82ccd1101fcec9abf0a8debd4fd4d7e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 29,
+			"endLine": 54,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "43429e1c1df206547ce0813b042d612d50e66042ad91ec47042a8ebce752d007",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a quick run that escalated to a run other than the one it names"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 29,
+			"endLine": 54,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "next.key === to",
+			"status": "generated",
+			"id": "737d452db1f5203517ed43e11af481b55764333d2575f44e6ecf2f695141184a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 48,
+			"endLine": 54,
+			"endColumn": 82,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "stands(next, previous.result[to])",
+			"status": "generated",
+			"id": "2d171c17d28f605ec9e6c76db41e04c3f09ea5b897c30812feb9237e4d601f82",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies only a run the review says may stand, and only with the run it escalated to standing too"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 277,
+			"column": 74,
+			"endLine": 282,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "525f7e6d1df807a7ced37d2a5b2cbabc20ed4729913f6a834d735e135068db29",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 278,
+			"column": 8,
+			"endLine": 281,
+			"endColumn": 3,
+			"mutatorName": "MethodExpression",
+			"replacement": "(tried?.attempts ?? []).some(id => {\n  const probe = tried?.probes?.[id];\n  return probe !== undefined && probeConclusive(probe.result);\n})",
+			"status": "generated",
+			"id": "4e716d5e016986be4a11d9b985d54678a03a31fb0eb7fc71ace09bc3d5e2e79e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, which left no result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 278,
+			"column": 9,
+			"endLine": 278,
+			"endColumn": 30,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tried?.attempts && []",
+			"status": "generated",
+			"id": "f17c8efc48a424c76e21fae17e26639cf8843db700ad240ab80054b5ef603942",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 278,
+			"column": 9,
+			"endLine": 278,
+			"endColumn": 24,
+			"mutatorName": "OptionalChaining",
+			"replacement": "tried.attempts",
+			"status": "generated",
+			"id": "f377adf4e3163bb1b6e19a1875d7872e72d847784acc5349ae35771526b45524",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 278,
+			"column": 28,
+			"endLine": 278,
+			"endColumn": 30,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "99bed3a349caf49cb03b0dc9fad7fb65e401be11823483797e94eed438c4311b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a run stand that ran"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 278,
+			"column": 46,
+			"endLine": 281,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a88b2f2485e517eab6eec3a3525be33bad911b8e5eb8ec36f84cb904eb1a24bc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 279,
+			"column": 16,
+			"endLine": 279,
+			"endColumn": 35,
+			"mutatorName": "OptionalChaining",
+			"replacement": "tried?.probes[id]",
+			"status": "generated",
+			"id": "f0f4a2f4133ea2cbb1953d4a4c92f934bdbd63997687100171d51ca2abf35a3a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, as it refused every probe"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 279,
+			"column": 16,
+			"endLine": 279,
+			"endColumn": 29,
+			"mutatorName": "OptionalChaining",
+			"replacement": "tried.probes",
+			"status": "generated",
+			"id": "b858fae76cbc95a259f8927c8badd1d397643513fef59afe041b970fe65b8358",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "With tried absent, attempts falls back to an empty list, so the callback that reads tried.probes never runs."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 280,
+			"column": 9,
+			"endLine": 280,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2c6f0244eee86d7fae46f734fe44e5b4057420bb56e7e5c0030348fd612abf32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, which left no result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 280,
+			"column": 9,
+			"endLine": 280,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5ee695cedf678c3b04b9530e5343f304fabcd3413301eb5c4db9d12fa491f9fd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 280,
+			"column": 9,
+			"endLine": 280,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probe !== undefined || probeConclusive(probe.result)",
+			"status": "generated",
+			"id": "650f96434ff33316923110d5bf0252cc113fd2dbb2ec7654956c7ff3301a27fa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, which left no result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 280,
+			"column": 9,
+			"endLine": 280,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9090d1e12fa343c36efb030bf95f42bbe63e2897819e70f515da46c2e78abb56",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, which left no result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 280,
+			"column": 9,
+			"endLine": 280,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probe === undefined",
+			"status": "generated",
+			"id": "07aae3e42dc9859cc282aed20c528365309cdbe63f1bd64773e789fb42c83ed6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1266,
+			"column": 12,
+			"endLine": 1269,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fc75321edce0e588cc49f7e1eb2b85635e168c3c00983cd98442706ca1e7e2a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 16,
+			"endLine": 1267,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3096e6b8d7f85d11f9191eb20cc79fde2ccffce5d2cb3e850ebf754f7d14f96d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a run stand whose prober on a tier of its own finished on a model its check is not judged by"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 16,
+			"endLine": 1267,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "02c95067c3da36b9eb305cc26280ba2907dda4d39ff0cc96249fd632f952cbf3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand whose prober, on the level's own tier, finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 16,
+			"endLine": 1267,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probe?.onLevelTier !== true",
+			"status": "generated",
+			"id": "e8f145e3fbc5bad0c97ae2e50dc2767fdd5221d6612692596be53e4994302177",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand whose prober, on the level's own tier, finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 16,
+			"endLine": 1267,
+			"endColumn": 34,
+			"mutatorName": "OptionalChaining",
+			"replacement": "probe.onLevelTier",
+			"status": "generated",
+			"id": "7acc1c1dc0ae1d8d1a027aadb7cb4dd88f8bed173f03f537c1cd290cff6f378e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 39,
+			"endLine": 1267,
+			"endColumn": 43,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "137d8fe9798c43383e357e4f8ee44de0051710b90135923698cdb2daf6c6b584",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand whose prober, on the level's own tier, finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1267,
+			"column": 46,
+			"endLine": 1267,
+			"endColumn": 68,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome.probing.model",
+			"status": "generated",
+			"id": "dc2b40fbf6349d90fe1eb5fbe2a2310e6deead815093df0c33c4af28f01609b8",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Every reader passes only a done outcome, and a probing run reaches done only with the probing record the probe step returned, which otherwise returns the run's failure in its place."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 8,
+			"endLine": 1268,
+			"endColumn": 70,
+			"mutatorName": "MethodExpression",
+			"replacement": "[outcome.model, prober]",
+			"status": "generated",
+			"id": "bb4592778a60984741a17f375ff3081c9ad04f332b72dce36971bda03f117cc0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a run stand with no model recorded, since nothing names one to refuse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 8,
+			"endLine": 1268,
+			"endColumn": 31,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "f596082b2e70559100fd7af084c8ed41181f6586d85f442acb00eedac901cd99",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 39,
+			"endLine": 1268,
+			"endColumn": 69,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "f7ed8be4824e8ba5aaf9314209a2dffc1e1f9733102d3bb302776d2a0b713e18",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 50,
+			"endLine": 1268,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ca3a13251a107459f3124ce0de473aca63a1ecc0bb604cf7a822c3c2a6a17a15",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a run stand with no model recorded, since nothing names one to refuse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 50,
+			"endLine": 1268,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "dc608497e4c68d72d6fa40b988a00ce0c3853bbda7677f86a7eada8f3dc80621",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1268,
+			"column": 50,
+			"endLine": 1268,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "model === undefined",
+			"status": "generated",
+			"id": "f96e2fcb9924cbf2a7013734fe69246134a2ff5647a027d4acea9d1634899fb6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1282,
+			"column": 11,
+			"endLine": 1287,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c3d977fe24e31917da6079d32dfdaf62e49fcdf6e1833c036aab08835f3fc0a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 5,
+			"endLine": 1283,
+			"endColumn": 88,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4e42b3f26ee8becc10259a989ba812883ab88b598d6a171473b9f3971d56bfe5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 5,
+			"endLine": 1283,
+			"endColumn": 88,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5b7405c837f37e97069b9108ffe1cd31e74ccff0dbfce13bdd185e4d5fb4d498",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 5,
+			"endLine": 1283,
+			"endColumn": 88,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lensRecord(run, outcome, true, [], []).status !== \"ran\" && !probesConclusive(tried)",
+			"status": "generated",
+			"id": "f7e9ba4ff871409d93305c4e676f7b92dd8e1e522bd768dca8e5876692769735",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 5,
+			"endLine": 1283,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9cfe738035af81fa4b08fc081c1a431fa5e9db2749bda2c5a4ff2aa633ef3ee0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 5,
+			"endLine": 1283,
+			"endColumn": 60,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lensRecord(run, outcome, true, [], []).status === \"ran\"",
+			"status": "generated",
+			"id": "4719c549f4e336d229ea8da1b1f1db573d9c3f5f885e93b6580c1fd8d3064c17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 30,
+			"endLine": 1283,
+			"endColumn": 34,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "209c746c5c1235d533817622231d64491f5d1bce14ef4435206f3015a53a0e7d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"lets a probing run stand when every probe it tried passed or failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 36,
+			"endLine": 1283,
+			"endColumn": 38,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "df47702c3d33f2374c3c979eb6223c0f7d9626d6d1cea79d603239120b23359a",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "lensRecord's given notes shape the record's reason and never its status, which is all runStands reads."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 40,
+			"endLine": 1283,
+			"endColumn": 42,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "693d9eeef40d9562c25f0b985055db04c53ac2162bf85015c600c323678acdb5",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "lensRecord's handedBy names who could have handed a capped lens a defect in its reason, and never changes its status, which is all runStands reads."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 55,
+			"endLine": 1283,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fdbf4487962c5fa5b343cb2f972ceb82045912f12e4c130ec1c0ef288a1d45da"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 64,
+			"endLine": 1283,
+			"endColumn": 88,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probesConclusive(tried)",
+			"status": "generated",
+			"id": "356fa277de818ca7726bdb498fcb31c706b8f1e1c7d45d5f190a195ba60d13a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a probing run stand when a probe it tried the sandbox refused, which left no result"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1283,
+			"column": 97,
+			"endLine": 1283,
+			"endColumn": 102,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e98ff499c743f3008a7287c435349d215f0107a4866ed252b002746fba84b8b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand with no outcome"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1286,
+			"column": 8,
+			"endLine": 1286,
+			"endColumn": 79,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "judgedModels(done, run.probe).some(model => refused(run.key, model))",
+			"status": "generated",
+			"id": "c3a1cc1b994f26e744295ed62da3535a0e59fc8867510dc7065404a0fed709bb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1286,
+			"column": 9,
+			"endLine": 1286,
+			"endColumn": 79,
+			"mutatorName": "MethodExpression",
+			"replacement": "judgedModels(done, run.probe).every(model => refused(run.key, model))",
+			"status": "generated",
+			"id": "c531923718176bde936a0201734df0a63a12a5bcd85ed1fec8dcb049b61c8819",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand whose prober, on the level's own tier, finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1286,
+			"column": 44,
+			"endLine": 1286,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "833fe09ddddadf0c534534da849c2b7e109df8cb340c1f22ac9d3c282c907b78",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/run-stands.test.ts",
+					"path": [
+						"runStands",
+						"never lets a run stand that finished on a model the plan refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1672,
+			"column": 118,
+			"endLine": 1677,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fb2e2276be6ed5750057f38a024c4c44cc39bbe12617c1360bf8f3b71a7dd4b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1675,
+			"column": 6,
+			"endLine": 1675,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "93d9259f92d450a546f81837c2d4f9e7878c2eb8cfe1e8a5007c17ed10c70ccd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1675,
+			"column": 6,
+			"endLine": 1675,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c46d2e34334005170b8e49896b21da2f27647da157e3676a1f06d762c76da15d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"unlocks every provider once on each repeat while the sandbox keeps refusing a probing run's probes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1675,
+			"column": 6,
+			"endLine": 1675,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outcome.prober === undefined",
+			"status": "generated",
+			"id": "9123f5490a0a41a92eb3afd467a05a85a0a19d21d9ff918830d98dd25aab68d2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1703,
+			"column": 2,
+			"endLine": 1703,
+			"endColumn": 62,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ad446f0d9689add5b85f06a07237f2f43e8257b8969d654ec2594ded2e00189c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-repeat.test.ts",
+					"path": [
+						"a repeat review of a level that probes",
+						"copies the probing run when another lens's request changed, and judges its finding on the stored rerun"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1748,
+			"column": 3,
+			"endLine": 1748,
+			"endColumn": 104,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "await lensFailed(record!, refused, id => harness.snapshot(ProbingDocument, id, context), !rerun)",
+			"status": "generated",
+			"id": "8df84eb5c375b4998c83da7717f787b3cdbb9f9ef787b19e89d082f79db10c0a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1748,
+			"column": 40,
+			"endLine": 1748,
+			"endColumn": 94,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c57e91dbebc88f31c6fd99bb6f4df69e919bacf9bbb8500aa0c3c16bb74ac7cc",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "It differs only in the read ahead: a read that wrongly finds the task attachable makes the commit refuse it and unlock every run's provider once, and the true read, finding nothing to copy from a task it will replace, unlocks the same providers once."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1748,
+			"column": 96,
+			"endLine": 1748,
+			"endColumn": 102,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "rerun",
+			"status": "generated",
+			"id": "de5243ce2850df0d695b46b18df0602498303260b0d6bdec975650842a6734fd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1751,
+			"column": 81,
+			"endLine": 1752,
+			"endColumn": 50,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0178478b4d6daa4f2dc70e775259e4ca137d2d5aaf5c2798451409aa814a7813",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"unlocks every provider once on each repeat while the sandbox keeps refusing a probing run's probes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1769,
+			"column": 3,
+			"endLine": 1769,
+			"endColumn": 58,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "await anyLensFailed(tx, known.task, refused, !rerun)",
+			"status": "generated",
+			"id": "29fd3d62d588fd02c8a5c0d121925cea4cf9f6e366917bc1981c8f35bb70ba0a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1769,
+			"column": 50,
+			"endLine": 1769,
+			"endColumn": 56,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "rerun",
+			"status": "generated",
+			"id": "a69401a8f46e62f0c8e4774f271b69c56656c79b50d679f906caf83b9bc0ef95",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1774,
+			"column": 82,
+			"endLine": 1775,
+			"endColumn": 30,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7ffd7120b27a907b35dc82ea92c6b83ab2c9485b0f0744d44e5c9b2b3bd4e594",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"unlocks every provider once on each repeat while the sandbox keeps refusing a probing run's probes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1863,
+			"column": 2,
+			"endLine": 1864,
+			"endColumn": 95,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "afe969420e77f19354e614d5731dd4b7c73acff33be8b09616429ef7ba3c9c54",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1863,
+			"column": 2,
+			"endLine": 1864,
+			"endColumn": 95,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4bc2758d0c3befa1a1d66b044419d5c9d6757318ba38ff2bd4ef8ab9f696b9c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1863,
+			"column": 2,
+			"endLine": 1864,
+			"endColumn": 95,
+			"mutatorName": "LogicalOperator",
+			"replacement": "record !== undefined || (await lensFailed(record, refused, prober => tx.doc(ProbingDocument, prober), probingOnly))",
+			"status": "generated",
+			"id": "99e8d2f34385027a7a54e1386aff649026994955257ca1d43803736db17e4c36",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1863,
+			"column": 2,
+			"endLine": 1863,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "502700d8d6945382cae780439d4924f28d2c702580da57728c28cc1c97d0b1f8",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Attachment asks anyLensFailed only after attachable has found the indexed task, so the record it fetches is always present."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1863,
+			"column": 2,
+			"endLine": 1863,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record === undefined",
+			"status": "generated",
+			"id": "99c83e452018ab7cb8991313b09354762fdb00d1e4240187e8da323fead36e40",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1864,
+			"column": 37,
+			"endLine": 1864,
+			"endColumn": 80,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4cf6a5541e04a1ecbf1250ef63a6f0fa0634dff89548d9d71614224da10dedb1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"unlocks every provider once on each repeat while the sandbox keeps refusing a probing run's probes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1882,
+			"column": 5,
+			"endLine": 1882,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4bef52756980de6dc6eabfc7fb90135488ee395cbf6abd6bec280884aa6847af",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1882,
+			"column": 5,
+			"endLine": 1882,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "541a385b5c105a4f0c7e28d9d53bd118360bbf960fde5e3cb4a00074bc650f79",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The lens task ends only completed or aborted, and attachment refuses an aborted task before asking, so lensFailed never sees another terminal outcome."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1882,
+			"column": 5,
+			"endLine": 1882,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outcome.status === \"completed\"",
+			"status": "generated",
+			"id": "8cd7133bdf89f2562323139ef68890b1e31a10fded0600bfcaee94fb240c4b2b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1882,
+			"column": 24,
+			"endLine": 1882,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1a547a2f97debbd903927c2b2e8fc026511896b3064a17a6093dc8d8fb75a490"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1882,
+			"column": 44,
+			"endLine": 1882,
+			"endColumn": 56,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probingOnly",
+			"status": "generated",
+			"id": "ebd75a5d27f3a28a089084a32edbdcc3048f9b8892152e47fd0851a87bedb3cc",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "It returns only for a terminal outcome other than completed, which lensFailed never sees: the lens task ends only completed or aborted, and attachment refuses an aborted task before asking."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1886,
+			"column": 2,
+			"endLine": 1889,
+			"endColumn": 60,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0c4d6318f0aac3cb4c24023a32f1f5286b36db61348844d973eb07b54fc6a84b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1889,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "499a62e2f3c2ac1cff754f17f91a0d8b2a5fc400dc421da1725eb42a9d3e5fb5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1889,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1867d9e7fa2c1e2df96b08391327c8b0d495371929feb9fe6ad1724f902b55d4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1889,
+			"endColumn": 60,
+			"mutatorName": "LogicalOperator",
+			"replacement": "result[run.key] !== undefined && !(probingOnly && run.probe === undefined) || !runStands(run, result[run.key], refused, tried[run.key])",
+			"status": "generated",
+			"id": "586cba6ba20667b9e1f4a29578f82fbf36e966dda67b660d37bab1d8346d7a8f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "05212c7ffe8da1a164f73dfef438ae4ea75149d5502f0cf32055205351a76880",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "result[run.key] !== undefined || !(probingOnly && run.probe === undefined)",
+			"status": "generated",
+			"id": "b67caa9902e2383c598447759eafb3d6a88e057ad72c022e16ec969e7257d552",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1887,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "03dee498f1f4511176a53c8d5c0eef70f368017154b1cd917a6ff82c88e01975",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"attaches a repeat review to a quick run that did not escalate to the level that probes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1887,
+			"column": 3,
+			"endLine": 1887,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result[run.key] === undefined",
+			"status": "generated",
+			"id": "d5ef4fb83039822454c8b8dbc5464186dfb39b3b414c4cea66b8469e6342bf42",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 44,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probingOnly && run.probe === undefined",
+			"status": "generated",
+			"id": "c23c43194a92a2c67815b7b66ed897507ee2e5796510c5c99641757b9fb05f38",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 5,
+			"endLine": 1888,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e9a0251161008defa3d7afc183b0c542dffbcdb03579c8dd445ac84ca3658f80",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 5,
+			"endLine": 1888,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fcb6e209562e8301e9cc89089631c7250c86de81c8308e51e6029876c2fdadfa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 5,
+			"endLine": 1888,
+			"endColumn": 43,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probingOnly || run.probe === undefined",
+			"status": "generated",
+			"id": "88d5ad46b5ceb0c604eee7eec274e4071272885cb08e1619c72c8e5a84a27ea4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 20,
+			"endLine": 1888,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "110e2809b9050bf9d46975023155263baa09baec1ba5081cbe0eae1f5c948392",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on a plain repeat once its prober left an attack unanswered"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1888,
+			"column": 20,
+			"endLine": 1888,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run.probe !== undefined",
+			"status": "generated",
+			"id": "87aea7710e606b6499c0e51941082aa11677039b615c03ed23ff54cd9e2da8e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1889,
+			"column": 3,
+			"endLine": 1889,
+			"endColumn": 60,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "runStands(run, result[run.key], refused, tried[run.key])",
+			"status": "generated",
+			"id": "54060a16fac6dc241d5a13dcdad183e698d9ad1ec674e2fc63b80028c34d9103",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		}
+	],
+	"total": 94,
+	"omitted": 0,
+	"unmutated": []
+}

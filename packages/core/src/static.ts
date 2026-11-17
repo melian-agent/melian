@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { isAbsolute, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import Type, { type Static } from "typebox";
@@ -385,15 +386,16 @@ async function identify(
 		const unlocated =
 			tool === "enola" && path === "enola-intent.yaml" && Object.keys(region).length === 1 && region.startLine === 1;
 		const byCode = !unlocated && text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
-		// Biome's and tsc's messages are withheld, so a result with no code to go by is told apart by its place, and one the
-		// base lacks at that place is introduced.
+		// A result with no code to go by is told apart by its place for Biome and tsc, whose messages are withheld, so one
+		// the base lacks at that place is introduced. Any other tool's is told apart by a hash of its message, since the
+		// discriminator is stored and shared, and the message can quote what the head led the tool to read (issue #516).
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
 			: {
 					discriminator:
 						tool === "biome" || tool === "tsc"
 							? `line ${region.startLine}, column ${region.startColumn ?? 1}`
-							: result.message.text,
+							: `message ${createHash("sha256").update(result.message.text).digest("hex")}`,
 				};
 		const id = findingId({ file: pathAtHead(path), rule, snippet: identity.snippet ?? "", ...identity });
 		const earlier = identified.get(id);

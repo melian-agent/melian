@@ -9,6 +9,7 @@ import {
 	type LensNeighbour,
 	lensCovers,
 	lensGraphToolNames,
+	lensMutationToolNames,
 	lensProbingWording,
 	lensToolNames,
 	loadConfig,
@@ -133,7 +134,7 @@ describe("built-in lenses", () => {
 			correctness: "18c49f913df8",
 			design: "2107c1dcda26",
 			"removed-behaviour": "37aeab0038e3",
-			tests: "9eb5dbf32a98",
+			tests: "615862dfb24c",
 			"trust-boundary": "24aa8e2540b4",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
@@ -259,7 +260,7 @@ describe("built-in lenses", () => {
 			design: "0f2e72de3c2d",
 			durability: "2d013afa303b",
 			"removed-behaviour": "32db6552d78d",
-			tests: "ced1d9dc147a",
+			tests: "32e8090b617b",
 			"trust-boundary": "e78af31b1e01",
 			"trust-boundary-probes": "3c1046d5364f",
 		});
@@ -271,7 +272,7 @@ describe("built-in lenses", () => {
 			correctness: "c49c348ce9f1",
 			design: "be363583ad90",
 			"removed-behaviour": "0885fd05330f",
-			tests: "a9ed7d3ea22c",
+			tests: "7d8c4ba3c2e1",
 			"trust-boundary": "7d072a9e5e2c",
 			"trust-boundary-probes": "07e117503895",
 		});
@@ -396,7 +397,8 @@ describe("built-in lenses", () => {
 			builtins.filter((name) => !["contracts", "correctness", "design"].includes(name)),
 		);
 		for (const lens of backlog) {
-			expect(lens).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
+			const tools = lens.name === "tests" ? [...lensToolNames, ...lensMutationToolNames] : [...lensToolNames];
+			expect(lens).toMatchObject({ tools, paths: ["**"], standards: true });
 			expect(lens.instructions).toMatch(new RegExp(`^You are the ${lens.name} reviewer for one change\\.`));
 			expect(lens.instructions).toContain("an empty report");
 			expect(lens.rules.map((rule) => rule.id)).toContain("melian/injection-attempt");
