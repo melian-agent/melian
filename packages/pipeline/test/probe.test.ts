@@ -248,7 +248,8 @@ describe("Probe.open", () => {
 		expect(main).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
 		expect(readFileSync(join(root, "probe", "run.mjs"), "utf8")).toContain('new URL("./main.mjs", import.meta.url)');
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
-		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/);
+		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/m);
+		expect(watchdog).toMatch(/^process\.on\("exit", \(code\) => \{ try \{ writeSync\(4, .+\); \} catch \{\} \}\);$/m);
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
 	});
