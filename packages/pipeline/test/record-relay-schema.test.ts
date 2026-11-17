@@ -65,4 +65,19 @@ describe("the relay trusts the payload schema, not the writer", () => {
 		expect(found.code).toBe("invalidRecord");
 		expect(found.message).not.toContain("ghp_token");
 	});
+	// The schema takes any text in a snapshot's IDs until issue #548 gives them their patterns; flip to `it` then.
+	it.fails("refuses free text in a field classed as an ID or hash", async () => {
+		const snapshot = {
+			commit: head,
+			snapshotId: "ghp_token",
+			receipt: "r".repeat(64),
+			cacheKey: null,
+			coverage: null,
+		};
+		const found = await refused(
+			await planted((payload) => ({ ...payload, result: { ...result(payload), snapshots: [snapshot] } })),
+		);
+		expect(found.code).toBe("invalidRecord");
+		expect(found.message).not.toContain("ghp_token");
+	});
 });
