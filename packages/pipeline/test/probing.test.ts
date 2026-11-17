@@ -396,8 +396,12 @@ describe("the plan as a prober and a verifier read it", () => {
 	});
 
 	it("names the attacks a prober left unanswered", () => {
-		expect(answerPrompt([2])).toMatch(/^Attack 2 has no probe that showed anything, nor a skip\./);
-		expect(answerPrompt([1, 3])).toMatch(/^Attacks 1, 3 have no probe that showed anything, nor a skip\./);
+		expect(answerPrompt([2])).toMatch(
+			/^Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
+		expect(answerPrompt([1, 3])).toMatch(
+			/^Attacks 1, 3 have no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
 	});
 
 	it("keys a claim by its finding and its producer, an absent version as empty", () => {

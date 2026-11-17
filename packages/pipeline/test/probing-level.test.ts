@@ -570,10 +570,14 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const asked = requests[prober]!;
 		expect(lastResults(requests[planner]![1]!)).toContain("recorded a plan of 2 attacks");
 		expect(asked).toHaveLength(3);
-		expect(textOf(asked[2]!.at(-1)!)).toContain("Attack 2 has no probe that showed anything, nor a skip");
+		expect(textOf(asked[2]!.at(-1)!)).toContain(
+			"Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		const record = verdict.notRun.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record.status).toBe("ended");
-		expect(record.reason).toContain("its prober left attack 2 with no probe that showed anything, nor a skip");
+		expect(record.reason).toContain(
+			"its prober left attack 2 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
@@ -670,9 +674,100 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 		const ended = record((await run).verdict);
 		expect(ended).toMatchObject({ status: "ended", level: "deep" });
-		expect(ended.reason).toContain("its prober left attack 1 with no probe that showed anything, nor a skip");
+		expect(ended.reason).toContain(
+			"its prober left attack 1 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		const asked = requests[prober]!;
-		expect(textOf(asked.at(-1)!.at(-1)!)).toContain("Attack 1 has no probe that showed anything, nor a skip");
+		expect(textOf(asked.at(-1)!.at(-1)!)).toContain(
+			"Attack 1 has no finding on a probe that failed, nor a probe that passed or a skip",
+		);
+	});
+
+	// The maintainer's ruling of 2026-11-17: a probe that failed showed its attack's defect, so only a finding resting on
+	// it answers the attack.
+	it("leaves an attack whose probe failed unanswered until a finding rests on it, and asks the prober for it again", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		const ended = record(verdict);
+		expect(ended).toMatchObject({ status: "ended", level: "deep" });
+		expect(ended.reason).toContain(
+			"its prober left attack 1 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
+		const asked = requests[prober]!;
+		expect(asked).toHaveLength(3);
+		expect(textOf(asked[2]!.at(-1)!)).toContain(
+			"Attack 1 has no finding on a probe that failed, nor a probe that passed or a skip.",
+		);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("leaves an attack whose probe failed unanswered by a skip or a probe that passed after it", async () => {
+		const { run } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 1, script: passing }),
+				call("skip_attack", { attack: 1, reason: "it needs the network" }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict)).toMatchObject({ status: "ended" });
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("counts an attack whose probe failed as answered once the reminded prober reports a finding on it", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: failing }),
+				fauxAssistantMessage("Reported 0 findings."),
+				(messages) => {
+					const id = /probe (p[0-9]+)/.exec(messages.map(textOf).join("\n"))![1]!;
+					return call("report_finding", finding(id));
+				},
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(requests[prober]).toHaveLength(4);
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
+	});
+
+	it("counts an attack answered by a finding on its failed probe that the verifier refutes", async () => {
+		const refuting: ScriptedReply = (messages) => {
+			const claims = [...systemPromptOf(messages).matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)];
+			const evidence = [{ file: "src/load.ts", line: 3, role: "cause" as const }];
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((claim) => [claim[1]!, { verdict: "refuted" as const, reason: "r", evidence }]),
+				),
+			);
+		};
+		const { run } = await review({
+			planner: plan,
+			prober: probing(failing),
+			others: [
+				{
+					match: "Melian adversarial verifier",
+					replies: [refuting, refuting],
+				},
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.all().map((each) => each.properties.verification?.verdict)).toEqual(["refuted"]);
 	});
 
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
@@ -1241,6 +1336,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				call("skip_attack", { attack: 2, reason: "it needs the network" }),
 				call("run_probe", { attack: 2, script: passing }),
 				call("run_probe", { attack: 1, script: failing }),
+				(messages) => call("report_finding", finding(/probe (p[0-9]+) failed/.exec(lastResults(messages))![1]!)),
 				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
 				// A probe cut at its output limit showed nothing, so a skip after it counts.
 				call("skip_attack", { attack: 3, reason: "its output passes the limit" }),
@@ -2340,6 +2436,8 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				]),
 				call("skip_attack", { attack: 1, reason: "its probes show nothing it can report" }),
 				fauxAssistantMessage("Done."),
+				// Its probes that failed leave the attack open, so the prober is reminded once.
+				fauxAssistantMessage("Done."),
 			],
 		});
 		await run;
@@ -2444,7 +2542,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		const ended = record((await probed.run).verdict);
 		expect(probed.requests[prober]).toHaveLength(2);
-		expect(ended.reason).toContain("its prober left attack 2 with no probe that showed anything, nor a skip");
+		expect(ended.reason).toContain(
+			"its prober left attack 2 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		expect(ended.budgetEnded).toMatchObject({ budget: "tools", limit: 1 });
 	});
 
@@ -2454,7 +2554,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			prober: [fauxAssistantMessage("Done."), fauxAssistantMessage("Still done.")],
 		});
 		const ended = record((await run).verdict);
-		expect(ended.reason).toContain("its prober left attacks 1, 2 with no probe that showed anything, nor a skip");
+		expect(ended.reason).toContain(
+			"its prober left attacks 1, 2 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		expect(ended).not.toHaveProperty("budgetEnded");
 	});
 
@@ -3676,7 +3778,11 @@ describe("the turns a lens run is sent", () => {
 		expect(sent).toContain(probingWording.carriedHeading);
 		expect(sent.some((line) => line.startsWith("The attack plan for this change follows"))).toBe(true);
 		expect(sent).toContain(probingWordingOf("trust-boundary").recordPlan);
-		expect(sent.some((line) => line.startsWith("Attack 2 has no probe that showed anything, nor a skip"))).toBe(true);
+		expect(
+			sent.some((line) =>
+				line.startsWith("Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip"),
+			),
+		).toBe(true);
 		expect(sent.filter((line) => !keyed.has(line) && !templates.some((each) => each.test(line)))).toEqual([]);
 	});
 });
@@ -3744,7 +3850,8 @@ async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, 
 
 // The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
 // trust-boundary lens's planner and prober must still be shown what they were shown then, but for the prober's
-// sentence on probes that show nothing and its reminder, which the maintainer's ruling of 2026-11-16 on issue #493 changed.
+// sentence on probes that show nothing and its reminder, which the maintainer's ruling of 2026-11-16 on issue #493 changed,
+// and the reminder again, which the ruling of 2026-11-17 on pull request #532 changed.
 describe("the trust-boundary lens's probing turns", () => {
 	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
 		const shown = await probingTurns(escalating(createFakeModels()), prober);

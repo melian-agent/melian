@@ -158,6 +158,7 @@ import {
 	plannerInstructions,
 	probeClaimKey,
 	probeConclusive,
+	probeFailed,
 	proberInstructions,
 	probingHost,
 	recordPlanPrompt,
@@ -631,16 +632,20 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				if (settled.status === "done") return undefined;
 				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
 			};
-			// The attack numbers the prober answered with neither a skip nor a probe that showed anything.
+			// The attack numbers the prober left unanswered. A probe that failed showed its attack's defect, so only a finding
+			// resting on one answers that attack; otherwise a probe that showed anything, or a skip, does.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
 				const state = (await runtime.snapshot(ProbingDocument, prober, context)) ?? {};
-				const probed = new Set(
-					Object.values(state.probes ?? {})
-						.filter((probe) => probeConclusive(probe.result))
-						.map((probe) => probe.attack),
-				);
-				return Array.from({ length: attacks }, (_, index) => index + 1).filter(
-					(attack) => !probed.has(attack) && state.skips?.[String(attack)] === undefined,
+				const probes = Object.values(state.probes ?? {});
+				const attacksOf = (keep: (probe: (typeof probes)[number]) => boolean) =>
+					new Set(probes.filter(keep).map((probe) => probe.attack));
+				const failed = attacksOf((probe) => probeFailed(probe.result));
+				const probed = attacksOf((probe) => probeConclusive(probe.result));
+				const reported = new Set(Object.values(state.findings ?? {}).map((id) => state.probes?.[id]?.attack));
+				return Array.from({ length: attacks }, (_, index) => index + 1).filter((attack) =>
+					failed.has(attack)
+						? !reported.has(attack)
+						: !probed.has(attack) && state.skips?.[String(attack)] === undefined,
 				);
 			};
 			// A probing run after its planner finished: the plan it recorded, then the prober's answer to it.
@@ -2048,7 +2053,9 @@ function lensRecord(
 				status: "ended",
 				level,
 				...(budgetEnded === undefined ? {} : { budgetEnded }),
-				reason: failed(`its prober left ${attacks} with no probe that showed anything, nor a skip`),
+				reason: failed(
+					`its prober left ${attacks} with no finding on a probe that failed, nor a probe that passed or a skip`,
+				),
 			};
 		}
 		if (outcome.capped !== undefined) {

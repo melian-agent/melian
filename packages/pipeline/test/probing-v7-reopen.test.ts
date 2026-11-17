@@ -140,7 +140,7 @@ describe("a store main wrote at version 7 of the lens task", () => {
 		// A finished probing run is never reused, so the review planned and probed again.
 		expect([requests[planner]?.length, requests[prober]?.length]).toEqual([2, 4]);
 		expect(textOf(requests[prober]!.at(-1)!.at(-1)!)).toContain(
-			"Attack 1 has no probe that showed anything, nor a skip",
+			"Attack 1 has no finding on a probe that failed, nor a probe that passed or a skip",
 		);
 		const entry = (await reviewer.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!;
 		expect(entry.task).not.toBe(recorded.lensTask.id);
@@ -155,7 +155,9 @@ describe("a store main wrote at version 7 of the lens task", () => {
 		]);
 		const ended = [...(verdict.ran ?? []), ...verdict.notRun].find(({ name }) => name === "lens.trust-boundary");
 		expect(ended).toMatchObject({ status: "ended", level: "deep" });
-		expect(ended?.reason).toContain("its prober left attack 1 with no probe that showed anything, nor a skip");
+		expect(ended?.reason).toContain(
+			"its prober left attack 1 with no finding on a probe that failed, nor a probe that passed or a skip",
+		);
 		expect(ended?.reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped attack 2$/);
 	});
 });

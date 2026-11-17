@@ -1419,7 +1419,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 			{ stopReason: "toolUse" },
 		);
 
-	it("gives no score to a live run whose prober leaves an attack with no probe that showed anything, nor a skip", async () => {
+	it("gives no score to a live run whose prober leaves an attack with no finding on a probe that failed, nor a probe that passed or a skip", async () => {
 		const golden = claim();
 		const availability = vi.spyOn(Probe, "availability").mockResolvedValue({ available: true });
 		onTestFinished(() => {
@@ -1464,7 +1464,7 @@ describe("a golden whose review is not reviewed", { timeout: 60_000 }, () => {
 		const live = runGolden(golden, { kind: "live", models: fake.review, model: `${ref.provider}/${ref.modelId}` });
 		await expect(live).rejects.toBeInstanceOf(GoldenRunError);
 		await expect(live).rejects.toThrow(
-			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with no probe that showed anything, nor a skip/,
+			/^Not reviewed: .*lens\.trust-boundary ended \(its prober left attack 1 with no finding on a probe that failed, nor a probe that passed or a skip/,
 		);
 	});
 
