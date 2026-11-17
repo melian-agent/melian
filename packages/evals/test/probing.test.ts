@@ -1137,6 +1137,21 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		expect(lines).toContain("pair: other lens checks on the prober's medium tier: none");
 	});
 
+	it("counts no lens the combination probes as sharing the prober's tier, though it names several", async () => {
+		const tiers = { "lens.trust-boundary": "medium", "lens.correctness": "medium", "lens.tests": "medium" } as const;
+		const using = runners({ golden: vi.fn(async (each: Golden) => ({ golden: each, ...ran([], { tiers }) })) });
+		const { lines } = await measure(
+			{
+				...env,
+				MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness",
+				MELIAN_EVAL_PROBE_PASSES: "1",
+				MELIAN_EVAL_GOLDEN: clean.name,
+			},
+			using,
+		);
+		expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+	});
+
 	it("runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -1821,6 +1836,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				{ ...stage, id: "p", subject: "trust-boundary@1@deep", role: "prober", shown: [failOpen.name] },
 				{ ...stage, id: "q", subject: "trust-boundary@1@deep", role: "prober", shown: [] },
 				{ ...stage, id: "r", subject: "contracts@1@deep", role: "prober", outcome: "failed", shown: [] },
+				{ ...stage, id: "s", subject: "design@1@deep", role: "prober", shown: [] },
 			]);
 			const out = join(scratch, "whole-results.json");
 			const using = runners({ range: vi.fn(async () => ran([], { telemetry })) });
@@ -1844,7 +1860,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 				}),
 			]);
 			expect(results.results[0].passes[0].reviews[0]).toMatchObject({
-				probedBy: ["trust-boundary"],
+				probedBy: ["design", "trust-boundary"],
 				unseen: [
 					{ lens: "correctness", why: "never shown" },
 					{ lens: "trust-boundary", why: "not run" },
