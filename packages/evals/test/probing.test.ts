@@ -988,6 +988,15 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("rejects with an error that is not a probe lens's refusal, rather than reading it as one", async () => {
+		const using = runners({
+			models: vi.fn(async () => {
+				throw new Error("no login");
+			}),
+		});
+		await expect(measure(env, using)).rejects.toThrow("no login");
+	});
+
 	it("scores each combination by its worst and mean pass, prints each review's notes, and spends every review", async () => {
 		let call = 0;
 		const record = (output: string) => ({
