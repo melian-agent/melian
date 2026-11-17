@@ -52,8 +52,10 @@ describe("Enola policy and reports", () => {
 			"enola/constraints/core.yaml",
 			"enola/recipes/layered.yaml",
 			".enola/suppressions.yaml",
+			"enola/constraints/lay\nx.yaml",
+			"enola/recipes/lay\nered.yaml",
 		])
-			expect(isPolicyFile(path)).toBe(true);
+			expect(isPolicyFile(path), path).toBe(true);
 		expect(isPolicyFile(".enola/baseline/facts.jsonl")).toBe(false);
 	});
 	it("disables executable providers and names only declared constraints as gate policy", () => {
@@ -293,7 +295,9 @@ describe("revision Enola policy limits", () => {
 			".enola/suppressions.yaml": "suppressions: []\n",
 			"enola-intent.yaml": "rules: []\n",
 			"enola.yaml": "providers: []\n",
+			"enola/constraints/lay\nx.yaml": "rules: []\n",
 			"enola/constraints/layer.yaml": "use_recipe: []\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered\n",
 			"enola/recipes/layered.yaml": "recipe: layered\n",
 			"mcp-arch.yaml": "providers: []\n",
 		};

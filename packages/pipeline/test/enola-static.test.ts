@@ -75,6 +75,8 @@ ${
 [ ! -e enola/constraints/head-only.yaml ] || exit 9
 [ "$(cat enola/recipes/ports.yaml)" = 'recipe: ports # base recipe' ] || exit 9
 [ ! -e enola/recipes/layered.yaml ] || exit 9
+[ "$(cat "$(printf 'enola/constraints/lay\\nx.yaml')")" = 'rules: [] # base newline constraint' ] || exit 9
+[ "$(cat "$(printf 'enola/recipes/lay\\nered.yaml')")" = 'recipe: layered # base newline recipe' ] || exit 9
 [ ! -e mcp-arch.yaml ] || exit 9
 `
 		: ""
@@ -652,6 +654,8 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			".enola/suppressions.yaml": "suppressions: [] # base suppression\n",
 			".enola/baseline/facts.jsonl": "do not reuse\n",
 			"enola/recipes/ports.yaml": "recipe: ports # base recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # base newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # base newline recipe\n",
 		});
 		const head = commit(repo, {
 			"src/a.ts": "export const BROKEN = 1;\n",
@@ -663,6 +667,8 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			"mcp-arch.yaml": "providers: [{ command: [evil] }]\n",
 			"enola/recipes/ports.yaml": "recipe: ports # head recipe\n",
 			"enola/recipes/layered.yaml": "recipe: layered\nrules: [] # replaces the shipped recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # head newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # head newline recipe\n",
 		});
 		const result = await runStaticTool(
 			{
