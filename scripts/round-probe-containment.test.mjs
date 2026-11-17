@@ -533,7 +533,7 @@ describe("the probe script", () => {
 			socket.once("data", (request) =>
 				socket.end(
 					request.toString("latin1").startsWith("CONNECT")
-						? "HTTP/1.1 403 Forbidden\r\nX-Proxy-Error: blocked-by-allowlist\r\n\r\n"
+						? "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nX-Proxy-Error: blocked-by-allowlist\r\n\r\n"
 						: "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n",
 				),
 			),
