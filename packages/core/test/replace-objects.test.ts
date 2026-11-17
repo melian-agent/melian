@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
-import { git } from "../src/git.ts";
+import { git, withoutReplacements } from "../src/git.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -43,4 +44,34 @@ it("reads core.useReplaceRefs as false though the repository's configuration tur
 	const { stdout } = await git(repo, ["config", "--get", "core.useReplaceRefs"]);
 
 	expect(stdout).toBe("false\n");
+});
+
+it("pins core.useReplaceRefs after every setting a caller's count holds, and keeps them", () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	const caller = Object.fromEntries(
+		Array.from({ length: 10 }, (_, n) => [
+			[`GIT_CONFIG_KEY_${n}`, `melian.caller${n}`],
+			[`GIT_CONFIG_VALUE_${n}`, `kept${n}`],
+		]).flat(),
+	);
+	const env = withoutReplacements({ ...process.env, GIT_CONFIG_COUNT: "10", ...caller });
+	const read = (key: string) => execFileSync("git", ["-C", repo, "config", "--get", key], { env, encoding: "utf8" });
+
+	expect([read("core.useReplaceRefs"), read("melian.caller0"), read("melian.caller9")]).toEqual([
+		"false\n",
+		"kept0\n",
+		"kept9\n",
+	]);
+});
+
+it("pins core.useReplaceRefs in place of a count git would refuse", () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	for (const count of ["x1", "1x"]) {
+		const env = withoutReplacements({ ...process.env, GIT_CONFIG_COUNT: count });
+
+		expect(
+			execFileSync("git", ["-C", repo, "config", "--get", "core.useReplaceRefs"], { env, encoding: "utf8" }),
+			count,
+		).toBe("false\n");
+	}
 });
