@@ -226,7 +226,7 @@ type ProbingState = {
 	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
 	attempts?: string[];
 	skips?: Record<string, string>;
-	// The latest probe each finding rests on, which its verifier reruns.
+	// The first probe each finding rests on, which its verifier reruns.
 	findings?: Record<string, string>;
 	// Kept apart from `findings`, since two attacks can fail on one defect and so report one finding ID.
 	answered?: number[];
