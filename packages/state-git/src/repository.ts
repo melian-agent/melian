@@ -103,8 +103,6 @@ function unreachable(message: string, result?: GitResult, cause?: unknown): Reco
 	return new RecordError("unreachable", said ? `${message}: ${said}` : message, { cause });
 }
 
-// An entry another call removed after the listing reads as gone; any other failure fails the listing, so the sweep
-// reports it rather than skipping an entry it could not inspect.
 // The names in `directory` that start with `prefix`, in name order, and whether more than `room` of them are there, in
 // which case it lists only the first `room` the directory gives and stops.
 async function namesIn(directory: string, prefix: string, room: number): Promise<{ names: string[]; more: boolean }> {
@@ -117,6 +115,8 @@ async function namesIn(directory: string, prefix: string, room: number): Promise
 	return { names: names.sort(), more: false };
 }
 
+// An entry another call removed after the listing reads as gone; any other failure fails the listing, so the sweep
+// reports it rather than skipping an entry it could not inspect.
 async function statIfThere(path: string) {
 	return lstat(path).catch((cause: unknown) => {
 		if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause;
