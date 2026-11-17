@@ -436,7 +436,16 @@ export {
 	type EnolaReference,
 } from "./enola-graph.ts";
 export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes, stderrLimit } from "./git.ts";
+export {
+	type GitOptions,
+	type GitResult,
+	git,
+	gitFailure,
+	gitOutput,
+	gitOutputBytes,
+	stderrLimit,
+	withoutReplacements,
+} from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
