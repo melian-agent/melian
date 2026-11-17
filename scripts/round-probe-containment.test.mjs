@@ -57,7 +57,7 @@ function report() {
 		writes: { "/run/home/written": "wrote", "/tmp/melian-written": "wrote" },
 		tcp: { "api.github.com:443": "refused" },
 		dns: "failed",
-		httpProxy: { "CONNECT api.github.com:443": "403", "GET api.github.com:443": "closed" },
+		httpProxy: { "CONNECT api.github.com:443": "403 refused", "GET api.github.com:443": "closed" },
 		socksProxy: { "api.github.com:443": "reply 2", "169.254.169.254:80": "request closed" },
 		sudo: "refused",
 		udp: "ENETUNREACH",
@@ -213,7 +213,7 @@ describe("judge", () => {
 	});
 
 	it("fails when the HTTP proxy let a request through, never answered, or was not there to try", () => {
-		for (const status of ["200", "302"]) {
+		for (const status of ["200", "302", "200 refused"]) {
 			const r = report();
 			r.httpProxy["GET api.github.com:443"] = status;
 			expect(judge(r, plan(), argv, host())).toEqual([
@@ -226,6 +226,16 @@ describe("judge", () => {
 			"the probe has no HTTP_PROXY to try",
 			"the HTTP proxy never answered CONNECT api.github.com:443: ECONNREFUSED",
 		]);
+	});
+
+	it("fails a status the proxy did not mark as its refusal, which an upstream it forwarded to could have sent", () => {
+		for (const status of ["401", "403", "502"]) {
+			const r = report();
+			r.httpProxy["GET api.github.com:443"] = status;
+			expect(judge(r, plan(), argv, host())).toEqual([
+				`the HTTP proxy answered GET api.github.com:443 with ${status}, which the proxy did not mark as its refusal`,
+			]);
+		}
 	});
 
 	it("fails a close that came after part of a reply", () => {
@@ -506,6 +516,60 @@ describe("the probe script", () => {
 			expect(r.httpProxy).toEqual({ [`CONNECT ${target}`]: "closed after 12 bytes", [`GET ${target}`]: "closed" });
 			expect(judge(r, { ...plan(), network: targets.network }, argv, host())).toEqual([
 				`the HTTP proxy never answered CONNECT ${target}: closed after 12 bytes`,
+			]);
+		} finally {
+			await new Promise((resolve) => proxy.close(resolve));
+		}
+	});
+
+	it("reads only a status the proxy marked as its own refusal, and fails one an upstream could have sent", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-containment-marked-"));
+		dirs.push(dir);
+		const shut = createServer();
+		await new Promise((resolve) => shut.listen(0, "127.0.0.1", resolve));
+		const port = shut.address().port;
+		await new Promise((resolve) => shut.close(resolve));
+		const proxy = createServer((socket) =>
+			socket.once("data", (request) =>
+				socket.end(
+					request.toString("latin1").startsWith("CONNECT")
+						? "HTTP/1.1 403 Forbidden\r\nX-Proxy-Error: blocked-by-allowlist\r\n\r\n"
+						: "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n",
+				),
+			),
+		);
+		try {
+			await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+			const targets = {
+				canary: "melian-canary-unused",
+				shm: "",
+				shapes: {},
+				read: [],
+				write: [],
+				network: [{ host: "127.0.0.1", port }],
+				udp: { host: "127.0.0.1", port: 9 },
+				walk: [],
+				byteLimit: 1,
+				self: join(dir, "targets.json"),
+			};
+			writeFileSync(join(dir, "probe.mjs"), probeScript);
+			writeFileSync(targets.self, JSON.stringify(targets));
+			const run = spawn(process.execPath, [join(dir, "probe.mjs")], {
+				cwd: dir,
+				env: { PATH: process.env.PATH, HTTP_PROXY: `http://127.0.0.1:${proxy.address().port}` },
+				stdio: ["ignore", "pipe", "inherit"],
+			});
+			let output = "";
+			run.stdout.on("data", (chunk) => {
+				output += chunk;
+			});
+			expect(await new Promise((resolve) => run.on("close", resolve))).toBe(0);
+			const target = `127.0.0.1:${port}`;
+			const r = { ...report(), tcp: { [target]: "refused" }, httpProxy: JSON.parse(output).httpProxy };
+			r.socksProxy = { [target]: "reply 2", "169.254.169.254:80": "request closed" };
+			expect(r.httpProxy).toEqual({ [`CONNECT ${target}`]: "403 refused", [`GET ${target}`]: "401" });
+			expect(judge(r, { ...plan(), network: targets.network }, argv, host())).toEqual([
+				`the HTTP proxy answered GET ${target} with 401, which the proxy did not mark as its refusal`,
 			]);
 		} finally {
 			await new Promise((resolve) => proxy.close(resolve));

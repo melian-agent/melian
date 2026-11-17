@@ -165,10 +165,16 @@ report.udp = await new Promise((resolve) => {
 });
 try { await lookup(t.dns); report.dns = "resolved"; } catch (error) { report.dns = code(error); }
 
+// sandbox-runtime marks each refusal it answers itself with an X-Proxy-Error header; an unmarked status could be an
+// upstream's, which means the proxy forwarded the request.
 const statusLine = (data, socket, ended) => {
 	const text = data.toString("latin1");
-	const end = text.indexOf("\\r\\n");
-	if (end >= 0) return text.slice(0, end).split(" ")[1] ?? "unparsed";
+	const end = text.indexOf("\\r\\n\\r\\n");
+	if (end >= 0) {
+		const [line, ...headers] = text.slice(0, end).split("\\r\\n");
+		const status = line.split(" ")[1] ?? "unparsed";
+		return headers.some((header) => /^x-proxy-error:/i.test(header)) ? status + " refused" : status;
+	}
 	// A close counts as the proxy's refusal only when no byte of a reply came first.
 	if (ended) return data.length === 0 ? "closed" : "closed after " + data.length + " bytes";
 	return undefined;
@@ -368,9 +374,12 @@ export function judge(report, plan, argv, host) {
 	if (report.httpProxy.missing !== undefined) failures.push(`the probe has no ${report.httpProxy.missing} to try`);
 	for (const [attempt, status] of Object.entries(report.httpProxy)) {
 		if (attempt === "missing") continue;
-		if (/^[23]\d\d$/.test(status)) failures.push(`the HTTP proxy answered ${attempt} with ${status}`);
-		// A refusal must come from the proxy, a status or a close after connecting, or the attempt never reached it.
-		else if (!/^(\d\d\d|closed)$/.test(status)) failures.push(`the HTTP proxy never answered ${attempt}: ${status}`);
+		if (/^[23]\d\d( refused)?$/.test(status)) failures.push(`the HTTP proxy answered ${attempt} with ${status}`);
+		else if (/^\d\d\d$/.test(status))
+			failures.push(`the HTTP proxy answered ${attempt} with ${status}, which the proxy did not mark as its refusal`);
+		// A refusal must come from the proxy, a marked status or a close after connecting, or the attempt never reached it.
+		else if (!/^(\d\d\d refused|closed)$/.test(status))
+			failures.push(`the HTTP proxy never answered ${attempt}: ${status}`);
 	}
 	if (report.socksProxy.missing !== undefined) failures.push(`the probe has no ${report.socksProxy.missing} to try`);
 	for (const [target, outcome] of Object.entries(report.socksProxy)) {
