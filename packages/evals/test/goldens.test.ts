@@ -23,6 +23,7 @@ import {
 	loadConfig,
 	Merge,
 	type Severity,
+	Verdict,
 	type Verification,
 	visibleText,
 } from "@melian-agent/core";
@@ -1734,6 +1735,37 @@ describe("a probing golden's sandbox", { timeout: 60_000 }, () => {
 			"lens.trust-boundary: deep ran without probes, which cannot run here: no sandbox-runtime here",
 		);
 		expect(availability.mock.calls.map(([sandbox]) => sandbox)).toEqual([Probe.sandbox]);
+	});
+
+	it("returns each prober stage's plan, skips and probe text by its stage ID, from a review and from one that fails after it", async () => {
+		const golden = loadGoldens().find((each) => each.name === "trust-boundary-probe-claim-lost-release")!;
+		const scripted = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
+		const prober = scripted.telemetry.stages.find((stage) => stage.role === "prober")!;
+		expect(Object.keys(scripted.probers)).toEqual([prober.id]);
+		const record = scripted.probers[prober.id]!;
+		expect(record.plan.map((attack) => attack.target)).toEqual([
+			".github/workflows/claim.yml, the timeline walk that decides the status label",
+		]);
+		expect(record.skips).toEqual([]);
+		expect(record.probes).toEqual([
+			{
+				id: prober.probes!.runs[0]!.id,
+				attack: 1,
+				script: expect.stringMatching(/^\/\/ Attack 1: /),
+				files: [],
+				output: expect.stringMatching(/\S/),
+			},
+		]);
+		const status = vi
+			.spyOn(Verdict.prototype, "reviewStatus")
+			.mockReturnValue({ state: "error", description: "forced" });
+		onTestFinished(() => {
+			status.mockRestore();
+		});
+		const failed = await runGolden(golden, { kind: "scripted", probes: "unconfined" }).catch((error) => error);
+		expect(failed).toBeInstanceOf(GoldenRunError);
+		expect(failed.message).toBe("forced");
+		expect(Object.values((failed as GoldenRunError).probers)).toEqual([record]);
 	});
 
 	it("probes a scripted golden in the host's sandbox unless its caller says it runs the committed corpus", async () => {
