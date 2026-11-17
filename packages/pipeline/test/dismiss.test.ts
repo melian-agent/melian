@@ -1482,6 +1482,21 @@ describe("recording a dismissal", () => {
 			}
 		});
 
+		it("refuses when the policy names a branch spelt as a full object ID of another object format", async () => {
+			const name = "a".repeat(64);
+			gitIn(repo, "branch", name, "main");
+			try {
+				const { recorded } = await dismissStoredWith(mainWrote.unchanged, () => name);
+
+				await expect(recorded).rejects.toMatchObject({
+					code: "adjudicationFailed",
+					message: expect.stringContaining("the resolution policy changed since the review read it"),
+				});
+			} finally {
+				gitIn(repo, "branch", "-D", name);
+			}
+		});
+
 		it("refuses a fingerprint of the retired recipe, which names no version, though the policy came from a commit", async () => {
 			const { recorded } = await dismissStoredWith("0000000000000000", "revision");
 

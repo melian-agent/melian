@@ -16,7 +16,7 @@ The first fix skipped the comparison for an older version when the policy came f
 
 `configsFor` computes both recipes. `fingerprint` is version 3's, and `versionTwo` is version 2's, kept unchanged: plain JSON in the order files write their keys, and each lens report's default without its name or scope. A stored `2:` fingerprint must equal `versionTwo`, and every other stored fingerprint must equal `fingerprint`. Nothing is skipped.
 
-- Version 2 is compared only when the review's policy came from a commit named by its full object ID, 40 or 64 hex characters. A branch or an abbreviated ID can name another commit by now, and a working tree can change under one source, so a `2:` fingerprint there is compared with version 3's and refused.
+- Version 2 is compared only when the review's policy came from a commit named by its full object ID. Git decides that, not the name's spelling: the name must equal the commit git resolves it to, in the repository's object format. A branch may be named with 64 hex characters in a SHA-1 repository, and 40 hex characters are an abbreviation in a SHA-256 one. A branch or an abbreviated ID can name another commit by now, and a working tree can change under one source, so a `2:` fingerprint there is compared with version 3's and refused.
 - A fingerprint with no version stays refused, as the retired-fingerprints decision ruled.
 - A fingerprint of a later version than the build's own is refused, since it equals neither recipe.
 - The account reader compares with version 3's alone, so a recorded round from before the change reads not reviewed.

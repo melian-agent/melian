@@ -8,6 +8,7 @@ import {
 	type MelianConfig,
 	type ModelRoute,
 	type MutationSkipCause,
+	openSource,
 	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
@@ -264,13 +265,16 @@ export const AdjudicationTask = defineTask<
 				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input. A
 				// fingerprint version 2 made is compared with version 2's recipe, when a full object ID fixes the commit, by
 				// the maintainer's ruling of 2026-11-17 on issue #502; a branch or an abbreviated ID can name another commit by
-				// now. Every other stored fingerprint, the unversioned one the ruling of 2026-10-24 retired included, is
-				// compared with the current one.
+				// now. Git decides which a name is: only a name that resolves to itself, in the repository's object format,
+				// is a full object ID, since a branch may be spelt like one. Every other stored fingerprint, the unversioned
+				// one the ruling of 2026-10-24 retired included, is compared with the current one.
 				const { resolutionPolicy } = task.input;
-				const fixedCommit = policy?.kind === "revision" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit);
 				if (policies !== undefined && resolutionPolicy !== undefined) {
-					const computed =
-						fixedCommit && resolutionPolicy.startsWith("2:") ? policies.versionTwo : policies.fingerprint;
+					const fixedCommit =
+						resolutionPolicy.startsWith("2:") &&
+						policy?.kind === "revision" &&
+						(await openSource(repoRoot, policy)).commit === policy.commit;
+					const computed = fixedCommit ? policies.versionTwo : policies.fingerprint;
 					if (computed !== resolutionPolicy) {
 						throw new ConfigError(
 							"invalidValue",
