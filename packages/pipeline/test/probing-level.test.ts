@@ -732,6 +732,117 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
+	// The maintainer's ruling of 2026-11-18: a probe that failed because the prober wrote it wrongly showed no defect, so
+	// the prober may close its attack by naming that probe and saying why it never exercised the attack.
+	const broken = "const = ;\n";
+	const probeOf = (messages: Parameters<typeof lastResults>[0]) => /probe (p[0-9]+)/.exec(lastResults(messages))![1]!;
+
+	it("closes an attack whose probe failed on its own syntax error with a skip naming that probe, and shows why", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: broken }),
+				(messages) =>
+					call("skip_attack", {
+						attack: 1,
+						probe: probeOf(messages),
+						reason: "its script had a syntax error, so load() never ran",
+					}),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		const closed = record(verdict);
+		expect(requests[prober]).toHaveLength(3);
+		expect(lastResults(requests[prober]![2]!)).toMatch(/recorded attack 1 as closed: probe p[0-9]+ never exercised it/);
+		expect(closed).toMatchObject({ status: "ran", level: "deep" });
+		expect(closed.reason).toMatch(
+			/, and closed attack 1 with no finding, since probe p[0-9]+ never exercised it: "its script had a syntax error, so load\(\) never ran"$/,
+		);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.status).toBe("passed");
+	});
+
+	it("leaves an attack unanswered when it closes one failed probe and another failed probe of it stands", async () => {
+		let first = "";
+		const { run } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: broken }),
+				(messages) => {
+					first = probeOf(messages);
+					return call("run_probe", { attack: 1, script: failing });
+				},
+				() => call("skip_attack", { attack: 1, probe: first, reason: "its script had a syntax error" }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict)).toMatchObject({ status: "ended" });
+		expect(record(verdict).reason).toContain("its prober left attack 1 with no finding on a probe that failed");
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("refuses a skip that names a probe that passed, one of another attack, or one with no reason", async () => {
+		let passed = "";
+		let failed = "";
+		const { run, requests } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				(messages) => {
+					passed = probeOf(messages);
+					return call("run_probe", { attack: 2, script: broken });
+				},
+				(messages) => {
+					failed = probeOf(messages);
+					return call("skip_attack", { attack: 1, probe: passed, reason: "it was wrong" });
+				},
+				() => call("skip_attack", { attack: 1, probe: failed, reason: "it was wrong" }),
+				() => call("skip_attack", { attack: 2, probe: failed, reason: " \n " }),
+				() => call("skip_attack", { attack: 2, probe: "p999", reason: "it was wrong" }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		const asked = requests[prober]!.map(lastResults);
+		expect(asked[3]).toMatch(/probe p[0-9]+ did not fail, so it needs no closing/);
+		expect(asked[4]).toMatch(/probe p[0-9]+ probed attack 2, not attack 1/);
+		expect(asked[5]).toMatch(/Validation failed[\s\S]*reason/);
+		expect(asked[6]).toContain("no probe p999 ran in this conversation");
+		expect(record(verdict)).toMatchObject({ status: "ended" });
+		expect(record(verdict).reason).toContain("its prober left attack 2 with no finding");
+		expect(record(verdict).reason).not.toContain("closed");
+	});
+
+	it("says both that its findings budget ran out and which failed attack it left with no finding", async () => {
+		const { run } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					(messages) => call("report_finding", finding(probeOf(messages))),
+					() => call("run_probe", { attack: 2, script: failing }),
+					(messages) =>
+						call("report_finding", {
+							...finding(probeOf(messages)),
+							line: 2,
+							evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+						}),
+					fauxAssistantMessage("Reported 1 finding."),
+					fauxAssistantMessage("Reported 1 finding."),
+				],
+			},
+			{ lens: probingWith({}, { findings: 1 }) },
+		);
+		const ended = record((await run).verdict);
+		expect(ended.status).toBe("ended");
+		expect(ended.reason).toContain("its findings budget of 1 ran out");
+		expect(ended.reason).toContain("its prober left attack 2 with no finding on a probe that failed");
+	});
+
 	it("counts an attack whose probe failed as answered once the reminded prober reports a finding on it", async () => {
 		const { run, requests } = await review({
 			planner: plan,

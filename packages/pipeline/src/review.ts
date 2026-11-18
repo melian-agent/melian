@@ -355,8 +355,8 @@ type LensOutcome =
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
-// the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither a skip nor
-// a probe that showed anything. A version 7 task stored `skipped` as a count.
+// the plan's size, the probes it ran and their time, the attacks it skipped, the failed probes it closed with why, and
+// those it left with neither a skip nor a probe that showed anything. A version 7 task stored `skipped` as a count.
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
@@ -365,6 +365,7 @@ type ProbingOutcome = {
 	readonly milliseconds: number;
 	readonly skipped: number | readonly number[];
 	readonly unanswered: readonly number[];
+	readonly closed?: readonly { readonly attack: number; readonly probe: string; readonly reason: string }[];
 };
 
 type StoredTrigger = { kind: "severity"; severity: Severity } | { kind: "budget"; budget: "tokens" | "tools" };
@@ -645,13 +646,18 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
 			};
 			// The attack numbers the prober left unanswered. A probe that failed showed its attack's defect, so only a finding
-			// resting on one answers that attack; otherwise a probe that showed anything, or a skip, does.
+			// resting on one answers that attack, or closing every failed probe of it as one that never exercised it; otherwise
+			// a probe that showed anything, or a skip, does.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
 				const state = (await runtime.snapshot(ProbingDocument, prober, context)) ?? {};
 				const probes = Object.values(state.probes ?? {});
 				const attacksOf = (keep: (probe: (typeof probes)[number]) => boolean) =>
 					new Set(probes.filter(keep).map((probe) => probe.attack));
-				const failed = attacksOf((probe) => probeFailed(probe.result));
+				const failed = new Set(
+					Object.entries(state.probes ?? {})
+						.filter(([id, probe]) => probeFailed(probe.result) && state.closed?.[id] === undefined)
+						.map(([, probe]) => probe.attack),
+				);
 				const probed = attacksOf((probe) => probeConclusive(probe.result));
 				const reported = new Set(state.answered);
 				return Array.from({ length: attacks }, (_, index) => index + 1).filter((attack) =>
@@ -737,6 +743,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 							(attack) => !probes.some((probe) => probe.attack === attack && probeConclusive(probe.result)),
 						),
 					unanswered: open,
+					closed: Object.entries(state.closed ?? {}).flatMap(([id, reason]) => {
+						const closed = state.probes?.[id];
+						return closed === undefined ? [] : [{ attack: closed.attack, probe: id, reason }];
+					}),
 				};
 			};
 			// One run: its conversation, and for a level that probes, its planner's then its prober's.
@@ -2094,7 +2104,13 @@ export function probingNote(probing: ProbingOutcome): string {
 			? plural(count, "attack")
 			: `${count === 1 ? "attack" : "attacks"} ${listed.join(", ")}`;
 	const skipped = count === 0 ? "" : `, and skipped ${which}`;
-	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}`;
+	const closed = (probing.closed ?? [])
+		.map(
+			({ attack, probe, reason }) =>
+				`, and closed attack ${attack} with no finding, since probe ${probe} never exercised it: "${visibleText(reason)}"`,
+		)
+		.join("");
+	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}${closed}`;
 }
 
 function lensRecord(
@@ -2115,23 +2131,24 @@ function lensRecord(
 		const { budgetEnded } = outcome;
 		// An attack with neither a skip nor a probe that showed anything is one the review never answered.
 		const open = probing?.unanswered ?? [];
+		const lost =
+			outcome.capped === undefined
+				? undefined
+				: handedBy.length === 0
+					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
+					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
 		if (open.length > 0) {
 			const attacks = `${open.length === 1 ? "attack" : "attacks"} ${open.join(", ")}`;
+			const left = `its prober left ${attacks} with no finding on a probe that failed, nor a probe that passed or a skip`;
 			return {
 				name,
 				status: "ended",
 				level,
 				...(budgetEnded === undefined ? {} : { budgetEnded }),
-				reason: failed(
-					`its prober left ${attacks} with no finding on a probe that failed, nor a probe that passed or a skip`,
-				),
+				reason: failed(lost === undefined ? left : `${lost}; ${left}`),
 			};
 		}
-		if (outcome.capped !== undefined) {
-			const lost =
-				handedBy.length === 0
-					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
-					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
+		if (lost !== undefined) {
 			return {
 				name,
 				status: "ended",
