@@ -355,7 +355,8 @@ jobs:
           exit 0
       # An uploaded artefact is public, whatever the relay later decides, so the relay's own checks run here first, with
       # no login, and a batch they refuse is never uploaded. The record job checks it again, since it cannot trust what
-      # this job decided. A review that wrote no records, under a base that does not trust writers, uploads none.
+      # this job decided. A review that wrote no records, under a base that does not trust writers, uploads none. The check
+      # and the upload read one copy, so nothing written to the review's folder after the check is uploaded.
       - name: Check the round's records for the relay
         id: records
         working-directory: melian
@@ -368,14 +369,15 @@ jobs:
         run: |
           [ -d "$RUNNER_TEMP/records" ] || { echo "the round wrote no records, so none are relayed"; exit 0; }
           export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
-          node packages/cli/bin/melian.js records relay "#$NUMBER" --from "dir:$RUNNER_TEMP/records" \
+          cp -RP "$RUNNER_TEMP/records" "$RUNNER_TEMP/checked-records"
+          node packages/cli/bin/melian.js records relay "#$NUMBER" --from "dir:$RUNNER_TEMP/checked-records" \
             --expect-base "$BASE" --expect-head "$HEAD" --check
           echo "name=melian-records-$ATTEMPT" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.records.outputs.name != ''
         with:
           name: ${{ steps.records.outputs.name }}
-          path: ${{ runner.temp }}/records
+          path: ${{ runner.temp }}/checked-records
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

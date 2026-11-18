@@ -27,7 +27,7 @@ describe("the melian round workflow", () => {
 	it("uploads only the public files, and the records the relay's checks passed, and writes no job summary", () => {
 		const uploads = steps.filter((step) => step.uses?.startsWith("actions/upload-artifact@"));
 		expect(uploads.map((step) => [step.job, step.with.path, step.if])).toEqual([
-			["round", `${actions("runner.temp")}/records`, "steps.records.outputs.name != ''"],
+			["round", `${actions("runner.temp")}/checked-records`, "steps.records.outputs.name != ''"],
 			["round", `${actions("runner.temp")}/public`, "always()"],
 		]);
 		expect(uploads[0].with.name).toBe(actions("steps.records.outputs.name"));
@@ -1552,7 +1552,7 @@ describe("the melian round workflow", () => {
 				join(dir, "node"),
 				[
 					"#!/bin/sh",
-					`[ "$*" = "packages/cli/bin/melian.js records relay #7 --from dir:$RUNNER_TEMP/records --expect-base ${"2".repeat(40)} --expect-head ${"1".repeat(40)} --check" ] && exit "$RELAY"`,
+					`[ "$*" = "packages/cli/bin/melian.js records relay #7 --from dir:$RUNNER_TEMP/checked-records --expect-base ${"2".repeat(40)} --expect-head ${"1".repeat(40)} --check" ] && exit "$RELAY"`,
 					"exit 3",
 					"",
 				].join("\n"),
@@ -1560,7 +1560,10 @@ describe("the melian round workflow", () => {
 			chmodSync(join(dir, "node"), 0o755);
 			const step = (relay, records = true) => {
 				const temp = mkdtempSync(join(dir, "temp-"));
-				if (records) mkdirSync(join(temp, "records"));
+				if (records) {
+					mkdirSync(join(temp, "records", "changesets"), { recursive: true });
+					writeFileSync(join(temp, "records", "changesets", "a.json"), "{}");
+				}
 				const output = join(temp, "output");
 				writeFileSync(output, "");
 				const ran = spawnSync("bash", ["-e", "-c", run], {
@@ -1576,11 +1579,15 @@ describe("the melian round workflow", () => {
 						RELAY: String(relay),
 					},
 				});
-				return [ran.status, readFileSync(output, "utf8")];
+				// What the upload reads is the copy the relay checked, never the folder the review wrote, which could change.
+				if (records) writeFileSync(join(temp, "records", "late.json"), "{}");
+				const copy = join(temp, "checked-records");
+				const copied = records && ran.status === 0 ? readdirSync(copy, { recursive: true }).sort() : [];
+				return [ran.status, readFileSync(output, "utf8"), copied];
 			};
-			expect(step(0)).toEqual([0, "name=melian-records-2\n"]);
-			expect(step(1)).toEqual([1, ""]);
-			expect(step(0, false)).toEqual([0, ""]);
+			expect(step(0)).toEqual([0, "name=melian-records-2\n", ["changesets", "changesets/a.json"]]);
+			expect(step(1)).toEqual([1, "", []]);
+			expect(step(0, false)).toEqual([0, "", []]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
