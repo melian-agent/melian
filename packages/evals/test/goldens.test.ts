@@ -933,7 +933,7 @@ describe("scriptedMismatches", () => {
 		const template = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
 		const comment = { ...template.expected.comments[0]!, source: "lens.design" };
 		const golden = { ...template, expected: { ...template.expected, comments: [comment] } };
-		const finding = {
+		const finding = Finding.from({
 			ruleId: comment.rule,
 			locations: [{ physicalLocation: { artifactLocation: { uri: comment.file } } }],
 			properties: {
@@ -961,7 +961,7 @@ describe("scriptedMismatches", () => {
 					},
 				],
 			},
-		} as never;
+		} as never);
 		expect(scriptedMismatches(golden, [finding])).toEqual([]);
 	});
 	it("skips refuted evidence before choosing an eligible claim with the same rule and source", () => {
@@ -1045,15 +1045,15 @@ describe("scoreGolden", () => {
 	// An unmerged finding is its own check's sighting.
 	const own = (golden: Golden, finding: Finding) => scoreGolden(golden, [finding], [finding]);
 	const finding = (path: string, rule: string) =>
-		({
+		Finding.from({
 			ruleId: rule,
 			properties: { path },
 			locations: [{ physicalLocation: { artifactLocation: { uri: path } } }],
-		}) as never;
+		} as never);
 
 	it("matches alternative files and keeps a merged claim’s rule paired with its source", () => {
 		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
-		const merged = {
+		const merged = Finding.from({
 			ruleId: "fail-open",
 			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
 			properties: {
@@ -1065,7 +1065,7 @@ describe("scoreGolden", () => {
 				],
 				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.design", version: "v" } }],
 			},
-		} as never;
+		} as never);
 		const sourced = (rule: string, source: string) => ({
 			...golden,
 			expected: { ...golden.expected, comments: [{ ...golden.expected.comments[0]!, rule, source }] },
@@ -1208,15 +1208,16 @@ describe("scoreGolden", () => {
 				comments: [{ ...golden.expected.comments[0]!, rule: "fail-open", source: "lens.trust-boundary" }],
 			},
 		};
-		const finding = {
+		const finding = Finding.from({
 			ruleId: "fail-open",
 			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
 			properties: {
 				path: "src/publish.ts",
+				source: { check: "lens.trust-boundary", version: "v2" },
 				reportedBy: [{ check: "lens.trust-boundary", version: "v2" }],
 				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.trust-boundary", version: "v1" } }],
 			},
-		} as never;
+		} as never);
 		expect(scoreGolden(expected, [finding])).toMatchObject({ precision: 1, recall: 1 });
 	});
 	it("scores two lens sightings of one defect once after adjudication", async () => {
@@ -1262,7 +1263,7 @@ describe("scoreGolden", () => {
 		});
 		const alternative = golden({ alternativeRules: ["wrong-result"] });
 		const claimed = (rule: string, check: string) =>
-			({
+			Finding.from({
 				ruleId: "data-loss",
 				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
 				properties: {
@@ -1270,7 +1271,7 @@ describe("scoreGolden", () => {
 					reportedBy: [{ check: "lens.tests", version: "v" }],
 					otherClaims: [{ ruleId: rule, source: { check, version: "v" } }],
 				},
-			}) as never;
+			} as never);
 
 		expect(scoreGolden(alternative, [finding("src/user.ts", "wrong-result")])).toMatchObject({ recall: 1 });
 		expect(scoreGolden(alternative, [finding("src/user.ts", "null-dereference")])).toMatchObject({ recall: 1 });
@@ -1428,6 +1429,34 @@ describe("scoreGolden", () => {
 			expect(scoreGolden(lined(), [merged(speaker, 11, [claimOf(other)])], [speaker, other]).found).toBe(0);
 		});
 
+		it("holds the scripted run to the claim that answered the lines, not the first of its rule", () => {
+			const speaker = report("lens.correctness", "wrong-result", 30);
+			const far = report("lens.tests", comment!.rule, 30, comment!.file, "far");
+			const near = report("lens.tests", comment!.rule, 11, comment!.file, "near");
+			const evidence = comment!.evidence.map(({ file, line, endLine, role, revision }) => ({
+				file,
+				startLine: line,
+				...(endLine === undefined ? {} : { endLine }),
+				role,
+				revision: revision ?? ("head" as const),
+				snippet: "user.name",
+			}));
+			const agreed = { failureScenario: comment!.failureScenario, evidence };
+			const drifted = { failureScenario: "Something else.", evidence: [cause(30)] };
+			// Codex's adversarial review of #550 at 28d05347: the check took the first claim of the rule, at 30.
+			const mismatches = (atFar: Partial<MemberClaim>, atNear: Partial<MemberClaim>) =>
+				scriptedMismatches(
+					lined(),
+					[merged(speaker, 30, [claimOf(far, atFar), claimOf(near, atNear)])],
+					[speaker, far, near],
+				);
+			expect(mismatches(drifted, agreed)).toEqual([]);
+			expect(mismatches(agreed, drifted)).toEqual([
+				`${comment!.file} ${comment!.rule} from lens.tests: failure scenario "Something else.", expected ${JSON.stringify(comment!.failureScenario)}`,
+				`${comment!.file} ${comment!.rule} from lens.tests: evidence ${JSON.stringify([{ file: comment!.file, line: 30, role: "cause", revision: "head" }])}, expected ${JSON.stringify(comment!.evidence.map((location) => ({ ...location, revision: location.revision ?? "head" })))}`,
+			]);
+		});
+
 		it("answers through each version the speaker was reported by, at that version's sighting", () => {
 			const quick = report("lens.tests", comment!.rule, 30, comment!.file, "quick");
 			const careful = report("lens.tests", comment!.rule, 11, comment!.file, "careful");
@@ -1527,11 +1556,11 @@ describe("scoreGolden", () => {
 			expected: { ...nullDeref!.expected, comments: [{ ...comment!, source: "lens.tests" }] },
 		};
 		const reportedBy = (...checks: string[]) =>
-			({
+			Finding.from({
 				ruleId: "null-dereference",
 				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
 				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
-			}) as never;
+			} as never);
 		expect(scoreGolden(golden, [reportedBy("lens.correctness")])).toMatchObject({
 			truePositives: 0,
 			found: 0,
@@ -1562,11 +1591,11 @@ describe("scoreGolden", () => {
 			},
 		};
 		const reportedBy = (...checks: string[]) =>
-			({
+			Finding.from({
 				ruleId: "null-dereference",
 				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
 				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
-			}) as never;
+			} as never);
 		expect(
 			scoreGolden(golden, [reportedBy("lens.correctness", "lens.tests"), reportedBy("lens.correctness")]),
 		).toMatchObject({ truePositives: 2, found: 2, precision: 1, recall: 1 });

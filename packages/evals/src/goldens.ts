@@ -662,11 +662,12 @@ export function scriptedMismatches(
 ): string[] {
 	return golden.expected.comments.flatMap((comment) => {
 		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
-		const found = findings.find((each) => answers(comment, each, sightings));
+		const found = findings
+			.map((finding) => ({ finding, claim: answers(comment, finding, sightings) }))
+			.find(({ claim }) => claim !== undefined);
 		if (found === undefined) return [`${name}: not reported`];
-		const claim = found.properties.otherClaims?.find((claim) => matchesClaim(comment, claim));
-		const { cause } = found.properties;
-		const { failureScenario, evidence = [] } = claim ?? found.properties;
+		const { cause } = found.finding.properties;
+		const { failureScenario, evidence = [] } = found.claim!;
 		// A guardrail finding has neither a failure scenario nor evidence, so only its cause is held to the golden.
 		if (comment.rule.startsWith("guardrail/"))
 			return cause === comment.cause ? [] : [`${name}: cause ${cause}, expected ${comment.cause}`];
@@ -736,23 +737,20 @@ function within(comment: ExpectedClaim, file: string, start: number, end: number
 // A claim's place is where its own check reported it: a merged finding keeps only its speaker's lines and some of the
 // members' evidence, and each place it still holds can belong to another member. A claim of a check that keeps no
 // sightings, such as a guardrail, is the finding itself.
-function sightedWithin(comment: ExpectedClaim, finding: Finding, sightings: readonly Finding[] | undefined): boolean {
+function sightedWithin(
+	comment: ExpectedClaim,
+	finding: Finding,
+	sightings: readonly Finding[] | undefined,
+): MemberClaim | undefined {
 	if (sightings === undefined)
 		throw new Error(`an expected ${comment.rule} at lines ${comment.lines!.join("-")} needs the review's sightings`);
-	const { reportedBy, source, otherClaims = [], verification } = finding.properties;
+	const { reportedBy, source, otherClaims = [] } = finding.properties;
 	const key = (id: string, each: FindingSource) => JSON.stringify([id, each.check, each.version]);
 	const claims = new Map(otherClaims.map((claim) => [key(claim.id, claim.source), claim]));
 	for (const each of reportedBy ?? [source])
-		if (!claims.has(key(finding.id, each)))
-			claims.set(key(finding.id, each), {
-				id: finding.id,
-				ruleId: finding.ruleId,
-				source: each,
-				severity: finding.original(),
-				...(verification === undefined ? {} : { verification }),
-			});
+		if (!claims.has(key(finding.id, each))) claims.set(key(finding.id, each), finding.claimAs(each));
 	const sighted = new Map(sightings.map((sighting) => [key(sighting.id, sighting.properties.source), sighting]));
-	return [...claims.values()].some((claim) => {
+	return [...claims.values()].find((claim) => {
 		if (!matchesClaim(comment, claim)) return false;
 		const sighting = claim.source.check.startsWith("lens.") ? sighted.get(key(claim.id, claim.source)) : finding;
 		if (sighting === undefined)
@@ -764,26 +762,29 @@ function sightedWithin(comment: ExpectedClaim, finding: Finding, sightings: read
 	});
 }
 
-// Match a merged defect through the claim that supplied the expected rule and source. An expectation with lines is
+// The claim of a merged defect that supplied the expected rule and source, or none. An expectation with lines is
 // answered only at a claim's own sighting, which `sightings` holds.
-export function answers(comment: ExpectedClaim, finding: Finding, sightings?: readonly Finding[]): boolean {
+export function answers(
+	comment: ExpectedClaim,
+	finding: Finding,
+	sightings?: readonly Finding[],
+): MemberClaim | undefined {
 	if (comment.lines !== undefined) return sightedWithin(comment, finding, sightings);
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (!within(comment, path, 0, 0)) return false;
+	if (!within(comment, path, 0, 0)) return undefined;
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (!namesRule(comment, finding.ruleId)) return false;
-	const original = otherClaims.find(
-		(claim) =>
-			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
-	);
-	if ((original ?? finding.properties).verification?.verdict === "refuted") return false;
-	if (comment.source === undefined) return true;
-	return (reportedBy ?? (source === undefined ? [] : [source])).some(
+	const member = otherClaims.find((claim) => matchesClaim(comment, claim));
+	if (member !== undefined) return member;
+	if (!namesRule(comment, finding.ruleId)) return undefined;
+	const own = finding.claimAs();
+	if (own.verification?.verdict === "refuted") return undefined;
+	if (comment.source === undefined) return own;
+	const speaking = (reportedBy ?? [source]).find(
 		(each) =>
 			each.check === comment.source &&
 			!otherClaims.some((claim) => claim.source.check === each.check && claim.source.version === each.version),
 	);
+	return speaking === undefined ? undefined : finding.claimAs(speaking);
 }
 
 /**
@@ -809,13 +810,15 @@ export function scoreGolden(golden: Golden, findings: readonly Finding[], sighti
 			]),
 		).values(),
 	];
-	const found = expected.filter((comment) => findings.some((finding) => answers(comment, finding, sightings))).length;
+	const found = expected.filter((comment) =>
+		findings.some((finding) => answers(comment, finding, sightings) !== undefined),
+	).length;
 	// Pairs findings with expectations so that as many as possible count, each expectation once: with sources, a finding
 	// several lenses reported may answer more than one expectation, and the first one it fits may be another's only fit.
 	const holder: (number | undefined)[] = expected.map(() => undefined);
 	const claim = (index: number, tried: Set<number>): boolean =>
 		expected.some((comment, slot) => {
-			if (tried.has(slot) || !answers(comment, findings[index]!, sightings)) return false;
+			if (tried.has(slot) || answers(comment, findings[index]!, sightings) === undefined) return false;
 			tried.add(slot);
 			const held = holder[slot];
 			if (held !== undefined && !claim(held, tried)) return false;
