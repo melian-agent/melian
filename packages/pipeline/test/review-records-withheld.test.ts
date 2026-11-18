@@ -91,7 +91,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 		const record = records.verification("f".repeat(64), {
 			claims: [],
 			dismissals: [],
-			outcomes: [{ candidate: "anthropic/claude", outcome: { status: "unanswered", reason: token } }],
+			outcomes: [{ candidate: "1111111111111111", outcome: { status: "unanswered", reason: token } }],
 			check: { name: "verifier", status: "failed", reason: token, error: token },
 		});
 		expect(bytes(record)).not.toContain(token);
@@ -357,15 +357,15 @@ describe("an exported record keeps what Melian defines", () => {
 			claims: [],
 			dismissals: [],
 			outcomes: [
-				{ candidate: "openai-codex/sol", outcome: { status: "done", model: "openai-codex/sol" } },
-				{ candidate: "anthropic/claude", outcome: { status: "unanswered", reason: token } },
-				{ candidate: "openai-codex/gpt", outcome: { status: "exhausted", reason: "timeout" } },
+				{ candidate: "3333333333333333", outcome: { status: "done", model: "openai-codex/sol" } },
+				{ candidate: "1111111111111111", outcome: { status: "unanswered", reason: token } },
+				{ candidate: "2222222222222222", outcome: { status: "exhausted", reason: "timeout" } },
 			],
 		});
 		expect(payload(record).outcomes).toEqual([
-			{ candidate: "anthropic/claude", outcome: { status: "unanswered", reason: withheld } },
-			{ candidate: "openai-codex/gpt", outcome: { status: "exhausted", reason: "timeout" } },
-			{ candidate: "openai-codex/sol", outcome: { status: "done", model: "openai-codex/sol" } },
+			{ candidate: "1111111111111111", outcome: { status: "unanswered", reason: withheld } },
+			{ candidate: "2222222222222222", outcome: { status: "exhausted", reason: "timeout" } },
+			{ candidate: "3333333333333333", outcome: { status: "done", model: "openai-codex/sol" } },
 		]);
 		expect(payload(records.triage("f".repeat(64), { failure: token })).failure).toBe(withheld);
 		expect(payload(records.triage("f".repeat(64), {})).failure).toBeNull();

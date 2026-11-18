@@ -145,7 +145,7 @@ const samples = {
 			v: 1,
 			claims: [{ id: findingId, source: { check: "static.biome", version: withheld }, verification }],
 			dismissals: [],
-			outcomes: [{ candidate: "one", outcome: { status: "unanswered", reason: withheld } }],
+			outcomes: [{ candidate: "1111111111111111", outcome: { status: "unanswered", reason: withheld } }],
 			check: decided("verifier", verifierVersion, null),
 		},
 	},

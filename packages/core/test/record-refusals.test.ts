@@ -206,9 +206,9 @@ const payloads: readonly [string, RecordJson][] = [
 				{ finding: findingId, record: hash("4") },
 			],
 			outcomes: [
-				{ candidate: "one", outcome: { status: "done", model: "anthropic/opus" } },
-				{ candidate: "two", outcome: { status: "ended", budgetEnded } },
-				{ candidate: "three", outcome: { status: "unanswered", reason: withheld } },
+				{ candidate: "1111111111111111", outcome: { status: "done", model: "anthropic/opus" } },
+				{ candidate: "2222222222222222", outcome: { status: "ended", budgetEnded } },
+				{ candidate: "3333333333333333", outcome: { status: "unanswered", reason: withheld } },
 			],
 			check: decided("verifier", verifierVersion, null),
 		},

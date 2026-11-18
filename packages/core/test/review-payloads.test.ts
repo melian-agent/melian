@@ -173,9 +173,9 @@ const samples: [string, RecordJson][] = [
 			],
 			dismissals: [{ finding: dismissed, record: dismissalRecord }],
 			outcomes: [
-				{ candidate: "one", outcome: { status: "done", model: "anthropic/opus" } },
-				{ candidate: "two", outcome: { status: "ended", budgetEnded } },
-				{ candidate: "three", outcome: { status: "unanswered", reason: withheld } },
+				{ candidate: "1111111111111111", outcome: { status: "done", model: "anthropic/opus" } },
+				{ candidate: "2222222222222222", outcome: { status: "ended", budgetEnded } },
+				{ candidate: "3333333333333333", outcome: { status: "unanswered", reason: withheld } },
 			],
 			check: decided("verifier", verifierVersion, null),
 		},
@@ -457,6 +457,41 @@ describe("review payload checks", () => {
 	it("accepts a ran or provisional check holding no sightings", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [] })).toBeUndefined();
+	});
+
+	it("refuses a receipt whose Enola version is not in semver's own form of at most 64 characters", () => {
+		const payload = samples[0]?.[1] as { v: 1; result: Record<string, RecordJson>; sightings: RecordJson };
+		const receipt = (enola_version: string) =>
+			check("check", {
+				...payload,
+				result: {
+					...payload.result,
+					snapshots: [
+						{
+							...snapshot,
+							receipt: JSON.stringify({ format_version: 1, snapshot_id: snapshotId, enola_version }),
+						},
+					],
+				},
+			});
+		const refusal = "names a version at /result/snapshots/0/receipt that is not one Melian writes";
+		expect(receipt("0")).toBe(refusal);
+		expect(receipt("01.2.3")).toBe(refusal);
+		expect(receipt("0.4.40")).toBeUndefined();
+		expect(receipt(`0.0.1-${"a".repeat(58)}`)).toBeUndefined();
+		expect(receipt(`0.0.1-${"a".repeat(59)}`)).toMatch(
+			/^does not match its schema at \/result\/snapshots\/0\/receipt/,
+		);
+	});
+
+	it("refuses a verification outcome whose candidate is not a finding ID", () => {
+		const payload = samples.find(([kind]) => kind === "verification")?.[1] as { outcomes: RecordJson[] };
+		const outcome = { outcome: { status: "done", model: "anthropic/opus" } };
+		const holding = (candidate: string) =>
+			check("verification", { ...payload, outcomes: [{ candidate, ...outcome }] } as RecordJson);
+		expect(holding("8f3f919a7c886b44")).toBeUndefined();
+		expect(holding("anthropic/claude")).toMatch(/^does not match its schema at \/outcomes\/0\/candidate/);
+		expect(holding("a".repeat(64))).toMatch(/^does not match its schema at \/outcomes\/0\/candidate/);
 	});
 
 	it("refuses a sighting that is not a finding", () => {

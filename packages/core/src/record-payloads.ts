@@ -78,8 +78,14 @@ export const snapshotIdPattern = "^sha256:[0-9a-f]{64}$";
 export const objectIdPattern = "^(?:[0-9a-f]{40}|[0-9a-f]{64})$";
 
 /** The receipt a record keeps of Enola's: the three fields Melian checks, in the order Melian writes them. */
-export const receiptPattern =
-	'^\\{"format_version":1,"snapshot_id":"sha256:[0-9a-f]{64}","enola_version":"[0-9][0-9A-Za-z.+-]{0,63}"\\}$';
+const receiptPattern =
+	'^\\{"format_version":1,"snapshot_id":"sha256:[0-9a-f]{64}","enola_version":"([0-9][0-9A-Za-z.+-]{0,63})"\\}$';
+
+/** Whether `text` is a receipt as a record keeps it, its Enola version in semver's own form, which `valid` decides. */
+export function isReceipt(text: string): boolean {
+	const version = new RegExp(receiptPattern).exec(text)?.[1];
+	return version !== undefined && isSemver(version);
+}
 
 /**
  * Whether a record may carry `version` as a tool's: a version in semver's own form of at most 64 characters, which
@@ -87,7 +93,11 @@ export const receiptPattern =
  * write, so anything else is text Melian did not write.
  */
 export function isToolVersion(version: string): boolean {
-	return version === "unavailable" || (version.length <= 64 && valid(version) === version);
+	return version === "unavailable" || isSemver(version);
+}
+
+function isSemver(version: string): boolean {
+	return version.length <= 64 && valid(version) === version;
 }
 
 /** How many hex digits of its hash the verifier's version keeps, which pipeline's `verifierVersion` cuts it to. */
@@ -278,7 +288,7 @@ export const verificationPayloadSchema = Type.Object(
 		outcomes: Type.Array(
 			Type.Object(
 				{
-					candidate: text,
+					candidate: findingId,
 					outcome: Type.Union([
 						Type.Object({ status: Type.Literal("done"), model: text }, strict),
 						Type.Object({ status: Type.Literal("ended"), budgetEnded: budgetEnd }, strict),
@@ -488,6 +498,10 @@ export const reviewPayloads: PayloadChecks = {
 		const { result, sightings } = payload as CheckPayload;
 		const unwritten = decidedVersion("version" in result ? result : null, "/result/version");
 		if (unwritten !== undefined) return unwritten;
+		const unread = (("snapshots" in result && result.snapshots) || []).findIndex(
+			({ receipt }) => receipt !== withheld && !isReceipt(receipt),
+		);
+		if (unread !== -1) return `names a version at /result/snapshots/${unread}/receipt that is not one Melian writes`;
 		if ((result.status === "skipped" || result.status === "failed") && sightings.length > 0)
 			return `holds sightings for a check that ${result.status === "skipped" ? "was skipped" : "failed"}`;
 		return sightingsOf(sightings, result.name, "version" in result ? (result.version ?? undefined) : undefined);

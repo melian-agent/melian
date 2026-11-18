@@ -7,6 +7,7 @@ import {
 	type EnolaSnapshot,
 	type FindingSource,
 	hashPattern,
+	isReceipt,
 	isToolVersion,
 	KeyedRequest,
 	type LensPayload,
@@ -15,7 +16,6 @@ import {
 	type RecordJson,
 	Revision,
 	type RunStage,
-	receiptPattern,
 	recordCodes,
 	reviewPayloads,
 	type ScrutinyLevel,
@@ -445,7 +445,7 @@ function receipt(text: string): string {
 	}
 	const { format_version, snapshot_id, enola_version } = parsed ?? {};
 	const kept = JSON.stringify({ format_version, snapshot_id, enola_version });
-	return new RegExp(receiptPattern).test(kept) ? kept : withheld;
+	return isReceipt(kept) ? kept : withheld;
 }
 
 // Melian computes each of a snapshot's identities as a SHA-256 hash, and its commit is a git object ID, so anything else
