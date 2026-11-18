@@ -32,7 +32,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -51,7 +54,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -70,7 +76,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > selects no lens whose name is the tail of a check that is not a lens"
+     "path": [
+      "ChangeLenses",
+      "selects no lens whose name is the tail of a check that is not a lens"
+     ]
     }
    },
    "survivorClasses": [
@@ -91,7 +100,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -110,7 +122,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -142,7 +157,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -161,7 +179,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -193,7 +214,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -212,7 +236,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -231,7 +258,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -250,7 +280,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -269,7 +302,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > holds a lens selected through a renamed file's old path to its head path's band too"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
     }
    },
    "survivorClasses": []
@@ -288,7 +324,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -307,7 +346,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > holds a lens selected through a renamed file's old path to its head path's band too"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
     }
    },
    "survivorClasses": []
@@ -326,7 +368,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -345,7 +390,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > covers only the changed files a lens's paths hold"
+     "path": [
+      "ChangeLenses",
+      "covers only the changed files a lens's paths hold"
+     ]
     }
    },
    "survivorClasses": [
@@ -366,7 +414,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -403,7 +454,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > holds a lens selected through a renamed file's old path to its head path's band too"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
     }
    },
    "survivorClasses": []
@@ -422,7 +476,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -441,7 +498,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > selects a lens whose paths hold only a renamed file's old path"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "selects a lens whose paths hold only a renamed file's old path"
+     ]
     }
    },
    "survivorClasses": []
@@ -460,7 +520,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -479,7 +542,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -498,7 +564,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > skips a lens by triage under a nested melian.yaml whose floor is skip"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
     }
    },
    "survivorClasses": []
@@ -517,7 +586,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -536,7 +608,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -555,7 +630,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -574,7 +652,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > skips a lens by triage under a nested melian.yaml whose floor is skip"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
     }
    },
    "survivorClasses": []
@@ -593,7 +674,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -612,7 +696,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -631,7 +718,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -650,7 +740,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -669,7 +762,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > reads each band from the configuration it is handed when no policy names the files"
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
     }
    },
    "survivorClasses": []
@@ -688,7 +784,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -707,7 +806,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -726,7 +828,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -745,7 +850,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -764,7 +872,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > refuses the band of a lens it did not select"
+     "path": [
+      "ChangeLenses",
+      "refuses the band of a lens it did not select"
+     ]
     }
    },
    "survivorClasses": []
@@ -783,7 +894,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -802,7 +916,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > refuses the band of a lens it did not select"
+     "path": [
+      "ChangeLenses",
+      "refuses the band of a lens it did not select"
+     ]
     }
    },
    "survivorClasses": []
@@ -834,7 +951,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -853,7 +973,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -872,7 +995,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -891,7 +1017,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -910,7 +1039,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/change-lenses.test.ts",
-     "name": "ChangeLenses > gives TierAccount every loaded lens and each selected one's covered paths and band"
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
     }
    },
    "survivorClasses": []
@@ -929,7 +1061,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for a trusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -948,7 +1084,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -967,7 +1107,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -986,7 +1130,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -1005,7 +1153,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for a trusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -1024,7 +1176,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1056,7 +1211,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage.test.ts",
-     "name": "triage > keeps a range's lenses at careful or above when its policy comes from the base, and quick from the worktree"
+     "path": [
+      "triage",
+      "keeps a range's lenses at careful or above when its policy comes from the base, and quick from the worktree"
+     ]
     }
    },
    "survivorClasses": []
@@ -1075,7 +1233,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for a trusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -1094,7 +1256,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1126,7 +1291,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > skips a lens by triage under a nested melian.yaml whose floor is skip"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
     }
    },
    "survivorClasses": []
@@ -1163,7 +1331,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > skips a lens by triage under a nested melian.yaml whose floor is skip"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
     }
    },
    "survivorClasses": []
@@ -1182,7 +1353,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > skips a lens by triage under a nested melian.yaml whose floor is skip"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
     }
    },
    "survivorClasses": []
@@ -1201,7 +1375,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > reads no floor from a nested melian.yaml beside the change"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
     }
    },
    "survivorClasses": []
@@ -1220,7 +1397,11 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/tier-account-review.test.ts",
-     "name": "the account a review gives its adjudication > the default floor > never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
     }
    },
    "survivorClasses": []
@@ -1239,7 +1420,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > reads no floor from a nested melian.yaml beside the change"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
     }
    },
    "survivorClasses": []
@@ -1258,7 +1442,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > reads no floor from a nested melian.yaml beside the change"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
     }
    },
    "survivorClasses": []
@@ -1277,7 +1464,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > reads no floor from a nested melian.yaml beside the change"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
     }
    },
    "survivorClasses": []
@@ -1296,7 +1486,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > runs a selected lens when an untrusted review has no decider"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "runs a selected lens when an untrusted review has no decider"
+     ]
     }
    },
    "survivorClasses": [
@@ -1317,7 +1510,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/lens-coverage-review.test.ts",
-     "name": "the lenses a review selects, and the band of each > reads no floor from a nested melian.yaml beside the change"
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
     }
    },
    "survivorClasses": []
@@ -1362,7 +1558,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1381,7 +1580,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1400,7 +1602,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/recorded-round.test.ts",
-     "name": "a round read back from its records > decides the verdict the review decided"
+     "path": [
+      "a round read back from its records",
+      "decides the verdict the review decided"
+     ]
     }
    },
    "survivorClasses": []
@@ -1419,7 +1624,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1438,7 +1646,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/recorded-round.test.ts",
-     "name": "a round read back from its records > decides the verdict the review decided"
+     "path": [
+      "a round read back from its records",
+      "decides the verdict the review decided"
+     ]
     }
    },
    "survivorClasses": []
@@ -1457,7 +1668,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1476,7 +1690,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1495,7 +1712,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1514,7 +1734,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > holds triage's failure, and no decision, when triage failed"
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
     }
    },
    "survivorClasses": [
@@ -1535,7 +1758,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1554,7 +1780,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1573,7 +1802,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > holds triage's failure, and no decision, when triage failed"
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
     }
    },
    "survivorClasses": [
@@ -1612,7 +1844,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > holds triage's failure, and no decision, when triage failed"
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
     }
    },
    "survivorClasses": [
@@ -1633,7 +1868,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > holds triage's failure, and no decision, when triage failed"
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
     }
    },
    "survivorClasses": [
@@ -1654,7 +1892,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1673,7 +1914,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1692,7 +1936,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1711,7 +1958,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage-record-export.test.ts",
-     "name": "a round's triage record > is named by the round, with triage's choice and whether its input was cut"
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
     }
    },
    "survivorClasses": []
@@ -1730,7 +1980,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage.test.ts",
-     "name": "triage > omits the whole-review quick caveat when another selected lens is skipped"
+     "path": [
+      "triage",
+      "omits the whole-review quick caveat when another selected lens is skipped"
+     ]
     }
    },
    "survivorClasses": []
@@ -1749,7 +2002,10 @@
    "evidence": {
     "test": {
      "file": "packages/pipeline/test/triage.test.ts",
-     "name": "triage > runs a lens at quick when the decider chooses it, and stores the whole distribution"
+     "path": [
+      "triage",
+      "runs a lens at quick when the decider chooses it, and stores the whole distribution"
+     ]
     }
    },
    "survivorClasses": []

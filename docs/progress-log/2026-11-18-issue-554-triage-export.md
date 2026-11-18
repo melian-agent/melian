@@ -11,3 +11,7 @@ The mutation inventory is [2026-11-18-issue-554-triage-export-mutants.json](2026
 - a lens named `rails` beside the `guardrails` check.
 
 The three equivalents are a policy of `undefined`, which `ChangeLenses.read` treats as absent; a failure of `undefined`, which the stored payload leaves out; and an `oldPath` check that never decides, since no file with no old path is in a lens's files. Each of the 83 claimed kills ran by hand against its named test alone, which passed unmutated first, and failed under every mutant; [the runs](2026-11-18-issue-554-triage-export-mutant-runs.json) record each.
+
+The review of record at bc8cfd36 found two gaps, both now fixed:
+- The inventory's test evidence named each test by its flat name. The version-2 schema wants the test's `path`, so `node scripts/enumerate-mutants.mjs --sample` refused the file with exit 1. Each of the 83 entries now gives the name split into `path`, and the sampler reads the file.
+- No test exported a triage record whose input was cut, and Stryker makes no mutant for the member read that sets `inputCut`. Swapping in `inputCut: false` by hand passed every test. The new test, "records that triage's input was cut, so a reader allows no skip", in 01c26908, passes on the code and fails under that swap.
