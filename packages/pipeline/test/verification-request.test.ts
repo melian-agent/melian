@@ -160,11 +160,16 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe is asked under the key, and the verifier's version, it had then.
+// that rests on a probe is asked under the key, and the verifier's version, it had then. A candidate with a dismissed
+// root now keys that root's dismissal record, so only a candidate with none keeps its key, which the code of
+// [pull request #525](https://github.com/melian-agent/melian/pull/525) at d07e8834 gave it.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
+		const { dismissed: _dismissed, dismissals: _dismissals, ...undismissed } = candidate;
 		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
-		expect(verificationRequest(sample).key).toBe("04364f1f6900da045e954f73d88effad517136b83cbe312329af2947b7bc3708");
+		expect(verificationRequest({ ...sample, candidates: [undismissed] }).key).toBe(
+			"5116db37b8921b2919c04394994e6d433dc116b0619631a9500d4fc9f21721e7",
+		);
 	});
 });
 
