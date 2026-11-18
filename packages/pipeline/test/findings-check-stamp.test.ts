@@ -221,4 +221,37 @@ describe("a check's stamp on its sightings at a revision", () => {
 		expect(state?.items[id]?.lifecycle).toMatchObject({ dismissedAt: "2026-11-16", history: [] });
 		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run.request);
 	});
+
+	// Only a static finding's dismissal is shared by its stamp, so another check's stamp is no part of its dismissal.
+	it("is no part of a dismissal of another check's finding, whose repeat after a later run changes nothing", async () => {
+		const { root } = await stamped();
+		const guardrail = Finding.create({
+			rule: "guardrail/forbidden-patterns",
+			message: "This line matches a forbidden pattern.",
+			file: "src/a.ts",
+			startLine: 1,
+			snippet: "export const a = 1;",
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P2",
+			explanation: { what: "A pattern matches.", whyHere: "The change adds it.", whatToDo: "Remove it." },
+			source: { check: "guardrails" },
+		});
+		const dismissal = { by: "maintainer", reason: "Intended.", at: "2026-11-16" };
+		await root.commit(async (tx) => {
+			await replaceCheckFindings(tx, root.id, "guardrails", revision, [guardrail], run);
+			await dismissFinding(tx, root.id, guardrail.id, dismissal, revision, "P2");
+		}, context);
+		await root.commit((tx) => replaceCheckFindings(tx, root.id, "guardrails", revision, [guardrail], later), context);
+		const replaced = await root.commit(
+			(tx) => dismissFinding(tx, root.id, guardrail.id, { ...dismissal, at: "2026-11-17" }, revision, "P2"),
+			context,
+		);
+		const { lifecycle } = (await harness!.snapshot(FindingsDocument, root.id, context))!.items[guardrail.id]!;
+
+		expect(replaced).toBeUndefined();
+		expect(lifecycle).toMatchObject({ dismissedAt: "2026-11-16", history: [] });
+		expect(lifecycle.dismissedSighting).toBeDefined();
+		expect(Object.hasOwn(lifecycle.dismissedSighting!, "run")).toBe(false);
+	});
 });

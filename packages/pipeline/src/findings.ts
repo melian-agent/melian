@@ -585,7 +585,9 @@ export async function dismissFinding(
 	const atRevision = judgedAt(record, accepting, selected(producers));
 	const { winner } = adjudicate(atRevision, true);
 	const trigger = winner.properties.trigger;
-	const run = stampOf(state, accepting, winner.properties.source.check)?.request;
+	// Only a static check's dismissal is shared by its stamp, so no other check's run is part of the dismissal.
+	const { check } = winner.properties.source;
+	const run = check.startsWith("static.") ? stampOf(state, accepting, check)?.request : undefined;
 	const shown =
 		severity === undefined
 			? {}
