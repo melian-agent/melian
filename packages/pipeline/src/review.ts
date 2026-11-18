@@ -119,6 +119,7 @@ import {
 	defineExtension,
 	defineTask,
 	type Harness,
+	holdsWork,
 	isFailoverError,
 	type JsonObject,
 	openHarness,
@@ -129,7 +130,7 @@ import {
 	type Tx,
 	UsageDoc,
 } from "./harness.ts";
-import { continuePrompt, lensRequest, type MutantLister } from "./lens-request.ts";
+import { handoverWording, lensRequest, type MutantLister } from "./lens-request.ts";
 import { type LensCopy, lensCopies } from "./lens-reuse.ts";
 import {
 	budgetEnded,
@@ -634,7 +635,12 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					if (await superseded(runtime, input, runtime.taskId, context)) {
 						return { status: "unanswered", reason: "a later review of this revision replaced this run" };
 					}
-					const content = attempt === 0 ? prompt : continuePrompt;
+					const content =
+						attempt === 0
+							? prompt
+							: (await holdsWork(runtime, id, context))
+								? handoverWording.continue
+								: handoverWording.fresh;
 					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") return { status: "done", model: modelName(route[attempt]!) };
