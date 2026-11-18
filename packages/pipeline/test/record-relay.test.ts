@@ -416,6 +416,16 @@ describe("RelayBatch", () => {
 		expect(batch.records).toHaveLength(3);
 	});
 
+	it("refuses an account that counts a record its round does not read", async () => {
+		const biome = check();
+		const triage = records().triage(request, { inputCut: false });
+		const made = account([biome, triage]);
+		const round = records().round([biome, made], undefined, [], []);
+		expect((await refusal(RelayBatch.read(await artefact(biome, triage, made, round), writer))).code).toBe(
+			"unresolvedRead",
+		);
+	});
+
 	it("refuses an account that counts a record the batch does not hold", async () => {
 		const biome = check();
 		const made = account([biome]);

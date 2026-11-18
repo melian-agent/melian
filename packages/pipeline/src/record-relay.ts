@@ -192,7 +192,7 @@ export class RelayBatch {
 		const account = accounts.length === 1 ? held.get(accounts[0]!.id) : undefined;
 		if (account === undefined) throw new RelayRefusal("accountCount", round.path);
 		const claim = account.payload as AccountPayload | LegacyAccountPayload;
-		const counted = claim.records.map((id) => held.get(id));
+		const counted = claim.records.map((id) => (read.has(id) ? held.get(id) : undefined));
 		if (counted.some((record) => record === undefined)) throw new RelayRefusal("unresolvedRead", account.path);
 		const refusal = tier.refusal(claim, RelayBatch.#facts(counted as SharedRecord[], claim));
 		if (refusal !== undefined) throw new RelayRefusal("tierAccount", round.path, refusal);
