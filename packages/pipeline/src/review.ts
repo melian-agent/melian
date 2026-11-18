@@ -2413,7 +2413,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
 	const { unlockModels } = options;
-	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
@@ -2559,7 +2558,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? undefined
 			: `${level} ran without probes, since its prober runs on ${prober.on}, and ${route.unrouted}`;
 	};
-	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
 	const asked =
 		options.decider === undefined || covering.length === 0
@@ -2573,6 +2571,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
 					nonce,
 				});
+	// Whether triage's input was cut, as its request records it, so the review and the triage record agree.
+	const inputCut = asked?.request.inputCut === true;
 	const triaged =
 		asked === undefined || options.decider === undefined
 			? {}
@@ -2591,7 +2591,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
 			const choice = lens.triage(bands.get(lens)!, levels, triaged.decision);
-			return [lens, triageInput.cut && choice === "skip" ? levels[0]! : choice] as const;
+			return [lens, inputCut && choice === "skip" ? levels[0]! : choice] as const;
 		}),
 	);
 	// The plan judges each lens at the level triage chose for it: a lens it refuses there records `failed` with the
@@ -2671,7 +2671,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
-		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
+		if (options.decider !== undefined && inputCut) noted.push("triage input was cut, so no lens could skip");
 
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
@@ -3378,7 +3378,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const accounted = account(
 		tierAccount,
 		records,
-		triaged.decision === undefined ? undefined : { answers: triaged.decision.answers, inputCut: triageInput.cut },
+		triaged.decision === undefined ? undefined : { answers: triaged.decision.answers, inputCut },
 		triaged.decision === undefined
 			? undefined
 			: triaged.decision.decider.startsWith("llm-fallback")

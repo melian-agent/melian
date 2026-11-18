@@ -113,6 +113,7 @@ export class TierAccount {
 				: this.#lenses.selected
 						.filter(
 							({ name, band }) =>
+								!this.#disabled(name) &&
 								band.floor === "skip" &&
 								triage.answers.find((answer) => answer.question === name)?.chosen === "skip",
 						)
