@@ -24,6 +24,14 @@ A dismissal made without a store supersedes nothing: not another host's, and not
 
 A `supersedes` reading the dismisser's own history was weighed and rejected: the findings document keeps the reason and time of a replaced dismissal, but not its trigger, so it cannot rebuild the record the store holds.
 
+## When the store fails
+
+With a store named, `melian dismiss` is all or nothing, by the maintainer's ruling of 2026-11-18 on [issue #395](https://github.com/melian-agent/melian/issues/395), given in the coordinator's session for build 4. A dismissal recorded on the host and shared later by an export gets an empty `supersedes`, so the dismissal it was meant to replace would stand for good.
+
+So `dismiss` lists the store first, and refuses if it cannot. It then builds the record inside the commit that records the dismissal, from the state that commit writes, with `supersedes` from that listing, and writes it to the store before the commit ends. A store that fails the write fails the commit, so the host records nothing either. The error is `DismissError` `storeFailed`, and the CLI names the store.
+
+The one gap is the other way round: the record reaches the store and then the host's commit fails, as a full disk would make it. The shared record then says dismissed while the host does not, which is the stricter side for the host, and running `dismiss` again writes the same record, by its bytes and its ID. Without a store, `dismiss` records the dismissal on the host alone and says it is unshared, as before.
+
 ## What changes elsewhere
 
 A later import no longer changes the ID of a record the store holds, since nothing rebuilds it. So the next review no longer asks the verifier again for an import alone, and the identity guideline's verification-request row drops that cost. A dismissal replaced since the last review still gets a new record, and so a new key, as it did.
@@ -32,4 +40,4 @@ A later import no longer changes the ID of a record the store holds, since nothi
 
 ## Tests
 
-`review-records.test.ts` pins the stale host: the record a host exports again is the one it kept, and the other host's replacement stays the only standing one. `review-records-export.test.ts` pins a dismissal made with the store superseding the one it replaced, with the next review writing nothing; a second review writing nothing for a record the store holds; a record from an earlier build kept as it is; and a dismissal made with no store, which leaves both standing. `restatement.test.ts` pins the verification naming the record a dismissal made with the store wrote, which supersedes another host's dismissal the store held.
+`review-records.test.ts` pins the stale host: the record a host exports again is the one it kept, and the other host's replacement stays the only standing one. `review-records-export.test.ts` pins a dismissal made with the store superseding the one it replaced, with the next review writing nothing; a second review writing nothing for a record the store holds; a record from an earlier build kept as it is; and a dismissal made with no store, which leaves both standing. `restatement.test.ts` pins the verification naming the record a dismissal made with the store wrote, which supersedes another host's dismissal the store held. `review-records-export.test.ts` also pins the store failing: a store that cannot be listed, and one that fails the write, each leave no dismissal on the host and no record in the store, and a host commit that fails after the write leaves the record shared and the finding live, until `dismiss` again writes the same record. `review-unshared.test.ts` pins the CLI naming the store.
