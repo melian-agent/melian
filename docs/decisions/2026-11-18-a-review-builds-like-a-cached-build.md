@@ -1,6 +1,7 @@
 # A review builds like a cached build
 
 Amends: [Every key follows one guideline](2026-11-13-keys-follow-one-guideline.md), rule 1's table: each row also names the class of every input its key leaves out, and each rule about what is considered equivalent sits beside the key it shapes, with a test.
+Amends: [A coverage ledger decides what a round reviews](2026-10-23-coverage-ledger-and-delta-review.md), what `--cold` and `--rerun` do to stored results: they add results and replace none, and the findings of every result at a commit are taken together.
 
 Status: the maintainer asked for this decision on 2026-11-18, in the coordinator session, for [issue #568](https://github.com/melian-agent/melian/issues/568). The coordinator drafted it, and the maintainer ruled on each of the draft's nine choices that day, in that session, as [the coordinator's comment on issue #568](https://github.com/melian-agent/melian/issues/568#issuecomment-6967840315) records. Each choice is stated below as the rule. [The audit](../research/2026-11-18-stored-results-against-the-build-model.md) for [issue #569](https://github.com/melian-agent/melian/issues/569) is the evidence for "What this asks of the code today".
 
@@ -73,7 +74,7 @@ A rule that inspects state has to be right about every way the state can have co
 
 ## Step 24, coverage and delta review
 
-Re-reviewing only what a fix changed is not a new goal of this decision. It is plan step 24, which [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) settled on 2026-10-23, and this decision changes nothing in it. The model bears on it in two ways: a lens's result can be reused when nothing it covered changed, and the coverage ledger is computed from records, as [the design](../design.md#concepts) already says of the record.
+Re-reviewing only what a fix changed is not a new goal of this decision. It is plan step 24, which [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) settled on 2026-10-23, and it stays step 24. This decision amends one clause of it: a cold review or a rerun adds results and never replaces stored ones, and the findings of every result at a commit are taken together. The maintainer ruled so on 2026-11-18, in the coordinator session. The model also bears on the step in two ways: a lens's result can be reused when nothing it covered changed, and the coverage ledger is computed from records, as [the design](../design.md#concepts) already says of the record.
 
 ## What this asks of the code today
 
