@@ -62,7 +62,11 @@ export class TierAccount {
 		this.#lenses = lenses;
 	}
 
-	/** The account of `tier` under `config`, the base's parsed configuration, for a review that knows `lenses`. */
+	/**
+	 * The account of `tier` under `config`, for a review that knows `lenses`. It takes whatever parsed configuration it is
+	 * handed: the review hands it the merge base's, and the merge gate the base tip's, so a policy change since a round
+	 * makes its account not match.
+	 */
 	static of(config: MelianConfig, tier: string, lenses: TierLenses): TierAccount {
 		return new TierAccount(checksOfTier(config, tier), config, lenses);
 	}
