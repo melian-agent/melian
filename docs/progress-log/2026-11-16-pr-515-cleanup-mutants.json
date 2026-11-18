@@ -1,0 +1,63 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "ffe3c4012d1515c419f4394facef33a265f281af",
+    "head": "3e1fddade4f1bc87d8836a5c714e73be4b61e775"
+  },
+  "claimsIn": [
+    "scripts/round-probe-containment.mjs"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 485,
+      "column": 3,
+      "endLine": 485,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dd9f9e4c28cb774d29ba7ef5cdf839eeb5ec9b78640093825e4719bf95aac2b4"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 486,
+      "column": 14,
+      "endLine": 486,
+      "endColumn": 37,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3cf494148076480a00ec92fb390b569115f7c85f213e716de61d7db680fa1d20"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 568,
+      "column": 33,
+      "endLine": 568,
+      "endColumn": 38,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "67fd061c7bfcc5949bd5fecf4ac0a52506ebdeb4f13fb460c349b6af926dc4fe"
+    }
+  ],
+  "total": 3,
+  "omitted": 0,
+  "unmutated": []
+}

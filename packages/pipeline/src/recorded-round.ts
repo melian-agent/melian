@@ -5,10 +5,8 @@ import {
 	type CheckRecord,
 	type ConfigFor,
 	type FindingSource,
-	KeyedRequest,
 	type LensPayload,
 	type MelianConfig,
-	type PolicyAt,
 	type RecordEnvelope,
 	RecordError,
 	RecordSet,
@@ -22,15 +20,18 @@ import {
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
 import { mergeSightings, type Producer, type VerificationClaim } from "./findings.ts";
-import { inManifestOrder } from "./review-records.ts";
+import { accountKey, inManifestOrder } from "./review-records.ts";
 
 /** What a recorded round's verdict is decided under, which its records do not hold. */
 export type RecordedRoundContext = {
 	/** The revision the round reviewed, whose hunks let lens reports that one hunk caused merge. */
 	readonly revision: Revision;
-	/** The configuration for every path, used where no policy source is given. */
+	/** The configuration a refusal is decided under. A round is decided only under the policy source its account names. */
 	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases">;
-	/** The checkout and the source per-path configuration is read from, as the review that wrote the round read it. */
+	/**
+	 * The checkout and the source per-path configuration is read from, as the review that wrote the round read it.
+	 * Without both, the round reads as not reviewed.
+	 */
 	readonly repoRoot?: string;
 	readonly policy?: RepositorySource;
 	/** The IDs of findings an earlier revision sighted. Without them every finding reads as new. */
@@ -86,13 +87,7 @@ export class RecordedRound {
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
 		const pieces = this.#pieces;
-		if ("refused" in pieces)
-			return new Adjudication({
-				findings: [],
-				manifest: ["records"],
-				checks: [{ name: "records", status: "failed", reason: `round ${this.id} ${pieces.refused}` }],
-				config: () => context.config as ReturnType<ConfigFor>,
-			}).adjudicate();
+		if ("refused" in pieces) return notReviewed(this.id, pieces.refused, context);
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
 			check,
 			...(version === null ? {} : { version }),
@@ -100,21 +95,41 @@ export class RecordedRound {
 		}));
 		const findings = mergeSightings(pieces.sightings, pieces.claims, producers);
 		const { repoRoot, policy } = context;
-		const config: PolicyAt | ConfigFor =
-			repoRoot === undefined || policy === undefined
-				? () => context.config as ReturnType<ConfigFor>
-				: await configsFor(repoRoot, policy, findings);
+		const policies =
+			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
+		const decidedUnder = pieces.account.resolutionPolicy;
+		if (decidedUnder === null)
+			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
+		if (policies === undefined)
+			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
+		if (decidedUnder !== policies.fingerprint)
+			return notReviewed(
+				this.id,
+				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
+				context,
+			);
 		return new Adjudication({
 			findings,
 			manifest: pieces.account.checks,
 			checks: pieces.checks,
-			config,
+			config: policies,
 			allowSkip: pieces.account.allowSkip,
 			verificationRan: true,
 			...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
 			revision: context.revision,
 		}).adjudicate();
 	}
+}
+
+// A verdict of not reviewed that says why the round's records cannot stand for it.
+function notReviewed(id: string, reason: string, context: RecordedRoundContext): Verdict {
+	return new Adjudication({
+		findings: [],
+		manifest: ["records"],
+		checks: [{ name: "records", status: "failed", reason: `round ${id} ${reason}` }],
+		config: () => context.config as ReturnType<ConfigFor>,
+	}).adjudicate();
 }
 
 function piecesOf(set: RecordSet, id: string): Pieces {
@@ -125,11 +140,12 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 		return { refused: `names records the set does not hold: ${missing.map((each) => each.id).join(", ")}` };
 	const accountRecord = set.account(round);
 	if (accountRecord === undefined) return { refused: "names no account, or more than one" };
+	if ((accountRecord.payload as { v: number }).v === 1)
+		return { refused: "names an account written before accounts named their resolution policy" };
 	const account = accountRecord.payload as AccountPayload;
 	const named = round.manifest()!.read.filter((entry) => entry.kind !== "account");
 	const ids = named.map((entry) => entry.id).sort();
-	const key = KeyedRequest.of("account", { revision: round.revision ?? null, records: account.records }).key;
-	if (accountRecord.key !== key || account.records.join() !== ids.join())
+	if (accountRecord.key !== accountKey(round.revision ?? null, account) || account.records.join() !== ids.join())
 		return { refused: "names an account of other records than its own" };
 	const byId = new Map(set.records().map((record) => [record.id, record]));
 	// A run that stands for its lens counts every finding; an escalated run's kept quick run counts only those it names.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { analyserOf, switchOffs } from "../src/analyser.ts";
 import { CheckError } from "../src/errors.ts";
-import { isAnalyserConfig, isPolicyFile } from "../src/paths.ts";
+import { analyserConfigNames, isAnalyserConfig, isPolicyFile } from "../src/paths.ts";
 import { maxProgram } from "../src/pattern.ts";
 
 it.each([
@@ -18,6 +18,8 @@ it.each([
 	["ENOLA-INTENT.YAML", "Enola"],
 	["Enola/Constraints/layers.yaml", "Enola"],
 	[".Enola/Suppressions.Yaml", "Enola"],
+	["Enola/Constraints/Lay\nx.yaml", "Enola"],
+	["Enola/Recipes/Lay\nered.yaml", "Enola"],
 ])("recognises the analyser policy path %s in any case", (path, analyser) => {
 	expect(isAnalyserConfig(path)).toBe(true);
 	expect(isPolicyFile(path)).toBe(true);
@@ -36,6 +38,17 @@ it("recognises mixed-case .melian contents without claiming lookalike directorie
 		expect(isAnalyserConfig(path), path).toBe(false);
 		expect(analyserOf(path), path).toBeUndefined();
 	}
+});
+
+it("names every path Enola reads policy from among the analyser configuration names", () => {
+	expect(analyserConfigNames.filter((name) => analyserOf(name.replace("**", "a.yaml")) === "Enola")).toEqual([
+		"enola.yaml",
+		"mcp-arch.yaml",
+		"enola-intent.yaml",
+		".enola/suppressions.yaml",
+		"enola/constraints/**",
+		"enola/recipes/**",
+	]);
 });
 
 it("names Enola policy inputs without claiming other analyser files", () => {

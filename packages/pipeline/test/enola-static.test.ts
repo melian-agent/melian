@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -72,6 +73,10 @@ ${
 [ "$(cat enola-intent.yaml)" = 'rules: [] # base intent' ] || exit 9
 [ "$(cat .enola/suppressions.yaml)" = 'suppressions: [] # base suppression' ] || exit 9
 [ ! -e enola/constraints/head-only.yaml ] || exit 9
+[ "$(cat enola/recipes/ports.yaml)" = 'recipe: ports # base recipe' ] || exit 9
+[ ! -e enola/recipes/layered.yaml ] || exit 9
+[ "$(cat "$(printf 'enola/constraints/lay\\nx.yaml')")" = 'rules: [] # base newline constraint' ] || exit 9
+[ "$(cat "$(printf 'enola/recipes/lay\\nered.yaml')")" = 'recipe: layered # base newline recipe' ] || exit 9
 [ ! -e mcp-arch.yaml ] || exit 9
 `
 		: ""
@@ -615,6 +620,31 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			await harness.close(context);
 		}
 	});
+	it("removes a head's link at .enola before any policy path through it", async () => {
+		const outside = mkdtempSync(join(tmpdir(), "melian-enola-outside-"));
+		try {
+			writeFileSync(join(outside, "suppressions.yaml"), "outside\n");
+			const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+			symlinkSync(outside, join(repo, ".enola"));
+			const head = commit(repo, { "src/a.ts": "export const BROKEN = 1;\n" });
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					tools: await fake(0),
+				},
+				context,
+			);
+			expect(result.status).toBe("ran");
+			expect(readFileSync(join(outside, "suppressions.yaml"), "utf8")).toBe("outside\n");
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
 	it("compares head against a generated base, applies base policy, and leaves no worktree", async () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",
@@ -623,6 +653,9 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			"enola-intent.yaml": "rules: [] # base intent\n",
 			".enola/suppressions.yaml": "suppressions: [] # base suppression\n",
 			".enola/baseline/facts.jsonl": "do not reuse\n",
+			"enola/recipes/ports.yaml": "recipe: ports # base recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # base newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # base newline recipe\n",
 		});
 		const head = commit(repo, {
 			"src/a.ts": "export const BROKEN = 1;\n",
@@ -632,6 +665,10 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			".enola/suppressions.yaml": "suppressions: [] # head suppression\n",
 			"enola/constraints/head-only.yaml": "rules: []\n",
 			"mcp-arch.yaml": "providers: [{ command: [evil] }]\n",
+			"enola/recipes/ports.yaml": "recipe: ports # head recipe\n",
+			"enola/recipes/layered.yaml": "recipe: layered\nrules: [] # replaces the shipped recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # head newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # head newline recipe\n",
 		});
 		const result = await runStaticTool(
 			{
