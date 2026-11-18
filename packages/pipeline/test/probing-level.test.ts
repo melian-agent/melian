@@ -754,7 +754,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const { verdict } = await run;
 		const closed = record(verdict);
 		expect(requests[prober]).toHaveLength(3);
-		expect(lastResults(requests[prober]![2]!)).toMatch(/recorded attack 1 as closed: probe p[0-9]+ never exercised it/);
+		expect(lastResults(requests[prober]![2]!)).toMatch(
+			/recorded attack 1 as closed: probe p[0-9]+ never exercised it/,
+		);
 		expect(closed).toMatchObject({ status: "ran", level: "deep" });
 		expect(closed.reason).toMatch(
 			/, and closed attack 1 with no finding, since probe p[0-9]+ never exercised it: "its script had a syntax error, so load\(\) never ran"$/,
