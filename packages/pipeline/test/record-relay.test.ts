@@ -374,6 +374,20 @@ describe("RelayBatch", () => {
 			const found = await refusal(RelayBatch.read(await artefact(...written, other), run));
 			expect([found.code, found.file]).toEqual(["unnamedRecord", `${other.id}.json`]);
 		});
+
+		it("refuses an early copy under the key of a check the round reads, which is no lens run", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const stray = early(written[0]!.key);
+			const found = await refusal(RelayBatch.read(await artefact(...written, stray), run));
+			expect([found.code, found.file]).toEqual(["unnamedRecord", `${stray.id}.json`]);
+		});
+
+		it("refuses a verification with no check under the key of a lens run the round reads", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const stray = records().verification("e".repeat(64), { claims: [], dismissals: [], outcomes: [] });
+			const found = await refusal(RelayBatch.read(await artefact(...written, stray), run));
+			expect([found.code, found.file]).toEqual(["unnamedRecord", `${stray.id}.json`]);
+		});
 	});
 
 	describe("with the verifier's check in the account", () => {
@@ -549,5 +563,76 @@ describe("RelayBatch", () => {
 			);
 			expect(batch.records).toHaveLength(4);
 		});
+	});
+
+	describe("refuses an entry the store's tree never holds", () => {
+		const slot = "0".repeat(64);
+		const id = "1".repeat(64);
+		const at = `changesets/${changeset}`;
+		it.each([
+			["a slot whose name has a prefix", `${at}/check/x${slot}/${id}.json`],
+			["a slot whose name has a suffix", `${at}/check/${slot}x/${id}.json`],
+			["a file whose name has a prefix", `${at}/check/${slot}/x${id}.json`],
+			["a file whose name has a suffix", `${at}/check/${slot}/${id}.jsonx`],
+			["a file in a kind folder named with a dot", `${at}/.check/${slot}/${id}.json`],
+			["a file where a kind folder goes", `${at}/check`],
+			["a file named for a slot where a slot folder goes", `${at}/check/${slot}`],
+			["a file where the changeset's folder goes", at],
+			["a file in tmp", `tmp/${id}.json`],
+			["a folder beside changesets", `other/${id}.json`],
+		])("%s", async (_, path) => {
+			const directory = await artefact();
+			await plant(directory, path, "x");
+			const found = await refusal(RelayBatch.read(directory, fork));
+			expect(found.code).toBe("strayEntry");
+		});
+	});
+
+	it("refuses a root it cannot list as unreadable", async () => {
+		const found = await refusal(RelayBatch.read(join(await scratch(), "missing"), fork));
+		expect(found.code).toBe("unreadable");
+	});
+
+	it("refuses a writer's empty batch as holding no round", async () => {
+		const found = await refusal(RelayBatch.read(await artefact(), writer));
+		expect([found.code, found.file]).toEqual(["roundCount", "an entry not named for a record ID"]);
+	});
+
+	it("names the first record of a batch with no round", async () => {
+		const biome = check();
+		const found = await refusal(RelayBatch.read(await artefact(biome), writer));
+		expect([found.code, found.file]).toEqual(["roundCount", `${biome.id}.json`]);
+	});
+
+	it("names one of a batch's two rounds", async () => {
+		const biome = check();
+		const tsc = check("static.tsc");
+		const rounds = [records().round([biome], undefined, [], []), records().round([biome, tsc], undefined, [], [])];
+		const found = await refusal(RelayBatch.read(await artefact(biome, tsc, ...rounds), wide));
+		expect(found.code).toBe("roundCount");
+		expect(rounds.map((round) => `${round.id}.json`)).toContain(found.file);
+	});
+
+	it("refuses a record keyed by its round's ID that is not the round's telemetry", async () => {
+		const written = accounted([check()]);
+		const round = written[2]!;
+		const stray = records().verification(round.id, { claims: [], dismissals: [], outcomes: [] });
+		const found = await refusal(RelayBatch.read(await artefact(...written, stray), writer));
+		expect([found.code, found.file]).toEqual(["unnamedRecord", `${stray.id}.json`]);
+	});
+
+	it.each([
+		[
+			"bytes that are not UTF-8, before it reads them as a record",
+			(bytes: string) => Buffer.concat([Buffer.from(bytes), Buffer.from([0xff])]),
+			undefined,
+		],
+		["a byte order mark, which no record holds", (bytes: string) => `\uFEFF${bytes}`, "invalidRecord"],
+	])("refuses a record file that starts or ends with %s", async (_, change, recordCode) => {
+		const biome = check();
+		const directory = await artefact();
+		await plant(directory, biome.path, change(biome.bytes));
+		const found = await refusal(RelayBatch.read(directory, fork));
+		expect([found.code, found.recordCode]).toEqual(["invalidRecord", recordCode]);
 	});
 });

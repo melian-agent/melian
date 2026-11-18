@@ -1,0 +1,65 @@
+import type * as fsPromises from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+	DirectoryRecordStore,
+	defaultConfig,
+	pullRequestChangesetId,
+	reviewPayloads,
+	TierAccount,
+} from "@melian-agent/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { RelayBatch, RelayRefusal } from "../src/record-relay.ts";
+import { ReviewRecords } from "../src/review-records.ts";
+
+// A file the listing named can be gone, or unreadable, by the time the relay measures or reads it.
+const failing = vi.hoisted(() => ({ lstat: false, readFile: false }));
+vi.mock("node:fs/promises", async (original) => {
+	const actual = await original<typeof fsPromises>();
+	const gone = () => Promise.reject(Object.assign(new Error("ENOENT: gone"), { code: "ENOENT" }));
+	return {
+		...actual,
+		lstat: (...args: Parameters<typeof actual.lstat>) => (failing.lstat ? gone() : actual.lstat(...args)),
+		readFile: (...args: Parameters<typeof actual.readFile>) => (failing.readFile ? gone() : actual.readFile(...args)),
+	};
+});
+
+const changeset = pullRequestChangesetId("github", { owner: "octo", name: "repo" }, 7);
+const revision = { base: "a".repeat(40), head: "b".repeat(40) };
+const tier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome"] } }, "relay", {
+	loaded: [],
+	selected: [],
+});
+const fork = { changeset, revision: `${revision.base}..${revision.head}`, fork: true, tier };
+
+let directory = "";
+afterEach(async () => {
+	failing.lstat = false;
+	failing.readFile = false;
+	await rm(directory, { recursive: true, force: true });
+});
+
+describe("RelayBatch on a file that fails as it reads", () => {
+	it.each([
+		["measures", "lstat", "unreadable"],
+		["reads", "readFile", "invalidRecord"],
+	] as const)("refuses a file it cannot %s, naming no code of a record", async (_, call, code) => {
+		directory = await mkdtemp(join(tmpdir(), "melian-relay-io-"));
+		const record = ReviewRecords.of(changeset, revision).check(
+			"d".repeat(64),
+			{ name: "static.biome", status: "ran", version: "2.0.0", findings: 0, notes: [] },
+			[],
+		);
+		const store = await DirectoryRecordStore.open(directory, reviewPayloads);
+		await store.add([record.toJSON()]);
+		await store.close();
+		failing[call] = true;
+		const error = await RelayBatch.read(directory, fork).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect(error).toBeInstanceOf(RelayRefusal);
+		expect([(error as RelayRefusal).code, (error as RelayRefusal).recordCode]).toEqual([code, undefined]);
+	});
+});

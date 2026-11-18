@@ -16,6 +16,7 @@ import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts
 import { ReviewRecords } from "../../pipeline/src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { main } from "../src/main.ts";
+import { relayRecords } from "../src/relay.ts";
 import * as targets from "../src/target.ts";
 
 // A base that trusts writers, with a tier of one check, so a round accounts for little.
@@ -41,7 +42,9 @@ function scratch(): string {
 
 // A pull request #7 whose base is `policy`, pushed by octocat with `permission`, in a clone whose origin is a bare
 // repository standing for GitHub's.
-async function pullRequest(options: { policy?: string; permission?: string; fork?: boolean; origin?: string } = {}) {
+async function pullRequest(
+	options: { policy?: string; permission?: string; fork?: boolean; origin?: string; env?: NodeJS.ProcessEnv } = {},
+) {
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
 	cleanup.push(repo);
 	const remote = join(scratch(), "origin.git");
@@ -90,7 +93,7 @@ async function pullRequest(options: { policy?: string; permission?: string; fork
 	let stderr = "";
 	const io = {
 		cwd: repo,
-		env: { ...process.env, MELIAN_STATE_DIR: scratch() } as NodeJS.ProcessEnv,
+		env: { ...process.env, MELIAN_STATE_DIR: scratch(), ...options.env } as NodeJS.ProcessEnv,
 		stdout: (text: string) => {
 			stdout += text;
 		},
@@ -210,6 +213,37 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 		expect(err()).toBe(
 			"melian: melian/state refused or failed the relay (unreachable); repeat the relay, which completes a batch that landed in part\n",
 		);
+	});
+
+	it("relays a batch again, once the first relay has released the store", async () => {
+		const { check, account, round, relay, onState } = await pullRequest();
+		const written = await artefact(check, account, round);
+		expect(await relay(written)).toBe(0);
+		expect(await relay(written)).toBe(0);
+		expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+	});
+
+	it("checks the round against the tier the base's pull-request stage names", async () => {
+		const policy = `${trusting}  relay: [static.biome]\nstages:\n  pull-request: relay\n`.replace(
+			"full: [static.biome]",
+			"full: [static.biome, static.tsc]",
+		);
+		const { check, account, round, relay } = await pullRequest({ policy });
+		expect(await relay(await artefact(check, account, round), undefined, "--check")).toBe(0);
+	});
+
+	it("passes on an error that is not the store's in its own words", async () => {
+		const { check, account, round, relay, onState, err } = await pullRequest({ env: { PATH: "/nonexistent" } });
+		expect(await relay(await artefact(check, account, round))).toBe(1);
+		expect(onState()).toBeUndefined();
+		expect(err()).toMatch(/^melian: git rev-parse failed: /);
+	});
+
+	it("refuses a target that is no pull request", async () => {
+		const io = { cwd: scratch(), env: {}, color: false, stdout: () => {}, stderr: () => {} };
+		await expect(
+			relayRecords(io, "main...feature", { from: "dir:x", expect: { base: "a", head: "b" } }),
+		).rejects.toThrow('records relay takes a pull request such as "#12"');
 	});
 
 	it.each([
