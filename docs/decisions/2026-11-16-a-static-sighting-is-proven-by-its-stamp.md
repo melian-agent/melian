@@ -29,7 +29,7 @@ The guarantee covers Melian's own writers and exported functions. Two limits sta
 
 ## What this gives up
 
-A static finding stored before findings version 12 has no stamp, so its check exports as `withheld` until the revision is reviewed again under this build. A dismissal made before it has no `run`, so it stays unshared until the finding is dismissed again.
+A static finding stored before findings version 12 has no stamp, so its check exports as `withheld` until the revision is reviewed again under this build. This change raises each static check's version in `checkVersions`, so the review asks each check again instead of reusing a run an earlier build completed under the same key, which wrote no stamp. A dismissal made before it has no `run`, so it stays unshared until the finding is dismissed again. A repeat of the same dismissal counts as a change when a different run now stands, so the same reason takes the new run's stamp.
 
 A new dismissal's identity includes its `run`, so it differs from the identity the same dismissal had before. A dismissal made before the change keeps its identity, and the links that name it hold.
 

@@ -191,4 +191,25 @@ describe("a check's stamp on its sightings at a revision", () => {
 
 		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(later);
 	});
+
+	// A repeat that names no severity records no sighting, so it has no run to take and changes nothing.
+	it("is kept by a repeated dismissal that names no severity, after a later run", async () => {
+		const { root } = await stamped();
+		const id = biome(1).id;
+		const dismissal = { by: "maintainer", reason: "Intended.", at: "2026-11-16" };
+		await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, revision, "P1"), context);
+		await root.commit(
+			(tx) => replaceCheckFindings(tx, root.id, "static.biome", revision, [biome(1)], later),
+			context,
+		);
+		const replaced = await root.commit(
+			(tx) => dismissFinding(tx, root.id, id, { ...dismissal, at: "2026-11-17" }, revision),
+			context,
+		);
+		const state = await harness!.snapshot(FindingsDocument, root.id, context);
+
+		expect(replaced).toBeUndefined();
+		expect(state?.items[id]?.lifecycle).toMatchObject({ dismissedAt: "2026-11-16", history: [] });
+		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run);
+	});
 });
