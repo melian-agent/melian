@@ -2,6 +2,7 @@ import { rmSync } from "node:fs";
 import {
 	Changeset,
 	defaultConfig,
+	Finding,
 	injectionAttemptRuleId,
 	Lens,
 	type MelianConfig,
@@ -34,7 +35,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument, findingsVersion, verificationClaims } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, replaceCheckFindings, verificationClaims } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
@@ -1034,6 +1035,42 @@ describe("a dismissal carrying to a restatement", () => {
 		};
 		expect(verification.claims.map(({ verification }) => verification.matches)).toEqual([{ [root]: "same" }]);
 		expect(verification.dismissals).toEqual([{ finding: root, record }]);
+	});
+
+	it("never treats a dismissed static finding as a root, so a lens claim of its rule is verified on its own", async () => {
+		const owner = await harness.root(context);
+		const at = await revision();
+		const tool = Finding.create({
+			rule: nullDeref.rule,
+			message: "Biome reports null-dereference here.",
+			file: nullDeref.file,
+			startLine: nullDeref.line,
+			snippet: "\treturn user.manager.name + label;",
+			occurrence: 0,
+			cause: "introduced",
+			trigger: at.trigger(nullDeref.file, nullDeref.line, nullDeref.line),
+			severity: "P1",
+			explanation: { what: "Biome reports a rule here.", whyHere: "The change adds it.", whatToDo: "Fix it." },
+			source: { check: "static.biome" },
+		});
+		await owner.commit(
+			async (tx) => replaceCheckFindings(tx, owner.id, "static.biome", Revision.key(at), [tool]),
+			context,
+		);
+		script([]);
+		await review();
+		await recordDismissal({ harness, revision: await revision(), id: tool.id, dismissal, repoRoot: repo });
+		pushElsewhere("other");
+		const requests = script([restatement]);
+
+		const reviewed = await review();
+
+		const [restated] = reviewed.findings;
+		expect(reviewed.verdict.attention().map(({ id }) => id)).toEqual([restated!.id]);
+		const shown = requests[verifierMarker]!.flatMap((messages) =>
+			messages.filter((message) => message.role === "user").map(textOf),
+		);
+		expect(shown.join("\n").includes("Dismissed d1")).toBe(false);
 	});
 
 	it("links nothing when the verifier did not finish, though one candidate was judged the same", async () => {

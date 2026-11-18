@@ -1069,7 +1069,8 @@ export type DismissedRoot = {
 };
 
 // Every finding a maintainer dismissed with a recorded severity and accepted content, in ID order. An inherited
-// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one.
+// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one. A static check's finding is
+// never one: its dismissal may be unshareable (`unprovenRun`), and a restatement's record must name a shared one.
 export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 	return Object.keys(state.items)
 		.sort()
@@ -1081,6 +1082,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 			if (dismissedSighting === undefined) return [];
 			const { revision, sighting } = dismissedSighting;
 			const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
+			if (finding.properties.source.check.startsWith("static.")) return [];
 			const [line, endLine] = finding.lines();
 			const { failureScenario, evidence } = finding.properties;
 			return [
