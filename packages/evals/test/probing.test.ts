@@ -12,6 +12,7 @@ import {
 	loadConfig,
 	type MelianConfig,
 	type ResolvedFinding,
+	Revision,
 	revisionLimits,
 	Verdict,
 } from "@melian-agent/core";
@@ -20,7 +21,9 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	openHarness,
+	openSqliteStorage,
 	StageTelemetry,
+	TelemetryReader,
 	TokenUsage,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -2710,6 +2713,47 @@ describe("an arm that needs the graph", { timeout: 60_000 }, () => {
 					probing: { graph: true, routed: (config, lenses) => ({ config, lenses }) },
 				}),
 			).rejects.toThrow(/^The arm needs Enola's graph of the head, which could not be read: /);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("a live review that keeps its store", { timeout: 60_000 }, () => {
+	it("writes the store to its file, and refuses a file that already holds one", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const fake = createFakeModels({ models: [{ id: "plan" }] });
+			const provider = fake.ref("plan").provider;
+			const head = git(repo, "rev-parse", "feature");
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, ["src/scan.ts", "src/rules.ts"]);
+			scriptLenses(fake, lenses, { "trust-boundary": failOpen.script["trust-boundary"]!, verifier: {} });
+			const miss = Miss.load(
+				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]),
+			)[0]!;
+			const store = join(scratch, "kept.sqlite");
+			const mode = {
+				kind: "live",
+				models: fake.review,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+				store,
+			} as const;
+			const run = await runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), mode);
+			const kept = await openSqliteStorage(store);
+			try {
+				const target = miss.target(ProbeTrust.parse(`${base},${head}`));
+				const key = Revision.key((await Changeset.resolve(repo, target.range)).revision);
+				const stages = (await TelemetryReader.open(kept).read(key)).stages.map(({ id, subject }) => [id, subject]);
+				expect(stages.length).toBeGreaterThan(0);
+				expect(stages).toEqual(run.telemetry.stages.map(({ id, subject }) => [id, subject]));
+			} finally {
+				await kept.close(backgroundContext);
+			}
+			await expect(runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), mode)).rejects.toThrow(
+				`${store} already holds a store, which this review would resume rather than measure afresh`,
+			);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

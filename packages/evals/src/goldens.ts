@@ -35,11 +35,13 @@ import {
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	openReviewHarness,
+	openSqliteStorage,
 	type ProberRecord,
 	type ReviewModels,
 	readFindings,
 	reviewChangeset,
 	type StageTelemetry,
+	type Storage,
 	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
@@ -325,6 +327,8 @@ export type GoldenMode =
 			readonly thinking?: EvalThinking;
 			/** One combination of a probing measurement, applied after `thinking`. */
 			readonly probing?: ProbingRoute;
+			/** A new SQLite file to keep the review's store in, so its conversations can be read after it. */
+			readonly store?: string;
 	  };
 
 /** A live golden mode, the only kind that can review a range outside the corpus. */
@@ -423,7 +427,7 @@ async function guardrailFindings(
 
 // One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
 async function detached(
-	storage: ReturnType<typeof createMemoryStorage>,
+	storage: Storage,
 	revision: string,
 ): Promise<{ telemetry: StageTelemetry; probers: Record<string, ProberRecord> }> {
 	const reader = TelemetryReader.open(storage);
@@ -571,7 +575,10 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 	);
 	const callers =
 		mode.kind === "live" && mode.probing?.graph ? await graphOf(target, changeset, config, lenses, tier) : undefined;
-	const storage = createMemoryStorage();
+	if (mode.kind === "live" && mode.store !== undefined && existsSync(mode.store))
+		throw new Error(`${mode.store} already holds a store, which this review would resume rather than measure afresh`);
+	const storage =
+		mode.kind === "live" && mode.store !== undefined ? await openSqliteStorage(mode.store) : createMemoryStorage();
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry: mode.kind !== "scripted",
 		...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
