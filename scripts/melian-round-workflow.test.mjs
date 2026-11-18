@@ -1519,10 +1519,8 @@ describe("the melian round workflow", () => {
 		]);
 		expect(record.permissions).toEqual({ contents: "write", "pull-requests": "read" });
 		expect(JSON.stringify(record)).not.toContain("secrets.");
-		const roundCheck = workflow.jobs.round.steps.find(
-			(step) => step.name === "Refuse a commit the default branch has moved past",
-		);
-		expect(record.steps[0]).toEqual(roundCheck);
+		// A round outlasts several merges to main, so the record job carries on after a move as the report job does.
+		expect(record.steps[0]).toEqual(workflow.jobs.report.steps[0]);
 		expect(record.steps[1].name).toBe("Refuse unless rulesets keep main and melian/state");
 		const download = record.steps.find((step) => step.uses?.startsWith("actions/download-artifact@"));
 		expect(download.with).toEqual({

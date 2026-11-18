@@ -401,21 +401,38 @@ jobs:
       contents: write
       pull-requests: read
     steps:
-      - name: Refuse a commit the default branch has moved past
+      # A round outlasts several merges to main, so a first attempt carries on after the default branch moves, by the
+      # report job's rule and its reasons: this job runs only when the round's records step ran, after the round job's
+      # check, so the code it runs was main's head when the round began. A rerun is refused.
+      - name: Refuse a rerun on a commit the default branch has moved past
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+          CHECKED: ${{ needs.round.outputs.checked }}
         run: |
+          if ! [[ "$ATTEMPT" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::this run's attempt, ${ATTEMPT:-empty}, is not a whole number above 0; start a new round"
+            exit 1
+          fi
           default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
           if [ "$REF" != "refs/heads/$default" ]; then
             echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
             exit 1
           fi
           current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
-          if [ "$current" != "$SHA" ]; then
-            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+          if ! [[ "$current" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::the default branch is at an unreadable commit, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
+          if [ "$current" != "$SHA" ] && [ "$ATTEMPT" != 1 ]; then
+            echo "::error::the default branch is at $current, not $SHA, which this rerun would build; start a new round"
+            exit 1
+          fi
+          if [ "$current" != "$SHA" ] && [ "$CHECKED" != "$SHA" ]; then
+            echo "::error::the default branch is at $current, not $SHA, and this run's round did not check $SHA; start a new round"
             exit 1
           fi
       # Without these rules this job's token could push to main, or rewrite or delete melian/state. A rule applies only
