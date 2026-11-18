@@ -51,3 +51,7 @@ Files that guard trust or durability: `packages/pipeline/src/findings.ts`, `chec
 ## Handed to the audit: what adjudication and the account read
 
 Codex's fifth review, at 244cded55, found that adjudication and the account still read the records a caller hands in. A forged tool version can then drop a genuine blocker from the verdict, and a forged mutation skip cause can add an allowed skip, while the export writes the stored record. The maintainer ruled on 2026-11-18, in the coordinator's session, that no new proof goes onto that seam in this pull request. The coordinator recorded it as [a row on the audit](https://github.com/melian-agent/melian/pull/572#issuecomment-6968232976), and the decision names it as a fourth limit.
+
+## A hand-built run: the own-build round at abf57d68b
+
+The own-build round at abf57d68b raised one acknowledgement, 145e304dfafe8871. A caller that builds a `CheckRun` by hand, pairing run A's identity with run B's request, gets A's skipped or failed record filed under B's request. `runChecks` never returns such a pair. The maintainer read it on 2026-11-18, in the coordinator's session, and ruled that it falls under the limit of 2026-11-17 on a caller who forges a run, with no code change here. The coordinator recorded it as a second row on the audit, [pull request #572](https://github.com/melian-agent/melian/pull/572). The identity guideline's check-record row now says its promise holds for the options `reviewChangeset` takes, and that a hand-built `CheckRun` is outside it.
