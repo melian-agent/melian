@@ -46,3 +46,14 @@ The [pass's inventory](2026-11-18-issue-548-round-5-fix-mutants.json) lists the 
 ## The host round on d0d3cbe91
 
 The host round raised block 00f639cb91957379 from the design lens. It found that the classed-field checks refuse the records `main` wrote at `4d08b08c`, while the account decision said a version-1 account still parses. The maintainer ruled on 2026-11-18, in the coordinator's session, to dismiss the finding and amend that decision, with no new payload version. [The amendment](../decisions/2026-11-18-records-before-withheld-text-are-refused.md) says such a record is refused, and its store fails its checks until the record is removed. `docs/design.md` says so too.
+
+## The fix pass after the host round on f89dc3726
+
+The host round raised two findings from the design lens.
+
+- Block 9293ce4990272f46: a verification outcome's `candidate` was free text, though it names what the verifier judged. The lens said to check it as a 64-hex hash. That form was wrong: `review.ts` keys each candidate by its speaking finding's ID, `defect.speaker.id`, and writes `verified.result`'s keys as the candidates, so every verification main wrote holds a 16-digit finding ID. By the coordinator's answer, not a ruling, `candidate` is now `findingIdPattern` and left the free-text list. The lens was right that the field is no free text. Two verifications in main's capture held model names that tests had handed `ReviewRecords`; they were dropped, as earlier hand-built values were. A new test in `review-records-main.test.ts` reads the two kept verifications and `account-v1`'s, each with candidate `8f3f919a7c886b44`.
+- Acknowledge ae2b58ba72b9f847: a receipt's Enola version passed a hand-written pattern that took `0`, which semver refuses. Core's `isReceipt` now takes the pattern's version and checks it as `isToolVersion` does, and `ReviewRecords` and the check payload both call it. Every Enola pin in `tools.yaml`, 0.4.27 and 0.4.40, is semver, and `enola-static.ts` refuses a receipt whose version is not the pin.
+
+Both new tests in `review-payloads.test.ts` failed at f89dc3726 for the reported reason: the receipt `0` and the candidate `anthropic/claude` were each accepted. Both pass with the fix.
+
+The [pass's inventory](2026-11-18-issue-548-round-6-fix-mutants.json) lists the 41 mutants of `f89dc3726...7632952ad`: 38 generated and 3 ignored. Each generated mutant was run by hand against one test alone, after every test it might name passed unmutated, and all 38 were killed. Four hand mutants were too: `candidate` back to free text and to a hash, `receipt()` keeping any text, and the version's capture group moved. The [runs](2026-11-18-issue-548-round-6-fix-mutant-runs.json) record each.

@@ -1,0 +1,1062 @@
+{
+  "head": "7632952ad51ef18634a51d9dd63f7fa8508d318e",
+  "base": "f89dc3726",
+  "runs": [
+    {
+      "baseline": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+      "file": "packages/core/test/review-payloads.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+      "file": "packages/pipeline/test/review-records-static-text.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+      "file": "packages/core/test/record-payload-classes.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a shared record's classed fields > refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+      "file": "packages/core/test/record-payload-classes.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a shared record's classed fields > accepts the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+      "file": "packages/core/test/record-payload-classes.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a shared record's classed fields > accepts the account sample's filled/0/version at \"unavailable\"",
+      "file": "packages/core/test/record-payload-classes.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a shared record's classed fields > accepts the ran sample's result/snapshots/0/receipt at \"Melian shares none of this text, which the reviewing host's store and terminal hold\"",
+      "file": "packages/core/test/record-payload-classes.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "review payload checks > accepts a whole check payload, sample 1",
+      "file": "packages/core/test/review-payloads.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "review payload checks > refuses a verification outcome whose candidate is not a finding ID",
+      "file": "packages/core/test/review-payloads.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "a record main's build wrote > reads each verification main's build wrote by its candidates, finding IDs, here and at 4d08b08c",
+      "file": "packages/pipeline/test/review-records-main.test.ts",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 85,
+      "column": 49,
+      "endLine": 88,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 86,
+      "column": 17,
+      "endLine": 86,
+      "endColumn": 59,
+      "mutatorName": "OptionalChaining",
+      "replacement": "new RegExp(receiptPattern).exec(text)[1]",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/pipeline/test/review-records-static-text.test.ts",
+        "name": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 50,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version !== undefined || isSemver(version)",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/pipeline/test/review-records-static-text.test.ts",
+        "name": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version === undefined",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 8,
+      "endLine": 96,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\""
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 8,
+      "endLine": 96,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 8,
+      "endLine": 96,
+      "endColumn": 54,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version === \"unavailable\" && isSemver(version)",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 8,
+      "endLine": 96,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > accepts the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > accepts the account sample's filled/0/version at \"unavailable\"",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > accepts the account sample's filled/0/version at \"unavailable\""
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 8,
+      "endLine": 96,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version !== \"unavailable\"",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\""
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 58,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version.length <= 64 || valid(version) === version",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version.length < 64",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 8,
+      "endLine": 100,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version.length > 64",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 32,
+      "endLine": 100,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 100,
+      "column": 32,
+      "endLine": 100,
+      "endColumn": 58,
+      "mutatorName": "EqualityOperator",
+      "replacement": "valid(version) !== version",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 18,
+      "endLine": 501,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 18,
+      "endLine": 501,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 18,
+      "endLine": 501,
+      "endColumn": 67,
+      "mutatorName": "LogicalOperator",
+      "replacement": "\"snapshots\" in result && result.snapshots && []",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 19,
+      "endLine": 501,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 19,
+      "endLine": 501,
+      "endColumn": 60,
+      "mutatorName": "LogicalOperator",
+      "replacement": "\"snapshots\" in result || result.snapshots",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 65,
+      "endLine": 501,
+      "endColumn": 67,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"v2.0.0\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > accepts the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > accepts the account sample's filled/0/version at \"unavailable\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "a shared record's classed fields > accepts the ran sample's result/snapshots/0/receipt at \"Melian shares none of this text, which the reviewing host's store and terminal hold\"",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "review payload checks > accepts a whole check payload, sample 1",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole check payload, sample 1"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 3,
+      "endLine": 502,
+      "endColumn": 63,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 20,
+      "endLine": 502,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 20,
+      "endLine": 502,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 20,
+      "endLine": 502,
+      "endColumn": 63,
+      "mutatorName": "LogicalOperator",
+      "replacement": "receipt !== withheld || !isReceipt(receipt)",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 20,
+      "endLine": 502,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "passed"
+        },
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/pipeline/test/review-records-static-text.test.ts",
+        "name": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 20,
+      "endLine": 502,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "receipt === withheld",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 502,
+      "column": 44,
+      "endLine": 502,
+      "endColumn": 63,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "isReceipt(receipt)",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 504,
+      "column": 6,
+      "endLine": 504,
+      "endColumn": 19,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 504,
+      "column": 6,
+      "endLine": 504,
+      "endColumn": 19,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 504,
+      "column": 6,
+      "endLine": 504,
+      "endColumn": 19,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unread === -1",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "generated",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 504,
+      "column": 17,
+      "endLine": 504,
+      "endColumn": 19,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "hand",
+      "file": "packages/core/src/record-payloads.ts",
+      "replacement": "candidate: text,",
+      "find": "candidate: findingId,",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a verification outcome whose candidate is not a finding ID",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a verification outcome whose candidate is not a finding ID"
+      }
+    },
+    {
+      "kind": "hand",
+      "file": "packages/core/src/record-payloads.ts",
+      "replacement": "candidate: hash,",
+      "find": "candidate: findingId,",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a verification outcome whose candidate is not a finding ID",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a verification outcome whose candidate is not a finding ID"
+      }
+    },
+    {
+      "kind": "hand",
+      "file": "packages/pipeline/src/review-records.ts",
+      "replacement": "return kept;",
+      "find": "return isReceipt(kept) ? kept : withheld;",
+      "attempts": [
+        {
+          "test": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/pipeline/test/review-records-static-text.test.ts",
+        "name": "an exported record keeps what a static finding shares > keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+      }
+    },
+    {
+      "kind": "hand",
+      "file": "packages/core/src/record-payloads.ts",
+      "replacement": "\"enola_version\":\"[0-9]([0-9A-Za-z.+-]{0,63})\"",
+      "find": "\"enola_version\":\"([0-9][0-9A-Za-z.+-]{0,63})\"",
+      "attempts": [
+        {
+          "test": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+          "collected": 1,
+          "status": "failed"
+        }
+      ],
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    }
+  ]
+}
