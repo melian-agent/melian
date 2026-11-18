@@ -519,6 +519,48 @@ describe("the findings document", () => {
 			expect(readWith([first, last])).toEqual(["dismissed"]);
 		});
 
+		it("reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger", async () => {
+			const a = { file: "src/lib.ts", hash: snippetHash("+export const run = eval;") };
+			const first = Finding.create({
+				...input,
+				cause: "introduced",
+				trigger: { file: "src/run.ts", index: 0, snippet: "eval(input)" },
+			});
+			await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1", []), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, first.properties.id, dismissal), context);
+			const trigger = (await lifecycle(harness, first.properties.id))?.dismissedTrigger;
+			expect(trigger?.proof).toEqual([]);
+			const second = Finding.create({
+				...input,
+				cause: "affected",
+				evidence: [
+					{
+						file: "src/lib.ts",
+						startLine: 1,
+						role: "cause",
+						revision: "head",
+						proves: true,
+						snippet: "export const run = eval;",
+					},
+				],
+				trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof: [a] },
+			});
+			expect(second.properties.id).toBe(first.properties.id);
+			await root.commit((tx) => upsertFinding(tx, root.id, second, "rev2", [a]), context);
+			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
+
+			const { status: _, ...properties } = second.properties;
+			// No round since the dismissal but the one read, so the reader holds no cited hunk, as the host held none.
+			const read = mergeSightings(
+				[{ ...second.toJSON(), properties } as StoredFinding],
+				[],
+				[input.source],
+				new Map([[first.properties.id, [{ ...dismissal, trigger: trigger!, cited: [] }]]]),
+				[a],
+			);
+			expect(read.map((each) => each.properties.status)).toEqual(["new"]);
+		});
+
 		it("carries the dismissal on the finding it reads", async () => {
 			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 			await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal), context);

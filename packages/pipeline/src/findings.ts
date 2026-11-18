@@ -794,7 +794,9 @@ export function citedProof(sightings: Iterable<StoredFinding>): Map<string, Prov
 
 /**
  * Whether `shared` still holds for a finding sighted as `sightings` at a revision of `hunks`, by the rule that reopens a
- * dismissal on the host: a hunk any shared sighting cited that the revision no longer holds reopens it.
+ * dismissal on the host: a hunk any shared sighting cited that the revision no longer holds reopens it. A sighting is
+ * tested against the accepted proof and `cited` alone, never its own proof, as the host tests it against what it held
+ * before it.
  */
 export function sharedDismissalHolds(
 	shared: SharedDismissal,
@@ -805,7 +807,7 @@ export function sharedDismissalHolds(
 		({ properties: { cause, trigger } }) =>
 			!reopens(
 				shared.trigger.hash,
-				unionOf([...shared.trigger.proof, ...shared.cited, ...proofOf(cause, trigger)]),
+				unionOf([...shared.trigger.proof, ...shared.cited]),
 				cause,
 				triggerCode(trigger),
 				hunks,

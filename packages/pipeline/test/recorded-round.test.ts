@@ -710,7 +710,11 @@ describe("the dismissal records a reader applies", () => {
 	// The round with its finding sighted as affected at the revision's one proving hunk, and dismissed at `dismissedAt`
 	// accepting it. `elsewhere` is a copy of the round's record of `kind` at revision 1..2 that cites a hunk the revision
 	// lacks, and `second` the round of that revision that read it, after `first`, of revision 0..1.
-	async function citedAcross(kind: "lens" | "check", dismissedAt?: string) {
+	async function citedAcross(
+		kind: "lens" | "check",
+		dismissedAt?: string,
+		accepted?: (proof: { file: string; hash: string }[]) => { hash: string; proof: object[] },
+	) {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
 		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
 		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
@@ -733,7 +737,7 @@ describe("the dismissal records a reader applies", () => {
 		} as unknown as RecordJson);
 		const { sighting: seen, trigger } = redismissed(reviewed).payload as DismissalPayload;
 		const dismissal = redismissed(reviewed, {
-			trigger: { ...trigger, proof },
+			trigger: accepted?.(proof) ?? { ...trigger, proof },
 			sighting: { ...seen, revision: dismissedAt ?? seen.revision },
 			head: (dismissedAt ?? seen.revision).split("..")[1],
 		} as Partial<DismissalJson>);
@@ -795,6 +799,18 @@ describe("the dismissal records a reader applies", () => {
 			expect(standingOf(remembered)).toEqual([[id, "new", undefined]]);
 		},
 	);
+
+	it("remembers no hunk the round it reads cites, as the host tests each sighting against what it held before", async () => {
+		// The dismissal accepted another trigger and no proof, so only a hunk remembered from before the round read
+		// would let its sightings, which cite hunks the revision holds, keep it.
+		const { id, first, readAfter } = await citedAcross("lens", revisionOf("0", "1"), () => ({
+			hash: "f".repeat(64),
+			proof: [],
+		}));
+		const reopened = await readAfter([first], [first]);
+		expect([reopened.status, reopened.blocking]).toEqual(["findings", true]);
+		expect(standingOf(reopened)).toEqual([[id, "new", undefined]]);
+	});
 
 	it("remembers no hunk a record no round names cited", async () => {
 		const { id, elsewhere, first, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
