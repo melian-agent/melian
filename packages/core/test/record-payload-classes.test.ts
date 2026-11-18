@@ -358,6 +358,17 @@ describe("a shared record's classed fields", () => {
 		expect(refused).not.toContain(token);
 	});
 
+	// An array index is the schema's word and stays; a key that only starts or ends with digits is the record's.
+	it("names an array index in the path and masks a key that holds digits", () => {
+		const { payload } = samples.telemetry;
+		const stages = Array.from({ length: 11 }, () => structuredClone(payload.stages[0]));
+		expect(check("telemetry", at({ ...payload, stages }, "stages/10/tools", -1))).toBe(
+			"does not match its schema at /stages/10/tools: must be >= 0",
+		);
+		for (const key of ["1ghp", "ghp1"])
+			expect(check("telemetry", { ...payload, [key]: 1 })).toBe("does not match its schema at /*: schema is false");
+	});
+
 	// The pattern takes its length from the one `versioned` cuts a lens's hash to, so every lens Melian ships fits it.
 	it("accepts every built-in lens's version", async () => {
 		const lenses = await Lens.builtins();
