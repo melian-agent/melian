@@ -40,6 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReviewRecords } from "../src/review-records.ts";
+import { provenRun } from "./fixtures/proven-run.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
@@ -134,7 +135,8 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		lenses,
 		standards: scenario.standards === undefined ? [] : await scenario.standards(changeset),
 		models: fake.review,
-		checks: [...(scenario.given ?? checks)],
+		// A host's round hands in the run its checks wrote, so a reader can prove its static checks as the host does.
+		checkRun: await provenRun(harness, changeset, [...(scenario.given ?? checks)]),
 		records: store,
 		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
 	}).then(

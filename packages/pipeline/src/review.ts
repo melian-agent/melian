@@ -3172,7 +3172,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const sightings = counted
 				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
 				: [];
-			if (check.name.startsWith("static.") && sightings.length > 0 && !proven(check.name)) {
+			// An empty result needs the proof too: a stale run that found nothing replaces the sightings and stamps its own key.
+			if (check.name.startsWith("static.") && counted && !proven(check.name)) {
 				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason: "withheld", error: "" };
 				return [{ name: check.name, record: records.check(request, withheld, []) }];
 			}

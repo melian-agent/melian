@@ -34,6 +34,7 @@ import type { CheckRunRecord } from "../src/checks.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
+import { provenRun } from "./fixtures/proven-run.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -93,7 +94,7 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: CheckRun } = {},
+	run: { readonly checkRun?: CheckRun; readonly proven?: true } = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
@@ -121,6 +122,7 @@ async function review(
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
+	const checkRun = run.proven ? await provenRun(harness, changeset, given) : run.checkRun;
 	const open = harness;
 	const summarize = (origin: "pull-request" | "range") =>
 		summarizeReview({
@@ -146,13 +148,13 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => named.includes(name)),
 		standards: [],
 		models: fake.review,
-		...(run.checkRun === undefined
+		...(checkRun === undefined
 			? { checks: given }
 			: // A run built here names this review's revision, as a review refuses one that names another.
 				{
 					checkRun: {
-						...run.checkRun,
-						identity: { ...run.checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
+						...checkRun,
+						identity: { ...checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
 					},
 				}),
 		...(store === undefined ? {} : { records: store }),
@@ -264,7 +266,8 @@ describe("a review that names a record store", () => {
 		const given = checks.map((check) =>
 			check.name === "static.biome" ? { ...check, notes: undefined as never, error: undefined } : check,
 		);
-		const { stored } = await review(store, given);
+		// Biome's record is exported as it ran only from a run the store proves.
+		const { stored } = await review(store, given, undefined, undefined, { proven: true });
 		const biome = stored.find(
 			({ kind, payload }) =>
 				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",

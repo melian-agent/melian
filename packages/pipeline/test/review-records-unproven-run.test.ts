@@ -204,39 +204,66 @@ describe("a static check's sightings, exported from a run the store proves wrote
 });
 
 describe("a static check's sightings, exported from a run that does not prove the text they hold is Melian's", () => {
-	it.each<[string, { readonly checkRun?: CheckRun }, Store]>([
-		["bare check records", {}, proven],
+	// tsc found nothing, so its record holds no tool text, yet a run the store does not prove may not call it clean.
+	it.each<[string, { readonly checkRun?: CheckRun }, Store, "ran" | "withheld"]>([
+		["bare check records", {}, proven, "withheld"],
 		[
 			"a run whose sightings carry no stamp",
 			{ checkRun: runUnder(current) },
 			{ ...proven, stamps: { tsc: asked.key } },
+			"ran",
 		],
 		[
 			"a run whose sightings another run stamped",
 			{ checkRun: runUnder(current) },
 			{ ...proven, stamps: { biome: "d".repeat(64), tsc: asked.key } },
+			"ran",
 		],
 		// A caller can hand in any run beside the sightings, so a request the store never kept proves nothing.
-		["a run whose request the store never kept", { checkRun: runUnder(current) }, { stamps: proven.stamps }],
+		[
+			"a run whose request the store never kept",
+			{ checkRun: runUnder(current) },
+			{ stamps: proven.stamps },
+			"withheld",
+		],
 		[
 			"a run whose stored request was edited after it was keyed",
 			{ checkRun: runUnder(current) },
 			// It still asks for today's code, so only its hash fails.
 			{ ...proven, requests: { [asked.key]: { checks: current, edited: true } } },
+			"withheld",
 		],
 		[
 			"a run of a build whose Biome check stored its text",
 			{ checkRun: runUnder({ ...current, "static.biome": 1 }) },
+			// That build asked for today's tsc code, so tsc's empty result is proven.
 			{ stamps: { biome: old.key, tsc: old.key }, requests: { [old.key]: old.request } },
+			"ran",
 		],
-	])("leave no tool text in the record, from %s", async (_, run, held) => {
+	])("leave no tool text in the record, from %s", async (_, run, held, tsc) => {
 		const reviewed = await review(new MemoryRecordStore({ payloads: reviewPayloads }), run, token, held);
 
 		expect(reviewed.verdict.blocking).toBe(true);
 		expect(bytes(reviewed.stored)).not.toContain(token);
 		expect(biomeRecord(reviewed.stored)).toEqual(withheldRecord("static.biome"));
-		// tsc found nothing, so its record holds no sighting to withhold.
-		expect(checkRecord(reviewed.stored, "static.tsc")).toMatchObject({ result: { status: "ran" }, sightings: [] });
+		expect(checkRecord(reviewed.stored, "static.tsc")).toEqual(
+			tsc === "ran"
+				? expect.objectContaining({ result: expect.objectContaining({ status: "ran" }), sightings: [] })
+				: withheldRecord("static.tsc"),
+		);
+	});
+
+	// A stale run that found nothing commits after the review's run, so it replaces tsc's sightings and stamps its own key.
+	it("withhold a check that sighted nothing when another run stamped its empty result", async () => {
+		const reviewed = await review(
+			new MemoryRecordStore({ payloads: reviewPayloads }),
+			{ checkRun: runUnder(current) },
+			undefined,
+			{ ...proven, stamps: { biome: asked.key, tsc: "d".repeat(64) } },
+		);
+
+		expect(biomeRecord(reviewed.stored)).toMatchObject({ result: { name: "static.biome", status: "ran" } });
+		expect(checkRecord(reviewed.stored, "static.tsc")).toEqual(withheldRecord("static.tsc"));
 	});
 
 	it("never read back as passed on another host, where the host's own verdict blocks on them", async () => {
