@@ -550,6 +550,7 @@ export {
 	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
+	telemetryOutcomes,
 	telemetryPayloadSchema,
 	triagePayloadSchema,
 	type VerificationPayload,

@@ -27,6 +27,7 @@ import {
 	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
+	telemetryOutcomes,
 	type Verification,
 	type VerificationPayload,
 	type Walkthrough,
@@ -103,6 +104,7 @@ const orNull = <T>(value: T | undefined): T | null => value ?? null;
 export { withheld };
 
 const codes: ReadonlySet<string> = new Set(recordCodes);
+const outcomes: ReadonlySet<string> = new Set(telemetryOutcomes);
 const shared = <T extends string>(text: string): T => (codes.has(text) ? text : withheld) as T;
 // A tool's version comes from its installed manifest, which the head can write, so only one core's `isToolVersion`
 // takes leaves the machine. A lens's version and the verifier's are Melian's own.
@@ -588,7 +590,7 @@ function stage(each: RunStage): TelemetryPayload["stages"][number] {
 		tokens: orNull(each.tokens),
 		cacheRead: orNull(each.cacheRead),
 		costMicros: each.cost === undefined ? null : micros(each.cost),
-		outcome: each.outcome,
+		outcome: outcomes.has(each.outcome) ? (each.outcome as (typeof telemetryOutcomes)[number]) : withheld,
 		tools: orNull(each.tools),
 		limits:
 			each.limits === undefined ? null : { tokens: orNull(each.limits.tokens), tools: orNull(each.limits.tools) },

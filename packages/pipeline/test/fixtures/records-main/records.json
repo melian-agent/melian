@@ -2941,35 +2941,6 @@
 		},
 		{
 			"changeset": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-			"key": "bdcee3b99675cfb512e6b49838a36ae25b22b50041512e80752c8f2a9c66b976",
-			"kind": "telemetry",
-			"payload": {
-				"durationMs": 10,
-				"stages": [
-					{
-						"cacheRead": null,
-						"costMicros": 1500000,
-						"durationMs": null,
-						"ended": null,
-						"level": null,
-						"limits": null,
-						"models": [
-							"openai/sol"
-						],
-						"name": "lens.security",
-						"outcome": "done",
-						"tokens": null,
-						"tools": null,
-						"usageIncomplete": false
-					}
-				],
-				"v": 1
-			},
-			"revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-			"v": 1
-		},
-		{
-			"changeset": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
 			"key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
 			"kind": "triage",
 			"payload": {

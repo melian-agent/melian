@@ -9,6 +9,7 @@ import {
 	RunDetails,
 	type RunStage,
 	type StoredRunDetails,
+	type telemetryOutcomes,
 	thinkingLevelSchema,
 	visibleText,
 } from "@melian-agent/core";
@@ -75,7 +76,10 @@ function interval(
 	};
 }
 
-function outcome(task: TaskRecord): { outcome: string; error?: string } {
+// Typed to core's set, so a status Pi adds fails to compile here before a record can carry it.
+type Outcome = (typeof telemetryOutcomes)[number];
+
+function outcome(task: TaskRecord): { outcome: Outcome; error?: string } {
 	const state = task.state;
 	if (state.status !== "terminal" && state.status !== "completing") return { outcome: "running" };
 	const result = state.outcome;
@@ -87,7 +91,7 @@ function outcome(task: TaskRecord): { outcome: string; error?: string } {
 	return { outcome: "completed" };
 }
 
-function checkOutcome(record: CheckRecord): { outcome: string; error?: string } {
+function checkOutcome(record: CheckRecord): { outcome: Outcome; error?: string } {
 	switch (record.status) {
 		case "ran":
 			return { outcome: "completed" };

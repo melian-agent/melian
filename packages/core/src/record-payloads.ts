@@ -51,6 +51,21 @@ export const recordCodes = [
 	"withheld",
 ] as const;
 
+/** A telemetry stage's outcome: a Pi task's end, as the telemetry projection reads it, or a check record's. */
+export const telemetryOutcomes = [
+	"running",
+	"completed",
+	"superseded",
+	"failed",
+	"aborted",
+	"orphaned",
+	"faulted",
+	"timed-out",
+	"skipped",
+	"ended",
+	"provisional",
+] as const;
+
 /** An Enola snapshot's ID, which Melian computes as a SHA-256 hash. */
 export const snapshotIdPattern = "^sha256:[0-9a-f]{64}$";
 
@@ -334,7 +349,7 @@ export const telemetryPayloadSchema = Type.Object(
 					tokens: nullable(count),
 					cacheRead: nullable(count),
 					costMicros: nullable(count),
-					outcome: text,
+					outcome: literals([...telemetryOutcomes, withheld]),
 					tools: nullable(count),
 					limits: nullable(Type.Object({ tokens: nullable(count), tools: nullable(count) }, strict)),
 					ended: nullable(Type.Union([Type.Literal("tokens"), Type.Literal("tools")])),

@@ -219,7 +219,7 @@ const samples: [string, RecordJson][] = [
 					tokens: 100,
 					cacheRead: 50,
 					costMicros: 1_200_000,
-					outcome: "done",
+					outcome: "completed",
 					tools: 4,
 					limits: { tokens: 1000, tools: 10 },
 					ended: "tools",

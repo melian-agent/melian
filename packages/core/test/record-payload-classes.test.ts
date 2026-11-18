@@ -149,6 +149,29 @@ const samples = {
 			check: decided("verifier", verifierVersion, null),
 		},
 	},
+	telemetry: {
+		kind: "telemetry",
+		payload: {
+			v: 1,
+			durationMs: 10,
+			stages: [
+				{
+					name: "lens.security",
+					level: "careful",
+					models: ["anthropic/opus"],
+					durationMs: 10,
+					tokens: 11,
+					cacheRead: 0,
+					costMicros: 12,
+					outcome: "completed",
+					tools: 2,
+					limits: { tokens: 10, tools: null },
+					ended: "tokens",
+					usageIncomplete: false,
+				},
+			],
+		},
+	},
 	triage: {
 		kind: "triage",
 		payload: { v: 1, decision: null, failure: withheld, inputCut: false },
@@ -240,6 +263,7 @@ const fields: readonly [Sample, string][] = [
 	["verification", "outcomes/0/outcome/reason"],
 	["verification", "check/version"],
 	["verification", "claims/0/verification/version"],
+	["telemetry", "stages/0/outcome"],
 	["triage", "failure"],
 	["dismissal", "at"],
 	["dismissal", "trigger/hash"],
@@ -304,6 +328,8 @@ describe("a shared record's classed fields", () => {
 		["lens", "check/lineage/thinking/level", "unset"],
 		["lens", "check/lineage/thinking/wanted", "xhigh"],
 		["verification", "check/version", null],
+		["telemetry", "stages/0/outcome", "faulted"],
+		["telemetry", "stages/0/outcome", withheld],
 		["account", "filled/0/version", "unavailable"],
 	] as const)("accepts the %s sample's %s at %j", (sample, path, value) => {
 		expect(check(sample, at(samples[sample].payload, path, value))).toBeUndefined();

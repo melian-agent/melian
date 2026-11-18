@@ -244,7 +244,10 @@ describe("ReviewRecords", () => {
 		const round = records().round([], undefined, [], []);
 		const record = records().telemetry(round, {
 			durationMs: 10,
-			stages: [{ name: "lens.security", models: ["openai/sol"], cost: 1.5, outcome: "done" }],
+			stages: [
+				{ name: "lens.security", models: ["openai/sol"], cost: 1.5, outcome: "done" },
+				{ name: "lens.tests", models: [], outcome: "faulted" },
+			],
 		});
 		expect(record.key).toBe(round.id);
 		expect(record.toJSON().payload).toEqual({
@@ -259,7 +262,22 @@ describe("ReviewRecords", () => {
 					tokens: null,
 					cacheRead: null,
 					costMicros: 1_500_000,
-					outcome: "done",
+					// A stored run's outcome is text, so one outside the set a record takes is withheld.
+					outcome: withheld,
+					tools: null,
+					limits: null,
+					ended: null,
+					usageIncomplete: false,
+				},
+				{
+					name: "lens.tests",
+					level: null,
+					models: [],
+					durationMs: null,
+					tokens: null,
+					cacheRead: null,
+					costMicros: null,
+					outcome: "faulted",
 					tools: null,
 					limits: null,
 					ended: null,
