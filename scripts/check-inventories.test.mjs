@@ -262,6 +262,15 @@ describe("the gate's command", () => {
 		expect(result.status).toBe(0);
 	});
 
+	it("writes a file name's control and bidi characters as visible escapes", () => {
+		commitMain();
+		writeFileSync(join(scratch, "docs/progress-log", "evil\u001b[2J\r\u202eFORGED.json"), "{");
+		const result = run();
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain("docs/progress-log/evil\\u001b[2J\\u000d\\u202eFORGED.json is not JSON");
+		expect(result.stderr).not.toMatch(/[\u001b\r\u202e]/);
+	});
+
 	it("exits 1 when it cannot read origin/main", () => {
 		git("init", "-q");
 		const result = run();

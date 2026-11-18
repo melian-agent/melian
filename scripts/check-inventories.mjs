@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { visibleText } from "../packages/core/src/render.ts";
 import { sampleMutants } from "./mutant-sample.mjs";
 
 const directory = "docs/progress-log";
@@ -119,7 +120,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 			unreadable: readUnreadable(JSON.parse(readFileSync(listFile, "utf8")), mainList()),
 			onMain: mainFile,
 		});
-		for (const problem of problems) console.error(problem);
+		for (const problem of problems) console.error(visibleText(problem));
 		if (problems.length > 0) {
 			console.error(
 				"Write a mutation inventory with `melian mutants list <range> --json --all`, then add each claim to its rows.",
@@ -127,7 +128,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 			process.exit(1);
 		}
 	} catch (error) {
-		console.error(`check-inventories: ${error.message}`);
+		console.error(`check-inventories: ${visibleText(error.message)}`);
 		process.exit(1);
 	}
 }
