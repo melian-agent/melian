@@ -1,4 +1,7 @@
 {
+ "total": 6,
+ "omitted": 0,
+ "unmutated": [],
  "mutants": [
   {
    "file": "packages/pipeline/src/harness.ts",
@@ -72,8 +75,5 @@
    "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
    "survivorClasses": []
   }
- ],
- "total": 708,
- "omitted": 0,
- "unmutated": []
+ ]
 }
