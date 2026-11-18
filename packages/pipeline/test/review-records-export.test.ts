@@ -374,6 +374,42 @@ describe("a review that names a record store", () => {
 		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id, other.id].sort());
 	});
 
+	it("names in before no round of its own revision, on a host with no history of the changeset", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const second = await review(store);
+		const own = Revision.key(second.changeset.revision);
+		const [held] = second.stored.filter(({ kind, revision }) => kind === "round" && revision === own);
+		await harness?.close(context);
+		harness = undefined;
+		const again = await review(store, checks, undefined, ["contracts"]);
+		const round = again.stored.find(
+			(each) => each.kind === "round" && each.revision === own && each.key !== held!.key,
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id]);
+	});
+
+	it("names in before only the rounds of its previous revision, on a host with history, though the store holds another branch", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		const other = ReviewRecords.of(first.changeset.id, { base: "4".repeat(40), head: "5".repeat(40) }).round(
+			[],
+			undefined,
+			[],
+			[],
+		);
+		await store.add([other.toJSON()]);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		const round = later.stored.find(
+			({ kind, revision }) => kind === "round" && revision === Revision.key(later.changeset.revision),
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id]);
+	});
+
 	it("adds the same bytes when the same head is reviewed again", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const first = (await review(store)).stored;
