@@ -322,6 +322,22 @@ describe("ProbingCombination", () => {
 		);
 	});
 
+	it("refuses a named lens when any variant of it cannot probe, not only the first", async () => {
+		const loaded = await lenses();
+		const contracts = loaded.find((lens) => lens.name === "contracts")!;
+		const shadow = Lens.from({
+			...contracts.toJSON(),
+			name: "trust-boundary",
+			paths: ["services/pay/**"],
+			shadowsBuiltin: true,
+		});
+		expect(() =>
+			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(config, [...loaded, shadow]),
+		).toThrow(
+			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, which cannot probe: "probe" takes its wording from the built-in lens a lens extends/,
+		);
+	});
+
 	it("refuses a lens the tier of the review's pull-request stage does not run, which is full when no stage names one", async () => {
 		const loaded = await lenses();
 		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
