@@ -391,7 +391,7 @@ describe("a review that names a record store", () => {
 		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id]);
 	});
 
-	it("names in before only the rounds of its previous revision, on a host with history, though the store holds another branch", async () => {
+	it("names in before the rounds of its previous revision and another branch's, on a host with history", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const first = await review(store);
 		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
@@ -407,7 +407,28 @@ describe("a review that names a record store", () => {
 		const round = later.stored.find(
 			({ kind, revision }) => kind === "round" && revision === Revision.key(later.changeset.revision),
 		)!.payload as { before: string[] };
-		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id]);
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id, other.id].sort());
+	});
+
+	it("names in before another host's round written since its own, on a host with history", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const roundOf = (stored: readonly RecordEnvelope[], revision: string) =>
+			stored.find((each) => each.kind === "round" && each.revision === revision)!;
+		const first = await review(store);
+		const one = roundOf(first.stored, Revision.key(first.changeset.revision));
+		const hostA = harness;
+		harness = undefined;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const second = await review(store);
+		const two = roundOf(second.stored, Revision.key(second.changeset.revision));
+		await harness?.close(context);
+		harness = hostA;
+		commit(repo, { "src/c.ts": lines("export const c = 1;") });
+		const third = await review(store);
+
+		const three = roundOf(third.stored, Revision.key(third.changeset.revision)).payload as { before: string[] };
+		expect((two.payload as { before: string[] }).before).toEqual([SharedRecord.parseEnvelope(one).id]);
+		expect(three.before).toEqual([SharedRecord.parseEnvelope(one).id, SharedRecord.parseEnvelope(two).id].sort());
 	});
 
 	it("adds the same bytes when the same head is reviewed again", async () => {

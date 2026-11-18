@@ -2197,15 +2197,17 @@ function lensRecord(
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
 // The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
-// before, or, on a host with no earlier revision of the changeset, every held round of another revision that no such
-// round names, so a fresh host's round keeps the store's chain rather than starting one.
+// before, and every held round of another revision that no such round names, so a round keeps the store's chain,
+// another host's rounds since this host's own included.
 function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
 	const rounds = held
 		.filter((each) => each.kind === "round" && each.revision !== reviewed)
 		.map((each) => SharedRecord.parseEnvelope(each));
-	if (previous !== undefined) return rounds.filter((each) => each.revision === previous).map(({ id }) => id);
 	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
-	return rounds.filter(({ id }) => !named.has(id)).map(({ id }) => id);
+	return rounds
+		.filter(({ id, revision }) => revision === previous || !named.has(id))
+		.map(({ id }) => id)
+		.sort();
 }
 
 function verificationOutcome(outcome: VerificationResult[string]): VerificationPayload["outcomes"][number]["outcome"] {
