@@ -118,6 +118,7 @@ const codes: ReadonlySet<string> = new Set([
 	"no record",
 	"unexpected",
 	"withheld",
+	"unkeyed",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
 // A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own

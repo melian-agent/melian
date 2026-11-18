@@ -48,4 +48,34 @@ describe("the proof the checks document's requests give", () => {
 		expect(proof.asks("static.biome", asked.key)).toBe(true);
 		expect(proof.asks("static.biome", "e".repeat(64))).toBe(false);
 	});
+
+	// A request that could not key what its run read starts a run each time it is asked, so its stamp names no one run.
+	it("keys a run fully only for a request whose install is identified and whose policy was read", async () => {
+		const made = await root();
+		const identified = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
+		const requests = {
+			keyed: { checks: current, install: identified, policy: [] },
+			revision: { checks: current, install: identified },
+			unidentified: { checks: current, install: { ...identified, identified: false }, policy: [] },
+			unread: { checks: current, install: identified, policy: "unread" },
+			"no install": { checks: current, policy: [] },
+			"a truthy install flag": { checks: current, install: { ...identified, identified: "yes" } },
+			"not an object": "keyed",
+		};
+		await made.commit(async (tx) => {
+			(await tx.doc(ChecksDocument, made.id)).requests = requests;
+		}, context);
+		const proof = await StaticProof.read(harness!, made.id, context);
+
+		expect(Object.fromEntries(Object.keys(requests).map((name) => [name, proof.keyedFully(name)]))).toEqual({
+			keyed: true,
+			revision: true,
+			unidentified: false,
+			unread: false,
+			"no install": false,
+			"a truthy install flag": false,
+			"not an object": false,
+		});
+		expect(proof.keyedFully("never stored")).toBe(false);
+	});
 });

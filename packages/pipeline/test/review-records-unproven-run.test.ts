@@ -80,7 +80,9 @@ const sighting = (text: string | undefined) =>
 	});
 
 // A request for `versions` of Melian's own check code, and a check run that names it by `key`, its own by default.
-const askFor = (versions: Record<string, number>) => KeyedRequest.of("check", { checks: versions });
+// Every run's request keys the checkout's install, here one identified, so no second run shares the key.
+const install = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
+const askFor = (versions: Record<string, number>) => KeyedRequest.of("check", { checks: versions, install });
 const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
 	const asked = askFor(versions);
 	return {
@@ -230,7 +232,7 @@ describe("a static check's sightings, exported from a run that does not prove th
 			"a run whose stored request was edited after it was keyed",
 			{ checkRun: runUnder(current) },
 			// It still asks for today's code, so only its hash fails.
-			{ ...proven, requests: { [asked.key]: { checks: current, edited: true } } },
+			{ ...proven, requests: { [asked.key]: { checks: current, install, edited: true } } },
 			"withheld",
 		],
 		[
@@ -264,6 +266,29 @@ describe("a static check's sightings, exported from a run that does not prove th
 
 		expect(biomeRecord(reviewed.stored)).toMatchObject({ result: { name: "static.biome", status: "ran" } });
 		expect(checkRecord(reviewed.stored, "static.tsc")).toEqual(withheldRecord("static.tsc"));
+	});
+
+	// A request that could not key the install starts a new run each time it is asked, so run B under run A's key can
+	// replace A's blocker with nothing and stamp the key A's stamp held.
+	it("withhold a check whose run's request was not keyed fully, though its stamp and stored request prove it", async () => {
+		const unkeyed = KeyedRequest.of("check", {
+			checks: current,
+			install: { digests: { "package-lock.json": "unavailable" }, identified: false },
+		});
+		const blocked = checks.map((check) => (check.name === "static.tsc" ? { ...check, findings: 1 } : check));
+		const reviewed = await review(
+			new MemoryRecordStore({ payloads: reviewPayloads }),
+			{ checkRun: { ...runUnder(current, unkeyed.key), records: blocked } },
+			undefined,
+			{ stamps: { biome: unkeyed.key, tsc: unkeyed.key }, requests: { [unkeyed.key]: unkeyed.request } },
+		);
+
+		expect(checkRecord(reviewed.stored, "static.tsc")).toEqual({
+			v: 1,
+			result: { name: "static.tsc", status: "failed", reason: "unkeyed", error: expect.any(String) },
+			sightings: [],
+		});
+		expect(biomeRecord(reviewed.stored)).toMatchObject({ result: { status: "failed", reason: "unkeyed" } });
 	});
 
 	it("never read back as passed on another host, where the host's own verdict blocks on them", async () => {

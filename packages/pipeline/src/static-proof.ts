@@ -1,5 +1,5 @@
 import { KeyedRequest, type RecordJson } from "@melian-agent/core";
-import { writesFixedText } from "./check-request.ts";
+import { type CheckRequestInput, checkReusable, writesFixedText } from "./check-request.ts";
 import { ChecksDocument } from "./checks.ts";
 import { type FindingsState, stampOf } from "./findings.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
@@ -40,5 +40,21 @@ export class StaticProof {
 			return false;
 		}
 		return rehashed.key === request && writesFixedText(rehashed, check);
+	}
+
+	/**
+	 * Whether the stored request under `request` keyed everything its run read, by `checkReusable`. A request that did not
+	 * starts a new run each time it is asked, so a later run under the same key can replace the sightings an earlier run's
+	 * record describes, and stamp the same key.
+	 */
+	keyedFully(request: string): boolean {
+		try {
+			return (
+				checkReusable(this.#requests[request] as unknown as Pick<CheckRequestInput, "policy" | "install">) === true
+			);
+		} catch {
+			// A stored request with no install facts to read was not keyed by a run of this build; it keys nothing fully.
+			return false;
+		}
 	}
 }

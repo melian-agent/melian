@@ -3163,8 +3163,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const request = run?.request ?? null;
 		// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
 		// under a stored request that asks for check code that stores no tool text. A run handed in proves nothing alone.
+		// A request that did not key everything its run read is run again under the same key, so its stamp names no one run.
 		const proof = await StaticProof.read(harness, root, context);
-		const proven = (check: string) => run !== undefined && proof.proves(state, reviewed, check, run.request);
+		const unshared = (check: string): "withheld" | "unkeyed" | undefined =>
+			run === undefined || !proof.proves(state, reviewed, check, run.request)
+				? "withheld"
+				: proof.keyedFully(run.request)
+					? undefined
+					: "unkeyed";
 		const exported = checks.flatMap((check) => {
 			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
@@ -3173,8 +3179,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
 				: [];
 			// An empty result needs the proof too: a stale run that found nothing replaces the sightings and stamps its own key.
-			if (check.name.startsWith("static.") && counted && !proven(check.name)) {
-				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason: "withheld", error: "" };
+			const reason = check.name.startsWith("static.") && counted ? unshared(check.name) : undefined;
+			if (reason !== undefined) {
+				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason, error: "" };
 				return [{ name: check.name, record: records.check(request, withheld, []) }];
 			}
 			// A host's record may leave out the count and the notes a run writes; its sightings and none stand for them.

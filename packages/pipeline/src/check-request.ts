@@ -101,7 +101,7 @@ export function writesFixedText(asked: KeyedRequest<RecordJson>, check: string):
  * Whether a run of this request may stand for a later one with the same key. A key holds what was read, so an input
  * that could not be read leaves nothing to compare, and the run is not reused.
  */
-export function checkReusable(input: CheckRequestInput): boolean {
+export function checkReusable(input: Pick<CheckRequestInput, "policy" | "install">): boolean {
 	return input.policy !== "unread" && input.install.identified;
 }
 
