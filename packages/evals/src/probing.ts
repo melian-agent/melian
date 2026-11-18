@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
+	type ChangedFile,
 	Changeset,
 	checksOfTier,
 	type Finding,
@@ -104,9 +105,14 @@ export class ProbingCombination implements ProbingRoute {
 		return this.prober !== undefined;
 	}
 
-	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
+	routed(
+		config: MelianConfig,
+		lenses: readonly Lens[],
+		files: readonly ChangedFile[],
+	): { config: MelianConfig; lenses: readonly Lens[] } {
 		const tier = config.stages["pull-request"] ?? "full";
 		const runs = checksOfTier(config, tier);
+		const paths = files.map((file) => file.path);
 		for (const name of this.lenses) {
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined)
@@ -119,6 +125,16 @@ export class ProbingCombination implements ProbingRoute {
 			if (!runs.includes(`lens.${name}`))
 				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`,
+				);
+			if (
+				Lens.select(
+					lenses.filter((each) => each.name === name),
+					config,
+					paths,
+				).length === 0
+			)
+				throw new ProbeLensRefusal(
+					`MELIAN_EVAL_PROBE_LENSES names ${name}, which reviews none of the changed files`,
 				);
 		}
 		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.

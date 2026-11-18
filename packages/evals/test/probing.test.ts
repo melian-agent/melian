@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, syml
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
+	type ChangedFile,
 	Changeset,
 	checksOfTier,
 	defaultConfig,
@@ -171,6 +172,7 @@ function missesFile(misses: readonly Record<string, unknown>[]): string {
 	return path;
 }
 
+const changed: ChangedFile[] = [{ status: "modified", path: "src/a.ts", binary: false, hunks: [] }];
 describe("ProbingCombination", () => {
 	it("reads a planner and prober pair, and a model alone as the level without probes, as core reads a model", () => {
 		const pair = ProbingCombination.parse(" pair = openrouter/anthropic/claude > openai-codex/gpt ", "medium");
@@ -216,7 +218,7 @@ describe("ProbingCombination", () => {
 
 	it("routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning", async () => {
 		const loaded = await lenses();
-		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "medium").routed(config, loaded);
+		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "medium").routed(config, loaded, changed);
 		expect(routed.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
 			route: { model: "a/plan", thinking: "high" },
@@ -227,7 +229,7 @@ describe("ProbingCombination", () => {
 		expect(boundary.level("careful").probe).toBeUndefined();
 		const others = (lensSet: readonly Lens[]) => lensSet.filter((lens) => lens.name !== "trust-boundary");
 		expect(others(routed.lenses)).toEqual(others(loaded));
-		const light = ProbingCombination.parse("pair=a/plan>b/probe", "light").routed(config, loaded);
+		const light = ProbingCombination.parse("pair=a/plan>b/probe", "light").routed(config, loaded, changed);
 		expect(light.config.models.light).toStrictEqual({ model: "b/probe" });
 		expect(light.config.models.medium).toEqual(config.models.medium);
 	});
@@ -258,7 +260,7 @@ describe("ProbingCombination", () => {
 			const { probe: _, ...deep } = lens.level("deep");
 			return Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep } });
 		});
-		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "heavy").routed(config, loaded);
+		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "heavy").routed(config, loaded, changed);
 		expect(routed.lenses.find((lens) => lens.name === "trust-boundary")!.level("deep").probe).toEqual({
 			prober: "heavy",
 		});
@@ -267,7 +269,7 @@ describe("ProbingCombination", () => {
 	it("probes each lens the run names, on the same routes, and leaves the rest as they loaded", async () => {
 		const loaded = await lenses();
 		const both = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "correctness"]);
-		const routed = both.routed(config, loaded);
+		const routed = both.routed(config, loaded, changed);
 		expect(routed.config.lenses.correctness).toEqual({ route: { model: "a/plan", thinking: "high" } });
 		expect(routed.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
@@ -293,7 +295,11 @@ describe("ProbingCombination", () => {
 			const lens = routed.lenses.find((each) => each.name === name)!;
 			return (["quick", "careful", "deep"] as const).map((level) => lens.level(level).probe);
 		};
-		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(config, loaded);
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(
+			config,
+			loaded,
+			changed,
+		);
 		expect(pair.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
 			route: { model: "a/plan", thinking: "high" },
@@ -302,7 +308,7 @@ describe("ProbingCombination", () => {
 		expect(pair.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
 		expect(probes(pair, "conventions")).toEqual([undefined, { prober: "medium" }, undefined]);
 		expect(probes(pair, "correctness")).toEqual([undefined, undefined, { prober: "medium" }]);
-		const off = ProbingCombination.parse("off=a/plan", "medium", ["correctness"]).routed(config, loaded);
+		const off = ProbingCombination.parse("off=a/plan", "medium", ["correctness"]).routed(config, loaded, changed);
 		for (const name of ["trust-boundary", "conventions", "correctness"])
 			expect(probes(off, name), name).toEqual([undefined, undefined, undefined]);
 		expect(off.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
@@ -313,36 +319,61 @@ describe("ProbingCombination", () => {
 	it("refuses a lens core would not let probe, and one the policy does not load, naming each", async () => {
 		const loaded = await lenses();
 		expect(() =>
-			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(config, loaded),
+			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(
+				config,
+				loaded,
+				changed,
+			),
 		).toThrow(
 			'MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
 		);
-		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded)).toThrow(
-			/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/,
-		);
-		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["nowhere"]).routed(config, loaded)).toThrow(
-			"MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load",
-		);
+		expect(() =>
+			ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded, changed),
+		).toThrow(/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/);
+		expect(() =>
+			ProbingCombination.parse("off=a/plan", "medium", ["nowhere"]).routed(config, loaded, changed),
+		).toThrow("MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load");
 	});
 
 	it("refuses a lens the tier of the review's pull-request stage does not run, which is full when no stage names one", async () => {
 		const loaded = await lenses();
 		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
 		const tiers = { full: ["lens.trust-boundary"], careful: ["lens.correctness"] };
-		expect(() => pair.routed({ ...config, tiers, stages: {} }, loaded)).toThrow(
+		expect(() => pair.routed({ ...config, tiers, stages: {} }, loaded, changed)).toThrow(
 			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
 		);
-		expect(() => pair.routed({ ...config, tiers, stages: { "pull-request": "full" } }, loaded)).toThrow(
+		expect(() => pair.routed({ ...config, tiers, stages: { "pull-request": "full" } }, loaded, changed)).toThrow(
 			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
 		);
-		const careful = pair.routed({ ...config, tiers, stages: { "pull-request": "careful" } }, loaded);
+		const careful = pair.routed({ ...config, tiers, stages: { "pull-request": "careful" } }, loaded, changed);
 		expect(careful.config.lenses.correctness).toStrictEqual({ route: { model: "a/plan", thinking: "high" } });
+	});
+
+	it("refuses a lens the review's configuration switches off, or narrows away from every changed file", async () => {
+		const loaded = await lenses();
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
+		const refusal = "MELIAN_EVAL_PROBE_LENSES names correctness, which reviews none of the changed files";
+		for (const settings of [{ enabled: false }, { paths: ["docs/**"] }]) {
+			const narrowed = { ...config, lenses: { ...config.lenses, correctness: settings } };
+			expect(() => pair.routed(narrowed, loaded, changed), JSON.stringify(settings)).toThrow(refusal);
+		}
+		const routed = pair.routed(
+			{ ...config, lenses: { ...config.lenses, correctness: { paths: ["src/**"] } } },
+			loaded,
+			changed,
+		);
+		expect(routed.config.lenses.correctness).toStrictEqual({
+			paths: ["src/**"],
+			route: { model: "a/plan", thinking: "high" },
+		});
+		expect(() => pair.routed(config, loaded, [{ ...changed[0]!, path: "docs/a.md" }])).not.toThrow();
 	});
 
 	it("drops every probe for the level without probes, and leaves the tiers as they were", async () => {
 		const routed = ProbingCombination.parse("off=a/plan", "medium").routed(
 			{ ...config, lenses: {}, models: { medium: { model: "m/medium" } } },
 			await lenses(),
+			changed,
 		);
 		expect(routed.config.models).toEqual({ medium: { model: "m/medium" } });
 		expect(routed.config.lenses["trust-boundary"]).toStrictEqual({ route: { model: "a/plan" } });
@@ -369,7 +400,7 @@ describe("a probing golden", { timeout: 120_000 }, () => {
 					["off=a/plan", []],
 					["pair=a/plan>b/probe", ["trust-boundary"]],
 				] as const) {
-					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded);
+					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded, changed);
 					const probers = routed.lenses
 						.filter((lens) => tier.includes(`lens.${lens.name}`))
 						.filter((lens) => Object.values(lens.levels).some((level) => level?.probe !== undefined))
