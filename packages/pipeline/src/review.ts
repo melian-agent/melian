@@ -4,7 +4,6 @@ import {
 	type ChoiceQuestion,
 	type ConfigFor,
 	checksOfTier,
-	configLookup,
 	type Decider,
 	type Decision,
 	defaultScrutinyLevel,
@@ -22,7 +21,7 @@ import {
 	type LensRule,
 	type LensTier,
 	type LensToolName,
-	LevelBand,
+	type LevelBand,
 	lensLimits,
 	loadConfig,
 	Manifest,
@@ -67,6 +66,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
+import { ChangeLenses } from "./change-lenses.ts";
 import { writesFixedText } from "./check-request.ts";
 import {
 	type CheckRun,
@@ -2193,32 +2193,6 @@ function account(
 	return new Manifest(checks, inManifestOrder(checks, all), tierAccount.allowSkip({ records: all, triage }));
 }
 
-// The band each selected lens's level must lie in, per selection, so two folder variants of one name keep their own:
-// the band of every file it reviews, each from the configuration of
-// that file's path, read from the policy source, or `config` for every path without one.
-async function bandsOf(
-	selections: readonly { readonly lens: Lens; readonly covers: readonly string[] }[],
-	options: Pick<ReviewOptions, "config" | "policy" | "changeset" | "origin" | "decider">,
-): Promise<Map<Lens, LevelBand>> {
-	const { policy, config, changeset } = options;
-	// A head the host does not trust writes the change triage reads, so until a calibrated decision model answers, its
-	// default floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look. The host
-	// says it does not trust the head the way the CLI does for policy: a pull request, or a range whose policy it reads
-	// from a revision rather than the working tree.
-	const untrusted = options.origin?.kind === "pull-request" || policy?.kind === "revision";
-	const floor = untrusted && options.decider?.calibrated !== true ? "careful" : "quick";
-	const lookup = policy === undefined ? undefined : configLookup(changeset.repoRoot, policy);
-	const bands = new Map<Lens, LevelBand>();
-	for (const { lens, covers } of selections) {
-		const configs = lookup === undefined ? [config] : await Promise.all(covers.map((path) => lookup(path)));
-		const settings = configs.map((each) =>
-			Object.hasOwn(each.lenses, lens.name) ? each.lenses[lens.name] : undefined,
-		);
-		bands.set(lens, LevelBand.across(settings.map((each) => LevelBand.of(each?.level, floor))));
-	}
-	return bands;
-}
-
 // One question per name: two variants of a lens in different folders share a name, and so its answer, which each
 // variant then holds to its own band. The shared question offers every option any variant offers.
 function sharedQuestions(questions: readonly ChoiceQuestion[]): ChoiceQuestion[] {
@@ -2434,15 +2408,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	spans.step("abort.replaced");
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
-	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
-	const paths = changeset.revision.paths();
 	const manifest = checksOfTier(config, tier);
-	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
-	const selected = Lens.select(
-		options.lenses.filter((lens) => named.has(lens.name)),
-		config,
-		paths,
-	);
 	const nonce = reviewNonce();
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
@@ -2457,20 +2423,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		decisionIndexWarning = index.warning();
 		return index;
 	};
-	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
-	const covering = selected.map((selection) => {
-		const { files } = selection;
-		const moved = changeset.revision.files
-			.filter((file) => file.oldPath !== undefined && files.includes(file.oldPath) && !files.includes(file.path))
-			.map((file) => file.path);
-		return { ...selection, moved, covers: [...files, ...moved] };
-	});
 	spans.step("bands");
-	const bands = await bandsOf(covering, options);
-	const tierAccount = TierAccount.of(config, tier, {
-		loaded: options.lenses.map((lens) => lens.name),
-		selected: covering.map(({ lens, covers }) => ({ name: lens.name, covers, band: bands.get(lens)! })),
+	// A head the host does not trust writes the change triage reads, so until a calibrated decision model answers, its
+	// default floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look. The host
+	// says it does not trust the head the way the CLI does for policy: a pull request, or a range whose policy it reads
+	// from a revision rather than the working tree.
+	const untrusted = options.origin?.kind === "pull-request" || options.policy?.kind === "revision";
+	const changeLenses = await ChangeLenses.read({
+		changeset,
+		lenses: options.lenses,
+		config,
+		tier,
+		...(options.policy === undefined ? {} : { policy: options.policy }),
+		floor: untrusted && options.decider?.calibrated !== true ? "careful" : "quick",
 	});
+	const { covering } = changeLenses;
+	const bands = new Map(covering.map(({ lens }) => [lens, changeLenses.band(lens)] as const));
+	const tierAccount = TierAccount.of(config, tier, changeLenses.tierLenses());
 	spans.step("routes");
 	const { plan } = request;
 	const levelRoutes = new Map(
@@ -3304,7 +3273,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
 		triaged.decision !== undefined &&
-		settling.length === selected.length &&
+		settling.length === covering.length &&
 		settling.every(({ run }) => run.level === "quick")
 			? [lightTriage]
 			: [];
