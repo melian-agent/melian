@@ -1,5 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,6 +72,43 @@ describe("the check over a scratch repository", () => {
 			"lens: src/entry.ts changed since its hash was recorded",
 			"src/a.ts: hashed, but no producer reaches it",
 		]);
+	});
+});
+
+describe("the command", () => {
+	let repo;
+	const write = (path, text) => {
+		mkdirSync(join(repo, path, ".."), { recursive: true });
+		writeFileSync(join(repo, path), text);
+	};
+	// A copy of the script in a scratch repository, whose root it takes from its own place, so it never writes this one.
+	const run = (...args) =>
+		spawnSync(process.execPath, [join(repo, "scripts/code-hashes.mjs"), ...args], { cwd: repo, encoding: "utf8" });
+
+	beforeEach(() => {
+		repo = mkdtempSync(join(tmpdir(), "melian-code-hashes-command-"));
+		copyFileSync(join(root, "tsconfig.base.json"), join(repo, "tsconfig.base.json"));
+		symlinkSync(join(root, "node_modules"), join(repo, "node_modules"));
+		write("scripts/code-hashes.mjs", readFileSync(join(root, "scripts/code-hashes.mjs"), "utf8"));
+		write("packages/pipeline/src/adjudication.ts", 'import { a } from "./a.ts";\nexport const n = a;\n');
+		write("packages/pipeline/src/a.ts", "export const a = 1;\n");
+	});
+	afterEach(() => rmSync(repo, { recursive: true, force: true }));
+
+	it("writes a record that it then reads as matching", { timeout: 60_000 }, () => {
+		expect(run("--write").status).toBe(0);
+		expect(existsSync(join(repo, "packages/pipeline/src/code-hashes.ts"))).toBe(true);
+		expect(run()).toMatchObject({ status: 0, stdout: "" });
+	});
+
+	it("prints each difference and the command, and fails, once a module changes", { timeout: 60_000 }, () => {
+		expect(run("--write").status).toBe(0);
+		write("packages/pipeline/src/a.ts", "export const a = 2;\n");
+		expect(run()).toMatchObject({
+			status: 1,
+			stdout:
+				"adjudication: packages/pipeline/src/a.ts changed since its hash was recorded\nRun `npm run code-hashes` to record them.\n",
+		});
 	});
 });
 
