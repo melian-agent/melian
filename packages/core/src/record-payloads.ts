@@ -51,8 +51,13 @@ export const recordCodes = [
 	"withheld",
 ] as const;
 
-/** A telemetry stage's outcome: a Pi task's end, as the telemetry projection reads it, or a check record's. */
+/**
+ * A telemetry stage's outcome: a Pi task's end, as the telemetry projection reads it, a check record's, or a run row's
+ * `ran` or `reused`.
+ */
 export const telemetryOutcomes = [
+	"ran",
+	"reused",
 	"running",
 	"completed",
 	"superseded",
