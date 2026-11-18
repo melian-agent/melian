@@ -22,7 +22,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gitIn, isolatedGitEnv } from "./fixtures/repo.ts";
+import { gitIn, isolatedGitEnv, writeFiles } from "./fixtures/repo.ts";
 import { crashRepository } from "./fixtures/review-scenario.ts";
 
 // A round exports its triage record and names it, so a reader of the shared records can check a skip triage allowed.
@@ -49,7 +49,12 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function exported(chosen: "skip" | "quick", floor: "skip" | "quick" = "skip") {
+async function exported(chosen: "skip" | "quick", floor: "skip" | "quick" = "skip", cut = false) {
+	if (cut) {
+		writeFiles(repo, { "src/large.ts": `export const text = "${"x".repeat(210 * 1024)}";\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a large change");
+	}
 	const fake = createFakeModels({
 		models: [{ id: "orchestrator" }, { id: "light" }, { id: "medium" }, { id: "heavy" }],
 	});
@@ -161,6 +166,18 @@ describe("a round's triage record", () => {
 		const { claim, facts: read } = facts(named.filter(({ kind }) => kind !== "triage"));
 
 		expect(account.refusal(claim, read)).toBe("otherSkips");
+	});
+
+	it("records that triage's input was cut, so a reader allows no skip", async () => {
+		const { named, account } = await exported("skip", "skip", true);
+		const { claim, facts: read } = facts(named);
+
+		expect(named.find(({ kind }) => kind === "triage")!.payload).toMatchObject({
+			decision: { answers: [{ question: "correctness", chosen: "skip" }] },
+			inputCut: true,
+		});
+		expect(claim.allowSkip).toEqual([]);
+		expect(account.refusal(claim, read)).toBeUndefined();
 	});
 
 	it("is named when triage chose a level, and the account then allows no skip", async () => {
