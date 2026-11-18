@@ -330,6 +330,62 @@ describe("RelayBatch", () => {
 			);
 			expect([found.code, found.recordCode]).toEqual(["tierAccount", "otherSkips"]);
 		});
+
+		// A review exports each lens run as its lens ends, with no check, and again with its check once adjudication decides.
+		const early = (key: string) =>
+			records().lens(
+				{ name: "correctness", version: "abc", level: "careful", request: key, probe: false },
+				{ status: "unanswered", reason: "no reply" },
+				[],
+			);
+
+		it("takes a lens run's early copy under the key of a run the round reads", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const batch = await RelayBatch.read(await artefact(...written, early("e".repeat(64))), run);
+			expect(batch.records).toHaveLength(6);
+		});
+
+		it("refuses an early copy under a key the round reads no run of", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const stray = early("f".repeat(64));
+			const found = await refusal(RelayBatch.read(await artefact(...written, stray), run));
+			expect([found.code, found.file]).toEqual(["unnamedRecord", `${stray.id}.json`]);
+		});
+
+		it("refuses a second decided copy under the key of a run the round reads", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const other = records().lens(
+				{ name: "correctness", version: "abc", level: "careful", request: "e".repeat(64), probe: true },
+				{ status: "unanswered", reason: "no reply" },
+				[],
+				{ name: "lens.correctness", status: "ran", version: "abc", level: "careful" },
+			);
+			const found = await refusal(RelayBatch.read(await artefact(...written, other), run));
+			expect([found.code, found.file]).toEqual(["unnamedRecord", `${other.id}.json`]);
+		});
+	});
+
+	describe("with the verifier's check in the account", () => {
+		const verified = (ran: boolean) =>
+			records().verification("f".repeat(64), {
+				claims: [],
+				dismissals: [],
+				outcomes: [],
+				...(ran ? { check: { name: "verifier", status: "ran", version: "1" } as const } : {}),
+			});
+		const claim = { checks: ["static.biome", "verifier"] };
+
+		it("takes the verification record's check as the verifier's", async () => {
+			const batch = await RelayBatch.read(await artefact(...accounted([check(), verified(true)], claim)), writer);
+			expect(batch.records).toHaveLength(4);
+		});
+
+		it("refuses the verifier's place in the account when the verification decided no check", async () => {
+			const found = await refusal(
+				RelayBatch.read(await artefact(...accounted([check(), verified(false)], claim)), writer),
+			);
+			expect([found.code, found.recordCode]).toEqual(["tierAccount", "missingRecord"]);
+		});
 	});
 
 	it("takes a mutation skip with leave, which its record's cause gives", async () => {
