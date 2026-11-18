@@ -1127,7 +1127,7 @@ describe("a dismissal carrying to a restatement", () => {
 		return SharedRecord.parse({ ...own, payload }, reviewPayloads);
 	};
 
-	it("supersedes another host's dismissal of the root its store held, and names the record that does", async () => {
+	it("names the record of a root dismissed again with the store, which supersedes another host's dismissal it held", async () => {
 		const root = await dismissedRoot();
 		pushElsewhere("other");
 		script([restatement]);
@@ -1135,14 +1135,24 @@ describe("a dismissal carrying to a restatement", () => {
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const imported = await foreignDismissal(changeset, root);
 		await store.add([imported.toJSON()]);
+		const { revision: dismissedAt } = await Changeset.resolve(repo, "main...feature~1");
+		const again = { ...dismissal, reason: "Managers are always set by the loader.", at: "2026-10-05T01:00:00Z" };
+		await recordDismissal({
+			harness,
+			revision: dismissedAt,
+			id: root,
+			dismissal: again,
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
 		const { dismissals, shown, named } = await roundFor(store, changeset, root);
-		const exported = dismissals
+		const made = dismissals
 			.map((each) => SharedRecord.parseEnvelope(each))
 			.find((each) => each.id !== imported.id)!;
 		expect(dismissals).toHaveLength(2);
-		expect(exported.supersedes).toEqual([imported.id]);
-		expect(shown).toEqual([[root, exported.id]]);
-		expect(named).toEqual([{ finding: root, record: exported.id }]);
+		expect(made.supersedes).toEqual([imported.id]);
+		expect(shown).toEqual([[root, made.id]]);
+		expect(named).toEqual([{ finding: root, record: made.id }]);
 	});
 
 	it("leaves a dismissal imported after the review listed its store out of what the review names and supersedes", async () => {

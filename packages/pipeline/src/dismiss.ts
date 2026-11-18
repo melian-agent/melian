@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, type Finding, Revision, Verdict } from "@melian-agent/core";
+import { type AlsoReportedAs, type Finding, type RecordStore, Revision, Verdict } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -21,7 +21,9 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import type { UnsharedDismissal } from "./review.ts";
 import { attachable, ReviewIndex, undecided } from "./review-index.ts";
+import { ReviewRecords } from "./review-records.ts";
 import { RoundWriter } from "./rounds.ts";
 
 // The adjudication task alone, so a dismissal decides the verdict again without resuming a review a crash interrupted.
@@ -84,6 +86,12 @@ export interface DismissalOptions {
 	 * been a worktree since removed.
 	 */
 	readonly repoRoot: string;
+	/**
+	 * The record store to write each dismissal's record to, once, as it is made, and the changeset's ID there. Its record
+	 * supersedes the dismissals of the finding that stand in the store. Without it, the dismissal's record waits for a
+	 * review's export, and supersedes nothing.
+	 */
+	readonly records?: { readonly store: RecordStore; readonly changeset: string };
 	readonly context?: Context;
 }
 
@@ -101,6 +109,8 @@ export interface RecordedDismissal {
 	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
 	readonly verdict: Verdict;
+	/** The dismissals given `records` could not share, each left for no review to export either. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
 
 /**
@@ -122,7 +132,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";
-	const { replaced, also, live, task } = await root.commit(async (tx) => {
+	const { replaced, also, live, task, dismissed } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
 		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
@@ -192,13 +202,31 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
 		// that ended without deciding, failed included, as a review would rerun it.
 		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {
-			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult> };
+			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult>, dismissed };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		await new RoundWriter(tx, root.id).keep(revision, task);
 		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
-		return { replaced, also, live, task };
+		return { replaced, also, live, task, dismissed };
 	}, context);
+	const unshared: UnsharedDismissal[] = [];
+	if (options.records !== undefined) {
+		const { store, changeset } = options.records;
+		const listing = await store.list(changeset);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const records = ReviewRecords.of(changeset, options.revision);
+		const made = [];
+		for (const report of dismissed) {
+			try {
+				const record = records.madeOf(state, report, listing);
+				if (record !== undefined) made.push(record.toJSON());
+			} catch (error) {
+				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
+				unshared.push({ finding: report, code: error.code });
+			}
+		}
+		await store.add(made);
+	}
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.some(
 		(each) => each.record.id === (task as TaskId) && each.state.kind === "blocked",
@@ -235,5 +263,5 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			where,
 		);
 	}
-	return { finding, also, live, ...(replaced === undefined ? {} : { replaced }), verdict };
+	return { finding, also, live, ...(replaced === undefined ? {} : { replaced }), verdict, unshared };
 }

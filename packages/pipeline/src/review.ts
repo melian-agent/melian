@@ -3236,10 +3236,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 		const dismissals: SharedRecord[] = [];
 		const unshared: UnsharedDismissal[] = [];
+		// A dismissal's record is written once: a store that holds it already gets nothing again.
+		const stored = new Set(held.map((each) => SharedRecord.parseEnvelope(each).id));
 		for (const id of state === undefined ? [] : Object.keys(state.items)) {
 			try {
 				const record = records.dismissalOf(state!, id, held);
-				if (record !== undefined) dismissals.push(record);
+				if (record !== undefined && !stored.has(record.id)) dismissals.push(record);
 			} catch (error) {
 				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
 				unshared.push({ finding: id, code: error.code });

@@ -788,7 +788,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	it("refuses --records outside review, and a store that is not a directory", () => {
 		expect(melian(root, ["telemetry", "main", "--records", "dir:x"])).toMatchObject({
 			status: 64,
-			stderr: expect.stringContaining("--records is only available for review and findings"),
+			stderr: expect.stringContaining("--records is only available for review, findings and dismiss"),
 		});
 		for (const extra of [["--open"], ["--rounds"]])
 			expect(melian(root, ["findings", "main", "--records", "dir:x", ...extra])).toMatchObject({
@@ -1202,6 +1202,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 describe("melian dismiss", { timeout: 60_000 }, () => {
 	const reason = "The manager is always set for users in this report.";
+	const unshared =
+		"The dismissal is not shared until a review exports it, and its record will then supersede no shared dismissal; pass --records to share it now.";
 
 	// A reviewed golden whose one blocking finding is the null dereference, and that finding's ID. The range names its
 	// branch, so another worktree, where HEAD names something else, names the same changeset.
@@ -1213,6 +1215,49 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const id = stored.findings.block[0]!.properties.id;
 		return { repo, env, id };
 	}
+
+	it("writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers", async () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting"], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+
+		const dismissed = melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", `dir:${store}`], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toContain("Verdict now: passed.\n");
+		expect(dismissed.stdout).not.toContain(unshared);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const written = (await records.list(changeset!)).filter(({ kind }) => kind === "dismissal");
+		await records.close();
+		expect(written.map(({ key, payload }) => [key, (payload as { reason: string }).reason])).toEqual([[id, reason]]);
+	});
+
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("refuses --records, and dismisses nothing, when the base %s", (_, trust) => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "untrusting"], env);
+		const stored = JSON.parse(melian(repo, ["findings", "untrusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+
+		expect(
+			melian(repo, ["dismiss", "untrusting", id, "--reason", reason, "--records", `dir:${store}`], env),
+		).toMatchObject({
+			status: 1,
+			stderr:
+				"melian: the base's melian.yaml does not set trust.writers: true, so no reader would count the dismissal's record\n",
+		});
+		expect(existsSync(store)).toBe(false);
+		const after = JSON.parse(melian(repo, ["findings", "untrusting", "--json"], env).stdout) as StoredVerdict;
+		expect(after.dismissed).toEqual([]);
+	});
 
 	it("records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out", () => {
 		const { repo, env, id } = reviewedNullDeref();
@@ -1226,7 +1271,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 
 		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
 		expect(dismissed.stdout).toBe(
-			`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.\nVerdict now: passed.\n`,
+			`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.\nVerdict now: passed.\n${unshared}\n`,
 		);
 		const findings = melian(repo, ["findings", range], env);
 		expect(findings.stdout).toMatch(/^Verdict: passed\n/);
@@ -1308,6 +1353,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 				`  changed-return from lens.contracts (${member})`,
 				"To dismiss one report alone, run melian dismiss with --only.",
 				"Verdict now: passed.",
+				unshared,
 				"",
 			].join("\n"),
 		);
@@ -1344,6 +1390,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 				"Still live, merged with it before:",
 				`  null-dereference from lens.correctness (${id})`,
 				"Verdict now: findings, blocking.",
+				unshared,
 				"",
 			].join("\n"),
 		);

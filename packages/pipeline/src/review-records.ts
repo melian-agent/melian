@@ -355,34 +355,78 @@ export class ReviewRecords {
 	 * version 11 lacks and every reopen drops.
 	 */
 	dismissalOf(state: FindingsState, id: string, held: readonly RecordEnvelope[]): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.dismissal(facts, held);
+	}
+
+	/** The record `made` writes for the dismissal of `id` that `state` holds, or `undefined` as for `dismissalOf`. */
+	madeOf(state: FindingsState, id: string, listing: readonly RecordEnvelope[]): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.made(facts, listing);
+	}
+
+	static #dismissalFacts(state: FindingsState, id: string): DismissalFacts | undefined {
 		const { lifecycle } = state.items[id]!;
 		const sighting = lifecycle.dismissedSighting;
 		if (sighting === undefined) return undefined;
-		return this.dismissal(
-			{
-				finding: id,
-				by: lifecycle.dismissedBy!,
-				reason: lifecycle.dismissedReason!,
-				at: lifecycle.dismissedAt!,
-				severity: lifecycle.dismissedSeverity!,
-				// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
-				sighting: {
-					revision: sighting.revision,
-					finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
-				},
-				rounds: [],
-				trigger: lifecycle.dismissedTrigger!,
+		return {
+			finding: id,
+			by: lifecycle.dismissedBy!,
+			reason: lifecycle.dismissedReason!,
+			at: lifecycle.dismissedAt!,
+			severity: lifecycle.dismissedSeverity!,
+			// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+			sighting: {
+				revision: sighting.revision,
+				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
 			},
-			held,
-		);
+			rounds: [],
+			trigger: lifecycle.dismissedTrigger!,
+		};
 	}
 
 	/**
 	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
-	 * sighting, since a later round exports a dismissal made at an earlier head. It supersedes every other dismissal of its
-	 * finding in `held`, the records the writer's store held when the review began, so it names only what this writer saw.
+	 * sighting, since a later round exports a dismissal made at an earlier head. The record `held` already holds for this
+	 * dismissal, as `made` wrote it, or else one that supersedes nothing: an export never rebuilds what a record says it
+	 * supersedes, so a host that kept a dismissal another host replaced cannot set it standing again.
 	 */
 	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[] = []): SharedRecord {
+		const envelope = this.#dismissalEnvelope(facts);
+		return this.#heldCopy(envelope, held) ?? SharedRecord.parse(envelope, reviewPayloads);
+	}
+
+	/**
+	 * The record of a dismissal `melian dismiss` has just made, written once: it supersedes each dismissal of its finding
+	 * that stands in `listing`, the records the writer's store holds as the dismissal is made.
+	 */
+	made(facts: DismissalFacts, listing: readonly RecordEnvelope[]): SharedRecord {
+		const envelope = this.#dismissalEnvelope(facts);
+		const copy = this.#heldCopy(envelope, listing);
+		if (copy !== undefined) return copy;
+		const own = SharedRecord.parse(envelope, reviewPayloads).id;
+		const replaced = new Set(listing.flatMap((each) => each.supersedes ?? []));
+		const standing = listing.flatMap((each) => {
+			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== facts.finding) return [];
+			const { id } = SharedRecord.parseEnvelope(each);
+			return id === own || replaced.has(id) ? [] : [id];
+		});
+		if (standing.length === 0) return SharedRecord.parse(envelope, reviewPayloads);
+		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(standing)].sort() }, reviewPayloads);
+	}
+
+	// A record in `held` that is this dismissal, whatever its writer's listing let it supersede.
+	#heldCopy(envelope: RecordEnvelope, held: readonly RecordEnvelope[]): SharedRecord | undefined {
+		const own = SharedRecord.parse(envelope, reviewPayloads).id;
+		const copy = held.find((each) => {
+			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== envelope.key) return false;
+			const { supersedes: _, ...bare } = each;
+			return SharedRecord.parseEnvelope(bare).id === own;
+		});
+		return copy === undefined ? undefined : SharedRecord.parse(copy, reviewPayloads);
+	}
+
+	#dismissalEnvelope(facts: DismissalFacts): RecordEnvelope {
 		const { id, source } = facts.sighting.finding.properties;
 		// A reader refuses a set holding such a record, so writing one would cost every round that reads it.
 		if (id !== facts.finding) throw new Error(`a dismissal of ${facts.finding} holds a sighting of ${id}`);
@@ -408,16 +452,13 @@ export class ReviewRecords {
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
-		const envelope = { v: 1, changeset: this.changeset, kind: "dismissal", key: facts.finding, payload };
-		const own = SharedRecord.parse(envelope, reviewPayloads).id;
-		// A copy of this dismissal another round exported is this dismissal, whatever its listing let it supersede.
-		const earlier = held.flatMap((each) => {
-			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== facts.finding) return [];
-			const { supersedes: _, ...bare } = each;
-			return SharedRecord.parseEnvelope(bare).id === own ? [] : [SharedRecord.parseEnvelope(each).id];
-		});
-		if (earlier.length === 0) return SharedRecord.parse(envelope, reviewPayloads);
-		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(earlier)].sort() }, reviewPayloads);
+		return {
+			v: 1,
+			changeset: this.changeset,
+			kind: "dismissal",
+			key: facts.finding,
+			payload: payload as unknown as RecordJson,
+		};
 	}
 
 	#record(kind: string, key: string, payload: unknown): SharedRecord {

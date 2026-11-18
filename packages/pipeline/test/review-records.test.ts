@@ -153,19 +153,65 @@ describe("ReviewRecords", () => {
 			);
 		});
 
-		it("names every earlier dismissal of its finding the listing holds, and changes its key with them", () => {
+		it("leaves another host's later dismissal standing when a host that kept the earlier one exports it again", () => {
+			const kept = firstRecord();
+			const replacing = records().made({ ...facts("Accepted by two"), at: "2026-11-15T00:00:01.000Z" }, [
+				kept.toJSON(),
+			]);
+			const exportedAgain = records().dismissal(facts("Accepted once"), [kept.toJSON(), replacing.toJSON()]);
+			const merged = RecordSet.of([kept, replacing, exportedAgain], {
+				counts: everyRecordCounts,
+				payloads: reviewPayloads,
+			});
+			expect(merged.unsuperseded().map(({ id }) => id)).toEqual([replacing.id]);
+		});
+
+		it("exports the record a dismissal was made with, what it supersedes included", () => {
+			const earlier = firstRecord();
+			const made = records().made({ ...facts("Accepted again"), at: "2026-11-15T00:00:01.000Z" }, [
+				earlier.toJSON(),
+			]);
+			const exported = records().dismissal({ ...facts("Accepted again"), at: "2026-11-15T00:00:01.000Z" }, [
+				earlier.toJSON(),
+				made.toJSON(),
+			]);
+			expect(exported.toJSON()).toEqual(made.toJSON());
+			expect(exported.toJSON().supersedes).toEqual([earlier.id]);
+		});
+
+		it("exports a dismissal with no record as superseding nothing, whatever other dismissals of its finding stand", () => {
+			const earlier = firstRecord();
+			const alone = records().dismissal(facts("Accepted again"));
+			const exported = records().dismissal(facts("Accepted again"), [earlier.toJSON()]);
+			expect(exported.toJSON()).toEqual(alone.toJSON());
+			expect(alone.toJSON().supersedes).toBeUndefined();
+		});
+
+		it("names every standing dismissal of its finding the listing holds, and changes its key with them", () => {
 			const earlier = firstRecord();
 			const alone = records().dismissal(facts("Accepted again"));
 			const second = records().dismissal({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" });
 			// Descending, with a repeat, so only a sorted list of distinct IDs passes.
 			const listing = [earlier, second].sort((a, b) => (a.id < b.id ? 1 : -1));
-			const record = records().dismissal(
+			const record = records().made(
 				facts("Accepted again"),
 				[...listing, listing[0]!].map((each) => each.toJSON()),
 			);
 			expect(record.toJSON()).toEqual({ ...alone.toJSON(), supersedes: [earlier.id, second.id].sort() });
 			expect(record.id).not.toBe(alone.id);
 			expect(SharedRecord.parse(record.toJSON(), reviewPayloads).id).toBe(record.id);
+		});
+
+		it("supersedes no dismissal the listing already holds as superseded", () => {
+			const earlier = firstRecord();
+			const second = records().made({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" }, [
+				earlier.toJSON(),
+			]);
+			const third = records().made({ ...facts("Accepted thrice"), at: "2026-11-15T00:00:02.000Z" }, [
+				earlier.toJSON(),
+				second.toJSON(),
+			]);
+			expect(third.toJSON().supersedes).toEqual([second.id]);
 		});
 
 		it("supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding", () => {
@@ -178,7 +224,7 @@ describe("ReviewRecords", () => {
 			const otherChangeset = ReviewRecords.of("e".repeat(64), { base, head }).dismissal(facts("Accepted once"));
 			const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
 			const keyed = SharedRecord.parse({ ...lens.toJSON(), key: sighting.properties.id } as never, reviewPayloads);
-			const record = records().dismissal(facts("Accepted again"), [
+			const record = records().made(facts("Accepted again"), [
 				otherFinding.toJSON(),
 				otherChangeset.toJSON(),
 				keyed.toJSON(),
@@ -189,19 +235,19 @@ describe("ReviewRecords", () => {
 
 		it("leaves one standing dismissal for each of two writers who each dismissed again from the same listing", () => {
 			const earlier = firstRecord();
-			const first = records().dismissal(facts("Accepted by one"), [earlier.toJSON()]);
-			const second = records().dismissal(facts("Accepted by two"), [earlier.toJSON()]);
+			const first = records().made(facts("Accepted by one"), [earlier.toJSON()]);
+			const second = records().made(facts("Accepted by two"), [earlier.toJSON()]);
 			const merged = RecordSet.of([earlier, first, second], { counts: everyRecordCounts, payloads: reviewPayloads });
 			expect(merged.unsuperseded().map(({ id }) => id)).toEqual([first.id, second.id].sort());
 		});
 
-		it("never supersedes itself, nor its own copy a listing taken by another round holds", () => {
+		it("never supersedes itself, nor rewrites its own record a listing already holds", () => {
 			const earlier = firstRecord();
 			const alone = records().dismissal(facts("Accepted again"));
-			const exported = records().dismissal(facts("Accepted again"), [earlier.toJSON()]);
-			expect(records().dismissal(facts("Accepted again"), [alone.toJSON()]).id).toBe(alone.id);
-			const again = records().dismissal(facts("Accepted again"), [exported.toJSON(), earlier.toJSON()]);
-			expect(again.id).toBe(exported.id);
+			const made = records().made(facts("Accepted again"), [earlier.toJSON()]);
+			expect(records().made(facts("Accepted again"), [alone.toJSON()]).id).toBe(alone.id);
+			const again = records().made(facts("Accepted again"), [made.toJSON(), earlier.toJSON()]);
+			expect(again.id).toBe(made.id);
 			expect(again.toJSON().supersedes).toEqual([earlier.id]);
 		});
 	});

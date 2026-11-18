@@ -396,7 +396,49 @@ describe("a review that names a record store after a dismissal", () => {
 		);
 	});
 
-	it("exports a dismissal made again as superseding the record of the one it replaced, which then stands nowhere", async () => {
+	it("writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+			records: { store, changeset: first.changeset.id },
+		});
+		const written = dismissalsOf(await store.list(first.changeset.id)).map((each) =>
+			SharedRecord.parseEnvelope(each),
+		);
+		const replacing = written.find((each) => each.id !== once!.id)!;
+		expect(written).toHaveLength(2);
+		expect(replacing.supersedes).toEqual([once!.id]);
+		expect((replacing.toJSON().payload as { reason: string }).reason).toBe(again.reason);
+
+		const add = vi.spyOn(store, "add");
+		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(stored.map(({ id }) => id).sort()).toEqual(written.map(({ id }) => id).sort());
+		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
+		expect(standing.map(({ id }) => id)).toEqual([replacing.id]);
+		expect(made.unshared).toEqual([]);
+	});
+
+	it("writes nothing on a second review for a dismissal whose record the store holds", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const once = dismissalsOf((await review(store)).stored);
+		expect(once).toHaveLength(1);
+		const add = vi.spyOn(store, "add");
+		const again = await review(store);
+		expect(add).toHaveBeenCalled();
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(dismissalsOf(again.stored)).toEqual(once);
+	});
+
+	it("keeps a dismissal record an earlier build exported with what it superseded, and writes no other", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
@@ -408,14 +450,43 @@ describe("a review that names a record store after a dismissal", () => {
 			id,
 			dismissal: again,
 		});
+		// An earlier build built the record at export, superseding every dismissal of the finding its listing held.
+		const root = (await harness!.root(context)).id;
+		const state = (await harness!.snapshot(FindingsDocument, root, context))!;
+		const bare = ReviewRecords.of(first.changeset.id, first.changeset.revision).dismissalOf(state, id, [])!.toJSON();
+		const earlier = SharedRecord.parse({ ...bare, supersedes: [once!.id] }, reviewPayloads);
+		await store.add([earlier.toJSON()]);
+
+		const add = vi.spyOn(store, "add");
+		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(stored.map(({ id }) => id).sort()).toEqual([once!.id, earlier.id].sort());
+		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
+		expect(standing.map(({ id }) => id)).toEqual([earlier.id]);
+	});
+
+	it("exports a dismissal made again with no store as superseding nothing, so both dismissals stand", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+		});
+		expect(dismissalsOf(await store.list(first.changeset.id))).toHaveLength(1);
 
 		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
-		const replacing = stored.find((each) => each.id !== once!.id)!;
+		const exported = stored.find((each) => each.id !== once!.id)!;
 		expect(stored).toHaveLength(2);
-		expect(replacing.supersedes).toEqual([once!.id]);
-		expect((replacing.toJSON().payload as { reason: string }).reason).toBe(again.reason);
+		expect(exported.toJSON().supersedes).toBeUndefined();
+		expect((exported.toJSON().payload as { reason: string }).reason).toBe(again.reason);
 		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
-		expect(standing.map(({ id }) => id)).toEqual([replacing.id]);
+		expect(standing.map(({ id }) => id).sort()).toEqual([once!.id, exported.id].sort());
+		expect(made.unshared).toEqual([]);
 	});
 
 	it("exports no record of a dismissal stored with no sighting, as one before findings document version 11 was", async () => {
