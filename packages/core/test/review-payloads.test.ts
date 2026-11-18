@@ -396,17 +396,17 @@ describe("review payload checks", () => {
 	it("refuses a check record whose sighting another check reported", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [finding("static.tsc", "2.0.0")] })).toBe(
-			"holds a sighting at /sightings/0 from another producer than static.biome@2.0.0",
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 		expect(check("check", { ...payload, sightings: [finding("static.biome", "1.0.0")] })).toMatch(
-			/than static.biome@2.0.0$/,
+			/than the record's$/,
 		);
 	});
 
 	it("names a sighting with no version against a check with one", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [finding("static.biome", undefined)] })).toBe(
-			"holds a sighting at /sightings/0 from another producer than static.biome@2.0.0",
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 	});
 
@@ -438,8 +438,8 @@ describe("review payload checks", () => {
 			sightings: [finding("static.biome", undefined)],
 		};
 		expect(check("check", unversioned)).toBeUndefined();
-		expect(check("check", { ...unversioned, sightings: [finding("static.biome", "2.0.0")] })).toMatch(
-			/than static.biome@$/,
+		expect(check("check", { ...unversioned, sightings: [finding("static.biome", "2.0.0")] })).toBe(
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 	});
 
@@ -468,7 +468,7 @@ describe("review payload checks", () => {
 
 	it("refuses a lens record whose sighting is another lens's, or another level's", () => {
 		const payload = samples.find(([kind]) => kind === "lens")?.[1] as Record<string, RecordJson>;
-		const refusal = `holds a sighting at /sightings/0 from another producer than lens.security@${lensVersion}@careful`;
+		const refusal = "holds a sighting at /sightings/0 from another producer than the record's";
 		expect(check("lens", { ...payload, sightings: [finding("lens.tests", `${lensVersion}@careful`)] })).toBe(refusal);
 		expect(check("lens", { ...payload, sightings: [finding("lens.security", `${lensVersion}@quick`)] })).toBe(
 			refusal,
@@ -482,7 +482,7 @@ describe("review payload checks", () => {
 		const payload = samples.find(([kind]) => kind === "lens")?.[1] as Record<string, RecordJson>;
 		const holding = (name: string, version: string | null, level: string | null) =>
 			check("lens", { ...payload, check: decided(name, version as string, level) });
-		const refusal = `holds the check of another lens, version or level than lens.security@${lensVersion} at careful`;
+		const refusal = "holds the check of another lens, version or level than its own";
 		expect(holding("lens.security", lensVersion, "careful")).toBeUndefined();
 		expect(holding("lens.tests", lensVersion, "careful")).toBe(refusal);
 		expect(holding("lens.security", "0123456789ac", "careful")).toBe(refusal);
@@ -552,7 +552,7 @@ describe("review payload checks", () => {
 		["lists its producers out of order, or one twice", { producers: [account.producers[2], account.producers[1]] }],
 		["lists its producers out of order, or one twice", { producers: [account.producers[0], account.producers[0]] }],
 		[
-			"keeps the findings of lens.security out of order, or one twice",
+			"keeps the findings at /producers/0/ids out of order, or one twice",
 			{
 				producers: [
 					{ check: "lens.security", version: `${lensVersion}@quick`, ids: ["1123456789abcdef", dismissed] },
@@ -560,7 +560,7 @@ describe("review payload checks", () => {
 			},
 		],
 		[
-			"keeps the findings of lens.security out of order, or one twice",
+			"keeps the findings at /producers/0/ids out of order, or one twice",
 			{ producers: [{ check: "lens.security", version: `${lensVersion}@quick`, ids: [dismissed, dismissed] }] },
 		],
 	])("refuses an account that %s, case %#", (reason, fields) => {

@@ -34,3 +34,9 @@ Codex raised two findings.
 ## Merging main's account version 2
 
 [Pull request #552](https://github.com/melian-agent/melian/pull/552) moved the account payload to version 2 and kept version 1 as a legacy schema. The classed version checks apply to both. Its `account-v1` fixture holds records main wrote at 4d08b08c, before the producer withheld outside text, and two of them carry it: a verification's unanswered reason and an account's skip reason. Their round now reads not reviewed because its records fail their checks, rather than for its version-1 account. The version-1 refusal is now read from a round in the e6ed960bd capture, whose records pass. Forcing the version-1 branch in `recorded-round.ts` false fails that test.
+
+## The fix pass after round 5
+
+Round 5 found that the version refusal repeated the producer's check name, so a terminal escape or a bidi control in a record reached the `RecordError`. Round 2 had found the first refusal that repeated record text, so by the convergence rule the class went to the coordinator. It answered, not a ruling, to drop every name from a refusal and add a check that makes the class impossible.
+
+Five refusals in `record-payloads.ts` named record text: a sighting from another producer, the two version refusals, a lens holding another lens's check, and a producer's findings out of order. Each now names only a JSON path or index. `packages/core/test/record-refusals.test.ts` is the class check. It walks every payload schema for its string fields and fails when no sample holds one. It puts a sentinel into each string and each key of every sample, alone, beside each other string made wrong, and beside each list reversed or holding an item twice, and asserts no refusal repeats it. Its sightings name the sentinel as their producer. At 9bd49629e, 12 of its tests failed, one for each sample that reached a refusal naming record text; all pass with the fix.

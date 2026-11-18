@@ -454,7 +454,7 @@ function sightingsOf(values: readonly unknown[], check: string, version: string 
 		if (typeof parsed === "string") return parsed;
 		const { source } = parsed.properties;
 		if (source.check !== check || source.version !== version)
-			return `holds a sighting at /sightings/${index} from another producer than ${check}@${version ?? ""}`;
+			return `holds a sighting at /sightings/${index} from another producer than the record's`;
 	}
 	return undefined;
 }
@@ -470,11 +470,11 @@ const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const decidedVersion = (check: { name: string; version: string | null } | null, where: string) =>
 	check === null || check.version === null || checkVersion(check.name, check.version)
 		? undefined
-		: `names a version at ${where} that is not one Melian writes for ${check.name}`;
+		: `names a version at ${where} that is not one Melian writes`;
 const namedSource = (source: { check: string; version: string | null }, where: string) =>
 	source.version === null || sourceVersion(source.check, source.version)
 		? undefined
-		: `names a version at ${where} that is not one Melian writes for ${source.check}`;
+		: `names a version at ${where} that is not one Melian writes`;
 
 /**
  * The payload check of each kind a review writes, and of a dismissal, for {@link SharedRecord.parse} and
@@ -497,7 +497,7 @@ export const reviewPayloads: PayloadChecks = {
 		if (refused !== undefined) return refused;
 		const { name, version, level, sightings, check } = payload as LensPayload;
 		if (check !== null && (check.name !== `lens.${name}` || check.version !== version || check.level !== level))
-			return `holds the check of another lens, version or level than lens.${name}@${version} at ${level}`;
+			return "holds the check of another lens, version or level than its own";
 		return sightingsOf(sightings, `lens.${name}`, `${version}@${level}`);
 	},
 	verification: (payload) => {
@@ -541,8 +541,8 @@ export const reviewPayloads: PayloadChecks = {
 		const source = (each: (typeof producers)[number]) => `${each.check}@${each.version ?? ""}`;
 		if (!ordered(producers, (a, b) => byText(a.check, b.check) || byText(source(a), source(b))))
 			return "lists its producers out of order, or one twice";
-		for (const { check, ids } of producers)
-			if (ids !== null && !ordered(ids, byText)) return `keeps the findings of ${check} out of order, or one twice`;
+		const unordered = producers.findIndex(({ ids }) => ids !== null && !ordered(ids, byText));
+		if (unordered !== -1) return `keeps the findings at /producers/${unordered}/ids out of order, or one twice`;
 		return undefined;
 	},
 	dismissal: (payload) => {
