@@ -1429,6 +1429,23 @@ describe("scoreGolden", () => {
 			expect(scoreGolden(lined(), [merged(speaker, 11, [claimOf(other)])], [speaker, other]).found).toBe(0);
 		});
 
+		it("leaves an expectation unfound when the speaker's own sighting at its lines was refuted, with no claim copied", () => {
+			// Round 44241903552 on #550: dropping the speaker's verification from its synthesised claim scored it found.
+			const found = (verdict: "refuted" | "confirmed") => {
+				const speaker = Finding.from({
+					...report("lens.tests", comment!.rule, 11).toJSON(),
+					properties: {
+						...report("lens.tests", comment!.rule, 11).properties,
+						verification: { verdict, reason: "Checked.", executor: "llm", model: "fake/judge", version: "v" },
+					},
+				});
+				expect(speaker.properties.otherClaims).toBeUndefined();
+				return scoreGolden(lined(), [speaker], [speaker]).found;
+			};
+			expect(found("confirmed")).toBe(1);
+			expect(found("refuted")).toBe(0);
+		});
+
 		it("holds the scripted run to the claim that answered the lines, not the first of its rule", () => {
 			const speaker = report("lens.correctness", "wrong-result", 30);
 			const far = report("lens.tests", comment!.rule, 30, comment!.file, "far");
