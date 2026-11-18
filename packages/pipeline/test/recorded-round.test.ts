@@ -579,6 +579,37 @@ describe("the dismissal records a reader applies", () => {
 			]);
 	});
 
+	// Slots and supersession go by a dismissal's key, and reopening reads its sighting, so the two must name one finding.
+	it.each([
+		["standing beside the finding's own dismissal", (good: RecordEnvelope, bad: RecordEnvelope) => [good, bad]],
+		["alone", (_: RecordEnvelope, bad: RecordEnvelope) => [bad]],
+		[
+			"superseded by the finding's own dismissal",
+			(good: RecordEnvelope, bad: RecordEnvelope) => [
+				SharedRecord.parseEnvelope({ ...good, supersedes: [SharedRecord.parseEnvelope(bad).id] }).toJSON(),
+				bad,
+			],
+		],
+		[
+			"of another changeset",
+			(good: RecordEnvelope, bad: RecordEnvelope) => [
+				good,
+				SharedRecord.parseEnvelope({ ...bad, changeset: "f".repeat(64) }).toJSON(),
+			],
+		],
+	])("reads as not reviewed when a dismissal record's key is not its sighting's finding, %s", async (_, set) => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const good = redismissed(reviewed);
+		const bad = redismissed(reviewed, {}, { key: "f".repeat(16) });
+		const records = withDismissals(reviewed, set(good, bad));
+		const refused = `holds a dismissal record keyed ${"f".repeat(16)} whose sighting is of finding ${id}`;
+		const round = RecordedRound.of(records, roundOf(records), everyRecordCounts);
+		expect(round.refusal()).toBe(refused);
+		expect(round.contents(reviewed.changeset.revision)).toEqual({ refused });
+		expect((await read(reviewed, records)).status).toBe("not-reviewed");
+		expect((await read(reviewed, withDismissals(reviewed, [good]))).status).toBe("passed");
+	});
+
 	it("applies no dismissal another record of its finding supersedes, so superseding only ever blocks more", async () => {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
 		const holding = redismissed(reviewed, { reason: "holds" });

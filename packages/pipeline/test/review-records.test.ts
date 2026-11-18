@@ -147,6 +147,12 @@ describe("ReviewRecords", () => {
 		// Built inside each test, so a mutant that throws while building it fails that test, never the file.
 		const firstRecord = () => records().dismissal(facts("Accepted once"));
 
+		it("writes no record keyed by one finding whose sighting is of another", () => {
+			expect(() => records().dismissal({ ...facts("Accepted once"), finding: other.properties.id })).toThrow(
+				`a dismissal of ${other.properties.id} holds a sighting of ${sighting.properties.id}`,
+			);
+		});
+
 		it("names every earlier dismissal of its finding the listing holds, and changes its key with them", () => {
 			const earlier = firstRecord();
 			const alone = records().dismissal(facts("Accepted again"));

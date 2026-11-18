@@ -383,7 +383,10 @@ export class ReviewRecords {
 	 * finding in `held`, the records the writer's store held when the review began, so it names only what this writer saw.
 	 */
 	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[] = []): SharedRecord {
-		const { check } = facts.sighting.finding.properties.source;
+		const { id, source } = facts.sighting.finding.properties;
+		// A reader refuses a set holding such a record, so writing one would cost every round that reads it.
+		if (id !== facts.finding) throw new Error(`a dismissal of ${facts.finding} holds a sighting of ${id}`);
+		const { check } = source;
 		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
 		if (check.startsWith("static."))
 			throw new DismissError(

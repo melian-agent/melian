@@ -194,6 +194,14 @@ function notReviewed(id: string, reason: string, context: RecordedRoundContext):
 function piecesOf(set: RecordSet, id: string): Pieces {
 	const round = set.records().find((record) => record.id === id && record.kind === "round");
 	if (round === undefined) return { refused: "is not among the records, or does not count" };
+	// Slots and supersession go by a dismissal's key and reopening reads its sighting, so a record whose two name other
+	// findings could dismiss one finding with another's evidence.
+	for (const record of set.records()) {
+		if (record.kind !== "dismissal") continue;
+		const sighted = ((record.payload as DismissalPayload).sighting.finding as unknown as StoredFinding).properties.id;
+		if (record.key !== sighted)
+			return { refused: `holds a dismissal record keyed ${record.key} whose sighting is of finding ${sighted}` };
+	}
 	const missing = set.missing(round);
 	if (missing.length > 0)
 		return { refused: `names records the set does not hold: ${missing.map((each) => each.id).join(", ")}` };
