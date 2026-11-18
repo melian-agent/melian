@@ -2561,22 +2561,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
-	const triaged =
+	const asked =
 		options.decider === undefined || covering.length === 0
+			? undefined
+			: triageRequest({
+					decider: options.decider,
+					questionSet: triageQuestionSet,
+					questions: sharedQuestions(
+						covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
+					),
+					change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
+					nonce,
+				});
+	const triaged =
+		asked === undefined || options.decider === undefined
 			? {}
 			: await triage(
 					harness,
 					reviewed,
 					options.decider,
-					triageRequest({
-						decider: options.decider,
-						questionSet: triageQuestionSet,
-						questions: sharedQuestions(
-							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
-						),
-						change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
-						nonce,
-					}),
+					asked,
 					options.rerun === true,
 					context,
 					options.triageProviders ?? [],
@@ -3154,14 +3158,25 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (left > 0) carried.set(same(record), left - 1);
 			return left === 0;
 		});
+		// Triage's record, when it asked, so a reader can check a skip it allowed.
+		const triageRecord =
+			asked === undefined
+				? []
+				: [
+						records.triage(asked.key, {
+							...(triaged.decision === undefined ? {} : { decision: triaged.decision.toJSON() }),
+							...(triaged.failure === undefined ? {} : { failure: triaged.failure }),
+							inputCut: asked.request.inputCut,
+						}),
+					];
 		const account = records.account({
 			checks: adjudicated.some(({ name }) => name === "verifier") ? [...manifest, "verifier"] : manifest,
-			records: counted.map(({ record }) => record),
+			records: [...counted.map(({ record }) => record), ...triageRecord],
 			filled,
 			allowSkip: accounted.skippable(),
 			producers,
 		});
-		const read = [...counted.map(({ record }) => record), account];
+		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
