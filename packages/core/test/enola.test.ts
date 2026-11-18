@@ -50,6 +50,7 @@ describe("Enola policy and reports", () => {
 			"mcp-arch.yaml",
 			"enola-intent.yaml",
 			"enola/constraints/core.yaml",
+			"enola/recipes/layered.yaml",
 			".enola/suppressions.yaml",
 		])
 			expect(isPolicyFile(path)).toBe(true);
@@ -282,6 +283,44 @@ describe("revision Enola policy limits", () => {
 			rmSync(join(repo, "enola.yaml"));
 			symlinkSync("outside.yaml", join(repo, "enola.yaml"));
 		} else writeFiles(repo, { "enola.yaml": "#".repeat(256 * 1024 + 1) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "head");
+		expect(await policy.differs(repo, "HEAD")).toBe(true);
+	});
+	it("reads every path Enola loads policy from, and nothing beside them, from the base", async () => {
+		// Enola 0.4.40 loads these; the pull request for issue #529 says how that was established.
+		const policy = {
+			".enola/suppressions.yaml": "suppressions: []\n",
+			"enola-intent.yaml": "rules: []\n",
+			"enola.yaml": "providers: []\n",
+			"enola/constraints/layer.yaml": "use_recipe: []\n",
+			"enola/recipes/layered.yaml": "recipe: layered\n",
+			"mcp-arch.yaml": "providers: []\n",
+		};
+		writeFiles(repo, {
+			...policy,
+			".enola/baseline/facts.jsonl": "{}\n",
+			"enola/notes.yaml": "x: 1\n",
+			"docs/enola.md": "# Enola\n",
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base");
+		const loaded = await EnolaPolicy.load(repo, "HEAD");
+		expect(loaded.toJSON().files).toEqual(Object.entries(policy).map(([path, text]) => ({ path, text })));
+		for (const path of Object.keys(policy)) {
+			writeFiles(repo, { [path]: "# head\n" });
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", `head changes ${path}`);
+			expect(await loaded.differs(repo, "HEAD"), path).toBe(true);
+			gitIn(repo, "reset", "--quiet", "--hard", "HEAD~1");
+		}
+	});
+	it("sees a head that adds a recipe under the name of one Enola ships", async () => {
+		writeFiles(repo, { "enola/constraints/layer.yaml": "use_recipe: [{ recipe: layered, as: lay }]\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base");
+		const policy = await EnolaPolicy.load(repo, "HEAD");
+		writeFiles(repo, { "enola/recipes/layered.yaml": "recipe: layered\nrules: []\n" });
 		gitIn(repo, "add", "--all");
 		gitIn(repo, "commit", "--quiet", "-m", "head");
 		expect(await policy.differs(repo, "HEAD")).toBe(true);
