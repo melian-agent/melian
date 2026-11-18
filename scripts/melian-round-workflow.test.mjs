@@ -634,54 +634,99 @@ describe("the melian round workflow", () => {
 		}
 	});
 
-	it("uploads no file holding what a static tool printed, when Melian's output quotes a login", () => {
-		const { run } = workflow.jobs.round.steps.find((step) => step.name === "Run the round");
-		const probe = fileURLToPath(new URL("./fixtures/round-probe-verdict.json", import.meta.url));
-		const token = "sk-probe-SECRET-123";
-		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
-		try {
-			// A fake node answers only the step's three melian commands: review, given the gate's base and head as the
-			// revision it must find, prints the probe's own output, in which Biome quoted a file holding the token, on
-			// both streams, since Melian's errors can quote a tool too. Every other script runs on the real Node.
-			writeFileSync(
-				join(dir, "node"),
-				[
-					"#!/bin/sh",
-					'if [ "$1" = packages/cli/bin/melian.js ]; then',
-					'  case "$2" in',
-					`    review) [ "$*" = "packages/cli/bin/melian.js review #7 --expect-base ${"2".repeat(40)} --expect-head ${"1".repeat(40)} --json --no-walkthrough" ] && cat "$PROBE" && cat "$PROBE" >&2; exit 2 ;;`,
-					"    doctor|findings) exit 0 ;;",
-					"  esac",
-					"  exit 1",
-					"fi",
-					`exec "${process.execPath}" "$@"`,
-					"",
-				].join("\n"),
-			);
-			chmodSync(join(dir, "node"), 0o755);
-			const ran = spawnSync("bash", ["-e", "-c", run], {
-				cwd: fileURLToPath(new URL("..", import.meta.url)),
-				encoding: "utf8",
-				env: {
-					PATH: `${dir}:${process.env.PATH}`,
-					HOME: dir,
-					RUNNER_TEMP: dir,
-					NUMBER: "7",
-					BASE: "2".repeat(40),
-					HEAD: "1".repeat(40),
-					PROBE: probe,
-				},
-			});
-			expect(ran.status).toBe(0);
-			expect(readFileSync(join(dir, "raw", "verdict.json"), "utf8")).toContain(token);
-			const uploaded = readdirSync(join(dir, "public"));
-			expect(uploaded).toContain("verdict.json");
-			expect(uploaded.filter((name) => readFileSync(join(dir, "public", name), "utf8").includes(token))).toEqual([]);
-			// The probe's run failed, recording no tokens or cost, and a failed review reports no duration, so nothing leaves.
-			expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe("null\n");
-		} finally {
-			rmSync(dir, { recursive: true, force: true });
-		}
+	const gap = { check: "lens.trust-boundary", level: "deep", cause: "untrusted-writer" };
+	it.each([
+		[
+			"a gap whose cause is a login",
+			JSON.stringify([{ ...gap, cause: "sk-probe-SECRET-123" }]),
+			[],
+			["melian: the round's probe gaps did not read as Melian writes them, so this log names no cause"],
+		],
+		[
+			"a gap beside a reason that quotes a login",
+			JSON.stringify([{ ...gap, reason: "sk-probe-SECRET-123" }]),
+			[],
+			["melian: the round's probe gaps did not read as Melian writes them, so this log names no cause"],
+		],
+		[
+			"a gap Melian writes",
+			JSON.stringify([gap]),
+			[gap],
+			[
+				"melian: lens.trust-boundary at deep could not probe here, untrusted-writer: the head's writer is not trusted to have its code run",
+			],
+		],
+	])(
+		"uploads no file holding what a static tool printed, when Melian's output quotes a login, with %s",
+		(_, gaps, uploadedGaps, logged) => {
+			const { run } = workflow.jobs.round.steps.find((step) => step.name === "Run the round");
+			const probe = fileURLToPath(new URL("./fixtures/round-probe-verdict.json", import.meta.url));
+			const token = "sk-probe-SECRET-123";
+			const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+			try {
+				// A fake node answers only the step's three melian commands: review, given the gate's base and head as the
+				// revision it must find, prints the probe's own output, in which Biome quoted a file holding the token, on
+				// both streams, since Melian's errors can quote a tool too. Every other script runs on the real Node.
+				writeFileSync(
+					join(dir, "node"),
+					[
+						"#!/bin/sh",
+						'if [ "$1" = packages/cli/bin/melian.js ]; then',
+						'  case "$2" in',
+						`    review) [ "$*" = "packages/cli/bin/melian.js review #7 --expect-base ${"2".repeat(40)} --expect-head ${"1".repeat(40)} --json --no-walkthrough --require-probes --probe-gaps $RUNNER_TEMP/raw/probe-gaps.json" ] && printf '%s' "$GAPS" > "$RUNNER_TEMP/raw/probe-gaps.json" && cat "$PROBE" && cat "$PROBE" >&2; exit 2 ;;`,
+						"    doctor|findings) exit 0 ;;",
+						"  esac",
+						"  exit 1",
+						"fi",
+						`exec "${process.execPath}" "$@"`,
+						"",
+					].join("\n"),
+				);
+				chmodSync(join(dir, "node"), 0o755);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						NUMBER: "7",
+						BASE: "2".repeat(40),
+						HEAD: "1".repeat(40),
+						PROBE: probe,
+						GAPS: gaps,
+					},
+				});
+				expect(ran.status).toBe(0);
+				expect(readFileSync(join(dir, "raw", "verdict.json"), "utf8")).toContain(token);
+				// The step's own output is the job's public log, which shows each gap from its closed sets alone.
+				expect(`${ran.stdout}${ran.stderr}`).not.toContain(token);
+				expect(ran.stdout.split("\n").filter((line) => line.startsWith("melian: "))).toEqual(logged);
+				expect(
+					uploadedGaps.length === 0
+						? !readdirSync(join(dir, "public")).includes("probe-gaps.json")
+						: JSON.parse(readFileSync(join(dir, "public", "probe-gaps.json"), "utf8")),
+				).toEqual(uploadedGaps.length === 0 ? true : uploadedGaps);
+				const uploaded = readdirSync(join(dir, "public"));
+				expect(uploaded).toContain("verdict.json");
+				expect(uploaded.filter((name) => readFileSync(join(dir, "public", name), "utf8").includes(token))).toEqual(
+					[],
+				);
+				// The probe's run failed, recording no tokens or cost, and a failed review reports no duration, so nothing leaves.
+				expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe("null\n");
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it("hands the comment the probe gaps the round job made public, and the status nothing of them", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const calls = run.split("node scripts/round-comment.mjs").slice(1);
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toContain('--probe-gaps "$out/probe-gaps.json"');
+		const status = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
+		expect(status.run).not.toContain("probe-gaps");
 	});
 
 	it("reads the logins only in jobs of the melian-round Environment, which only main may deploy to", () => {
@@ -1453,5 +1498,96 @@ describe("the melian round workflow", () => {
 			["round", false],
 			["report", false],
 		]);
+	});
+
+	const containment = "node --conditions=@melian-agent/source scripts/round-probe-containment.mjs";
+
+	it("installs the sandbox and proves containment after the install, before any step holds a login, with no token", () => {
+		const round = workflow.jobs.round.steps;
+		const at = (find) => round.findIndex(find);
+		const install = at((step) => step.run === "npm ci --ignore-scripts");
+		const sandbox = at((step) => step.name === "Let probes run under bubblewrap");
+		const proof = at((step) => step.name === "Prove a probe cannot reach the round's secrets");
+		const moved = at((step) => step.name === "Refuse a pull request that moved after the gate");
+		const secret = at((step) => JSON.stringify(step).includes("secrets."));
+		expect([install < sandbox, sandbox < proof, proof < moved, moved < secret]).toEqual([true, true, true, true]);
+		expect(round[sandbox].run).toContain("sudo apt-get install -y -qq bubblewrap socat ripgrep");
+		expect(round[sandbox].run).toContain("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0");
+		expect(round[sandbox].env).toBeUndefined();
+		for (const step of [round[sandbox], round[proof]]) {
+			expect(JSON.stringify(step), step.name).not.toMatch(/secrets\.|github\.token|TOKEN/);
+		}
+		expect(round[proof]["working-directory"]).toBe("melian");
+		expect(round[proof].run).toContain(`if ! ${containment}; then`);
+		expect(round[proof].env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: actions("needs.gate.outputs.base") });
+	});
+
+	it("ends the round unreviewed when a probe reaches what the round would hold, and carries on when none does", () => {
+		const { run } = workflow.jobs.round.steps.find(
+			(step) => step.name === "Prove a probe cannot reach the round's secrets",
+		);
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// A fake node answers only the containment script's command line, with the exit the test asks for.
+			writeFileSync(
+				join(dir, "node"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "--conditions=@melian-agent/source scripts/round-probe-containment.mjs" ] || exit 99',
+					'exit "$CONTAINED"',
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "node"), 0o755);
+			const step = (contained) => {
+				rmSync(join(dir, "public"), { recursive: true, force: true });
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: { PATH: `${dir}:${process.env.PATH}`, HOME: dir, RUNNER_TEMP: dir, CONTAINED: contained },
+				});
+				const exit = existsSync(join(dir, "public", "exit"))
+					? readFileSync(join(dir, "public", "exit"), "utf8")
+					: undefined;
+				return [ran.status, ran.stdout, exit];
+			};
+			expect(step("0")).toEqual([0, "", undefined]);
+			const refused =
+				"::error::a probe on this runner reached what the round would hold, so the round does not run\n";
+			expect(step("1")).toEqual([1, refused, "none\n"]);
+			expect(step("99")).toEqual([1, refused, "none\n"]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("sets none of the variables sandbox-runtime reads from Melian's process for a probe's command line", () => {
+		const { env, run } = workflow.jobs.round.steps.find((step) => step.name === "Run the round");
+		const read = [
+			"CLAUDE_CODE_TMPDIR",
+			"CLAUDE_TMPDIR",
+			"JAVA_TOOL_OPTIONS",
+			"GIT_CONFIG_COUNT",
+			"NODE_EXTRA_CA_CERTS",
+			"HTTP_PROXY",
+			"HTTPS_PROXY",
+			"ALL_PROXY",
+			"NO_PROXY",
+		];
+		const named = new RegExp(`\\b(${read.join("|")})\\b`, "i");
+		expect(Object.keys(env).filter((name) => named.test(name))).toEqual([]);
+		expect(run.split("\n").filter((line) => named.test(line))).toEqual([]);
+	});
+
+	it("proves containment on every pull request in check.yml's Linux job, under the round job's Node", () => {
+		const check = parse(
+			readFileSync(fileURLToPath(new URL("../.github/workflows/check.yml", import.meta.url)), "utf8"),
+		);
+		const linux = check.jobs.check.steps;
+		const proof = linux.findIndex((step) => step.run === containment);
+		expect(linux[proof]?.if).toBe("matrix.node == 24");
+		// CI proves the change's own policy: the commit checked out, which github.sha names for every event it runs on.
+		expect(linux[proof]?.env).toEqual({ MELIAN_PROBE_POLICY_COMMIT: actions("github.sha") });
+		expect(linux.findIndex((step) => step.name === "Let probes run under bubblewrap")).toBeLessThan(proof);
+		expect(linux.findIndex((step) => step.run === "npm ci --ignore-scripts")).toBeLessThan(proof);
 	});
 });

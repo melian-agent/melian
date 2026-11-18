@@ -190,12 +190,13 @@ describe("ReviewRecords", () => {
 				{ check: "guardrails" },
 				{ check: "static.biome", version: "2.0.0" },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		};
 		const account = records().account(facts);
 		expect(SharedRecord.parse(account.toJSON(), reviewPayloads).id).toBe(account.id);
 		expect(account.revision).toBe(`${base}..${head}`);
 		expect(account.toJSON().payload).toEqual({
-			v: 1,
+			v: 2,
 			checks: ["static.biome", "lens.security", "decisions.triage"],
 			records: [check.id, lens.id].sort(),
 			filled: [
@@ -231,11 +232,17 @@ describe("ReviewRecords", () => {
 				{ check: "lens.security", version: "abc@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
 				{ check: "static.biome", version: "2.0.0", ids: null },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		});
 		const reordered = { ...facts, records: [check, lens], producers: [...facts.producers].reverse() };
 		expect(records().account(reordered).bytes).toBe(account.bytes);
 		expect(records().account({ ...facts, records: [check] }).key).not.toBe(account.key);
 		expect(records().account({ ...facts, allowSkip: [] }).key).toBe(account.key);
+		// Two reviews of one range under two policies count the same records, and must stay two accounts.
+		const other = records().account({ ...facts, resolutionPolicy: "2:fedcba9876543210" });
+		const none = records().account({ ...facts, resolutionPolicy: null });
+		expect(new Set([account.key, other.key, none.key]).size).toBe(3);
+		expect(none.toJSON().payload).toMatchObject({ resolutionPolicy: null });
 		const round = records().round([account, lens, check], undefined, [], []);
 		expect(round.manifest()?.read).toContainEqual({ kind: "account", key: account.key, id: account.id });
 	});

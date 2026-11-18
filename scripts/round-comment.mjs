@@ -1,7 +1,8 @@
 // Writes the pull request comment for a round the melian-round workflow ran, or with --public prints the part of a
 // verdict that may leave the job.
 // Usage: node scripts/round-comment.mjs --verdict <file> --rounds <file> --exit <code> --run-url <url> --run-id <id> --nonce <hex> --base <sha>
-//          --head <sha> --merge-base <sha> [--current-base <sha> --current-head <sha>]
+//          --head <sha> --merge-base <sha> [--current-base <sha> --current-head <sha>] [--probe-gaps <file>]
+//        --probe-gaps names the file the round job's probe gaps script wrote, whose checks the comment says could not probe.
 //        A missing current base or head means the pull request could not be read again. With --status <pull request URL>,
 //        --trusted <true|false>, --latest <status ID or empty> and --pending <status ID>, it prints the melian/review status to
 //        set, as JSON, or `skip: ` and why none may be set.
@@ -11,7 +12,7 @@ import { parseArgs } from "node:util";
 import { publicVerdict, RoundComment } from "./round.mjs";
 
 const required = ["verdict", "rounds", "exit", "run-url", "run-id", "nonce", "base", "head", "merge-base"];
-const names = [...required, "current-base", "current-head", "status", "trusted", "latest", "pending"];
+const names = [...required, "current-base", "current-head", "status", "trusted", "latest", "pending", "probe-gaps"];
 
 if (process.argv[2] === "--public") {
 	let text;
@@ -47,6 +48,7 @@ if (process.argv[2] === "--public") {
 		head: values.head,
 		mergeBase: values["merge-base"],
 		current,
+		...(values["probe-gaps"] === undefined ? {} : { probeGaps: values["probe-gaps"] }),
 	});
 	if (values.status === undefined) process.stdout.write(comment.body());
 	else {

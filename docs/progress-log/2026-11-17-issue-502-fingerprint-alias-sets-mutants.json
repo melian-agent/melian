@@ -1,0 +1,418 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "5976f1973c3b2e3814e27ed2815e18fb552feb8d",
+		"head": "6b17a8432d461121bf32be19f4dbc53b4becf73d"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/configurations.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "1b8ab03125cacee48939c1e53c45225bcf5780f576491ce3efb6be05cfea41d2",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 139,
+			"column": 30,
+			"endLine": 150,
+			"endColumn": 2,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0ef14872dffca2ddac5578319f86b420d0595029353b6d031c428b63c23ea68f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 139,
+			"column": 68,
+			"endLine": 150,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d841a25af8fee40908b4f89cde825138fef3342e251580c29c1be81068e066a4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 141,
+			"column": 2,
+			"endLine": 149,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9c9237092a0fe99b0f7deb71abf2e2acbc8461aa2a1efa0ce72f231c9eaba09d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 144,
+			"column": 55,
+			"endLine": 147,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3b5954a2e6265cd90cc586e9dac08538b996cde235cc4f4f7a89d852a27ffed5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 31,
+			"endLine": 145,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9986b7298e9e393a19e3b89e74fcc08be334105526e1b4d8ad307c96eb6cfe28"
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 50,
+			"endLine": 145,
+			"endColumn": 88,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "8c4d43a5ae04661c2d1f9c3d38db87583ea5213e7c477a7516d426eb17330f86",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 64,
+			"endLine": 145,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bd027f6a7bb3ff4ff66891b268f2ef9110b60268086a17756b38299e7ac43206",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 64,
+			"endLine": 145,
+			"endColumn": 87,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "96ff2fd2cfde4a887dc8c93641110872fbab2e17bc1aaee9e1740e7f323589a7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 64,
+			"endLine": 145,
+			"endColumn": 87,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.distinct !== true",
+			"status": "generated",
+			"id": "82d976027c054ce61ade6ce0eea3016da859f84f27257e05498f37a61592423c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 83,
+			"endLine": 145,
+			"endColumn": 87,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "29be50dd634a2840785127228ed4e57e30d5465892555ed16662221d68846128",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 91,
+			"endLine": 145,
+			"endColumn": 105,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "ca50152c968ebeecc966c56b790c60b8e2e03375709fffa177a16fc87e8fc6e5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 145,
+			"column": 99,
+			"endLine": 145,
+			"endColumn": 104,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4e05c35299bf5895670ac77d9f1d8cc3bb134b79c99d508aeaaa832087dc3702",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 146,
+			"column": 12,
+			"endLine": 146,
+			"endColumn": 67,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5b4d1618f1d0607b0fc64489d406d070ab1ef3114eae8145a73f3c4e980c2674",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 146,
+			"column": 19,
+			"endLine": 146,
+			"endColumn": 66,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f02f2108ec63b49b1507890f8cd33e81d7d9d91f2653603a9561413603b10b7c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 146,
+			"column": 28,
+			"endLine": 146,
+			"endColumn": 54,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(rules)]",
+			"status": "generated",
+			"id": "8f0899870e5d13e4bb94c4500f54c88eea67ae7bcfcf66343644136e2278b7e1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 146,
+			"column": 28,
+			"endLine": 146,
+			"endColumn": 47,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "81eec648370cba6d5d2179b7f858fe4e630a716179734eae6f43e4a14dcff683",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 151,
+			"column": 21,
+			"endLine": 151,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8f8ba3a39851e455ff81eabd81cd04fdf82e36a38d8863a13b5a295436649d48"
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 151,
+			"column": 61,
+			"endLine": 151,
+			"endColumn": 82,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "564cfff5bc44fc0a372a8a06ad89ee793f4f0e9a298276ec9b1d886d6e2af423",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/configurations.test.ts",
+					"path": [
+						"configsFor",
+						"the fingerprint's lens entries",
+						"does not depend on how a rule alias lists its rules, which adjudication reads as a set"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 18,
+	"omitted": 0,
+	"unmutated": []
+}

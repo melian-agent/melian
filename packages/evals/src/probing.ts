@@ -114,12 +114,13 @@ export class ProbingCombination implements ProbingRoute {
 		const runs = checksOfTier(config, tier);
 		const paths = files.map((file) => file.path);
 		for (const name of this.lenses) {
-			const lens = lenses.find((each) => each.name === name);
-			if (lens === undefined)
+			// `Lens.load` returns one lens of a name for each folder that defines it, and every one is rewritten below.
+			const variants = lenses.filter((each) => each.name === name);
+			if (variants.length === 0)
 				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${visibleText(name)}, which the base's policy does not load`,
 				);
-			const refused = lens.probeRefusal();
+			const refused = variants.map((lens) => lens.probeRefusal()).find((reason) => reason !== undefined);
 			if (refused !== undefined)
 				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
 			if (!runs.includes(`lens.${name}`))
