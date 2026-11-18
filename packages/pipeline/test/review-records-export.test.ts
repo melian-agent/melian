@@ -8,6 +8,7 @@ import {
 	MemoryRecordStore,
 	type RecordEnvelope,
 	RecordSet,
+	Revision,
 	reviewPayloads,
 	SharedRecord,
 } from "@melian-agent/core";
@@ -20,6 +21,7 @@ import {
 	type Message,
 	openHarness,
 	type ReviewOptions,
+	readVerdict,
 	recordDismissal,
 	reviewChangeset,
 	summarizeReview,
@@ -35,7 +37,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "v
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
 import { dismissFinding, FindingsDocument } from "../src/findings.ts";
-import type { ConversationId, Tx } from "../src/harness.ts";
+import { type ConversationId, StorageRejected, type Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -523,6 +525,69 @@ describe("a review that names a record store after a dismissal", () => {
 
 		expect(made.unshared).toEqual([]);
 		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+	});
+});
+
+describe("a dismissal made with a store that fails", () => {
+	const dismiss = (store: MemoryRecordStore, first: Awaited<ReturnType<typeof review>>, id: string) =>
+		recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+	const statusOf = async (id: string) => {
+		const root = (await harness!.root(context)).id;
+		return (await harness!.snapshot(FindingsDocument, root, context))!.items[id]!.lifecycle.status;
+	};
+
+	it.each(["list", "add"] as const)(
+		"refuses when the store's %s fails, and records nothing on the host or in the store",
+		async (method) => {
+			const store = new MemoryRecordStore({ payloads: reviewPayloads });
+			const first = await review(store);
+			const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+			const refused = new Error(`the store's ${method} is unreachable`);
+			vi.spyOn(store, method).mockRejectedValueOnce(refused);
+
+			const made = dismiss(store, first, id);
+
+			await expect(made).rejects.toMatchObject({ code: "storeFailed", cause: refused });
+			await expect(made).rejects.toThrow(
+				`the dismissal is not recorded, because the record store failed: the store's ${method} is unreachable`,
+			);
+			const root = (await harness!.root(context)).id;
+			const verdict = await readVerdict(harness!, root, Revision.key(first.changeset.revision), context);
+			expect([await statusOf(id), verdict?.defect(id)?.speaker.properties.status]).toEqual(["new", "new"]);
+			expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+		},
+	);
+
+	it("leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const add = vi.spyOn(store, "add");
+		const storage = Object.getPrototypeOf(createMemoryStorage());
+		const commit = storage.commit;
+		let refused = false;
+		// The host's first commit after the store's write fails, as a full disk would fail it.
+		vi.spyOn(storage, "commit").mockImplementation(function (this: unknown, ...args: unknown[]) {
+			if (add.mock.calls.length === 0 || refused) return commit.apply(this, args);
+			refused = true;
+			return Promise.reject(new StorageRejected("the disk is full"));
+		});
+
+		await expect(dismiss(store, first, id)).rejects.toThrow("the disk is full");
+		const shared = dismissalsOf(await store.list(first.changeset.id));
+		expect([await statusOf(id), shared.length]).toEqual(["new", 1]);
+
+		vi.mocked(storage.commit).mockRestore();
+		const made = await dismiss(store, first, id);
+		expect([await statusOf(id), made.finding.properties.status]).toEqual(["dismissed", "dismissed"]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual(shared);
 	});
 });
 

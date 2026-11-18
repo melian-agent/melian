@@ -1,5 +1,12 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, type Finding, type RecordStore, Revision, Verdict } from "@melian-agent/core";
+import {
+	type AlsoReportedAs,
+	type Finding,
+	type RecordEnvelope,
+	type RecordStore,
+	Revision,
+	Verdict,
+} from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -132,6 +139,24 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";
+	// With a store, all or nothing: the record reaches the store inside the dismissal's commit, so a store that fails
+	// leaves no dismissal on the host. A commit that fails after the write leaves the record saying dismissed while the
+	// host does not, the stricter side for the host, and the same dismissal again writes the same record.
+	const refusing = <T>(step: () => Promise<T>) =>
+		step().catch((error: unknown) => {
+			const why = error instanceof Error ? error.message : String(error);
+			throw new DismissError(
+				"storeFailed",
+				`the dismissal is not recorded, because the record store failed: ${why}`,
+				{
+					...where,
+					cause: error,
+				},
+			);
+		});
+	const { records: target } = options;
+	const listing = target && (await refusing(() => target.store.list(target.changeset)));
+	const unshared: UnsharedDismissal[] = [];
 	const { replaced, also, live, task, dismissed } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
@@ -180,6 +205,21 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			);
 			if (report === own) replaced = before;
 		}
+		if (target !== undefined) {
+			const state = await tx.doc(FindingsDocument, root.id);
+			const records = ReviewRecords.of(target.changeset, options.revision);
+			const made: RecordEnvelope[] = [];
+			for (const report of dismissed) {
+				try {
+					const record = records.madeOf(state, report, listing!);
+					if (record !== undefined) made.push(record.toJSON());
+				} catch (error) {
+					if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
+					unshared.push({ finding: report, code: error.code });
+				}
+			}
+			await refusing(() => target.store.add(made));
+		}
 		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
 		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
@@ -209,24 +249,6 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
 		return { replaced, also, live, task, dismissed };
 	}, context);
-	const unshared: UnsharedDismissal[] = [];
-	if (options.records !== undefined) {
-		const { store, changeset } = options.records;
-		const listing = await store.list(changeset);
-		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
-		const records = ReviewRecords.of(changeset, options.revision);
-		const made = [];
-		for (const report of dismissed) {
-			try {
-				const record = records.madeOf(state, report, listing);
-				if (record !== undefined) made.push(record.toJSON());
-			} catch (error) {
-				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
-				unshared.push({ finding: report, code: error.code });
-			}
-		}
-		await store.add(made);
-	}
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.some(
 		(each) => each.record.id === (task as TaskId) && each.state.kind === "blocked",

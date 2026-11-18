@@ -126,22 +126,33 @@ export class ReviewError extends Error {
 }
 
 /** Why a finding could not be dismissed, or why its verdict was not decided again afterwards. */
-export type DismissErrorCode = "notReviewed" | "unknownFinding" | "notInstalled" | "adjudicationFailed" | "unprovenRun";
+export type DismissErrorCode =
+	| "notReviewed"
+	| "unknownFinding"
+	| "notInstalled"
+	| "adjudicationFailed"
+	| "unprovenRun"
+	| "storeFailed";
 
 /**
  * A dismissal could not be recorded: `notReviewed` when no verdict is stored for the revision, `unknownFinding` when the
  * verdict holds no finding with the ID, and `notInstalled` when the harness cannot adjudicate. `adjudicationFailed`
  * means the dismissal was recorded but the verdict was not decided again; the next review of the revision decides it.
  * `unprovenRun` means a static finding's dismissal cannot be exported, since its sighting does not show that the run
- * which wrote it stored none of its tool's text. `revision` is the revision's key and `finding` the ID.
+ * which wrote it stored none of its tool's text. `storeFailed` means the record store given failed, so nothing was
+ * recorded, on the host or in the store. `revision` is the revision's key and `finding` the ID.
  */
 export class DismissError extends Error {
 	readonly code: DismissErrorCode;
 	readonly revision: string;
 	readonly finding: string;
 
-	constructor(code: DismissErrorCode, message: string, options: { revision: string; finding: string }) {
-		super(message);
+	constructor(
+		code: DismissErrorCode,
+		message: string,
+		options: { revision: string; finding: string; cause?: unknown },
+	) {
+		super(message, "cause" in options ? { cause: options.cause } : undefined);
 		this.name = "DismissError";
 		this.code = code;
 		this.revision = options.revision;
