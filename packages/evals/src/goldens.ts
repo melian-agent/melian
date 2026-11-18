@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	type ChangedFile,
 	Changeset,
 	type CheckRecord,
 	causeSchema,
@@ -29,8 +30,10 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext,
+	CallerContext,
 	configsFor,
 	createMemoryStorage,
+	createNodeExecutionEnv,
 	openReviewHarness,
 	type ProberRecord,
 	type ReviewModels,
@@ -327,9 +330,17 @@ export type GoldenMode =
 /** A live golden mode, the only kind that can review a range outside the corpus. */
 export type LiveGoldenMode = Extract<GoldenMode, { kind: "live" }>;
 
-/** Re-routes a run's policy and lenses for one combination a probing measurement runs. */
+/**
+ * Re-routes a run's policy and lenses for one arm a measurement runs, given the change's files. With `graph`, the review
+ * opens Enola's graph of the head for its lenses as the CLI does, and fails when the graph cannot be read.
+ */
 export interface ProbingRoute {
-	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] };
+	readonly graph?: true;
+	routed(
+		config: MelianConfig,
+		lenses: readonly Lens[],
+		files: readonly ChangedFile[],
+	): { config: MelianConfig; lenses: readonly Lens[] };
 }
 
 /** A range of a clone to review as a golden is reviewed: its base commit, the range, and whose code its head is. */
@@ -457,6 +468,51 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	}
 }
 
+// Opens Enola's graph of the head over the files the tier's lenses select, as the CLI does, whatever the base's policy
+// says of Enola. A graph that cannot be read fails the review: scoring it would measure the arm without its graph.
+async function graphOf(
+	target: ReviewTarget,
+	changeset: Changeset,
+	config: MelianConfig,
+	lenses: readonly Lens[],
+	tier: string,
+): Promise<CallerContext> {
+	const run = new Set(
+		checksOfTier(config, tier)
+			.filter((name) => name.startsWith("lens."))
+			.map((name) => name.slice(5)),
+	);
+	const selected = new Set(
+		Lens.select(
+			lenses.filter((lens) => run.has(lens.name)),
+			config,
+			changeset.revision.paths(),
+		).flatMap((selection) => selection.files),
+	);
+	const callers = await CallerContext.open(
+		{
+			env: createNodeExecutionEnv(target.repo),
+			repoRoot: target.repo,
+			environment: process.env,
+			base: changeset.revision.base,
+			policyCommit: target.base,
+			commit: changeset.revision.head,
+			tool: "enola",
+			settings: { ...config.static.enola, enabled: true },
+		},
+		changeset.revision.files.filter(
+			(file) => selected.has(file.path) || (file.oldPath !== undefined && selected.has(file.oldPath)),
+		),
+		backgroundContext,
+		changeset.revision.files.map((file) => file.path),
+	);
+	if (callers.coverageSource() === undefined)
+		throw new Error(
+			`The arm needs Enola's graph of the head, which could not be read: ${callers.caveat() ?? "no graph"}`,
+		);
+	return callers;
+}
+
 /**
  * Reviews `target` live as {@link runGolden} reviews a golden: policy, standards, and lenses from its base, the checks a
  * host runs without a model skipped, and no score for a review that is not reviewed or whose probes did not run.
@@ -498,7 +554,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 		models = mode.models;
 		if (mode.thinking !== undefined) config = mode.thinking.apply(config);
 		if (mode.probing !== undefined) {
-			const routed = mode.probing.routed(config, lenses);
+			const routed = mode.probing.routed(config, lenses, changeset.revision.files);
 			config = routed.config;
 			lenses = [...routed.lenses];
 		}
@@ -513,6 +569,8 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 	const checks = hostChecks.map(
 		(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
 	);
+	const callers =
+		mode.kind === "live" && mode.probing?.graph ? await graphOf(target, changeset, config, lenses, tier) : undefined;
 	const storage = createMemoryStorage();
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry: mode.kind !== "scripted",
@@ -530,6 +588,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			writer: target.writer,
 			tier,
 			checks,
+			...(callers === undefined ? {} : { callers }),
 		};
 		const reviewed = await reviewChangeset(review);
 		const status = reviewed.verdict.reviewStatus();

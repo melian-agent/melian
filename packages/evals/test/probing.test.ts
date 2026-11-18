@@ -2693,3 +2693,25 @@ describe("runRange", { timeout: 60_000 }, () => {
 		}
 	});
 });
+
+describe("an arm that needs the graph", { timeout: 60_000 }, () => {
+	it("fails its review when Enola's graph of the head cannot be read", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const fake = createFakeModels({ models: [{ id: "x" }] });
+			const target = Miss.load(
+				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]),
+			)[0]!.target(ProbeTrust.parse(`${base},${head}`), "whole", []);
+			await expect(
+				runRange(target, {
+					kind: "live",
+					models: fake.review,
+					model: `${fake.ref("x").provider}/x`,
+					probing: { graph: true, routed: (config, lenses) => ({ config, lenses }) },
+				}),
+			).rejects.toThrow(/^The arm needs Enola's graph of the head, which could not be read: /);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
