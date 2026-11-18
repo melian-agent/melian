@@ -25,6 +25,7 @@ import {
 	type ParityRunners,
 	parityArmName,
 } from "../src/parity.ts";
+import { GoldenRunError } from "../src/run-error.ts";
 
 let scratch: string;
 beforeEach(() => {
@@ -543,6 +544,33 @@ describe("measureParity", { timeout: 60_000 }, () => {
 				stages: [],
 			},
 		]);
+	});
+	it("counts what a failed review's stages spent, and stops on a usage limit one of them met", async () => {
+		const failing = (stages: readonly StageFields[]) =>
+			runners(undefined, {
+				range: vi.fn(async () => {
+					throw new GoldenRunError(
+						new Error("the verifier failed"),
+						new StageTelemetry("base..head", [...stages]),
+					);
+				}),
+			});
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, failing([lensStage()]))).status).toBe(1);
+		expect(results().reviews[0]).toMatchObject({
+			miss: "one",
+			arm: "committed",
+			said: "no score: the verifier failed",
+			error: "the verifier failed",
+			tokens: 100,
+			cacheRead: 40,
+			stages: [{ subject: "correctness@1@deep", tokens: 100, cacheRead: 40 }],
+		});
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
+		expect((await measure(env, failing([limited]))).status).toBe(3);
+		expect(results().stopped).toMatch(
+			/^committed on one met a provider's usage limit in correctness@1@deep: You have hit your usage limit\.$/,
+		);
 	});
 });
 

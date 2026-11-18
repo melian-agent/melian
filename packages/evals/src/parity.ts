@@ -15,9 +15,16 @@ import {
 	parseModelReference,
 	visibleText,
 } from "@melian-agent/core";
-import { isProviderLimit, type ProbeAvailability, type ReviewModels, type Stage } from "@melian-agent/pipeline";
+import {
+	isProviderLimit,
+	type ProbeAvailability,
+	type ReviewModels,
+	type Stage,
+	type StageTelemetry,
+} from "@melian-agent/pipeline";
 import type { LiveGoldenMode, ProbingRoute, RangeRun, ReviewTarget } from "./goldens.ts";
 import { Miss, type MissLocation, ProbeTrust } from "./probing.ts";
+import { GoldenRunError } from "./run-error.ts";
 
 type Print = (line: string) => void;
 
@@ -272,9 +279,13 @@ function measuredStages(run: Pick<RangeRun, "telemetry">, paths: readonly string
 // Why the run must stop after this review: a provider said its usage limit was reached, or a lens answered on a model
 // other than its route's first, which with every route held to its first model only a failover does and which is the earliest sign of that limit. Fallbacks are
 // equivalent in a real round; here both arms must answer on the same models to be compared.
-function stopCause(run: RangeRun | undefined, error: string | undefined): string | undefined {
+function stopCause(
+	run: RangeRun | undefined,
+	telemetry: StageTelemetry | undefined,
+	error: string | undefined,
+): string | undefined {
 	if (error !== undefined && isProviderLimit(error)) return `a provider's usage limit: ${error}`;
-	for (const stage of run?.telemetry.stages ?? []) {
+	for (const stage of telemetry?.stages ?? []) {
 		if (stage.error !== undefined && isProviderLimit(stage.error))
 			return `a provider's usage limit in ${stage.subject}: ${stage.error}`;
 		const models = Object.keys(stage.usage?.models ?? {});
@@ -480,16 +491,20 @@ export async function measureParity(
 			};
 			let run: RangeRun | undefined;
 			let error: string | undefined;
+			// A review that failed part-way still spent what its telemetry recorded.
+			let telemetry: StageTelemetry | undefined;
 			try {
 				run = await runners.range(target, mode);
+				telemetry = run.telemetry;
 			} catch (thrown) {
 				error = thrown instanceof Error ? thrown.message : String(thrown);
+				if (thrown instanceof GoldenRunError) telemetry = thrown.telemetry;
 			}
 			const paths = (await Changeset.resolve(target.repo, target.range)).revision.paths();
-			const stages = run === undefined ? [] : measuredStages(run, paths);
+			const stages = telemetry === undefined ? [] : measuredStages({ telemetry }, paths);
 			const tokens = stages.reduce((sum, stage) => sum + stage.tokens, 0);
 			const cacheRead = stages.reduce((sum, stage) => sum + stage.cacheRead, 0);
-			const cause = stopCause(run, error);
+			const cause = stopCause(run, telemetry, error);
 			if (cause !== undefined) {
 				spent += tokens;
 				return stop(`${parityLabel(arm)} on ${miss.name} met ${cause}`);
