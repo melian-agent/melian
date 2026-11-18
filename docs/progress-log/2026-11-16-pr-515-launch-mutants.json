@@ -1,0 +1,659 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "bdcfe6556f99e193a0663043e6c114dc61a6f153",
+  "head": "cc86ade65804e835a05ccc22e811c98d348c3cc6"
+ },
+ "claimsIn": [
+  "packages/pipeline/src/probe.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 25,
+   "column": 8,
+   "endLine": 25,
+   "endColumn": 182,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "547a931716d16d1beab963e53d329b069ae69ce4542d780bbc7d31b5eb4fe008"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 177,
+   "column": 20,
+   "endLine": 177,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "e82b28fa4fa5ce74c6761d074951333120e80df71bf5fffa9eebcd914ec5412f"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 858,
+   "column": 30,
+   "endLine": 858,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f507698086617312a7cff58cced1d4f5f292728b6eb13e9ef5d9e802314b80b4"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 858,
+   "column": 51,
+   "endLine": 858,
+   "endColumn": 66,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "7fca85d4d76d24337209065516d5cb49d150ad3c5839e1266d2b61f360d151b3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 858,
+   "column": 60,
+   "endLine": 858,
+   "endColumn": 64,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "37b472bc5077e96f1b1306e0bde7c745ad6b419841d056385460d81f2443af93",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "02f3c4e9016ad5e0973c09001cf59fd0c0ff5c7dfc2f00bd3eb5a77caeff9de2",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack timed out, though its sandbox then exited with a code"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "871e50b8917574010638508945c11beb7b17f6dce6940f4b72d5b13e9b4f8149",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 84,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!outcome.timedOut && !outcome.truncated || outcome.exitCode !== null",
+   "status": "generated",
+   "id": "526d8bde318b47648b8b5ebca236de0d3402680843d3744351afe0367299860c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack timed out, though its sandbox then exited with a code"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "29cafbdf322e3e28994c0cf06e249dc5c8eb5933a2da1537dd10556e3b840582",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack timed out, though its sandbox then exited with a code"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 55,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!outcome.timedOut || !outcome.truncated",
+   "status": "generated",
+   "id": "e81da9eca97fdf5280a0ace4d2b07708c30611144715e1bda330cbbb80af2b79",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack timed out, though its sandbox then exited with a code"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 16,
+   "endLine": 912,
+   "endColumn": 33,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "outcome.timedOut",
+   "status": "generated",
+   "id": "796ef5d170734689dd507131341c113e6a4218bf2f288f0f768e1fb4a79cbca0",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 37,
+   "endLine": 912,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "outcome.truncated",
+   "status": "generated",
+   "id": "74e8fcb04e702970e22e9d6be34af83d6d2d6437a1b2cf48552deab05a0585d6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 59,
+   "endLine": 912,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "93283aa6569b13ac834d558e4646e1a22066e0616fe3e4526806d240577ae023",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack was ended by a signal"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 912,
+   "column": 59,
+   "endLine": 912,
+   "endColumn": 84,
+   "mutatorName": "EqualityOperator",
+   "replacement": "outcome.exitCode === null",
+   "status": "generated",
+   "id": "7868480772e7e31058ec8cd36367d97e963c3129c75ff6a175d2278164454ba5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 914,
+   "column": 3,
+   "endLine": 918,
+   "endColumn": 5,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "0c33e473e5013f9115dfad425b7460318572c8c9197b3464eef1155d5e1bddd3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 914,
+   "column": 3,
+   "endLine": 918,
+   "endColumn": 5,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "2ed6f7f895f12e20d48bd7631246a459d9695887aee12a1ab5eb26d71a351300",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 914,
+   "column": 3,
+   "endLine": 918,
+   "endColumn": 5,
+   "mutatorName": "LogicalOperator",
+   "replacement": "ended || !(await lstat(join(this.#scratch, \"run\", startedName)).then(() => true, () => false))",
+   "status": "generated",
+   "id": "c47616c3c2fa9b778b99e65549d666b212d31dd932ad459f771885319244cd74",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 915,
+   "column": 3,
+   "endLine": 918,
+   "endColumn": 5,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "await lstat(join(this.#scratch, \"run\", startedName)).then(() => true, () => false)",
+   "status": "generated",
+   "id": "9110949f7f901f5bcfae0020e2541e55b6b859dd500fa2f565f77d0ae2d1aa38",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 915,
+   "column": 37,
+   "endLine": 915,
+   "endColumn": 42,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "b55fd21e3e9b66f30d298c48caceb5b9237f062920dff031184d2305ec06ab79"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 916,
+   "column": 4,
+   "endLine": 916,
+   "endColumn": 14,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "fc2e281e9f325e3dedfcce296f7c306f419a0e18f8ffa0a9148f9f94e55ecc25",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 916,
+   "column": 10,
+   "endLine": 916,
+   "endColumn": 14,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "5e9e6da09b7c118a5975d31e9a1fbb942b2ec7a54dfd5b4df677afe1f25c8c98",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.run",
+      "refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 917,
+   "column": 4,
+   "endLine": 917,
+   "endColumn": 15,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "8936053747f1fbe519429dd9b79eb51d9e4e9db75a99f1cac27b220aa4a1ef4b",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "a missing marker then reads as undefined, which the negation treats as it treats false, so the run is refused either way"
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 917,
+   "column": 10,
+   "endLine": 917,
+   "endColumn": 15,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "status": "generated",
+   "id": "569ed057ac68474b4ebc1f4e26af909301a7b7062651d0ec42c4be68ed54b25b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probing-level.test.ts",
+     "path": [
+      "a review that requires probes",
+      "fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 921,
+   "column": 4,
+   "endLine": 921,
+   "endColumn": 24,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "6d13f552f4447d69f195053fc9a7cd84bcbf5e8aefd5745dd0e4137429f6cea4"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 4,
+   "endLine": 922,
+   "endColumn": 129,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "5b54a5d892eae0a8ef32e6741dae4f3d3497dac02708ad28fee921dacbd56a80"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 70,
+   "endLine": 922,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "90c380fccecede2345260f6cfa65992e699e7da6802cf1415a0d62da9bd7b78a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.availability",
+      "runs an empty probe and reports how it ended"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 70,
+   "endLine": 922,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0cb3215b7321b5b9614f96dc3aca9ecb96d299777222d6f63e6f326bd092e941",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.availability",
+      "runs an empty probe and reports how it ended"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 70,
+   "endLine": 922,
+   "endColumn": 91,
+   "mutatorName": "EqualityOperator",
+   "replacement": "outcome.output !== \"\"",
+   "status": "generated",
+   "id": "6c92eceb809b80bc2988c9075e30d6748270481046733a0eb1928f5c72fd79d9",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.availability",
+      "runs an empty probe and reports how it ended"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 89,
+   "endLine": 922,
+   "endColumn": 91,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "465c57902f00fca65977a781eda2d22721f88dd800c720afcf1e0fdaa98f7a33"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 94,
+   "endLine": 922,
+   "endColumn": 96,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "0eaa044db351e949356ac1eeeb6ef72fbe5e102688eb2eb93a2fc25cba005649"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 99,
+   "endLine": 922,
+   "endColumn": 127,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "08d747f3e5bf7703ddf7053618131bf6043d8c476cd29b740da4e1c67f3e4c4a"
+  },
+  {
+   "file": "packages/pipeline/src/probe.ts",
+   "line": 922,
+   "column": 104,
+   "endLine": 922,
+   "endColumn": 125,
+   "mutatorName": "MethodExpression",
+   "replacement": "outcome.output",
+   "status": "generated",
+   "id": "15092ccc0f19a350d0d877dc68e17e6f01d18298d54dd95308d186bd1e7e683f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/probe.test.ts",
+     "path": [
+      "Probe.availability",
+      "runs an empty probe and reports how it ended"
+     ]
+    }
+   },
+   "survivorClasses": []
+  }
+ ],
+ "total": 32,
+ "omitted": 0,
+ "unmutated": []
+}
