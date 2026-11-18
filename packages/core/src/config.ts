@@ -264,6 +264,7 @@ export const melianYamlSchema = Type.Object(
 								severity: Type.Optional(severitySchema),
 								analyserSeverity: Type.Optional(severitySchema),
 								files: Type.Optional(globs),
+								instructions: Type.Optional(globs),
 							},
 							strict,
 						),
@@ -448,13 +449,16 @@ export interface GuardrailSettings {
 /**
  * Which policy changes ask for a maintainer's review. `severity` applies to `melian.yaml` and the standards files;
  * `analyserSeverity` to a static tool's configuration, which blocks by default. `files` are repository-relative globs
- * once loaded, more analyser configuration added to the built-in names.
+ * once loaded, more analyser configuration added to the built-in names. `instructions` are repository-relative globs
+ * naming the files that hold the repository's model prompts or reviewer instructions, which only the root
+ * `melian.yaml` sets: a change to one draws a policy notice, which stands in for a lens's injection finding there.
  */
 export interface PolicyChangeReview {
 	readonly enabled: boolean;
 	readonly severity: Severity;
 	readonly analyserSeverity: Severity;
 	readonly files: readonly string[];
+	readonly instructions: readonly string[];
 }
 
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
@@ -546,7 +550,7 @@ export const defaultConfig: MelianConfig = {
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
 		"forbidden-patterns": { enabled: true, severity: "P2", rules: { "forged-mutation-kill": forgedMutationKill } },
-		"policy-change-review": { enabled: true, severity: "P2", analyserSeverity: "P1", files: [] },
+		"policy-change-review": { enabled: true, severity: "P2", analyserSeverity: "P1", files: [], instructions: [] },
 	},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
@@ -808,6 +812,7 @@ function checkNested(site: Site, layer: MelianYaml): void {
 				key,
 			});
 	}
+	checkInstructions(site, layer);
 	checkPublishEmoji(site, layer);
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
@@ -834,6 +839,13 @@ function checkNested(site: Site, layer: MelianYaml): void {
 	}
 }
 
+// A listed file's injection findings give way to its policy notice, so a file that could list itself would silence them.
+function checkInstructions(site: Site, layer: MelianYaml): void {
+	if (layer.guardrails?.["policy-change-review"]?.instructions === undefined) return;
+	const key = "guardrails.policy-change-review.instructions";
+	throw configError("invalidValue", site, `"${key}" is policy, which only a committed root melian.yaml sets`, { key });
+}
+
 // A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
 // override through.
 function checkPreference(site: Site, layer: MelianYaml): void {
@@ -843,6 +855,7 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 				key,
 			});
 	}
+	checkInstructions(site, layer);
 	checkPublishEmoji(site, layer);
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
@@ -971,6 +984,7 @@ const globLists: readonly (readonly string[])[] = [
 	["guardrails", "required-files", "rules", "*", "require"],
 	["guardrails", "forbidden-patterns", "rules", "*", "paths"],
 	["guardrails", "policy-change-review", "files"],
+	["guardrails", "policy-change-review", "instructions"],
 ];
 
 // Globs are written relative to their melian.yaml; merging would lose which file that was.
