@@ -1,0 +1,80 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "e513995420873e5427a7073c25ddf47faa61e56f",
+		"head": "0004a30128eb76b15d24794d5a739b0e4b5fa73f"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/configurations.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 21,
+			"column": 18,
+			"endLine": 21,
+			"endColumn": 86,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "9351bdafff852c7e4c69d5750b85f126a1787d6e0eaa36471c3252d9a6e95f5c",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > does not depend on the order of the keys a policy file writes",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 127,
+			"column": 22,
+			"endLine": 127,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "350fe57e1996156a9bbad1011d3f6353036bb85da7ac39fdac14f8bd292b4078",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes when two folder variants of one lens swap their declared resolutions, neither above the path",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 127,
+			"column": 35,
+			"endLine": 127,
+			"endColumn": 48,
+			"mutatorName": "LogicalOperator",
+			"replacement": "scope && null",
+			"status": "generated",
+			"id": "8d5f1dabc057897927dce3ade7f58467011110ac8028cc32859fb4ae2cbbceee",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes when two folder variants of one lens swap their declared resolutions, neither above the path",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 132,
+			"column": 20,
+			"endLine": 132,
+			"endColumn": 38,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "a94665092a6e29231fa66a48b6a4c5889bbcf3143c0448631faf23e650e59000",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes with the declared resolution of the variant a report carries, whatever the path defaults say",
+			"survivorClasses": []
+		}
+	],
+	"total": 4,
+	"omitted": 0,
+	"unmutated": []
+}

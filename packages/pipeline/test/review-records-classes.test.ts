@@ -43,6 +43,7 @@ describe("a record's classed fields as the producer writes them", () => {
 						filled: [{ name: "static.biome", status: "failed", version }],
 						allowSkip: [],
 						producers: [],
+						resolutionPolicy: null,
 					}),
 				).filled as Record<string, unknown>[]
 			)[0]?.version;

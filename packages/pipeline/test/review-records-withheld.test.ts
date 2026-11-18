@@ -106,7 +106,14 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			token,
 		);
 		const producers = [{ check: "static.biome", version: token }];
-		const account = { checks: ["static.biome"], records: [], filled: [], allowSkip: [], producers };
+		const account = {
+			checks: ["static.biome"],
+			records: [],
+			filled: [],
+			allowSkip: [],
+			producers,
+			resolutionPolicy: null,
+		};
 		expect(bytes(records.account(account))).not.toContain(token);
 		const dismissal = records.dismissal({
 			finding: finding.properties.id,
@@ -133,6 +140,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			filled: [{ name: "static.enola", status: "failed", reason: token, error: token }],
 			allowSkip: [],
 			producers: [],
+			resolutionPolicy: null,
 		});
 		expect(bytes(record)).not.toContain(token);
 	});
@@ -244,7 +252,9 @@ describe("an exported record keeps what Melian defines", () => {
 			version: "0123456789ab@careful",
 		});
 		const producers = [{ check: "lens.security", version: "0123456789ab@careful" }];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(
+			records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }),
+		);
 		expect((account.producers as { version: string }[])[0]!.version).toBe("0123456789ab@careful");
 	});
 
@@ -257,7 +267,9 @@ describe("an exported record keeps what Melian defines", () => {
 			{ check: "static.biome", version: "v1", ...(first === undefined ? {} : { ids: first }) },
 			{ check: "static.biome", version: "v2", ...(second === undefined ? {} : { ids: second }) },
 		];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(
+			records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }),
+		);
 		expect(account.producers).toEqual([{ check: "static.biome", version: withheld, ids }]);
 	});
 
@@ -266,7 +278,9 @@ describe("an exported record keeps what Melian defines", () => {
 			{ check: "lens.security", version: "bbbbbbbbbbbb@careful" },
 			{ check: "lens.security", version: "aaaaaaaaaaaa@careful" },
 		];
-		const account = payload(records.account({ checks: [], records: [], filled: [], allowSkip: [], producers }));
+		const account = payload(
+			records.account({ checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null }),
+		);
 		expect(account.producers).toEqual([
 			{ check: "lens.security", version: "aaaaaaaaaaaa@careful", ids: null },
 			{ check: "lens.security", version: "bbbbbbbbbbbb@careful", ids: null },
@@ -306,6 +320,7 @@ describe("an exported record keeps what Melian defines", () => {
 			filled: [{ name: "static.enola", status: "skipped", reason: "no record" }],
 			allowSkip: [],
 			producers: [],
+			resolutionPolicy: null,
 		});
 		expect(payload(record).filled).toEqual([
 			decided({ name: "static.enola", status: "skipped", reason: "no record" }),

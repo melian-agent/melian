@@ -258,8 +258,9 @@ export class ReviewRecords {
 
 	/**
 	 * How a round accounts for its tier: the tier's checks, the check and lens records it counts, the record it made for
-	 * each check no record holds, the skips it allows, and the producers whose findings count. Its key is a request of
-	 * the revision and the IDs of the records it counts, so the round that names it names what it counted.
+	 * each check no record holds, the skips it allows, the producers whose findings count, and the fingerprint of the
+	 * resolution policy it decided under. Its key is a request of the revision, the IDs of the records it counts and that
+	 * fingerprint, so the round that names it names what it counted and the policy it counted under.
 	 */
 	account(facts: {
 		readonly checks: readonly string[];
@@ -267,6 +268,7 @@ export class ReviewRecords {
 		readonly filled: readonly (CheckRecord & { readonly status: "skipped" | "failed" })[];
 		readonly allowSkip: readonly string[];
 		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
+		readonly resolutionPolicy: string | null;
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
 		// Two versions withheld alike name one producer, whose findings are both producers' findings.
@@ -286,7 +288,7 @@ export class ReviewRecords {
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
 		const payload: AccountPayload = {
-			v: 1,
+			v: 2,
 			checks: [...new Set(facts.checks)],
 			records,
 			// Two records alike in every field fill one entry, since an account names each once.
@@ -302,8 +304,9 @@ export class ReviewRecords {
 				.map(([, entry]) => entry),
 			allowSkip: [...new Set(facts.allowSkip)].sort(compare),
 			producers,
+			resolutionPolicy: facts.resolutionPolicy,
 		};
-		const key = KeyedRequest.of("account", { revision: this.revision, records }).key;
+		const key = accountKey(this.revision, payload);
 		return this.#record("account", key, payload);
 	}
 
@@ -366,6 +369,17 @@ export class ReviewRecords {
 			reviewPayloads,
 		);
 	}
+}
+
+/**
+ * An account's key: a request of its revision, the IDs of the records it counts, and the fingerprint of the policy it
+ * decided under. The rest of its payload follows from those records and that policy.
+ */
+export function accountKey(
+	revision: string | null,
+	{ records, resolutionPolicy }: Pick<AccountPayload, "records" | "resolutionPolicy">,
+): string {
+	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
 }
 
 /**

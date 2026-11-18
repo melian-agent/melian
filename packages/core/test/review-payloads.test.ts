@@ -246,7 +246,7 @@ const samples: [string, RecordJson][] = [
 ];
 
 const account = {
-	v: 1,
+	v: 2,
 	checks: ["guardrails", "lens.security"],
 	records: ["1".repeat(64), "2".repeat(64)],
 	filled: [
@@ -271,6 +271,7 @@ const account = {
 		{ check: "lens.security", version: `${lensVersion}@careful`, ids: null },
 		{ check: "lens.security", version: `${lensVersion}@quick`, ids: [dismissed, "1123456789abcdef"] },
 	],
+	resolutionPolicy: "2:0123456789abcdef",
 };
 samples.push(["account", account]);
 
@@ -314,6 +315,7 @@ const bounds: readonly [string, string, RecordJson][] = [
 	["account", "records/0", "1".repeat(63)],
 	["account", "filled/0/status", "ran"],
 	["account", "producers/2/ids/0", "x"],
+	["account", "resolutionPolicy", "2:0123456789abcdeg"],
 ];
 
 // Each other value an enumerated field takes, so every one the schema lists is accepted.
@@ -326,6 +328,7 @@ const variants: readonly [string, string, RecordJson][] = [
 	["telemetry", "stages/0/ended", null],
 	["account", "filled/1/status", "skipped"],
 	["account", "filled/0/reason", null],
+	["account", "resolutionPolicy", null],
 ];
 
 const check = (kind: string, payload: RecordJson) => reviewPayloads[kind]?.(payload);
@@ -354,7 +357,9 @@ describe("review payload checks", () => {
 	});
 
 	it.each(samples)("refuses a %s payload of another version, sample %#", (kind, payload) => {
-		expect(check(kind, { ...(payload as Record<string, RecordJson>), v: 2 })).toMatch(/schema/);
+		expect(check(kind, { ...(payload as Record<string, RecordJson>), v: kind === "account" ? 3 : 2 })).toMatch(
+			/schema/,
+		);
 	});
 
 	it.each(bounds)("refuses a %s payload whose %s is %j", (kind, path, value) => {
@@ -560,6 +565,19 @@ describe("review payload checks", () => {
 		],
 	])("refuses an account that %s, case %#", (reason, fields) => {
 		expect(check("account", { ...account, ...fields } as RecordJson)).toBe(reason);
+	});
+
+	it("takes a version-1 account, which names no resolution policy, and checks its order as version 2's", () => {
+		const { resolutionPolicy: _, ...fields } = account;
+		const legacy = { ...fields, v: 1 };
+		expect(check("account", legacy)).toBeUndefined();
+		expect(check("account", { ...legacy, resolutionPolicy: account.resolutionPolicy })).toMatch(/schema/);
+		expect(check("account", { ...fields, v: 2 })).toMatch(/schema/);
+		expect(check("account", { ...legacy, checks: ["guardrails", "guardrails"] })).toBe("names one check twice");
+	});
+
+	it.each([null, "account", 2, [account]])("refuses an account payload of %j as a breach of its schema", (payload) => {
+		expect(check("account", payload as RecordJson)).toMatch(/schema/);
 	});
 
 	it("takes an account whose producers share a check and differ in version, the one with none first", () => {
