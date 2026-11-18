@@ -17,6 +17,7 @@ import {
 import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn } from "../../core/test/fixtures/repo.ts";
 import {
@@ -193,7 +194,6 @@ describe("Probe.open", () => {
 		["sp ace"],
 		["probe.mjs"],
 		["PROBE.MJS"],
-		["run.mjs"],
 		["watchdog.mjs"],
 	])("refuses the file path %j", async (path) => {
 		const { sandbox } = passthrough();
@@ -231,16 +231,11 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs", "watchdog.mjs"]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "watchdog.mjs"]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
-		// The runner imports the watchdog, then the probe's module, statically and in that order, so the watchdog is
-		// armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and
-		// is unref'd, so a probe that finishes keeps its own exit code.
-		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
-		expect(runner).toBe(
-			'import "./watchdog.mjs";\n// Dynamic, so a probe that fails to link fails after the watchdog\'s start marker, as the probe\'s own failure.\nawait import("./probe.mjs");\n',
-		);
+		// The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and is unref'd, so
+		// a probe that finishes keeps its own exit code.
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
 		expect(watchdog).toMatch(
 			/^import \{ writeFileSync \} from "node:fs";\nsetTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\nwriteFileSync\(new URL\("\.\.\/run\/started", import\.meta\.url\), ""\);\n$/,
@@ -1231,6 +1226,35 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		const seconds = Number(/ulimit -t (\d+) /.exec(asked[0]!.command)?.[1]);
 		expect(seconds).toBeGreaterThanOrEqual(2);
 		expect(seconds).toBeLessThanOrEqual(probeLimits.timeout.max / 1000);
+	});
+
+	it("starts the probe under Node with the watchdog preloaded by --import", async () => {
+		const { sandbox, asked } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		const root = dirname(probe.policy.write[0]!);
+		await probe.run();
+		await probe.close();
+		const watchdog = pathToFileURL(join(root, "probe", "watchdog.mjs")).href;
+		expect(asked[0]!.command).toMatch(
+			new RegExp(` && exec '[^']+' --import '${watchdog.replaceAll(".", "\\.")}' '${join(root, "probe", "probe.mjs").replaceAll(".", "\\.")}'$`),
+		);
+	});
+
+	it("runs the watchdog, and leaves its marker, before the probe's first statement", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script:
+					'import { existsSync } from "node:fs";\nconsole.log(existsSync(new URL("../run/started", import.meta.url)));\n',
+			},
+			options(sandbox),
+		);
+		try {
+			const result = await probe.run();
+			expect([result.exitCode, result.output]).toEqual([0, "true\n"]);
+		} finally {
+			await probe.close();
+		}
 	});
 
 	it("cuts output that crosses its limit over several chunks", async () => {

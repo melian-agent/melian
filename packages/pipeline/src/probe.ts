@@ -3,7 +3,7 @@ import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSy
 import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
@@ -11,14 +11,10 @@ import { backgroundContext, createNodeExecutionEnv } from "./harness.ts";
 import { linkDependencies } from "./link-dependencies.ts";
 import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
-// The runner the sandbox executes imports the watchdog statically, then the probe's own module, so the watchdog is armed
-// before the probe runs. The watchdog exits the probe at `deadline` milliseconds even if nothing outside the sandbox
-// stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a probe that hangs keeps the
-// event loop alive until the timer fires and exits 124.
-function runnerSource(): string {
-	return `import "./${watchdogName}";\n// Dynamic, so a probe that fails to link fails after the watchdog's start marker, as the probe's own failure.\nawait import("./${scriptName}");\n`;
-}
-
+// Node preloads the watchdog with --import, so it runs before the probe's module links, and a probe that fails to link
+// fails after the start marker, as its own failure. The watchdog exits the probe at `deadline` milliseconds even if
+// nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a
+// probe that hangs keeps the event loop alive until the timer fires and exits 124.
 // The watchdog also leaves a marker, before the probe is imported, that Probe.run reads back: a sandbox or Node that
 // fails to launch exits with a code of its own, which without the marker would read as the probe's.
 function watchdogSource(deadline: number): string {
@@ -26,7 +22,7 @@ function watchdogSource(deadline: number): string {
 }
 
 // The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer
-// fire, so the runner also runs under a CPU-time limit of this many seconds, which the kernel enforces.
+// fire, so the probe also runs under a CPU-time limit of this many seconds, which the kernel enforces.
 function backstop(timeout: number): number {
 	return timeout + closeGraceMs + 5_000;
 }
@@ -172,7 +168,6 @@ export type CleanupOutcome =
 
 const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
-const runnerName = "run.mjs";
 const watchdogName = "watchdog.mjs";
 const startedName = "started";
 
@@ -477,7 +472,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName, runnerName, watchdogName]);
+	const seen = new Set<string>([scriptName, watchdogName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -573,7 +568,7 @@ function policyFor(paths: PolicyPaths): ProbePolicy {
 function commandFor({ scratch, node, timeout }: { scratch: string; node: string; timeout: number }): string {
 	const tree = join(scratch, "tree");
 	const run = join(scratch, "run");
-	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} ${quote(join(scratch, "probe", runnerName))}`;
+	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} --import ${quote(pathToFileURL(join(scratch, "probe", watchdogName)).href)} ${quote(join(scratch, "probe", scriptName))}`;
 }
 
 // The environment a probe in `scratch` starts with. spawn leaves out a variable whose value is undefined.
@@ -766,11 +761,10 @@ export class Probe {
 				await mkdir(join(scratch, path), { recursive: true });
 			if (head !== undefined) installs = await writeHead(head, join(scratch, "tree"));
 			await writeFile(join(scratch, "probe", scriptName), input.script);
-			// A watchdog inside the runner exits the probe at its own limit even if the Melian process dies and so never
-			// stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe first; a
-			// grandchild that reparents away from the runner still escapes it, as the decision records.
+			// A watchdog inside the probe's Node process exits the probe at its own limit even if the Melian process dies
+			// and so never stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe
+			// first; a grandchild that reparents away from that process still escapes it, as the decision records.
 			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(backstop(limits.timeout)));
-			await writeFile(join(scratch, "probe", runnerName), runnerSource());
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });

@@ -118,9 +118,9 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-// The probe's command with its script emptied, so its runner starts and the probe passes.
+// The probe's command with its script emptied, so it starts and the probe passes.
 const passingRun = (command: string) =>
-	`printf '' > ${command.slice(command.lastIndexOf(" ") + 1).replace("run.mjs", "probe.mjs")} && ${command}`;
+	`printf '' > ${command.slice(command.lastIndexOf(" ") + 1)} && ${command}`;
 
 // Whether a probe is running in a tree of the head, asked while it runs: Probe starts every probe in its tree, and only
 // the head's holds files, the empty probe's that checks the sandbox none.
