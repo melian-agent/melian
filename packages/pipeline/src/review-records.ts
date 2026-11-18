@@ -405,9 +405,12 @@ export class ReviewRecords {
 		const copy = this.#heldCopy(envelope, listing);
 		if (copy !== undefined) return copy;
 		const own = SharedRecord.parse(envelope, reviewPayloads).id;
-		const replaced = new Set(listing.flatMap((each) => each.supersedes ?? []));
-		const standing = listing.flatMap((each) => {
-			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== facts.finding) return [];
+		// Only a record in the same slot supersedes, as `RecordSet` rules, so an edge from any other is no replacement.
+		const slot = listing.filter(
+			(each) => each.kind === "dismissal" && each.changeset === this.changeset && each.key === facts.finding,
+		);
+		const replaced = new Set(slot.flatMap((each) => each.supersedes ?? []));
+		const standing = slot.flatMap((each) => {
 			const { id } = SharedRecord.parseEnvelope(each);
 			return id === own || replaced.has(id) ? [] : [id];
 		});

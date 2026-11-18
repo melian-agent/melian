@@ -202,6 +202,22 @@ describe("ReviewRecords", () => {
 			expect(SharedRecord.parse(record.toJSON(), reviewPayloads).id).toBe(record.id);
 		});
 
+		it("supersedes a standing dismissal that a record of another slot names as superseded", () => {
+			const earlier = firstRecord();
+			const elsewhere = records().dismissal({
+				...facts("Accepted"),
+				finding: other.properties.id,
+				sighting: { revision: `${base}..${head}`, finding: other },
+			});
+			// Core ignores a supersedes edge across slots, so `earlier` still stands beside this record.
+			const naming = SharedRecord.parse({ ...elsewhere.toJSON(), supersedes: [earlier.id] }, reviewPayloads);
+			const made = records().made({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" }, [
+				earlier.toJSON(),
+				naming.toJSON(),
+			]);
+			expect(made.toJSON().supersedes).toEqual([earlier.id]);
+		});
+
 		it("supersedes no dismissal the listing already holds as superseded", () => {
 			const earlier = firstRecord();
 			const second = records().made({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" }, [
