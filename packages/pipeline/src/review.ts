@@ -356,6 +356,44 @@ type LensOutcome =
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
 // the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
+/**
+ * Why a level that probes could not probe, as one of a closed set, so a host decides and prints on it without reading
+ * the reason's text, which can name a path in the head.
+ */
+export type ProbeGapCause =
+	| "no-writer"
+	| "untrusted-writer"
+	| "writers-untrusted"
+	| "sandbox-unavailable"
+	| "head-refuses"
+	| "prober-tier-refused"
+	| "prober-tier-unrouted"
+	| "probe-refused"
+	| "probe-inconclusive";
+
+/** One fixed sentence for each {@link ProbeGapCause}, which a host may print where the reason's text may not go. */
+export const probeGapSentences: Readonly<Record<ProbeGapCause, string>> = {
+	"no-writer": "the host did not say whose head this is",
+	"untrusted-writer": "the head's writer is not trusted to have its code run",
+	"writers-untrusted": "the base policy sets trust.writers to false",
+	"sandbox-unavailable": "the probe sandbox cannot run on this machine",
+	"head-refuses": "the head holds what a probe's tree refuses, such as a link out of the tree or too many files",
+	"prober-tier-refused": "the review plan refuses the prober's tier",
+	"prober-tier-unrouted": "the prober's tier reaches no model with credentials",
+	"probe-refused": "a probe the prober asked for could not open, run, stop or clean up",
+	"probe-inconclusive":
+		"every probe the prober ran for an attack timed out, was cut or was ended by a signal, and it did not skip the attack",
+};
+
+/** A level that probes and could not, under {@link ReviewSettings.requireProbes}: its check, level and cause. */
+export interface ProbeGap {
+	readonly check: string;
+	readonly level: ScrutinyLevel;
+	readonly cause: ProbeGapCause;
+}
+
+type ProbeGapReason = { readonly cause: ProbeGapCause; readonly reason: string };
+
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
@@ -1416,6 +1454,14 @@ interface ReviewSettings {
 	readonly records?: RecordStore;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;
+	/**
+	 * Fail every level that probes and cannot, rather than run it without probes: the lens records `failed`, and a level
+	 * whose prober asked for a probe that could not run records `failed` once it ends. A level that plans no attack, or
+	 * skips one with a reason, still passes. Each such level is handed to `probeGap` as it is found.
+	 */
+	readonly requireProbes?: boolean;
+	/** Told each level {@link requireProbes} failed, by its structured cause. */
+	readonly probeGap?: (gap: ProbeGap) => void;
 	readonly context?: Context;
 }
 
@@ -1448,14 +1494,15 @@ async function probeRefusal(
 	request: ReviewOptions,
 	config: MelianConfig,
 	revision: { readonly repoRoot: string; readonly head: string },
-): Promise<string | undefined> {
+): Promise<ProbeGapReason | undefined> {
 	const { writer } = request;
-	if (writer === undefined) return "the host did not say whose head this is";
-	if (!writer.trusted) return writer.detail;
-	if (writer.by === "writer" && !config.trust.writers) return "trust.writers is false in the repository's policy";
+	if (writer === undefined) return { cause: "no-writer", reason: "the host did not say whose head this is" };
+	if (!writer.trusted) return { cause: "untrusted-writer", reason: writer.detail };
+	if (writer.by === "writer" && !config.trust.writers)
+		return { cause: "writers-untrusted", reason: "trust.writers is false in the repository's policy" };
 	const sandbox = probeSandboxOf(request);
 	const available = await Probe.availability(sandbox);
-	if (!available.available) return available.reason;
+	if (!available.available) return { cause: "sandbox-unavailable", reason: available.reason };
 	const refused = await headRefusal(
 		revision,
 		{
@@ -1466,7 +1513,7 @@ async function probeRefusal(
 		},
 		sandbox,
 	);
-	return refused === undefined ? undefined : `the head refuses probes: ${refused}`;
+	return refused === undefined ? undefined : { cause: "head-refuses", reason: `the head refuses probes: ${refused}` };
 }
 
 // The probe each claim of a probing run rests on, read from its planner's and its prober's conversations, with what its
@@ -2018,6 +2065,8 @@ type SettledLens = {
 	readonly outcome: LensOutcome | undefined;
 	readonly notes: string[];
 	readonly kept?: Producer;
+	// The run that escalated to this one, which `--require-probes` must still read.
+	readonly escalatedFrom?: { readonly level: ScrutinyLevel; readonly outcome: LensOutcome | undefined };
 };
 
 function plural(count: number, noun: string): string {
@@ -2049,6 +2098,7 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 		outcome: result?.[next.key],
 		notes,
 		...(kept.length === 0 ? {} : { kept: { ...source, ids: [...kept] } }),
+		escalatedFrom: { level: first.level, outcome },
 	};
 }
 
@@ -2569,25 +2619,39 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				throw error;
 			},
 		));
-	let probesAsked: Promise<string | undefined> | undefined;
+	let probesAsked: Promise<ProbeGapReason | undefined> | undefined;
 	const probeRefused = () =>
 		(probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy, { repoRoot, head })));
 	// Why a level that probes runs without them here: probes may not run, or its prober's tier reaches no model, or the
 	// plan refuses that tier. It then runs as it would without `probe`, and its record says why.
-	const withoutProbes = async (lens: Lens, level: ScrutinyLevel, settings: LensLevel): Promise<string | undefined> => {
+	const withoutProbes = async (
+		lens: Lens,
+		level: ScrutinyLevel,
+		settings: LensLevel,
+	): Promise<ProbeGapReason | undefined> => {
 		const refused = await probeRefused();
-		if (refused !== undefined) return `${level} ran without probes, which cannot run here: ${refused}`;
+		if (refused !== undefined)
+			return {
+				cause: refused.cause,
+				reason: `${level} ran without probes, which cannot run here: ${refused.reason}`,
+			};
 		const prober = proberAt(lens, level);
 		const planned =
 			settings.probe!.prober === undefined
 				? plan?.judge(lens.name, level, undefined, lens.scope).refusal
 				: plan?.refusal(settings.probe!.prober);
 		if (planned !== undefined)
-			return `${level} ran without probes, since the plan refuses its prober's tier, ${prober.on}: ${planned}`;
+			return {
+				cause: "prober-tier-refused",
+				reason: `${level} ran without probes, since the plan refuses its prober's tier, ${prober.on}: ${planned}`,
+			};
 		const route = resolved.get(prober.key)!;
 		return "route" in route
 			? undefined
-			: `${level} ran without probes, since its prober runs on ${prober.on}, and ${route.unrouted}`;
+			: {
+					cause: "prober-tier-unrouted",
+					reason: `${level} ran without probes, since its prober runs on ${prober.on}, and ${route.unrouted}`,
+				};
 	};
 	spans.end();
 	const asked =
@@ -2768,7 +2832,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
 			const functions = settings.reads === "functions" ? await enclosing() : undefined;
 			const band = bands.get(lens)!;
-			const skipped = settings.probe === undefined ? undefined : await withoutProbes(lens, level, settings);
+			const skipped =
+				settings.probe === undefined ? undefined : (await withoutProbes(lens, level, settings))?.reason;
 			if (skipped !== undefined && !noted.includes(skipped)) noted.push(skipped);
 			const probing =
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
@@ -2834,11 +2899,35 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 		};
 		const level = choices.get(lens) as ScrutinyLevel;
+		const next = level === "quick" ? lens.escalation(level, bands.get(lens)!) : undefined;
+		if (options.requireProbes === true) {
+			// Every level this lens may run at, its escalation's included, must probe if it is set to.
+			let gap: (ProbeGapReason & { level: ScrutinyLevel }) | undefined;
+			for (const at of next === undefined ? [level] : [level, next]) {
+				const settings = lens.level(at);
+				const found = settings.probe === undefined ? undefined : await withoutProbes(lens, at, settings);
+				if (found !== undefined) {
+					gap = { ...found, level: at };
+					break;
+				}
+			}
+			if (gap !== undefined) {
+				const name = `lens.${lens.name}`;
+				refusals.set(`${lens.name}@${lens.version}`, {
+					name,
+					version: lens.version,
+					status: "failed",
+					level: gap.level,
+					reason: `probes are required, and ${gap.reason}`,
+				});
+				options.probeGap?.({ check: name, level: gap.level, cause: gap.cause });
+				continue;
+			}
+		}
 		if (level !== "quick") {
 			lenses.push(await runAt(level));
 			continue;
 		}
-		const next = lens.escalation(level, bands.get(lens)!);
 		// The plan judges the escalation's next level as it judged the first: a level it refuses caps the escalation.
 		const nextRefusal = next === undefined ? undefined : plan?.judge(lens.name, next, undefined, lens.scope).refusal;
 		const escalation =
@@ -3384,6 +3473,42 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
+	// A probe the prober asked for that could not run leaves an attempt with no probe, which nothing else records. An
+	// attack whose every probe showed nothing, and that the prober did not skip, has no answer.
+	if (options.requireProbes === true)
+		for (let index = 0; index < settled.length; index++) {
+			const { run, outcome, escalatedFrom } = settled[index]!;
+			for (const ran of [...(escalatedFrom === undefined ? [] : [escalatedFrom]), { level: run.level, outcome }]) {
+				const prober = ran.outcome?.status === "done" ? ran.outcome.probing?.prober : undefined;
+				if (prober === undefined) continue;
+				const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
+				const refused = (state.attempts ?? []).filter((id) => state.probes?.[id] === undefined).length;
+				const probes = Object.values(state.probes ?? {});
+				const answered = new Set([
+					...Object.keys(state.skips ?? {}).map(Number),
+					...probes.filter((probe) => probeConclusive(probe.result)).map((probe) => probe.attack),
+				]);
+				const inconclusive = new Set(probes.map((probe) => probe.attack).filter((attack) => !answered.has(attack)))
+					.size;
+				if (refused === 0 && inconclusive === 0) continue;
+				const record = records[index]!;
+				const why =
+					refused > 0
+						? `probes are required, and ${plural(refused, "probe")} the ${ran.level} prober asked for could not run`
+						: `probes are required, and every probe the ${ran.level} prober ran for ${plural(inconclusive, "attack")} showed nothing`;
+				records[index] = {
+					...record,
+					status: "failed",
+					reason: [why, ...(record.reason ? [record.reason] : [])].join("; "),
+				};
+				options.probeGap?.({
+					check: record.name,
+					level: ran.level,
+					cause: refused > 0 ? "probe-refused" : "probe-inconclusive",
+				});
+				break;
+			}
+		}
 	if (callers.coverage)
 		for (let index = 0; index < settled.length; index++)
 			records[index] = { ...records[index]!, coverage: callers.coverage };

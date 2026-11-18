@@ -1,5 +1,5 @@
-// Runs a CPU-bound probe and prints the probe runner's pid and start time once it appears among this process's
-// descendants, so a test can kill this process mid-probe and watch what the runner does with nothing left to end it.
+// Runs a CPU-bound probe and prints the probe's pid and start time once it appears among this process's
+// descendants, so a test can kill this process mid-probe and watch what the probe does with nothing left to end it.
 import { spawnSync } from "node:child_process";
 import { Probe } from "../../src/probe.ts";
 
@@ -29,7 +29,7 @@ const timer = setInterval(() => {
 			}
 	}
 	const runner = rows.find(
-		(row) => mine.has(row.pid) && row.pid !== process.pid && row.args.includes("/probe/run.mjs"),
+		(row) => mine.has(row.pid) && row.pid !== process.pid && row.args.includes("/probe/probe.mjs"),
 	);
 	if (runner !== undefined) {
 		process.stdout.write(`${JSON.stringify({ pid: runner.pid, start: runner.start })}\n`);
