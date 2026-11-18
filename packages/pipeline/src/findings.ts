@@ -775,10 +775,43 @@ export function verificationClaims(
 		});
 }
 
-/** A dismissal shared as a record: who made it, why, when, and the trigger it accepted. */
+/**
+ * A dismissal shared as a record: who made it, why, when, and the trigger it accepted, with every proving hunk a shared
+ * sighting of its finding cites at any revision, which stands in for what the host remembers of the sightings since.
+ */
 export type SharedDismissal = Readonly<Pick<FindingDismissal, "by" | "reason" | "at">> & {
 	readonly trigger: { readonly hash: string; readonly proof: readonly ProvingHunk[] };
+	readonly cited: readonly ProvingHunk[];
 };
+
+/** Every proving hunk `sightings` cite, by finding ID, as a host that recorded each of them remembers it. */
+export function citedProof(sightings: Iterable<StoredFinding>): Map<string, ProvingHunk[]> {
+	const cited = new Map<string, ProvingHunk[]>();
+	for (const { properties } of sightings)
+		cited.set(properties.id, [...(cited.get(properties.id) ?? []), ...proofOf(properties.cause, properties.trigger)]);
+	return new Map([...cited].map(([id, proof]) => [id, unionOf(proof)]));
+}
+
+/**
+ * Whether `shared` still holds for a finding sighted as `sightings` at a revision of `hunks`, by the rule that reopens a
+ * dismissal on the host: a hunk any shared sighting cited that the revision no longer holds reopens it.
+ */
+export function sharedDismissalHolds(
+	shared: SharedDismissal,
+	sightings: Iterable<{ readonly properties: Pick<StoredFinding["properties"], "cause" | "trigger"> }>,
+	hunks: readonly ProvingHunk[],
+): boolean {
+	return [...sightings].every(
+		({ properties: { cause, trigger } }) =>
+			!reopens(
+				shared.trigger.hash,
+				unionOf([...shared.trigger.proof, ...shared.cited, ...proofOf(cause, trigger)]),
+				cause,
+				triggerCode(trigger),
+				hunks,
+			),
+	);
+}
 
 /**
  * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
@@ -816,20 +849,11 @@ export function mergeSightings(
 			const atHead = judgedAt(items[id]!, at, counts);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead, true);
-			const holds = (shared: SharedDismissal) =>
-				Object.values(items[id]!.sightings[at]!).every(
-					({ properties: { cause, trigger } }) =>
-						!reopens(
-							shared.trigger.hash,
-							unionOf([...shared.trigger.proof, ...proofOf(cause, trigger)]),
-							cause,
-							triggerCode(trigger),
-							hunks,
-						),
-				);
+			const sighted = Object.values(items[id]!.sightings[at]!);
 			let shared: SharedDismissal | undefined;
 			for (const each of dismissals.get(id) ?? [])
-				if (holds(each) && (shared === undefined || shared.at <= each.at)) shared = each;
+				if (sharedDismissalHolds(each, sighted, hunks) && (shared === undefined || shared.at <= each.at))
+					shared = each;
 			const status =
 				shared === undefined
 					? { status: "new" as const }

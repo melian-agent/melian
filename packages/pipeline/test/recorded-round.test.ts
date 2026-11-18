@@ -502,7 +502,17 @@ describe("what a round's records hold", () => {
 			sightings: (sighting(records, round).payload as LensPayload).sightings,
 			hunks: reviewFiles(reviewed.changeset.revision.files).flatMap((file) => file.hunks.map(provingHunk)),
 			dismissals: [
-				{ record: dismissal.id, finding: id, revision: seen.revision, supersedes: [], by, reason, at, trigger },
+				{
+					record: dismissal.id,
+					finding: id,
+					revision: seen.revision,
+					supersedes: [],
+					by,
+					reason,
+					at,
+					trigger,
+					cited: [],
+				},
 			],
 		});
 		expect((contents as RecordedRoundContents).hunks).toHaveLength(1);
@@ -692,6 +702,47 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(gone)).toEqual([[id, "new", undefined]]);
 	});
 
+	it("reopens a dismissal once a shared round of another revision cited a hunk the revision no longer holds", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
+		const lens = sighting(records, round);
+		const proof = reviewFiles(reviewed.changeset.revision.files).flatMap((file) => file.hunks.map(provingHunk));
+		const payload = lens.payload as { sightings: { properties: { trigger: object } }[] };
+		const citing = (cited: readonly { file: string; hash: string }[]) =>
+			payload.sightings.map((each) => ({
+				...each,
+				properties: {
+					...each.properties,
+					cause: "affected",
+					trigger: { ...each.properties.trigger, proof: cited },
+				},
+			}));
+		const changed = rebuilt(reviewed, records, round, lens, {
+			...payload,
+			sightings: citing(proof),
+		} as unknown as RecordJson);
+		const dismissal = redismissed(reviewed, {
+			trigger: { ...(redismissed(reviewed).payload as DismissalJson).trigger, proof },
+		});
+		const shared = [...changed.records.filter((each) => !isDismissal(each)), dismissal];
+		// The round of an earlier revision, which cited a second hunk the revision read has since changed.
+		const earlier = SharedRecord.parseEnvelope({
+			...lens.toJSON(),
+			revision: `${"1".repeat(40)}..${"2".repeat(40)}`,
+			payload: {
+				...payload,
+				sightings: citing([...proof, { file: "src/b.ts", hash: "0".repeat(64) }]),
+			} as unknown as RecordJson,
+		}).toJSON();
+		const remembered = await read(reviewed, [...shared, earlier], changed.round);
+		expect([remembered.status, remembered.blocking]).toEqual(["findings", true]);
+		expect(standingOf(remembered)).toEqual([[id, "new", undefined]]);
+		// A round that was never shared cannot be remembered, so without it the dismissal holds.
+		const forgotten = await read(reviewed, shared, changed.round);
+		expect(standingOf(forgotten)).toEqual([[id, "dismissed", expect.objectContaining({ by: "maintainer" })]]);
+	});
+
 	it("keeps a finding dismissed only while every producer's sighting meets the accepted trigger", async () => {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
 		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
@@ -703,7 +754,7 @@ describe("the dismissal records a reader applies", () => {
 			properties: { ...seen!.properties, source, trigger: { ...seen!.properties.trigger!, hash } },
 		});
 		const { by, reason, at, trigger } = redismissed(reviewed).payload as DismissalJson & { by: string };
-		const dismissals = new Map([[id, [{ by, reason, at, trigger }]]]);
+		const dismissals = new Map([[id, [{ by, reason, at, trigger, cited: [] }]]]);
 		const producers = [seen!.properties.source, source];
 		const statusUnder = (hash: string) =>
 			mergeSightings([seen!, other(hash)], [], producers, dismissals, []).map(({ properties }) => properties.status);

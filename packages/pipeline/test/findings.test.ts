@@ -45,9 +45,11 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import {
+	citedProof,
 	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
+	mergeSightings,
 	replaceCheckFindings,
 	seenBefore,
 	upsertVerification,
@@ -453,6 +455,68 @@ describe("the findings document", () => {
 				history: [{ dismissedReason: dismissal.reason, reopenedRevision: "rev3" }],
 				proof,
 			});
+		});
+
+		it("reopens a dismissal the host's accumulated proof no longer holds, as a reader of the shared dismissal does", async () => {
+			const lib = snippetHash("+export const run = eval;");
+			const util = snippetHash("+export const parse = JSON.parse;");
+			const affected = (proof: { file: string; hash: string }[]) =>
+				Finding.create({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof },
+				});
+			const a = { file: "src/lib.ts", hash: lib };
+			const b = { file: "src/util.ts", hash: util };
+			const first = affected([a]);
+			await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1", [a]), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, first.properties.id, dismissal), context);
+			const trigger = (await lifecycle(harness, first.properties.id))?.dismissedTrigger;
+			expect(trigger?.proof).toEqual([a]);
+			const second = affected([a, b]);
+			await root.commit((tx) => upsertFinding(tx, root.id, second, "rev2", [a, b]), context);
+			const changed = [a, { file: "src/util.ts", hash: snippetHash("+export const parse = eval;") }];
+			const last = affected([a]);
+			await root.commit((tx) => upsertFinding(tx, root.id, last, "rev3", changed), context);
+			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
+
+			// A reader holds the rounds it was shared, each sighting as its record stored it.
+			const stored = (finding: Finding) => {
+				const { status: _, ...properties } = finding.properties;
+				return { ...finding.toJSON(), properties } as StoredFinding;
+			};
+			const readWith = (shared: readonly Finding[]) =>
+				mergeSightings(
+					[stored(last)],
+					[],
+					[input.source],
+					new Map([
+						[
+							first.properties.id,
+							[
+								{
+									...dismissal,
+									trigger: trigger!,
+									cited: citedProof(shared.map(stored)).get(first.properties.id) ?? [],
+								},
+							],
+						],
+					]),
+					changed,
+				).map((each) => each.properties.status);
+			expect(readWith([first, second, last])).toEqual(["new"]);
+			// A round that was never shared cannot be remembered, so without the second the reader keeps the dismissal.
+			expect(readWith([first, last])).toEqual(["dismissed"]);
 		});
 
 		it("carries the dismissal on the finding it reads", async () => {

@@ -21,7 +21,7 @@ import {
 	type VerificationPayload,
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
-import { mergeSightings, type Producer, type SharedDismissal, type VerificationClaim } from "./findings.ts";
+import { citedProof, mergeSightings, type Producer, type SharedDismissal, type VerificationClaim } from "./findings.ts";
 import { provingHunk, reviewFiles } from "./lens-tools.ts";
 import { accountKey, inManifestOrder } from "./review-records.ts";
 
@@ -263,22 +263,45 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 
 // The set's dismissal records of `changeset` that no other supersedes, in ID order. A dismissal record names no round,
 // so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round stricter.
+// Each carries every proving hunk a sighting of its finding in the set cites, at any revision, so a hunk a shared
+// round cited and the revision has since changed reopens it, as the host's memory of that round would.
 function dismissalsOf(set: RecordSet, changeset: string): SharedDismissalRecord[] {
+	const cited = citedProof(
+		set.records().flatMap((record) => {
+			if (record.changeset !== changeset) return [];
+			if (record.kind === "lens" || record.kind === "check")
+				return (record.payload as { sightings: unknown[] }).sightings as StoredFinding[];
+			if (record.kind === "dismissal")
+				return [(record.payload as DismissalPayload).sighting.finding as unknown as StoredFinding];
+			return [];
+		}),
+	);
 	return set
 		.unsuperseded()
 		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
 		.map((record) => {
 			const { by, reason, at, trigger, sighting } = record.payload as DismissalPayload;
 			const { id, key, supersedes } = record;
-			return { record: id, finding: key, revision: sighting.revision, supersedes, by, reason, at, trigger };
+			const remembered = cited.get(key) ?? [];
+			return {
+				record: id,
+				finding: key,
+				revision: sighting.revision,
+				supersedes,
+				by,
+				reason,
+				at,
+				trigger,
+				cited: remembered,
+			};
 		});
 }
 
 // The standing dismissals of each finding, in ID order, so of two made at one time the greater ID stands.
 function byFinding(dismissals: readonly SharedDismissalRecord[]): Map<string, SharedDismissal[]> {
 	const standing = new Map<string, SharedDismissal[]>();
-	for (const { finding, by, reason, at, trigger } of dismissals)
-		standing.set(finding, [...(standing.get(finding) ?? []), { by, reason, at, trigger }]);
+	for (const { finding, by, reason, at, trigger, cited } of dismissals)
+		standing.set(finding, [...(standing.get(finding) ?? []), { by, reason, at, trigger, cited }]);
 	return standing;
 }
 
