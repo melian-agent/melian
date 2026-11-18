@@ -421,7 +421,7 @@ describe("RelayBatch", () => {
 				claims: [claim(source)],
 				dismissals: [],
 				outcomes: [],
-				check: { name: "verifier", status: "ran", version: "1", findings: 0, notes: [] },
+				check: { name: "verifier", status: "ran", version: "1" },
 			});
 		const lensRun = { version: "abc", level: "careful", request: "e".repeat(64), probe: false } as const;
 		const unanswered = { status: "unanswered", reason: "no reply" } as const;
