@@ -597,12 +597,14 @@ export async function dismissFinding(
 		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
 	]);
 	const dismissedTrigger = { hash: triggerCode(trigger), proof };
-	// Repeating the same dismissal of the same content changes nothing, so the severity it was made at stands.
+	// Repeating the same dismissal of the same content under the same run changes nothing, so the severity it was made
+	// at stands. A new run is taken, since the run is what proves a static sighting.
 	if (
 		status === "dismissed" &&
 		dismissedBy === by &&
 		dismissedReason === why &&
-		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger)
+		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger) &&
+		(severity === undefined || record.lifecycle.dismissedSighting?.run === run)
 	)
 		return undefined;
 	const replaced =

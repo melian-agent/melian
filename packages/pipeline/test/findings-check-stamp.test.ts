@@ -169,4 +169,26 @@ describe("a check's stamp on its sightings at a revision", () => {
 
 		expect(state?.items[id]?.lifecycle.dismissedSighting).not.toHaveProperty("run");
 	});
+
+	// A dismissal made before stamps carries no run, so repeating it after a stamped run is how its sighting gets proven.
+	it("is taken into a repeated dismissal once a run stands, though nothing else changed", async () => {
+		const { root } = await stamped();
+		const id = biome(1).id;
+		const dismissal = { by: "maintainer", reason: "Intended.", at: "2026-11-16" };
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, biome(1), revision);
+			await dismissFinding(tx, root.id, id, dismissal, revision, "P1");
+		}, context);
+		await root.commit(
+			(tx) => replaceCheckFindings(tx, root.id, "static.biome", revision, [biome(1)], later),
+			context,
+		);
+		await root.commit(
+			(tx) => dismissFinding(tx, root.id, id, { ...dismissal, at: "2026-11-17" }, revision, "P1"),
+			context,
+		);
+		const state = await harness!.snapshot(FindingsDocument, root.id, context);
+
+		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(later);
+	});
 });
