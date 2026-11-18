@@ -12,7 +12,7 @@ import {
 	RecordError,
 	RecordSet,
 	type RepositorySource,
-	type Revision,
+	Revision,
 	reviewPayloads,
 	type SharedRecord,
 	type StoredFinding,
@@ -43,6 +43,7 @@ export type RecordedRoundContext = {
 // The decided pieces a round's records hold, or why they cannot stand for the round.
 type Pieces =
 	| {
+			readonly revision: string | undefined;
 			readonly account: AccountPayload;
 			readonly checks: CheckRecord[];
 			readonly sightings: StoredFinding[];
@@ -92,6 +93,8 @@ export class RecordedRound {
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
 		const pieces = this.#pieces;
 		if ("refused" in pieces) return notReviewed(this.id, pieces.refused, context);
+		const asked = Revision.key(context.revision);
+		if (asked !== pieces.revision) return notReviewed(this.id, `reviewed ${pieces.revision}, not ${asked}`, context);
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
 			check,
 			...(version === null ? {} : { version }),
@@ -191,7 +194,14 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	checks.push(...account.filled.map((each) => present(each) as unknown as CheckRecord));
 	// The verifier's record follows every other check's, as the review appends it after the lenses.
 	const ordered = [...inManifestOrder(account.checks, checks), ...(verifier === undefined ? [] : [verifier])];
-	return { account, checks: ordered, sightings, claims, dismissals: dismissalsOf(set, round.changeset) };
+	return {
+		revision: round.revision,
+		account,
+		checks: ordered,
+		sightings,
+		claims,
+		dismissals: dismissalsOf(set, round.changeset),
+	};
 }
 
 // The latest dismissal of each finding among the set's dismissal records of `changeset`. A dismissal record names no

@@ -11,6 +11,7 @@ import {
 	type RecordEnvelope,
 	type RecordJson,
 	type RepositorySource,
+	Revision,
 	reviewPayloads,
 	SharedRecord,
 	Standards,
@@ -229,6 +230,31 @@ const contractsUnder = (budget: Parameters<typeof withBudget>[1]) => (lens: Lens
 	lens.name === "contracts" ? withBudget(lens, budget) : lens;
 
 describe("a round read back from its records", () => {
+	it.each<[string, { readonly base?: string; readonly head?: string }]>([
+		["base", { base: "f".repeat(40) }],
+		["head", { head: "f".repeat(40) }],
+	])("reads as not reviewed when the caller's revision has another %s than the round's", async (_, other) => {
+		const reviewed = await review(exported(), {});
+		const { revision } = reviewed.changeset;
+		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+			revision: Revision.from({ base: revision.base, head: revision.head, files: revision.files, ...other }),
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: worktree,
+		});
+		const asked = `${other.base ?? revision.base}..${other.head ?? revision.head}`;
+		expect([verdict.status, verdict.notRun]).toEqual([
+			"not-reviewed",
+			[
+				{
+					name: "records",
+					status: "failed",
+					reason: `round ${roundOf(reviewed.stored)} reviewed ${revision.base}..${revision.head}, not ${asked}`,
+				},
+			],
+		]);
+	});
+
 	it("decides the verdict the review decided", async () => {
 		const verdict = await decidesAsTheHost({});
 		expect(verdict.status).toBe("findings");
