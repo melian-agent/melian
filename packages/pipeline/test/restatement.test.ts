@@ -29,6 +29,7 @@ import {
 	type FakeModels,
 	fauxAssistantMessage,
 	fauxToolCall,
+	type ScriptedReply,
 	scriptConversations,
 	scriptVerifier,
 	systemPromptOf,
@@ -38,10 +39,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FindingsDocument, findingsVersion, replaceCheckFindings, verificationClaims } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { ReviewRecords } from "../src/review-records.ts";
+import type * as Verification from "../src/verification.ts";
 import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
+
+// A test that must reach the final judgement with no wave before it turns waves off: lens timing alone decides
+// whether a wave starts before the lens task ends.
+const waves = vi.hoisted(() => ({ off: false }));
+vi.mock("../src/verification.ts", async (importOriginal) => {
+	const original = await importOriginal<typeof Verification>();
+	return {
+		...original,
+		startWave: (...args: Parameters<typeof original.startWave>) =>
+			waves.off ? Promise.resolve(undefined) : original.startWave(...args),
+	};
+});
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
@@ -122,6 +136,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	waves.off = false;
 	await harness.close(context);
 	vi.unstubAllEnvs();
 	rmSync(repo, { recursive: true, force: true });
@@ -156,6 +171,31 @@ function script(
 		{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		{ match: verifierMarker, replies: [verify, verify, verify, verify] },
 	]);
+}
+
+// A verifier that confirms every claim as the same as `root`, and replaces `root`'s dismissal during its first
+// judgement; `judged` settles once that judgement has its replacement.
+function replacingVerifier(root: string, at: Revision, replaced: typeof dismissal) {
+	let settle!: () => void;
+	const judged = new Promise<void>((resolve) => {
+		settle = resolve;
+	});
+	let pending = true;
+	const verify = async (messages: Messages) => {
+		if (pending) {
+			pending = false;
+			await recordDismissal({ harness, revision: at, id: root, dismissal: replaced, repoRoot: repo });
+			settle();
+		}
+		const claims = [...systemPromptOf(messages).matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map(
+			(m) => m[1]!,
+		);
+		return scriptVerifier(
+			messages,
+			Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }])),
+		);
+	};
+	return { judged, verify };
 }
 
 async function review(): Promise<Review> {
@@ -394,29 +434,21 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	// The maintainer's ruling of 2026-11-16 on issue #481: a replaced dismissal is another verification request, so the
-	// same review asks the verifier again and the restatement carries the dismissal that stands.
-	it("asks the verifier again when the root's dismissal is replaced while it judges, and carries the new dismissal", async () => {
+	// same review asks the verifier again and the restatement carries the dismissal that stands. That holds for a
+	// replacement during an earlier wave; contracts ends only once the wave has judged, so the final step follows it.
+	it("asks the verifier again when the root's dismissal is replaced while a wave judges, and carries the new dismissal", async () => {
 		const root = await dismissedRoot();
 		const first = await revision();
 		pushElsewhere("other");
 		const replaced = { ...dismissal, reason: "Only staff reach this path." };
-		let pending = true;
-		const verify = async (messages: Messages) => {
-			if (pending)
-				await recordDismissal({ harness, revision: first, id: root, dismissal: replaced, repoRoot: repo });
-			pending = false;
-			const prompt = systemPromptOf(messages);
-			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
-			return scriptVerifier(
-				messages,
-				Object.fromEntries(
-					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
-				),
-			);
+		const { judged, verify } = replacingVerifier(root, first, replaced);
+		const slow: ScriptedReply = async () => {
+			await judged;
+			return fauxAssistantMessage("Done.");
 		};
 		const asked = scriptConversations(fake, [
 			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
-			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [slow] },
 			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
 		]);
 		const second = await review();
@@ -431,6 +463,27 @@ describe("a dismissal carrying to a restatement", () => {
 			Revision.key(await revision())
 		];
 		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
+	});
+
+	// The maintainer's ruling of 2026-11-18 on issue #481: a review reads its inputs once, so a replacement during the
+	// final judgement waits for the next review, and this one shows the restated claim for attention.
+	it("shows the restatement for attention when the root's dismissal is replaced while the final judgement runs", async () => {
+		const root = await dismissedRoot();
+		const first = await revision();
+		pushElsewhere("other");
+		const replaced = { ...dismissal, reason: "Only staff reach this path." };
+		const { verify } = replacingVerifier(root, first, replaced);
+		waves.off = true;
+		const asked = scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		const second = await review();
+		const [restated] = second.findings;
+		expect(judgements(asked[verifierMarker]!)).toBe(1);
+		expect(second.verdict.attention().map((each) => each.id)).toEqual([restated!.id]);
+		expect(second.verdict.dismissed).toEqual([]);
 	});
 
 	// A review that attaches to a finished lens task starts no wave, so its own final task is what another review replaces.
