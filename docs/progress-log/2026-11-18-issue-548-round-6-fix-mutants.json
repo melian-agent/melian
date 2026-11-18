@@ -9,7 +9,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/record-payload-classes.test.ts > a shared record's classed fields > accepts the ran sample, as Melian writes it",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -164,7 +167,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/record-payload-classes.test.ts > a shared record's classed fields > accepts the provisional sample, as Melian writes it",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -331,7 +337,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/review-payloads.test.ts > review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -486,7 +495,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/review-payloads.test.ts > review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters",
+      "survivorClasses": []
     }
   ],
   "total": 41,

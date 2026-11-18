@@ -9,7 +9,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/review-payloads.test.ts > review payload checks > refuses a check record whose sighting another check reported",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -20,7 +23,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/record-payload-classes.test.ts > a shared record's classed fields > refuses free text in the account sample's filled/0/version",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -31,7 +37,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/record-payload-classes.test.ts > a shared record's classed fields > refuses free text in the verification sample's claims/0/source/version",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -42,7 +51,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/review-payloads.test.ts > review payload checks > refuses a lens record that holds another lens's check, or one at another version or level",
+      "survivorClasses": []
     },
     {
       "file": "packages/core/src/record-payloads.ts",
@@ -185,7 +197,10 @@
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "status": "Ignored"
+      "status": "Ignored",
+      "claim": "killed",
+      "evidence": "packages/core/test/review-payloads.test.ts > review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11",
+      "survivorClasses": []
     }
   ],
   "total": 16,

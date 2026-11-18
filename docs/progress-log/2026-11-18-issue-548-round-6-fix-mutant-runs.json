@@ -1058,5 +1058,71 @@
         "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
       }
     }
+  ],
+  "ignoredRuns": [
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 82,
+      "column": 1,
+      "endLine": 82,
+      "endColumn": 111,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > accepts the ran sample, as Melian writes it"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 96,
+      "column": 20,
+      "endLine": 96,
+      "endColumn": 33,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > accepts the provisional sample, as Melian writes it"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 501,
+      "column": 19,
+      "endLine": 501,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 504,
+      "column": 28,
+      "endLine": 504,
+      "endColumn": 114,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a receipt whose Enola version is not in semver's own form of at most 64 characters"
+      }
+    }
   ]
 }
