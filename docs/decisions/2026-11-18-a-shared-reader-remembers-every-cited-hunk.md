@@ -12,7 +12,7 @@ Example: a finding is dismissed citing hunk A. The next revision's sighting cite
 
 ## Decision
 
-The reader works the memory out from the records it already lists. A dismissal holds for a finding only while every proving hunk that any sighting of that finding in the record set cites, at any revision, is unchanged at the revision being read. The sightings are those of the changeset's lens, check and dismissal records that count. No record changes shape.
+The reader works the memory out from the records it already lists. A dismissal holds for a finding only while every proving hunk that any sighting of that finding in the record set cites, at any revision, is unchanged at the revision being read. The sightings are those of the changeset's lens and check records that count. A dismissal record's own sighting adds nothing, since its trigger's proof already holds every hunk that sighting cites. No record changes shape.
 
 `citedProof` in `packages/pipeline/src/findings.ts` gathers the hunks, and `sharedDismissalHolds` applies the host's reopen rule with them. `RecordedRound` hands each dismissal its `cited` hunks, in its verdict and in `contents`, so a gate that decides sightings itself calls the same function and agrees by construction.
 
@@ -24,4 +24,4 @@ It can be stricter. The host forgets a hunk that changed while the finding stood
 
 ## Tests
 
-`findings.test.ts` drives the host through the three revisions and reads the third with the hunks of the sightings shared: the host and the reader both read `new`, and without the second revision's sighting the reader reads `dismissed`. `recorded-round.test.ts` pins the same through records: a lens record of another revision citing a hunk the revision read no longer holds reopens the dismissal, and without that record it holds.
+`findings.test.ts` drives the host through the three revisions and reads the third with the hunks of the sightings shared: the host and the reader both read `new`, and without the second revision's sighting the reader reads `dismissed`. `recorded-round.test.ts` pins the same through records: a lens record, and a check record, of another revision citing a hunk the revision read no longer holds reopens the dismissal, and without that record it holds. A record of another changeset adds no hunk, and a dismissal of a finding no shared round sights carries none.
