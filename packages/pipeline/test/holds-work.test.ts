@@ -77,23 +77,28 @@ it("finds no work when the only model failed before it started", async () => {
 	});
 });
 
-// Pi Durable does not export the stop reasons it keeps out of a model's context, so this compares Melian's rule with
-// Pi's context over every reason pi-ai names. A Pi upgrade that adds a reason fails the type above, or this test.
-it.each(stopReasons)("agrees with Pi's context on a reply that stopped with %s", async (stopReason) => {
-	await withRoot(createFakeModels(), async (_harness, root) => {
-		await (await root.submit(reply(stopReason), context)).wait(context);
-		const inContext = (await root.context(context)).messages.some((message) => message.role === "assistant");
-		expect({ stopReason, worked: await holdsWork(readerOf(root), root.id, context) }).toEqual({
-			stopReason,
-			worked: stopReason === "pending" ? false : inContext,
+// Pi's context decides which replies the next model is shown, so a reply counts as work exactly when it is there.
+it.each([...stopReasons, "unheard-of" as AssistantMessage["stopReason"]])(
+	"agrees with Pi's context on a reply that stopped with %s",
+	async (stopReason) => {
+		await withRoot(createFakeModels(), async (_harness, root) => {
+			await (await root.submit(reply(stopReason), context)).wait(context);
+			const inContext = (await root.context(context)).messages.some((message) => message.role === "assistant");
+			expect({ stopReason, worked: await holdsWork(readerOf(root), root.id, context) }).toEqual({
+				stopReason,
+				worked: inContext,
+			});
 		});
-		if (stopReason === "pending") expect(inContext).toBe(true);
-	});
-});
+	},
+);
 
-it("counts an unknown stop reason as no work", async () => {
+it("counts a reply Pi shows the next model as work, and one it leaves out as none", async () => {
 	await withRoot(createFakeModels(), async (_harness, root) => {
-		await (await root.submit(reply("unheard-of" as AssistantMessage["stopReason"]), context)).wait(context);
+		await (await root.submit(reply("pending"), context)).wait(context);
+		expect(await holdsWork(readerOf(root), root.id, context)).toBe(true);
+	});
+	await withRoot(createFakeModels(), async (_harness, root) => {
+		await (await root.submit(reply("aborted"), context)).wait(context);
 		expect(await holdsWork(readerOf(root), root.id, context)).toBe(false);
 	});
 });
