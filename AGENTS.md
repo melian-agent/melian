@@ -47,7 +47,7 @@ For chat, comments, docs, commit messages, and anything an author will read, fol
 
 ## Validation
 
-There is one gate: `npm run check`. It runs Biome, type checking, dependency audit, and tests. Run it before completing any development work and fix everything it reports, including findings that look unrelated to your change.
+There is one gate: `npm run check`. It runs Biome, type checking, dependency audit, and tests. It also fails on a mutation inventory under `docs/progress-log/` that the sampler cannot read, apart from those `.unreadable-inventories.json` lists, which are already merged and only shrink. Run it before completing any development work and fix everything it reports, including findings that look unrelated to your change.
 
 Do not pipe test or check output through `tail`, `head`, or `cat`. Without `pipefail`, a pipeline reports the last command's status, so `npm run check | tail` exits 0 even when the check failed, and the failure scrolls past above the summary. Redirect to a file and read that, or run the command directly.
 

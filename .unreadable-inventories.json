@@ -1,0 +1,214 @@
+{
+	"version2": [
+		{
+			"file": "2026-11-13-pr-399-mutants.json",
+			"pullRequest": 399
+		},
+		{
+			"file": "2026-11-16-issue-502-account-null-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-16-issue-502-fingerprint-canonical-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-16-issue-502-fingerprint-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-16-issue-502-fingerprint-variant-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-16-issue-502-v2-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-16-pr-476-mutants.json",
+			"pullRequest": 476
+		},
+		{
+			"file": "2026-11-17-git-reads-no-replacement-objects-mutants.json",
+			"pullRequest": 537
+		},
+		{
+			"file": "2026-11-17-git-reads-no-replacement-objects-prune-mutants.json",
+			"pullRequest": 537
+		},
+		{
+			"file": "2026-11-17-issue-502-fingerprint-full-commit-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-17-issue-502-fingerprint-later-version-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-17-issue-502-fingerprint-version-mutants.json",
+			"pullRequest": 525
+		},
+		{
+			"file": "2026-11-18-issue-547-review-fixes-mutants.json",
+			"pullRequest": 552
+		}
+	],
+	"legacy": [
+		{
+			"file": "2026-11-07-pr-282-fix-pass-7-mutants.json",
+			"pullRequest": 282
+		},
+		{
+			"file": "2026-11-07-pr-296-probing-level-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-08-pr-289-fix-pass-7-mutants-partial.json",
+			"pullRequest": 289
+		},
+		{
+			"file": "2026-11-08-pr-296-fix-pass-2-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-08-pr-296-fix-pass-3-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-08-pr-309-fix-pass-1-mutants.json",
+			"pullRequest": 309
+		},
+		{
+			"file": "2026-11-08-pr-309-fix-pass-3-mutants.json",
+			"pullRequest": 309
+		},
+		{
+			"file": "2026-11-08-pr-309-probing-goldens-mutants.json",
+			"pullRequest": 309
+		},
+		{
+			"file": "2026-11-08-pr-329-mutants.json",
+			"pullRequest": 329
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-10-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-12-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-4-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-5-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-6-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-7-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-8-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-09-pr-296-fix-pass-9-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-10-pr-296-fix-pass-14-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-12-pr-296-fix-pass-15-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-12-pr-296-fix-pass-16-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-12-pr-296-fix-pass-17-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-12-walkthroughs-by-route-mutants.json",
+			"pullRequest": 330
+		},
+		{
+			"file": "2026-11-13-pr-296-fix-pass-18-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-13-pr-296-fix-pass-19-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-13-pr-296-fix-pass-20-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-13-pr-296-fix-pass-21-mutants.json",
+			"pullRequest": 296
+		},
+		{
+			"file": "2026-11-13-pr-399-suite-mutants.json",
+			"pullRequest": 399
+		},
+		{
+			"file": "2026-11-14-issue-394-static-hand-mutants.json",
+			"pullRequest": 436
+		},
+		{
+			"file": "2026-11-15-issue-398-mutants-special.json",
+			"pullRequest": 429
+		},
+		{
+			"file": "2026-11-15-pr-452-hand-mutants.json",
+			"pullRequest": 452
+		},
+		{
+			"file": "2026-11-15-pr-472-hand-mutants.json",
+			"pullRequest": 472
+		},
+		{
+			"file": "2026-11-16-issue-511-claim-file-mutants.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-issue-511-merged-claim-lines-mutants.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-issue-511-mutants-at-head.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-issue-511-scoring-mutants.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-issue-511-speaker-claim-mutants.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-issue-511-wording-telemetry-mutants.json",
+			"pullRequest": 518
+		},
+		{
+			"file": "2026-11-16-pr-480-hand-mutants.json",
+			"pullRequest": 498
+		},
+		{
+			"file": "2026-11-16-pr-504-mutants.json",
+			"pullRequest": 504
+		}
+	]
+}
